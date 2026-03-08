@@ -1,4 +1,3 @@
-cat << 'EOF' > README.md
 # DantinoX 🚀
 
 A high-performance, sub-nano Mixture of Experts (MoE) Transformer implemented in **JAX** and **Flax NNX**. Optimized for efficiency and speed on GPU/TPU devices.
