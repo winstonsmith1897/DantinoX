@@ -245,6 +245,8 @@ class Transformer(nnx.Module):
                 axis=1
             )
             x = x + wpe_slice
+        elif self.trainable_pos:
+            x = x + self.wpe(jnp.arange(T, dtype=x.dtype))
         new_kv_caches = []
         for i, h in enumerate(self.blocks):
             x, new_kv = h(x, use_cache=use_cache, kv_cache=kv_caches[i], cache_index=cache_index)
