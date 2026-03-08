@@ -1,4 +1,3 @@
-cat <<EOF > requirements.txt
 jax
 jaxlib
 flax
@@ -6,4 +5,3 @@ optax
 datasets
 pyyaml
 tokenizers
-EOF
