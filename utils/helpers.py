@@ -1,18 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-def build_compute_absolute_pos(T: int, C: int) -> jnp.ndarray:
-    pos = jnp.zeros((T, C))
-    row = jnp.arange(T)
-    col = jnp.arange(0, C, 2)
-    k = 1.0 / (10000 ** (col / C))
-    
-    ratio = jnp.einsum('i,j->ij', row, k)
-    pos = pos.at[:, 0::2].set(jnp.sin(ratio))
-    pos = pos.at[:, 1::2].set(jnp.cos(ratio))
-    
-    return jnp.expand_dims(pos, axis=0)
-
 def compute_loss(logits: jnp.ndarray, targets: jnp.ndarray) -> jnp.ndarray:
     B, T, C = logits.shape
     logits = jnp.reshape(logits, (B * T, C))

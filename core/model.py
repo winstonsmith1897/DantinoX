@@ -225,8 +225,19 @@ class Transformer(nnx.Module):
         if self.trainable_pos:
             self.wpe: nnx.Embed    = nnx.Embed(config.max_context, config.dim, rngs=rngs)
         elif self.absolute_pos:    
-            self.wpe: jnp.ndarray  = build_compute_absolute_pos(config.max_context, config.dim)
+            def _build_compute_absolute_pos(T: int, C: int) -> jnp.ndarray:
+                pos = jnp.zeros((T, C))
+                row = jnp.arange(T)
+                col = jnp.arange(0, C, 2)
+                k = 1.0 / (10000 ** (col / C))
+                
+                ratio = jnp.einsum('i,j->ij', row, k)
+                pos = pos.at[:, 0::2].set(jnp.sin(ratio))
+                pos = pos.at[:, 1::2].set(jnp.cos(ratio))
+                
+                return jnp.expand_dims(pos, axis=0)
 
+            self.wpe: jnp.ndarray  = _build_compute_absolute_pos(config.max_context, config.dim)
 
     def __call__(self, 
                  x: jnp.ndarray, 
