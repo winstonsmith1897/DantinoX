@@ -8,10 +8,11 @@ import csv
 import os
 import json
 from datasets import load_dataset
-from core.model import Transformer, Config
+from core.config import Config
+from core.model import Transformer
 from utils.tokenizer import get_tokenizer
 from utils.helpers import compute_loss, get_batch
-from dataclasses import fields
+import dataclasses
 
 def get_optax_optimizer(name, lr):
     try:
@@ -24,15 +25,13 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/default_config.yaml")
     parser.add_argument("--data_path", type=str)
-    parser.add_argument("--grad_accum", type=int, default=1)
-    parser.add_argument("--optimizer", type=str, default="adamw")
-    parser.add_argument("--eval_iters", type=int, default=20)
-    parser.add_argument("--log_file", type=str, default="training_log.csv")
-    parser.add_argument("--summary_file", type=str, default="model_summary.json")
-    for field in fields(Config):
+    
+    for field in dataclasses.fields(Config):
         ftype = field.type
-        if hasattr(ftype, "__origin__") and ftype.__origin__ is jax.Array: continue 
-        parser.add_argument(f"--{field.name}", type=ftype)
+        arg_name = f"--{field.name}"
+        if arg_name not in parser._option_string_actions:
+            parser.add_argument(arg_name, type=ftype)
+            
     return parser.parse_args()
 
 def get_vram_usage():
@@ -68,7 +67,7 @@ def main():
     args = parse_args()
     config = Config.from_yaml(args.config)
     args_dict = vars(args)
-    for field in fields(Config):
+    for field in dataclasses.fields(Config):
         val = args_dict.get(field.name)
         if val is not None: setattr(config, field.name, val)
     
@@ -100,15 +99,15 @@ def main():
                 node.embedding = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.shape)
 
     xavier_init(model)
-    optimizer = nnx.Optimizer(model, get_optax_optimizer(args.optimizer, config.lr))
-    report_model_summary(model, config, optimizer, args.summary_file)
+    optimizer = nnx.Optimizer(model, get_optax_optimizer(config.optimizer, config.lr), wrt=nnx.Param)
+    report_model_summary(model, config, optimizer, config.summary_file)
     
-    log_f = open(args.log_file, 'a', newline='')
+    log_f = open(config.log_file, 'a', newline='')
     log_writer = csv.writer(log_f)
-    if os.path.getsize(args.log_file) == 0:
+    if os.path.getsize(config.log_file) == 0:
         log_writer.writerow(['step', 'train_loss', 'val_loss', 'vram_gb', 'ms_per_step'])
 
-    micro_batch_size = config.batch_size // args.grad_accum
+    micro_batch_size = config.batch_size // config.grad_accum
 
     def loss_fn(model, x, y):
         logits, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
@@ -116,17 +115,28 @@ def main():
 
     @nnx.jit
     def train_step(model, optimizer, full_x, full_y):
-        x_batches = full_x.reshape(args.grad_accum, micro_batch_size, -1)
-        y_batches = full_y.reshape(args.grad_accum, micro_batch_size, -1)
-        def accum_grad(i, state):
-            grad_acc, total_loss = state
-            loss, grads = nnx.value_and_grad(loss_fn)(model, x_batches[i], y_batches[i])
-            grad_acc = jax.tree_util.tree_map(lambda g, acc: acc + g / args.grad_accum, grads, grad_acc)
-            return grad_acc, total_loss + loss / args.grad_accum
-        initial_grads = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
-        final_grads, final_loss = jax.lax.fori_loop(0, args.grad_accum, accum_grad, (initial_grads, 0.0))
-        optimizer.update(final_grads)
-        return final_loss
+        x_batches = full_x.reshape(config.grad_accum, micro_batch_size, -1)
+        y_batches = full_y.reshape(config.grad_accum, micro_batch_size, -1)
+        
+        def compute_loss_for_microbatch(model, x, y):
+            logits, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
+            return compute_loss(logits, y)
+            
+        grad_fn = nnx.value_and_grad(compute_loss_for_microbatch)
+        
+        grad_acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
+        total_loss = jnp.array(0.0)
+        
+        for i in range(config.grad_accum):
+            loss, grads = grad_fn(model, x_batches[i], y_batches[i])
+            
+            grad_acc = jax.tree_util.tree_map(
+                lambda acc, g: acc + g / config.grad_accum, grad_acc, grads
+            )
+            total_loss += loss / config.grad_accum
+            
+        optimizer.update(model, grad_acc)
+        return total_loss
 
     @nnx.jit
     def eval_step(model, x, y):
@@ -135,8 +145,8 @@ def main():
     def estimate_loss(key):
         out = {}
         for split, d in [('train', train_data), ('val', val_data)]:
-            losses = jnp.zeros(args.eval_iters)
-            for k in range(args.eval_iters):
+            losses = jnp.zeros(config.eval_iters)
+            for k in range(config.eval_iters):
                 key, subkey = jax.random.split(key)
                 x, y = get_batch(d, config.batch_size, config.max_context, subkey)
                 losses = losses.at[k].set(eval_step(model, x, y))

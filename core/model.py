@@ -143,7 +143,7 @@ class MLP(nnx.Module):
 class MoE(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
         self.n_experts: int       = config.n_experts
-        self.experts: list[MLP] = [MLP(config, rngs) for _ in range(self.n_experts)]
+        self.experts: nnx.List    = nnx.List([MLP(config, rngs) for _ in range(self.n_experts)])
         self.router: nnx.Linear   = nnx.Linear(config.dim, self.n_experts, use_bias=False, rngs=rngs)
         self.top_k_mlp: int       = config.top_k_mlp
 
@@ -178,7 +178,7 @@ class Block(nnx.Module):
 class Transformer(nnx.Module):
     def __init__(self, config: Config,  rngs: nnx.Rngs):
         self.num_blocks: int     = config.num_blocks
-        self.blocks: list[Block] = [Block(config, rngs=rngs) for _ in range(self.num_blocks)]
+        self.blocks: nnx.List    = nnx.List([Block(config, rngs=rngs) for _ in range(self.num_blocks)])
         self.lm_head: nnx.Linear = nnx.Linear(config.dim, config.vocab_size, rngs=rngs)
         self.wte: nnx.Embed      = nnx.Embed(config.vocab_size, config.dim, rngs=rngs)
         self.trainable_pos: bool = config.trainable_pos

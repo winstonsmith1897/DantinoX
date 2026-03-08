@@ -1,5 +1,5 @@
 from .model import Transformer, Config, Block, MoE, MLP, Attention
-from .generation import generate, decode_token
+from .generation import generate, decode
 from .config import Config
 
 __all__ = [
@@ -10,5 +10,6 @@ __all__ = [
     "MLP", 
     "Attention", 
     "generate", 
-    "decode_token"
+    "decode",
+    "build_compute_absolute_pos"
 ]
