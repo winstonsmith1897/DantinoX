@@ -1,0 +1,166 @@
+import argparse
+import jax
+import jax.numpy as jnp
+from flax import nnx
+import optax
+import time
+import csv
+import os
+import json
+from datasets import load_dataset
+from core.model import Transformer, Config
+from utils.tokenizer import get_tokenizer
+from utils.helpers import compute_loss, get_batch
+from dataclasses import fields
+
+def get_optax_optimizer(name, lr):
+    try:
+        opt_func = getattr(optax, name.lower())
+        return opt_func(learning_rate=lr)
+    except AttributeError:
+        return optax.adamw(learning_rate=lr)
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="configs/default_config.yaml")
+    parser.add_argument("--data_path", type=str)
+    parser.add_argument("--grad_accum", type=int, default=1)
+    parser.add_argument("--optimizer", type=str, default="adamw")
+    parser.add_argument("--eval_iters", type=int, default=20)
+    parser.add_argument("--log_file", type=str, default="training_log.csv")
+    parser.add_argument("--summary_file", type=str, default="model_summary.json")
+    for field in fields(Config):
+        ftype = field.type
+        if hasattr(ftype, "__origin__") and ftype.__origin__ is jax.Array: continue 
+        parser.add_argument(f"--{field.name}", type=ftype)
+    return parser.parse_args()
+
+def get_vram_usage():
+    devices = jax.devices()
+    try:
+        for d in devices:
+            if d.platform == 'gpu':
+                stats = d.memory_stats()
+                return stats['bytes_in_use'] / 1e9
+    except: return 0.0
+    return 0.0
+
+def report_model_summary(model, config, optimizer, save_path):
+    params = nnx.state(model, nnx.Param)
+    total_params = sum(x.size for x in jax.tree_util.tree_leaves(params))
+    weights_mem = total_params * 4 / 1e6
+    opt_state = nnx.state(optimizer)
+    opt_params = sum(x.size for x in jax.tree_util.tree_leaves(opt_state) if isinstance(x, jax.Array))
+    opt_mem = opt_params * 4 / 1e6
+    act_mem = (config.batch_size * config.max_context * config.dim * config.num_blocks * 8 * 4) / 1e6
+    summary = {
+        "total_params_M": round(total_params / 1e6, 2),
+        "weights_mem_MB": round(weights_mem, 2),
+        "optimizer_mem_MB": round(opt_mem, 2),
+        "est_activations_MB": round(act_mem, 2),
+        "total_est_vram_MB": round(weights_mem + opt_mem + act_mem, 2)
+    }
+    with open(save_path, 'w') as f:
+        json.dump(summary, f, indent=4)
+    print(f"Params: {summary['total_params_M']}M | Est. VRAM: {summary['total_est_vram_MB']}MB")
+
+def main():
+    args = parse_args()
+    config = Config.from_yaml(args.config)
+    args_dict = vars(args)
+    for field in fields(Config):
+        val = args_dict.get(field.name)
+        if val is not None: setattr(config, field.name, val)
+    
+    if config.dataset_source == "huggingface":
+        raw_dataset = load_dataset(config.dataset_name, split='train')
+        text = " ".join(raw_dataset['text'])
+    else:
+        path = args.data_path if args.data_path else config.dataset_name
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+
+    tokenizer = get_tokenizer(config.tokenizer_type, text=text if config.tokenizer_type == "char" else None)
+    if config.tokenizer_type == "bpe":
+        tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+    
+    config.vocab_size = tokenizer.vocab_size
+    full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
+    n = int(0.9 * len(full_data))
+    train_data, val_data = full_data[:n], full_data[n:]
+
+    rngs = nnx.Rngs(config.seed)
+    model = Transformer(config, rngs=rngs)
+    
+    def xavier_init(model):
+        for path, node in nnx.iter_graph(model):
+            if isinstance(node, nnx.Linear):
+                node.kernel = jax.nn.initializers.glorot_uniform()(rngs.params(), node.kernel.shape)
+            elif isinstance(node, nnx.Embed):
+                node.embedding = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.shape)
+
+    xavier_init(model)
+    optimizer = nnx.Optimizer(model, get_optax_optimizer(args.optimizer, config.lr))
+    report_model_summary(model, config, optimizer, args.summary_file)
+    
+    log_f = open(args.log_file, 'a', newline='')
+    log_writer = csv.writer(log_f)
+    if os.path.getsize(args.log_file) == 0:
+        log_writer.writerow(['step', 'train_loss', 'val_loss', 'vram_gb', 'ms_per_step'])
+
+    micro_batch_size = config.batch_size // args.grad_accum
+
+    def loss_fn(model, x, y):
+        logits, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        return compute_loss(logits, y)
+
+    @nnx.jit
+    def train_step(model, optimizer, full_x, full_y):
+        x_batches = full_x.reshape(args.grad_accum, micro_batch_size, -1)
+        y_batches = full_y.reshape(args.grad_accum, micro_batch_size, -1)
+        def accum_grad(i, state):
+            grad_acc, total_loss = state
+            loss, grads = nnx.value_and_grad(loss_fn)(model, x_batches[i], y_batches[i])
+            grad_acc = jax.tree_util.tree_map(lambda g, acc: acc + g / args.grad_accum, grads, grad_acc)
+            return grad_acc, total_loss + loss / args.grad_accum
+        initial_grads = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
+        final_grads, final_loss = jax.lax.fori_loop(0, args.grad_accum, accum_grad, (initial_grads, 0.0))
+        optimizer.update(final_grads)
+        return final_loss
+
+    @nnx.jit
+    def eval_step(model, x, y):
+        return loss_fn(model, x, y)
+
+    def estimate_loss(key):
+        out = {}
+        for split, d in [('train', train_data), ('val', val_data)]:
+            losses = jnp.zeros(args.eval_iters)
+            for k in range(args.eval_iters):
+                key, subkey = jax.random.split(key)
+                x, y = get_batch(d, config.batch_size, config.max_context, subkey)
+                losses = losses.at[k].set(eval_step(model, x, y))
+            out[split] = losses.mean()
+        return out, key
+
+    key = jax.random.PRNGKey(config.seed)
+    t0 = time.time()
+    try:
+        for step in range(config.steps):
+            key, subkey = jax.random.split(key)
+            x, y = get_batch(train_data, config.batch_size, config.max_context, subkey)
+            train_step(model, optimizer, x, y)
+            if step % 50 == 0:
+                t1 = time.time()
+                dt = (t1 - t0) * 1000 / 50
+                t0 = t1
+                vram = get_vram_usage()
+                losses, key = estimate_loss(key)
+                print(f"Step {step:5d} | Train: {losses['train']:.4f} | Val: {losses['val']:.4f} | VRAM: {vram:.2f}GB")
+                log_writer.writerow([step, float(losses['train']), float(losses['val']), round(vram, 3), round(dt, 2)])
+                log_f.flush()
+    finally:
+        log_f.close()
+
+if __name__ == "__main__":
+    main()
