@@ -4,7 +4,11 @@ import flax.nnx as nnx
 import math
 from .config import Config
 
-
+import jax
+import jax.numpy as jnp
+import flax.nnx as nnx
+import math
+from .config import Config
 
 class Attention(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
@@ -42,6 +46,9 @@ class Attention(nnx.Module):
             
             self.angle: jnp.ndarray = __compute_angle(self.max_context, self.head_size)
 
+        self.attn_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
+        self.resid_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
+
         
     def __apply_rotation(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
         T = x.shape[3]
@@ -57,9 +64,6 @@ class Attention(nnx.Module):
         x_odd  = jax.lax.cos(angle) * odd - jax.lax.sin(angle) * even
         x_even = jax.lax.sin(angle) * odd + jax.lax.cos(angle) * even
 
-        # y      = jnp.zeros_like(x)
-        # y      = y.at[:, :, :, :, 0::2].set(x_odd)
-        # y      = y.at[:, :, :, :, 1::2].set(x_even)
         y = jnp.stack([x_even, x_odd], axis=-1).reshape(x.shape)
         return y
 
@@ -68,7 +72,8 @@ class Attention(nnx.Module):
     def __call__(self, x: jnp.ndarray, 
                  use_cache: bool, 
                  kv_cache: tuple, 
-                 cache_index:int) -> jnp.ndarray:
+                 cache_index:int,
+                 deterministic: bool = False) -> jnp.ndarray:
         
         B, T, _ = x.shape
         assert T <= self.max_context, "Sequence too Long"
@@ -101,7 +106,7 @@ class Attention(nnx.Module):
             q, k = map(self.__apply_rotation, (q, k), (cache_index, cache_index))
 
         if use_cache:
-            if kv_cache == (None, None):  #Prefill Case
+            if kv_cache == (None, None):  
                 k_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
                 v_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=v.dtype)
                 k_cache, v_cache = k_cache.at[:, :, :, :T, :].set(k), v_cache.at[:, :, :, :T, :].set(v)
@@ -118,7 +123,6 @@ class Attention(nnx.Module):
                                             start_index=cache_index,
                                             slice_size=T, 
                                             axis=0) 
-        #trilled = (~mask) * (-1e9)
         trilled = jnp.where(mask, 0.0, -1e9)
 
         attn = attn + trilled
@@ -129,6 +133,7 @@ class Attention(nnx.Module):
                                                 slice_sizes=T,
                                                 axis=0)
         causal_attn = jax.nn.softmax(attn)
+        causal_attn = self.attn_dropout(causal_attn, deterministic=deterministic)
 
         y = causal_attn @ v
 
@@ -137,7 +142,8 @@ class Attention(nnx.Module):
         if self.no_sink:
             y = y * jax.nn.sigmoid(self.W(x))
 
-        return self.o_proj(y), kv_cache
+        out = self.resid_dropout(self.o_proj(y), deterministic=deterministic)
+        return out, kv_cache
 
 class Activation(nnx.Module):
     def __init__(self, activation_name: str):
@@ -151,10 +157,14 @@ class MLP(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
         self.up_proj   = nnx.Linear(config.dim, config.dim*config.expansion, rngs=rngs)
         self.down_proj = nnx.Linear(config.dim * config.expansion, config.dim, rngs=rngs)
-        self.mlp       = nnx.Sequential(self.up_proj, Activation(config.activation), self.down_proj)
+        self.activation = Activation(config.activation)
+        self.dropout   = nnx.Dropout(config.dropout_rate, rngs=rngs)
 
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        return self.mlp(x)
+    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> jnp.ndarray:
+        x = self.up_proj(x)
+        x = self.activation(x)
+        x = self.down_proj(x)
+        return self.dropout(x, deterministic=deterministic)
 
 class MoE(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
@@ -163,7 +173,7 @@ class MoE(nnx.Module):
         self.router: nnx.Linear   = nnx.Linear(config.dim, self.n_experts, use_bias=False, rngs=rngs)
         self.top_k_mlp: int       = config.top_k_mlp
 
-    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> jnp.ndarray:
         x_routed = self.router(x)
         probs    = jax.nn.softmax(x_routed)
         values, indices = jax.lax.top_k(probs, self.top_k_mlp)
@@ -172,30 +182,34 @@ class MoE(nnx.Module):
         for i in range(self.n_experts):
             mask = (indices == i)
             expert_weight = jnp.sum(jnp.where(mask, values, 0), axis=-1, keepdims=True)
-            y = y + (expert_weight * self.experts[i](x))
+            y = y + (expert_weight * self.experts[i](x, deterministic=deterministic))
         return y
             
 
 class Block(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
-        self.mlp: MLP = MLP(config, rngs)
         self.attention: Attention = Attention(config, rngs)
         self.ln1: nnx.LayerNorm   = nnx.LayerNorm(config.dim, rngs=rngs)
         self.ln2: nnx.LayerNorm   = nnx.LayerNorm(config.dim, rngs=rngs)
         self.use_moe: bool        = config.use_moe
-        self.moe: MoE             = MoE(config, rngs)
+        if self.use_moe:
+            self.moe = MoE(config, rngs)
+        else:
+            self.mlp = MLP(config, rngs)
         
     def __call__(self, x: jnp.ndarray, 
                  use_cache: bool, 
                  kv_cache: tuple, 
-                 cache_index: int) -> jnp.ndarray:
+                 cache_index: int,
+                 deterministic: bool = False) -> jnp.ndarray:
         
         x_attn, kv_cache = self.attention(self.ln1(x), 
                                           use_cache=use_cache, 
                                           kv_cache=kv_cache, 
-                                          cache_index=cache_index)
+                                          cache_index=cache_index,
+                                          deterministic=deterministic)
         x  = x + x_attn
-        ff = self.moe(self.ln2(x)) if self.use_moe else self.mlp(self.ln2(x)) 
+        ff = self.moe(self.ln2(x), deterministic=deterministic) if self.use_moe else self.mlp(self.ln2(x), deterministic=deterministic) 
         x  = x + ff
         return x, kv_cache
     

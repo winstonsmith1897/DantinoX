@@ -8,6 +8,7 @@ model:
   weight_tying: true
   activation: gelu
   gradient_checkpointing: true
+  dropout_rate: 0.15
   
 moe:
   use_moe: False

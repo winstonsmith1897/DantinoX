@@ -14,7 +14,7 @@ class Config:
     weight_tying: bool = True
     activation: str = "gelu"
     gradient_checkpointing: bool = True
-    
+    dropout_rate: float = 0.15
     # MoE
     use_moe: bool = False
     n_experts: int = 4
