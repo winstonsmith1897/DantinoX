@@ -12,6 +12,7 @@ class Config:
     max_context: int = 512
     kv_heads: int = 16
     weight_tying: bool = True
+    activation: str = "gelu"
     
     # MoE
     use_moe: bool = False
@@ -28,7 +29,7 @@ class Config:
     no_sink: bool = True
     
     # Tokenizer
-    tokenizer_type: str = "char"
+    tokenizer_type: str = "bpe"
     tokenizer_path: str = None  
     
     # Dataset Configuration
@@ -37,12 +38,13 @@ class Config:
     streaming: bool = False
     
     # Training & Optimization
-    lr: float = 0.0005
+    lr: float = 0.005
     batch_size: int = 64
     grad_accum: int = 16
     seed: int = 42
     optimizer: str = "adamw"
     epochs: int = 500
+    warmup_steps: int = 420
     
     # Logging & Metrics
     eval_iters: int = 20

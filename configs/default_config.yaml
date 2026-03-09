@@ -7,6 +7,7 @@ model:
   num_blocks: 8
   max_context: 512
   weight_tying: true
+  activation: gelu
   
 # Mixture of Experts (MoE)
 moe:
@@ -26,7 +27,7 @@ attention:
 
 # Tokenizer
 tokenizer:
-  tokenizer_type: "char"      # "char" or "bpe"
+  tokenizer_type: "bpe"      # "char" or "bpe"
   vocab_size: 5000            # Target size for BPE
   tokenizer_path: "configs/vocab.json"
 
@@ -38,12 +39,13 @@ data:
 
 # Training & Optimization
 training:
-  lr: 0.0005
+  lr: 0.005
   batch_size: 64
   grad_accum: 16
   seed: 42
   optimizer: "adamw"           # Any optax optimizer (adamw, adafactor, lion, etc.), default->adamw
   epochs: 500
+  warmup_steps: 420
 
 # Logging & Metrics
 logging:

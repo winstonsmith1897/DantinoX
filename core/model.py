@@ -140,14 +140,18 @@ class Attention(nnx.Module):
         return self.o_proj(y), kv_cache
 
 class Activation(nnx.Module):
+    def __init__(self, activation_name: str):
+        self.activation_name = activation_name
+
     def __call__(self, x: jnp.ndarray):
-        return jax.nn.gelu(x)
+        act_fn = getattr(jax.nn, self.activation_name.lower(), jax.nn.gelu)
+        return act_fn(x)
     
 class MLP(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
         self.up_proj   = nnx.Linear(config.dim, config.dim*config.expansion, rngs=rngs)
         self.down_proj = nnx.Linear(config.dim * config.expansion, config.dim, rngs=rngs)
-        self.mlp       = nnx.Sequential(self.up_proj, Activation(), self.down_proj)
+        self.mlp       = nnx.Sequential(self.up_proj, Activation(config.activation), self.down_proj)
 
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
         return self.mlp(x)

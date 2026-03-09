@@ -15,13 +15,22 @@ from utils.tokenizer import get_tokenizer
 from utils.helpers import compute_loss, get_batch
 import dataclasses
 
-def get_optax_optimizer(name, lr):
-    try:
-        opt_func = getattr(optax, name.lower())
-        return opt_func(learning_rate=lr)
-    except AttributeError:
-        return optax.adamw(learning_rate=lr)
-
+def get_optax_optimizer(config, total_steps):
+    warmup_steps = getattr(config, 'warmup_steps', int(total_steps * 0.1))
+    
+    lr_schedule = optax.warmup_cosine_decay_schedule(
+        init_value=0.0,
+        peak_value=config.lr,
+        warmup_steps=warmup_steps,
+        decay_steps=total_steps,
+        end_value=config.lr * 0.01  
+    )
+    
+    if config.optimizer.lower() == "adamw":
+        return optax.adamw(learning_rate=lr_schedule)
+    else:
+        return optax.adam(learning_rate=lr_schedule)
+    
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/default_config.yaml")
@@ -96,7 +105,12 @@ def main():
         formatted_blocks.append('\n'.join(valid_lines[i:i+3]))
     text = '\n\n'.join(formatted_blocks) + '\n'
 
-    tokenizer = get_tokenizer(config.tokenizer_type, text=text if config.tokenizer_type == "char" else None)
+    tokenizer = get_tokenizer(config.tokenizer_type)
+
+    if config.tokenizer_type == "char":
+        tokenizer.train_from_text(text) 
+    elif config.tokenizer_type == "bpe":
+        tokenizer.train_from_text(text, vocab_size=config.vocab_size)
     if config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)
     
@@ -107,7 +121,6 @@ def main():
 
     tokens_per_step = config.batch_size * config.max_context
     steps_per_epoch = max(1, len(train_data) // tokens_per_step)
-    
     total_steps = steps_per_epoch * config.epochs
 
     rngs = nnx.Rngs(config.seed)
@@ -121,7 +134,10 @@ def main():
                 node.embedding = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.shape)
 
     xavier_init(model)
-    optimizer = nnx.Optimizer(model, get_optax_optimizer(config.optimizer, config.lr), wrt=nnx.Param)
+    
+    tx = get_optax_optimizer(config, total_steps)
+    optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+    
     report_model_summary(model, config, optimizer, summary_file_path)
     
     log_f = open(log_file_path, 'a', newline='')
@@ -145,13 +161,11 @@ def main():
             return compute_loss(logits, y)
             
         grad_fn = nnx.value_and_grad(compute_loss_for_microbatch)
-        
         grad_acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
         total_loss = jnp.array(0.0)
         
         for i in range(config.grad_accum):
             loss, grads = grad_fn(model, x_batches[i], y_batches[i])
-            
             grad_acc = jax.tree_util.tree_map(
                 lambda acc, g: acc + g / config.grad_accum, grad_acc, grads
             )
@@ -171,10 +185,8 @@ def main():
             for k in range(config.eval_iters):
                 key, subkey = jax.random.split(key)
                 x, y = get_batch(d, 1, config.max_context, subkey) 
-                
                 step_loss = float(eval_step(model, x, y))
                 losses.append(step_loss)
-                
             out[split] = sum(losses) / len(losses)
         return out, key
 
@@ -194,13 +206,12 @@ def main():
                 print(f"Step {step:5d}/{total_steps} | Train: {losses['train']:.4f} | Val: {losses['val']:.4f} | VRAM: {vram:.2f}GB")
                 log_writer.writerow([step, float(losses['train']), float(losses['val']), round(vram, 3), round(dt, 2)])
                 log_f.flush()
+        
         print("Saving model weights...")
         final_state_dict = nnx.state(model).to_pure_dict()
-        
         with open(os.path.join(run_dir, "model_weights.msgpack"), "wb") as f:
             import flax.serialization
             f.write(flax.serialization.msgpack_serialize(final_state_dict))
-            
         print(f"Model saved to: {run_dir}")
     finally:
         log_f.close()
