@@ -126,13 +126,14 @@ def main():
     rngs = nnx.Rngs(config.seed)
     model = Transformer(config, rngs=rngs)
     
-    def xavier_init(model):
-        for path, node in nnx.iter_graph(model):
-            if isinstance(node, nnx.Linear):
-                node.kernel.value = jax.nn.initializers.glorot_uniform()(rngs.params(), node.kernel.value.shape)
-            elif isinstance(node, nnx.Embed):
-                node.embedding.value = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.value.shape)
-    xavier_init(model)
+    # ALREADY DONE with rngs
+    # def xavier_init(model):
+    #     for path, node in nnx.iter_graph(model):
+    #         if isinstance(node, nnx.Linear):
+    #             node.kernel.value = jax.nn.initializers.glorot_uniform()(rngs.params(), node.kernel.value.shape)
+    #         elif isinstance(node, nnx.Embed):
+    #             node.embedding.value = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.value.shape)
+    # xavier_init(model)
     
     tx = get_optax_optimizer(config, total_steps)
     optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
