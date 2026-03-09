@@ -29,7 +29,7 @@ class Attention(nnx.Module):
         if self.sliding_window:
             table = jnp.arange(self.max_context)[:, None] - jnp.arange(self.max_context)[None, :]
             mask  = (table <= config.context_window)  & (table >= 0)
-            self.window = jnp.where(mask, 0, -1e-9)
+            self.window = jnp.where(mask, 0, -1e9)
 
         self.use_rotary: bool = config.use_rotary_pos
         if self.use_rotary:
