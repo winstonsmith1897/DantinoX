@@ -109,8 +109,12 @@ class Attention(nnx.Module):
 
         k = jnp.swapaxes(k, -2, -1)
         attn = q @ k / math.sqrt(self.head_size)
-        mask = self.tril[:T, :T] 
-        trilled = (~mask) * (-1e9)
+        mask = jax.lax.dynamic_slice_in_dim(operand=self.tril, 
+                                            start_index=cache_index,
+                                            slice_size=T, 
+                                            axis=0) 
+        #trilled = (~mask) * (-1e9)
+        trilled = jnp.where(mask, 0.0, -1e9)
 
         attn = attn + trilled
 
