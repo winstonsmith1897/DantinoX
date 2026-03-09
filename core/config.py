@@ -4,12 +4,12 @@ import yaml
 @dataclass
 class Config:
     # Model Architecture
-    dim: int = 128
+    dim: int = 512
     n_heads: int = 16
     head_size: int = 8
-    num_blocks: int = 4
+    num_blocks: int = 8
     vocab_size: int = 200
-    max_context: int = 110
+    max_context: int = 512
     kv_heads: int = None
     
     # MoE
@@ -22,7 +22,7 @@ class Config:
     use_rotary_pos: bool = True
     trainable_pos: bool = False  
     absolute_pos: bool = False    
-    sliding_window: bool = True
+    sliding_window: bool = False
     context_window: int = 4
     no_sink: bool = True
     

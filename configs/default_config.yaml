@@ -1,10 +1,10 @@
 # Model Architecture
 model:
-  dim: 128
+  dim: 512
   n_heads: 16
   head_size: 8
-  num_blocks: 4
-  max_context: 256
+  num_blocks: 8
+  max_context: 512
   
 # Mixture of Experts (MoE)
 moe:
@@ -16,7 +16,9 @@ moe:
 # Attention Features
 attention:
   use_rotary_pos: true
-  sliding_window: true
+  trainable_pos: false    
+  absolute_pos: false     
+  sliding_window: False
   context_window: 32
   no_sink: true
 

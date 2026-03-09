@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 import flax.nnx as nnx
 import math
-import yaml
 from .config import Config
 
 
@@ -13,7 +12,7 @@ class Attention(nnx.Module):
         self.head_size:int   = config.head_size
         self.n_heads: int    = config.n_heads
         self.dim: int        = config.dim
-        self.kv_heads:int    = config.kv_heads 
+        self.kv_heads: int   = config.kv_heads if config.kv_heads is not None else self.n_heads
         self.qkv: nnx.Linear = nnx.Linear(self.dim, 
                                           self.dim + 2 * self.kv_heads*self.head_size,
                                           use_bias=False, 
@@ -125,7 +124,10 @@ class Attention(nnx.Module):
         attn = attn + trilled
 
         if self.sliding_window:
-            attn = attn + self.window[:T, :T]
+            attn = attn + jax.lax.dynamic_index_in_dim(operand=self.window,
+                                                start_index=cache_index,
+                                                slice_sizes=T,
+                                                axis=0)
         causal_attn = jax.nn.softmax(attn)
 
         y = causal_attn @ v
