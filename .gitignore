@@ -1,4 +1,3 @@
-cat <<EOF > .gitignore
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
@@ -15,4 +14,3 @@ model_summary.json
 # Environment
 venv/
 .env
-EOF

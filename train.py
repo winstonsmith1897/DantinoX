@@ -89,6 +89,13 @@ def main():
         with open(path, "r", encoding="utf-8") as f:
             text = f.read()
 
+    raw_lines = text.split('\n')
+    valid_lines = [l.rstrip() for l in raw_lines if l.strip()]
+    formatted_blocks = []
+    for i in range(0, len(valid_lines), 3):
+        formatted_blocks.append('\n'.join(valid_lines[i:i+3]))
+    text = '\n\n'.join(formatted_blocks) + '\n'
+
     tokenizer = get_tokenizer(config.tokenizer_type, text=text if config.tokenizer_type == "char" else None)
     if config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)
@@ -97,6 +104,11 @@ def main():
     full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
     n = int(0.9 * len(full_data))
     train_data, val_data = full_data[:n], full_data[n:]
+
+    tokens_per_step = config.batch_size * config.max_context
+    steps_per_epoch = max(1, len(train_data) // tokens_per_step)
+    
+    total_steps = steps_per_epoch * config.epochs
 
     rngs = nnx.Rngs(config.seed)
     model = Transformer(config, rngs=rngs)
@@ -155,18 +167,21 @@ def main():
     def estimate_loss(key):
         out = {}
         for split, d in [('train', train_data), ('val', val_data)]:
-            losses = jnp.zeros(config.eval_iters)
+            losses = []
             for k in range(config.eval_iters):
                 key, subkey = jax.random.split(key)
-                x, y = get_batch(d, config.batch_size, config.max_context, subkey)
-                losses = losses.at[k].set(eval_step(model, x, y))
-            out[split] = losses.mean()
+                x, y = get_batch(d, 1, config.max_context, subkey) 
+                
+                step_loss = float(eval_step(model, x, y))
+                losses.append(step_loss)
+                
+            out[split] = sum(losses) / len(losses)
         return out, key
 
     key = jax.random.PRNGKey(config.seed)
     t0 = time.time()
     try:
-        for step in range(config.steps):
+        for step in range(total_steps):
             key, subkey = jax.random.split(key)
             x, y = get_batch(train_data, config.batch_size, config.max_context, subkey)
             train_step(model, optimizer, x, y)
@@ -176,9 +191,15 @@ def main():
                 t0 = t1
                 vram = get_vram_usage()
                 losses, key = estimate_loss(key)
-                print(f"Step {step:5d} | Train: {losses['train']:.4f} | Val: {losses['val']:.4f} | VRAM: {vram:.2f}GB")
+                print(f"Step {step:5d}/{total_steps} | Train: {losses['train']:.4f} | Val: {losses['val']:.4f} | VRAM: {vram:.2f}GB")
                 log_writer.writerow([step, float(losses['train']), float(losses['val']), round(vram, 3), round(dt, 2)])
                 log_f.flush()
+        print("Saving model weights...")
+        final_state = nnx.state(model)
+        with open(os.path.join(run_dir, "model_weights.msgpack"), "wb") as f:
+            import flax.serialization
+            f.write(flax.serialization.msgpack_serialize(final_state))
+        print(f"Model saved to: {run_dir}")
     finally:
         log_f.close()
 
