@@ -60,8 +60,12 @@ def _generate_toks(
                                         body_fun=prefill_or_no_cache, 
                                         init_val=(x, init_kv_cache, dummy_tok, key))
     else:
-        x, kv_cache, tok, key = prefill_or_no_cache(start_pos, (x, init_kv_cache, dummy_tok, key))
-        x, _, _ , _ = jax.lax.fori_loop(lower=start_pos + 1, upper=start_pos + max_generations, body_fun=generate_with_kv_cache, init_val=(x, tok, kv_cache, key))
+        x, kv_cache, tok, key = prefill_or_no_cache(start_pos, 
+                                                    (x, init_kv_cache, dummy_tok, key))
+        x, _, _ , _ = jax.lax.fori_loop(lower=start_pos + 1, 
+                                        upper=start_pos + max_generations, 
+                                        body_fun=generate_with_kv_cache, 
+                                        init_val=(x, tok, kv_cache, key))
     return x
 
 
@@ -87,5 +91,11 @@ def generate(
     else:
         key = jax.random.key(seed)
         decoding_func = lambda v, key: jax.random.categorical(key, v, axis=-1)
-    x = _generate_toks(model, x_padded, key=key, start_pos=T, max_generations=to_generate, decoding_func=decoding_func, use_cache=use_cache)
+    x = _generate_toks(model, 
+                       x_padded, 
+                       key=key, 
+                       start_pos=T, 
+                       max_generations=to_generate, 
+                       decoding_func=decoding_func, 
+                       use_cache=use_cache)
     return x[:, :T + to_generate]
