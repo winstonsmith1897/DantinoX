@@ -1,23 +1,20 @@
-# Model Architecture
 model:
   dim: 512
   n_heads: 16
   kv_heads: 4
   head_size: 32
-  num_blocks: 16
+  num_blocks: 20
   max_context: 512
   weight_tying: true
   activation: gelu
   gradient_checkpointing: true
   
-# Mixture of Experts (MoE)
 moe:
   use_moe: False
   n_experts: 4
   top_k_mlp: 2
   expansion: 4
 
-# Attention Features
 attention:
   use_rotary_pos: true
   trainable_pos: false    
@@ -26,29 +23,25 @@ attention:
   context_window: 32
   no_sink: true
 
-# Tokenizer
 tokenizer:
-  tokenizer_type: "bpe"      # "char" or "bpe"
-  vocab_size: 5000            # Target size for BPE
+  tokenizer_type: "bpe"      
+  vocab_size: 2000
   tokenizer_path: "configs/vocab.json"
 
-# Dataset Configuration
 data:
-  dataset_source: "huggingface" # "local" or "huggingface"
-  dataset_name: "Daniele/dante-corpus" # HF path or local file path (e.g., "data/math.txt")
-  streaming: true              # Recommended for large HF datasets
+  dataset_source: "huggingface" 
+  dataset_name: "Daniele/dante-corpus" 
+  streaming: true              
 
-# Training & Optimization
 training:
-  lr: 0.005
-  batch_size: 128
-  grad_accum: 16
+  lr: 0.0015
+  batch_size: 64
+  grad_accum: 4
   seed: 42
-  optimizer: "adamw"           # Any optax optimizer (adamw, adafactor, lion, etc.), default->adamw
+  optimizer: "adamw"           
   epochs: 1000
-  warmup_steps: 420
+  warmup_steps: 100
 
-# Logging & Metrics
 logging:
   eval_iters: 20
   log_file: "training_log.csv"

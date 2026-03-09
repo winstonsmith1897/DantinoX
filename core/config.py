@@ -7,7 +7,7 @@ class Config:
     dim: int = 512
     n_heads: int = 16
     head_size: int = 32
-    num_blocks: int = 16
+    num_blocks: int = 20
     vocab_size: int = 200
     max_context: int = 512
     kv_heads: int = 4
@@ -30,7 +30,7 @@ class Config:
     no_sink: bool = True
     
     # Tokenizer
-    tokenizer_type: str = "bpe"
+    tokenizer_type: str = "char"
     tokenizer_path: str = None  
     
     # Dataset Configuration

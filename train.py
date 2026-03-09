@@ -129,10 +129,9 @@ def main():
     def xavier_init(model):
         for path, node in nnx.iter_graph(model):
             if isinstance(node, nnx.Linear):
-                node.kernel = jax.nn.initializers.glorot_uniform()(rngs.params(), node.kernel.shape)
+                node.kernel.value = jax.nn.initializers.glorot_uniform()(rngs.params(), node.kernel.value.shape)
             elif isinstance(node, nnx.Embed):
-                node.embedding = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.shape)
-
+                node.embedding.value = jax.nn.initializers.glorot_uniform()(rngs.params(), node.embedding.value.shape)
     xavier_init(model)
     
     tx = get_optax_optimizer(config, total_steps)

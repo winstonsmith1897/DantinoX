@@ -209,6 +209,7 @@ class Transformer(nnx.Module):
         self.absolute_pos: bool  = config.absolute_pos
         self.max_context: bool   = config.max_context
         self.gradient_checkpointing: bool = config.gradient_checkpointing
+        self.ln_f: nnx.LayerNorm = nnx.LayerNorm(config.dim, rngs=rngs)
         if config.weight_tying:
             self.lm_head.kernel  = self.wte.embedding.T
         if self.trainable_pos:
@@ -265,6 +266,8 @@ class Transformer(nnx.Module):
         for i, block in enumerate(self.blocks):
             x, new_kv = checkpointed_block(block, x, kv_caches[i] if kv_caches else None)
             new_kv_caches.append(new_kv)
+
+        x = self.ln_f(x)
         
         return self.lm_head(x), tuple(new_kv_caches)
 
