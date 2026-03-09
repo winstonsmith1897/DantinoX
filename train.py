@@ -7,6 +7,7 @@ import time
 import csv
 import os
 import json
+import datetime
 from datasets import load_dataset
 from core.config import Config
 from core.model import Transformer
@@ -71,6 +72,15 @@ def main():
         val = args_dict.get(field.name)
         if val is not None: setattr(config, field.name, val)
     
+    run_name = datetime.datetime.now().strftime("run_%Y%m%d_%H%M%S")
+    run_dir = os.path.join("runs", run_name)
+    os.makedirs(run_dir, exist_ok=True)
+    
+    config.save_yaml(os.path.join(run_dir, "config.yaml"))
+    
+    log_file_path = os.path.join(run_dir, "training_log.csv")
+    summary_file_path = os.path.join(run_dir, "model_summary.json")
+
     if config.dataset_source == "huggingface":
         raw_dataset = load_dataset(config.dataset_name, split='train')
         text = " ".join(raw_dataset['text'])
@@ -100,11 +110,11 @@ def main():
 
     xavier_init(model)
     optimizer = nnx.Optimizer(model, get_optax_optimizer(config.optimizer, config.lr), wrt=nnx.Param)
-    report_model_summary(model, config, optimizer, config.summary_file)
+    report_model_summary(model, config, optimizer, summary_file_path)
     
-    log_f = open(config.log_file, 'a', newline='')
+    log_f = open(log_file_path, 'a', newline='')
     log_writer = csv.writer(log_f)
-    if os.path.getsize(config.log_file) == 0:
+    if os.path.getsize(log_file_path) == 0:
         log_writer.writerow(['step', 'train_loss', 'val_loss', 'vram_gb', 'ms_per_step'])
 
     micro_batch_size = config.batch_size // config.grad_accum
