@@ -14,8 +14,10 @@ class Attention(nnx.Module):
         self.n_heads: int    = config.n_heads
         self.dim: int        = config.dim
         self.kv_heads:int    = config.kv_heads 
-        self.qkv: nnx.Linear = nnx.Linear(self.dim, self.dim + 2 * self.kv_heads*self.head_size,
-                                       use_bias=False, rngs=rngs)
+        self.qkv: nnx.Linear = nnx.Linear(self.dim, 
+                                          self.dim + 2 * self.kv_heads*self.head_size,
+                                          use_bias=False, 
+                                          rngs=rngs)
         self.tril: jnp.ndarray  = jnp.tril(
             jnp.ones((self.max_context, self.max_context), dtype=bool)
         )
@@ -64,7 +66,11 @@ class Attention(nnx.Module):
 
 
 
-    def __call__(self, x: jnp.ndarray, use_cache: bool, kv_cache: tuple, cache_index:int) -> jnp.ndarray:
+    def __call__(self, x: jnp.ndarray, 
+                 use_cache: bool, 
+                 kv_cache: tuple, 
+                 cache_index:int) -> jnp.ndarray:
+        
         B, T, _ = x.shape
         assert T <= self.max_context, "Sequence too Long"
 
@@ -172,8 +178,16 @@ class Block(nnx.Module):
         self.ln2: nnx.LayerNorm   = nnx.LayerNorm(config.dim, rngs=rngs)
         self.use_moe: bool        = config.use_moe
         self.moe: MoE             = MoE(config, rngs)
-    def __call__(self, x: jnp.ndarray, use_cache: bool, kv_cache: tuple, cache_index: int) -> jnp.ndarray:
-        x_attn, kv_cache = self.attention(self.ln1(x), use_cache=use_cache, kv_cache=kv_cache, cache_index=cache_index)
+        
+    def __call__(self, x: jnp.ndarray, 
+                 use_cache: bool, 
+                 kv_cache: tuple, 
+                 cache_index: int) -> jnp.ndarray:
+        
+        x_attn, kv_cache = self.attention(self.ln1(x), 
+                                          use_cache=use_cache, 
+                                          kv_cache=kv_cache, 
+                                          cache_index=cache_index)
         x  = x + x_attn
         ff = self.moe(self.ln2(x)) if self.use_moe else self.mlp(self.ln2(x)) 
         x  = x + ff
