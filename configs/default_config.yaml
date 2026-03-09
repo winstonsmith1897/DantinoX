@@ -3,7 +3,7 @@ model:
   n_heads: 16
   kv_heads: 4
   head_size: 32
-  num_blocks: 20
+  num_blocks: 8
   max_context: 512
   weight_tying: true
   activation: gelu

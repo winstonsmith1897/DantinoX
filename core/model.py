@@ -224,6 +224,8 @@ class Transformer(nnx.Module):
         self.max_context: bool   = config.max_context
         self.gradient_checkpointing: bool = config.gradient_checkpointing
         self.ln_f: nnx.LayerNorm = nnx.LayerNorm(config.dim, rngs=rngs)
+        self.emb_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
+        
         if config.weight_tying:
             self.lm_head.kernel  = self.wte.embedding.T
         if self.trainable_pos:
@@ -247,7 +249,9 @@ class Transformer(nnx.Module):
                  x: jnp.ndarray, 
                  use_cache:bool, 
                  kv_caches: tuple | None, 
-                 cache_index: int | None) -> tuple[jnp.ndarray, tuple]:
+                 cache_index: int | None,
+                 deterministic: bool = False) -> tuple[jnp.ndarray, tuple]:
+        
         B, T = x.shape
         x = self.wte(x)
         if kv_caches is None:
@@ -263,18 +267,21 @@ class Transformer(nnx.Module):
         elif self.trainable_pos:
             x = x + self.wpe(jnp.arange(T, dtype=x.dtype))
 
-        def block_fn(block_module, hidden_state, kv_c):
+        x = self.emb_dropout(x, deterministic=deterministic)
+
+        def block_fn(block_module, hidden_state, kv_c, det):
             return block_module(
                 hidden_state, 
                 use_cache=use_cache, 
                 kv_cache=kv_c, 
-                cache_index=cache_index
+                cache_index=cache_index,
+                deterministic=det
             )
 
-        if self.gradient_checkpointing and not use_cache:   #it saves your life
-            checkpointed_block = nnx.remat(block_fn)
+        if self.gradient_checkpointing and not use_cache:
+            checkpointed_block = nnx.remat(lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic))
         else:
-            checkpointed_block = block_fn
+            checkpointed_block = lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic)
 
         new_kv_caches = []
         for i, block in enumerate(self.blocks):
