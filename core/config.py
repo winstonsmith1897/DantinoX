@@ -4,16 +4,17 @@ import yaml
 @dataclass
 class Config:
     # Model Architecture
-    dim: int = 1024
-    n_heads: int = 32
+    dim: int = 512
+    n_heads: int = 16
     head_size: int = 32
     num_blocks: int = 8
     vocab_size: int = 200
     max_context: int = 512
-    kv_heads: int = 32
+    kv_heads: int = 16
+    weight_tying: bool = True
     
     # MoE
-    use_moe: bool = True
+    use_moe: bool = False
     n_experts: int = 4
     top_k_mlp: int = 2
     expansion: int = 4
@@ -41,7 +42,7 @@ class Config:
     grad_accum: int = 16
     seed: int = 42
     optimizer: str = "adamw"
-    epochs: int = 200
+    epochs: int = 500
     
     # Logging & Metrics
     eval_iters: int = 20

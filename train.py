@@ -195,10 +195,12 @@ def main():
                 log_writer.writerow([step, float(losses['train']), float(losses['val']), round(vram, 3), round(dt, 2)])
                 log_f.flush()
         print("Saving model weights...")
-        final_state = nnx.state(model)
+        final_state_dict = nnx.state(model).to_pure_dict()
+        
         with open(os.path.join(run_dir, "model_weights.msgpack"), "wb") as f:
             import flax.serialization
-            f.write(flax.serialization.msgpack_serialize(final_state))
+            f.write(flax.serialization.msgpack_serialize(final_state_dict))
+            
         print(f"Model saved to: {run_dir}")
     finally:
         log_f.close()

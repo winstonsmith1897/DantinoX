@@ -204,6 +204,8 @@ class Transformer(nnx.Module):
         self.trainable_pos: bool = config.trainable_pos
         self.absolute_pos: bool  = config.absolute_pos
         self.max_context: bool   = config.max_context
+        if config.weight_tying:
+            self.lm_head.kernel = self.wte.embedding.T
         if self.trainable_pos:
             self.wpe: nnx.Embed    = nnx.Embed(config.max_context, config.dim, rngs=rngs)
         elif self.absolute_pos:    

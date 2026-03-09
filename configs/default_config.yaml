@@ -1,14 +1,16 @@
 # Model Architecture
 model:
-  dim: 1024
-  n_heads: 32
+  dim: 512
+  n_heads: 16
+  kv_heads: 16
   head_size: 32
-  num_blocks: 12
+  num_blocks: 8
   max_context: 512
+  weight_tying: true
   
 # Mixture of Experts (MoE)
 moe:
-  use_moe: true
+  use_moe: False
   n_experts: 4
   top_k_mlp: 2
   expansion: 4
@@ -41,7 +43,7 @@ training:
   grad_accum: 16
   seed: 42
   optimizer: "adamw"           # Any optax optimizer (adamw, adafactor, lion, etc.), default->adamw
-  epochs: 200
+  epochs: 500
 
 # Logging & Metrics
 logging:

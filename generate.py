@@ -4,6 +4,8 @@ import jax.numpy as jnp
 from flax import nnx
 import time
 import os
+import msgpack
+import yaml
 import flax.serialization
 from core import Transformer, Config, generate
 from utils import get_tokenizer
@@ -12,7 +14,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_dir", type=str, required=True)
     parser.add_argument("--prompt", type=str, default="Nel mezzo del cammin ")
-    parser.add_argument("--max_new_tokens", type=int, default=100)
+    parser.add_argument("--max_new_tokens", type=int, default=150)
     parser.add_argument("--greedy", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args()
@@ -23,18 +25,42 @@ def main():
     config_path = os.path.join(args.run_dir, "config.yaml")
     weights_path = os.path.join(args.run_dir, "model_weights.msgpack")
     
-    config = Config.from_yaml(config_path)
+    with open(config_path, 'r') as f:
+        raw_cfg = yaml.safe_load(f)
     
-    tokenizer = get_tokenizer(config.tokenizer_type, text=" ")
+    if any(isinstance(v, dict) for v in raw_cfg.values()):
+        flat_cfg = {}
+        for section in raw_cfg.values():
+            if isinstance(section, dict): flat_cfg.update(section)
+    else:
+        flat_cfg = raw_cfg
+    
+    config = Config(**{k: v for k, v in flat_cfg.items() if k in Config.__dataclass_fields__})
+    
+    if config.dataset_source == "huggingface":
+        from datasets import load_dataset
+        raw_dataset = load_dataset(config.dataset_name, split='train')
+        text = " ".join(raw_dataset['text'])
+    else:
+        with open(config.dataset_name, "r", encoding="utf-8") as f:
+            text = f.read()
+
+    tokenizer = get_tokenizer(config.tokenizer_type, text=text)
     
     rngs = nnx.Rngs(args.seed)
     model = Transformer(config, rngs=rngs)
     
     if os.path.exists(weights_path):
         with open(weights_path, "rb") as f:
-            state_dict = flax.serialization.msgpack_restore(f.read())
+            from flax.serialization import _msgpack_ext_unpack
+            raw_data = f.read()
+            state_dict = msgpack.unpackb(
+                raw_data, 
+                ext_hook=_msgpack_ext_unpack, 
+                strict_map_key=False
+            )
         nnx.update(model, state_dict)
-    
+
     tokens = tokenizer.encode(args.prompt)
     x = jnp.array([tokens], dtype=jnp.int32)
     
@@ -61,14 +87,10 @@ def main():
     
     print(generated_text)
     print("-" * 30)
-    
     print(f"INFERENCE METRICS")
     print(f"Generated tokens:  {num_tokens}")
     print(f"Total time:        {duration:.4f}s")
     print(f"Throughput:        {tok_per_sec:.2f} tok/s")
-    
-    kv_mem = (config.num_blocks * 2 * config.max_context * config.head_size * config.n_heads * 4) / 1e6
-    print(f"KV Cache VRAM:     ~{kv_mem:.2f} MB")
     
 if __name__ == "__main__":
     main()
