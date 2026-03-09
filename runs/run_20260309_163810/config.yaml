@@ -1,6 +1,6 @@
 absolute_pos: false
 activation: gelu
-batch_size: 64
+batch_size: 128
 context_window: 32
 dataset_name: Daniele/dante-corpus
 dataset_source: huggingface
@@ -9,6 +9,7 @@ epochs: 500
 eval_iters: 20
 expansion: 4
 grad_accum: 16
+gradient_checkpointing: true
 head_size: 32
 kv_heads: 16
 log_file: training_log.csv

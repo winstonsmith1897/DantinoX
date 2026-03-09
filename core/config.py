@@ -7,12 +7,13 @@ class Config:
     dim: int = 512
     n_heads: int = 16
     head_size: int = 32
-    num_blocks: int = 8
+    num_blocks: int = 16
     vocab_size: int = 200
     max_context: int = 512
-    kv_heads: int = 16
+    kv_heads: int = 4
     weight_tying: bool = True
     activation: str = "gelu"
+    gradient_checkpointing: bool = True
     
     # MoE
     use_moe: bool = False
@@ -39,11 +40,11 @@ class Config:
     
     # Training & Optimization
     lr: float = 0.005
-    batch_size: int = 64
+    batch_size: int = 128
     grad_accum: int = 16
     seed: int = 42
     optimizer: str = "adamw"
-    epochs: int = 500
+    epochs: int = 1000
     warmup_steps: int = 420
     
     # Logging & Metrics

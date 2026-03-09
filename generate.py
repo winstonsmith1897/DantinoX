@@ -45,8 +45,13 @@ def main():
         with open(config.dataset_name, "r", encoding="utf-8") as f:
             text = f.read()
 
-    tokenizer = get_tokenizer(config.tokenizer_type, text=text)
+    tokenizer = get_tokenizer(config.tokenizer_type)
     
+    if config.tokenizer_type == "char":
+        tokenizer.train_from_text(text)
+    elif config.tokenizer_type == "bpe":
+        tokenizer.train_from_text(text, vocab_size=config.vocab_size)  
+          
     rngs = nnx.Rngs(args.seed)
     model = Transformer(config, rngs=rngs)
     

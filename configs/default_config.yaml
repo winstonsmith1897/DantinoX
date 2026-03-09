@@ -2,12 +2,13 @@
 model:
   dim: 512
   n_heads: 16
-  kv_heads: 16
+  kv_heads: 4
   head_size: 32
-  num_blocks: 8
+  num_blocks: 16
   max_context: 512
   weight_tying: true
   activation: gelu
+  gradient_checkpointing: true
   
 # Mixture of Experts (MoE)
 moe:
@@ -40,11 +41,11 @@ data:
 # Training & Optimization
 training:
   lr: 0.005
-  batch_size: 64
+  batch_size: 128
   grad_accum: 16
   seed: 42
   optimizer: "adamw"           # Any optax optimizer (adamw, adafactor, lion, etc.), default->adamw
-  epochs: 500
+  epochs: 1000
   warmup_steps: 420
 
 # Logging & Metrics

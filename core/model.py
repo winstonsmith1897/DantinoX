@@ -208,10 +208,11 @@ class Transformer(nnx.Module):
         self.trainable_pos: bool = config.trainable_pos
         self.absolute_pos: bool  = config.absolute_pos
         self.max_context: bool   = config.max_context
+        self.gradient_checkpointing: bool = config.gradient_checkpointing
         if config.weight_tying:
-            self.lm_head.kernel = self.wte.embedding.T
+            self.lm_head.kernel  = self.wte.embedding.T
         if self.trainable_pos:
-            self.wpe: nnx.Embed    = nnx.Embed(config.max_context, config.dim, rngs=rngs)
+            self.wpe: nnx.Embed  = nnx.Embed(config.max_context, config.dim, rngs=rngs)
         elif self.absolute_pos:    
             def _build_compute_absolute_pos(T: int, C: int) -> jnp.ndarray:
                 pos = jnp.zeros((T, C))
@@ -246,10 +247,25 @@ class Transformer(nnx.Module):
             x = x + wpe_slice
         elif self.trainable_pos:
             x = x + self.wpe(jnp.arange(T, dtype=x.dtype))
+
+        def block_fn(block_module, hidden_state, kv_c):
+            return block_module(
+                hidden_state, 
+                use_cache=use_cache, 
+                kv_cache=kv_c, 
+                cache_index=cache_index
+            )
+
+        if self.gradient_checkpointing and not use_cache:   #it saves your life
+            checkpointed_block = nnx.remat(block_fn)
+        else:
+            checkpointed_block = block_fn
+
         new_kv_caches = []
-        for i, h in enumerate(self.blocks):
-            x, new_kv = h(x, use_cache=use_cache, kv_cache=kv_caches[i], cache_index=cache_index)
+        for i, block in enumerate(self.blocks):
+            x, new_kv = checkpointed_block(block, x, kv_caches[i] if kv_caches else None)
             new_kv_caches.append(new_kv)
+        
         return self.lm_head(x), tuple(new_kv_caches)
 
 
