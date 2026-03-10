@@ -208,7 +208,8 @@ def main():
                 log_f.flush()
         
         print("Saving model weights...")
-        final_state_dict = nnx.state(model).to_pure_dict()
+        #final_state_dict = nnx.state(model).to_pure_dict()
+        final_state_dict = nnx.state(model, nnx.Param).to_pure_dict()
         with open(os.path.join(run_dir, "model_weights.msgpack"), "wb") as f:
             import flax.serialization
             f.write(flax.serialization.msgpack_serialize(final_state_dict))
