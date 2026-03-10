@@ -25,7 +25,7 @@ attention:
   no_sink: true
 
 tokenizer:
-  tokenizer_type: "bpe"      
+  tokenizer_type: "char"      
   vocab_size: 2000
   tokenizer_path: "configs/vocab.json"
 
@@ -40,8 +40,8 @@ training:
   grad_accum: 4
   seed: 42
   optimizer: "adamw"           
-  epochs: 1000
-  warmup_steps: 100
+  epochs: 100 #1000
+  warmup_steps: 0 #100
 
 logging:
   eval_iters: 20

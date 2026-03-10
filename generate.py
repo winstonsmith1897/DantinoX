@@ -45,13 +45,21 @@ def main():
         with open(config.dataset_name, "r", encoding="utf-8") as f:
             text = f.read()
 
+    raw_lines = text.split('\n')
+    valid_lines = [l.rstrip() for l in raw_lines if l.strip()]
+    formatted_blocks = []
+    for i in range(0, len(valid_lines), 3):
+        formatted_blocks.append('\n'.join(valid_lines[i:i+3]))
+    text = '\n\n'.join(formatted_blocks) + '\n'
+
     tokenizer = get_tokenizer(config.tokenizer_type)
     
     if config.tokenizer_type == "char":
         tokenizer.train_from_text(text)
     elif config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)  
-          
+    
+    config.vocab_size = tokenizer.vocab_size
     rngs = nnx.Rngs(args.seed)
     model = Transformer(config, rngs=rngs)
     
@@ -86,6 +94,10 @@ def main():
     t1 = time.time()
     
     generated_text = tokenizer.decode(output_tokens[0].tolist())
+    if config.tokenizer_type == "bpe":
+        generated_text = generated_text.replace(" ", "")
+        generated_text = generated_text.replace("Ġ", " ").replace("âĢĻ", "’").replace("Ã¹", "ù").replace("Ã¬", "ì").replace("Ã©", "é").replace("Ã¨", "è").replace("Ã²", "ò").replace("Ã", "à")
+    
     duration = t1 - t0
     num_tokens = len(output_tokens[0]) - len(tokens)
     tok_per_sec = num_tokens / duration if duration > 0 else 0
