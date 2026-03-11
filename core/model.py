@@ -294,9 +294,11 @@ class Transformer(nnx.Module):
             checkpointed_block = lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic)
 
         new_kv_caches = []
+        balancing_loss_total = 0
         for i, block in enumerate(self.blocks):
             x, new_kv, balancing_loss = checkpointed_block(block, x, kv_caches[i] if kv_caches else None)
             new_kv_caches.append(new_kv)
+            balancing_loss_total += balancing_loss
 
         x = self.ln_f(x)
         
