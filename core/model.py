@@ -155,16 +155,17 @@ class Activation(nnx.Module):
     
 class MLP(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
-        self.up_proj   = nnx.Linear(config.dim, config.dim*config.expansion, rngs=rngs)
-        self.down_proj = nnx.Linear(config.dim * config.expansion, config.dim, rngs=rngs)
+        self.up_proj    = nnx.Linear(config.dim, config.dim*config.expansion, rngs=rngs)
+        self.down_proj  = nnx.Linear(config.dim * config.expansion, config.dim, rngs=rngs)
         self.activation = Activation(config.activation)
-        self.dropout   = nnx.Dropout(config.dropout_rate, rngs=rngs)
+        self.dropout    = nnx.Dropout(config.dropout_rate, rngs=rngs)
+        self.mlp_loss   = 0
 
-    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> jnp.ndarray:
+    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> tuple[jnp.ndarray, float]:
         x = self.up_proj(x)
         x = self.activation(x)
         x = self.down_proj(x)
-        return self.dropout(x, deterministic=deterministic)
+        return self.dropout(x, deterministic=deterministic), self.mlp_loss
 
 class MoE(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
@@ -173,17 +174,24 @@ class MoE(nnx.Module):
         self.router: nnx.Linear   = nnx.Linear(config.dim, self.n_experts, use_bias=False, rngs=rngs)
         self.top_k_mlp: int       = config.top_k_mlp
 
-    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> jnp.ndarray:
+    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> tuple[jnp.ndarray, jnp.ndarray]:
+        B, T, _ = x.shape
         x_routed = self.router(x)
         probs    = jax.nn.softmax(x_routed)
         values, indices = jax.lax.top_k(probs, self.top_k_mlp)
         values   = values / jnp.sum(values, axis=-1, keepdims=True)
         y = jnp.zeros_like(x)
+
+        expert_mean_prob = jnp.mean(jnp.reshape(probs, (B*T, self.n_experts)), axis=0)
+        freq = jnp.mean(jnp.sum(jax.nn.one_hot(indices, self.n_experts), axis=2), axis=(0, 1))
+        moe_loss = jnp.sum(freq*expert_mean_prob) * self.n_experts
+
         for i in range(self.n_experts):
             mask = (indices == i)
             expert_weight = jnp.sum(jnp.where(mask, values, 0), axis=-1, keepdims=True)
-            y = y + (expert_weight * self.experts[i](x, deterministic=deterministic))
-        return y
+            expert_out, _ = self.experts[i](x, deterministic=deterministic)
+            y = y + (expert_weight * expert_out)
+        return y, moe_loss 
             
 
 class Block(nnx.Module):
@@ -201,7 +209,7 @@ class Block(nnx.Module):
                  use_cache: bool, 
                  kv_cache: tuple, 
                  cache_index: int,
-                 deterministic: bool = False) -> jnp.ndarray:
+                 deterministic: bool = False) -> tuple[jnp.ndarray, tuple, jnp.ndarray | float]:
         
         x_attn, kv_cache = self.attention(self.ln1(x), 
                                           use_cache=use_cache, 
@@ -209,9 +217,9 @@ class Block(nnx.Module):
                                           cache_index=cache_index,
                                           deterministic=deterministic)
         x  = x + x_attn
-        ff = self.moe(self.ln2(x), deterministic=deterministic) if self.use_moe else self.mlp(self.ln2(x), deterministic=deterministic) 
+        ff, balancing_loss = self.moe(self.ln2(x), deterministic=deterministic) if self.use_moe else self.mlp(self.ln2(x), deterministic=deterministic) 
         x  = x + ff
-        return x, kv_cache
+        return x, kv_cache, balancing_loss
     
 class Transformer(nnx.Module):
     def __init__(self, config: Config,  rngs: nnx.Rngs):
@@ -225,7 +233,9 @@ class Transformer(nnx.Module):
         self.gradient_checkpointing: bool = config.gradient_checkpointing
         self.ln_f: nnx.LayerNorm = nnx.LayerNorm(config.dim, rngs=rngs)
         self.emb_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
-        
+        self.use_moe: bool        = config.use_moe
+        self.alpha_balance: float = config.alpha_balance
+
         if config.weight_tying:
             self.lm_head.kernel  = self.wte.embedding.T
         if self.trainable_pos:
@@ -285,12 +295,12 @@ class Transformer(nnx.Module):
 
         new_kv_caches = []
         for i, block in enumerate(self.blocks):
-            x, new_kv = checkpointed_block(block, x, kv_caches[i] if kv_caches else None)
+            x, new_kv, balancing_loss = checkpointed_block(block, x, kv_caches[i] if kv_caches else None)
             new_kv_caches.append(new_kv)
 
         x = self.ln_f(x)
         
-        return self.lm_head(x), tuple(new_kv_caches)
+        return self.lm_head(x), tuple(new_kv_caches), balancing_loss
 
 
 

@@ -111,8 +111,8 @@ def main():
         tokenizer.train_from_text(text) 
     elif config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)
-    if config.tokenizer_type == "bpe":
-        tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+    # if config.tokenizer_type == "bpe":
+    #     tokenizer.train_from_text(text, vocab_size=config.vocab_size)
     
     config.vocab_size = tokenizer.vocab_size
     full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
@@ -143,13 +143,16 @@ def main():
     log_f = open(log_file_path, 'a', newline='')
     log_writer = csv.writer(log_f)
     if os.path.getsize(log_file_path) == 0:
-        log_writer.writerow(['step', 'train_loss', 'val_loss', 'vram_gb', 'ms_per_step'])
+        log_writer.writerow(['step', 'train_loss', 'val_loss', 'train_bal', 'val_bal', 'vram_gb', 'ms_per_step'])
 
     micro_batch_size = config.batch_size // config.grad_accum
 
     def loss_fn(model, x, y):
-        logits, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
-        return compute_loss(logits, y)
+        logits, _, balancing_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        loss = compute_loss(logits, y)
+        if getattr(model, 'use_moe', False):
+            loss = loss + model.alpha_balance * balancing_loss
+        return loss, balancing_loss
 
     @nnx.jit
     def train_step(model, optimizer, full_x, full_y):
@@ -157,22 +160,27 @@ def main():
         y_batches = full_y.reshape(config.grad_accum, micro_batch_size, -1)
         
         def compute_loss_for_microbatch(model, x, y):
-            logits, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
-            return compute_loss(logits, y)
+            logits, _, balancing_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
+            loss = compute_loss(logits, y)
+            if getattr(model, 'use_moe', False):
+                loss = loss + model.alpha_balance * balancing_loss
+            return loss, balancing_loss
             
-        grad_fn = nnx.value_and_grad(compute_loss_for_microbatch)
+        grad_fn = nnx.value_and_grad(compute_loss_for_microbatch, has_aux=True)
         grad_acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
         total_loss = jnp.array(0.0)
+        total_bal_loss = jnp.array(0.0)
         
         for i in range(config.grad_accum):
-            loss, grads = grad_fn(model, x_batches[i], y_batches[i])
+            (loss, bal_loss), grads = grad_fn(model, x_batches[i], y_batches[i])
             grad_acc = jax.tree_util.tree_map(
                 lambda acc, g: acc + g / config.grad_accum, grad_acc, grads
             )
             total_loss += loss / config.grad_accum
+            total_bal_loss += bal_loss / config.grad_accum
             
         optimizer.update(model, grad_acc)
-        return total_loss
+        return total_loss, total_bal_loss
 
     @nnx.jit
     def eval_step(model, x, y):
@@ -182,12 +190,15 @@ def main():
         out = {}
         for split, d in [('train', train_data), ('val', val_data)]:
             losses = []
-            for k in range(config.eval_iters):
+            bal_losses = []
+            for _ in range(config.eval_iters):
                 key, subkey = jax.random.split(key)
                 x, y = get_batch(d, 1, config.max_context, subkey) 
-                step_loss = float(eval_step(model, x, y))
-                losses.append(step_loss)
+                step_loss, step_bal = eval_step(model, x, y)
+                losses.append(float(step_loss))
+                bal_losses.append(float(step_bal))
             out[split] = sum(losses) / len(losses)
+            out[f"{split}_bal"] = sum(bal_losses) / len(bal_losses)
         return out, key
 
     key = jax.random.PRNGKey(config.seed)
@@ -203,8 +214,20 @@ def main():
                 t0 = t1
                 vram = get_vram_usage()
                 losses, key = estimate_loss(key)
-                print(f"Step {step:5d}/{total_steps} | Train: {losses['train']:.4f} | Val: {losses['val']:.4f} | VRAM: {vram:.2f}GB")
-                log_writer.writerow([step, float(losses['train']), float(losses['val']), round(vram, 3), round(dt, 2)])
+                print(f"Step {step:5d}/{total_steps} | "
+                      f"Train: {losses['train']:.4f} (Bal: {losses['train_bal']:.4f}) | "
+                      f"Val: {losses['val']:.4f} (Bal: {losses['val_bal']:.4f}) | "
+                      f"VRAM: {vram:.2f}GB")
+                
+                log_writer.writerow([
+                    step, 
+                    float(losses['train']), 
+                    float(losses['val']), 
+                    float(losses['train_bal']),
+                    float(losses['val_bal']),
+                    round(vram, 3), 
+                    round(dt, 2)
+                ])
                 log_f.flush()
         
         print("Saving model weights...")

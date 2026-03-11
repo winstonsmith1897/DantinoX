@@ -36,13 +36,13 @@ def _generate_toks(
 
     def generate_with_kv_cache(i, val):
         x, tok, kv_cache, k  = val
-        last_logits, new_kv_cache = model(tok, use_cache, kv_cache, i-1, deterministic=True)
+        last_logits, new_kv_cache, _ = model(tok, use_cache, kv_cache, i-1, deterministic=True)
         x, k, next_tok_id = _get_tok_id(i, x, k, last_logits)
         return x, next_tok_id, new_kv_cache, k
     
     def prefill_or_no_cache(i, val):
         x, kv_cache, _, k = val
-        logits, new_kv_cache = model(x, use_cache, kv_cache, 0, deterministic=True)
+        logits, new_kv_cache, _ = model(x, use_cache, kv_cache, 0, deterministic=True)
         x, k, tok = _get_tok_id(i, x, k, logits[:, i-1, :])
         return x, new_kv_cache, tok, k
 

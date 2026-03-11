@@ -15,11 +15,13 @@ class Config:
     activation: str = "gelu"
     gradient_checkpointing: bool = True
     dropout_rate: float = 0.15
+
     # MoE
     use_moe: bool = False
     n_experts: int = 4
     top_k_mlp: int = 2
     expansion: int = 4
+    alpha_balance: float = 0.1
     
     # Attention & Positional Features
     use_rotary_pos: bool = True

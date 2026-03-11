@@ -3,7 +3,7 @@ model:
   n_heads: 16
   kv_heads: 4
   head_size: 32
-  num_blocks: 8
+  num_blocks: 12
   max_context: 512
   weight_tying: true
   activation: gelu
@@ -11,10 +11,11 @@ model:
   dropout_rate: 0.15
   
 moe:
-  use_moe: False
+  use_moe: true
   n_experts: 4
   top_k_mlp: 2
   expansion: 4
+  alpha_balance: 0.1
 
 attention:
   use_rotary_pos: true
@@ -25,7 +26,7 @@ attention:
   no_sink: true
 
 tokenizer:
-  tokenizer_type: "char"      
+  tokenizer_type: "bpe"      
   vocab_size: 2000
   tokenizer_path: "configs/vocab.json"
 
@@ -40,7 +41,7 @@ training:
   grad_accum: 4
   seed: 42
   optimizer: "adamw"           
-  epochs: 100 #1000
+  epochs: 300 #1000
   warmup_steps: 0 #100
 
 logging:
