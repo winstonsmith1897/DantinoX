@@ -130,7 +130,7 @@ class Attention(nnx.Module):
         if self.sliding_window:
             attn = attn + jax.lax.dynamic_slice_in_dim(operand=self.window,
                                                 start_index=cache_index,
-                                                slice_sizes=T,
+                                                slice_size=T,
                                                 axis=0)
         causal_attn = jax.nn.softmax(attn)
         causal_attn = self.attn_dropout(causal_attn, deterministic=deterministic)
