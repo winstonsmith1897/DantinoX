@@ -128,7 +128,7 @@ class Attention(nnx.Module):
         attn = attn + trilled
 
         if self.sliding_window:
-            attn = attn + jax.lax.dynamic_index_in_dim(operand=self.window,
+            attn = attn + jax.lax.dynamic_slice_in_dim(operand=self.window,
                                                 start_index=cache_index,
                                                 slice_sizes=T,
                                                 axis=0)

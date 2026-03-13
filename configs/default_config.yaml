@@ -21,8 +21,8 @@ attention:
   use_rotary_pos: true
   trainable_pos: false    
   absolute_pos: false     
-  sliding_window: False
-  context_window: 32
+  sliding_window: true
+  context_window: 64
   no_sink: true
 
 tokenizer:
