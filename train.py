@@ -111,8 +111,7 @@ def main():
         tokenizer.train_from_text(text) 
     elif config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)
-    # if config.tokenizer_type == "bpe":
-    #     tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+ 
     
     config.vocab_size = tokenizer.vocab_size
     full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
@@ -154,8 +153,37 @@ def main():
             loss = loss + model.alpha_balance * balancing_loss
         return loss, balancing_loss
 
-    @nnx.jit
-    def train_step(model, optimizer, full_x, full_y):
+    # @nnx.jit
+    # def train_step(model, optimizer, full_x, full_y):
+    #     x_batches = full_x.reshape(config.grad_accum, micro_batch_size, -1)
+    #     y_batches = full_y.reshape(config.grad_accum, micro_batch_size, -1)
+        
+    #     def compute_loss_for_microbatch(model, x, y):
+    #         logits, _, balancing_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
+    #         loss = compute_loss(logits, y)
+    #         if getattr(model, 'use_moe', False):
+    #             loss = loss + model.alpha_balance * balancing_loss
+    #         return loss, balancing_loss
+            
+    #     grad_fn = nnx.value_and_grad(compute_loss_for_microbatch, has_aux=True)
+    #     grad_acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
+    #     total_loss = jnp.array(0.0)
+    #     total_bal_loss = jnp.array(0.0)
+        
+    #     for i in range(config.grad_accum):
+    #         (loss, bal_loss), grads = grad_fn(model, x_batches[i], y_batches[i])
+    #         grad_acc = jax.tree_util.tree_map(
+    #             lambda acc, g: acc + g / config.grad_accum, grad_acc, grads
+    #         )
+    #         total_loss += loss / config.grad_accum
+    #         total_bal_loss += bal_loss / config.grad_accum
+            
+    #     optimizer.update(model, grad_acc)
+    #     return total_loss, total_bal_loss
+
+    @jax.jit
+    def train_step(graphdef, state, full_x, full_y):
+        model, optimizer, metrics = nnx.merge(graphdef, state)
         x_batches = full_x.reshape(config.grad_accum, micro_batch_size, -1)
         y_batches = full_y.reshape(config.grad_accum, micro_batch_size, -1)
         
@@ -180,7 +208,9 @@ def main():
             total_bal_loss += bal_loss / config.grad_accum
             
         optimizer.update(model, grad_acc)
-        return total_loss, total_bal_loss
+        metrics.update(loss=total_loss)
+        state = nnx.state((model, optimizer, metrics))
+        return total_loss, total_bal_loss, state
 
     @nnx.jit
     def eval_step(model, x, y):
@@ -204,10 +234,14 @@ def main():
     key = jax.random.PRNGKey(config.seed)
     t0 = time.time()
     try:
+        metrics = nnx.MultiMetric(loss=nnx.metrics.Average('loss'))  #if you want to use jax.jit
         for step in range(total_steps):
             key, subkey = jax.random.split(key)
             x, y = get_batch(train_data, config.batch_size, config.max_context, subkey)
-            train_step(model, optimizer, x, y)
+            #train_step(model, optimizer, x, y)  #if you want to use nnx.jit which is slower
+            graphdef, state = nnx.split((model, optimizer, metrics))
+            _, _, new_state = train_step(graphdef, state, x, y)    #if you want to use jax.jit which should be faster if bacth size if small
+            nnx.update((model, optimizer, metrics), new_state)
             if step % 50 == 0:
                 t1 = time.time()
                 dt = (t1 - t0) * 1000 / 50

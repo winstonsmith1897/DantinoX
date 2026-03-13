@@ -27,7 +27,7 @@ sliding_window: false
 streaming: true
 summary_file: model_summary.json
 tokenizer_path: configs/vocab.json
-tokenizer_type: bpe
+tokenizer_type: char
 top_k_mlp: 2
 trainable_pos: false
 use_moe: true
