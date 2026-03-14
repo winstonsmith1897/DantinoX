@@ -456,3 +456,57 @@
 	weight_tying: False
 2026-03-14 18:27:38 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.09627249640418892 --batch_size=32 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=24 --expansion=4 --grad_accum=2 --kv_heads=2 --lr=0.00048081104173421096 --max_context=256 --n_experts=4 --no_sink=False --num_blocks=4 --optimizer=adamw --pos_encoding=absolute --sliding_window=False --tokenizer_type=bpe --top_k_mlp=2 --use_moe=False --warmup_steps=200 --weight_tying=False
 2026-03-14 18:27:43 INFO Running runs: ['3qzl5ei0']
+2026-03-14 18:30:08 INFO Cleaning up finished run: 3qzl5ei0
+2026-03-14 18:30:09 INFO Agent received command: run
+2026-03-14 18:30:09 INFO Agent starting run with config:
+	alpha_balance: 0.11487537870464325
+	batch_size: 64
+	context_window: 64
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 24
+	expansion: 2
+	grad_accum: 4
+	kv_heads: 4
+	lr: 0.0020364075296702843
+	max_context: 512
+	n_experts: 4
+	no_sink: True
+	num_blocks: 8
+	optimizer: lion
+	pos_encoding: absolute
+	sliding_window: False
+	tokenizer_type: char
+	top_k_mlp: 1
+	use_moe: False
+	warmup_steps: 50
+	weight_tying: False
+2026-03-14 18:30:09 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.11487537870464325 --batch_size=64 --context_window=64 --dim=512 --dropout_rate=0.15 --epochs=24 --expansion=2 --grad_accum=4 --kv_heads=4 --lr=0.0020364075296702843 --max_context=512 --n_experts=4 --no_sink=True --num_blocks=8 --optimizer=lion --pos_encoding=absolute --sliding_window=False --tokenizer_type=char --top_k_mlp=1 --use_moe=False --warmup_steps=50 --weight_tying=False
+2026-03-14 18:30:14 INFO Running runs: ['w895lhvn']
+2026-03-14 18:35:40 INFO Cleaning up finished run: w895lhvn
+2026-03-14 18:35:41 INFO Agent received command: run
+2026-03-14 18:35:41 INFO Agent starting run with config:
+	alpha_balance: 0.0988506860024842
+	batch_size: 32
+	context_window: 128
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 20
+	expansion: 4
+	grad_accum: 8
+	kv_heads: 2
+	lr: 0.002375045247126977
+	max_context: 256
+	n_experts: 4
+	no_sink: True
+	num_blocks: 8
+	optimizer: adamw
+	pos_encoding: absolute
+	sliding_window: True
+	tokenizer_type: bpe
+	top_k_mlp: 1
+	use_moe: False
+	warmup_steps: 50
+	weight_tying: False
+2026-03-14 18:35:41 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.0988506860024842 --batch_size=32 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=20 --expansion=4 --grad_accum=8 --kv_heads=2 --lr=0.002375045247126977 --max_context=256 --n_experts=4 --no_sink=True --num_blocks=8 --optimizer=adamw --pos_encoding=absolute --sliding_window=True --tokenizer_type=bpe --top_k_mlp=1 --use_moe=False --warmup_steps=50 --weight_tying=False
+2026-03-14 18:35:46 INFO Running runs: ['xpnu9rml']
