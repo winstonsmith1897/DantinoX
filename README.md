@@ -1,30 +1,39 @@
-<div align="center">
+::: {align="center"}
+# 𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛
 
-<pre>
- ____              _   _               __  __ 
-|  _ \  __ _ _ __ | |_(_)_ __   ___    \ \/ / 
-| | | |/ _` | '_ \| __| | '_ \ / _ \    \  /  
-| |_| | (_| | | | | |_| | | | | (_) |   /  \  
-|____/ \__,_|_| |_|\__|_|_| |_|\___/   /_/\_\ 
-</pre>
+``` text
+██████╗  █████╗ ███╗   ██╗████████╗██╗███╗   ██╗ ██████╗ ██╗  ██╗
+██╔══██╗██╔══██╗████╗  ██║╚══██╔══╝██║████╗  ██║██╔═══██╗╚██╗██╔╝
+██║  ██║███████║██╔██╗ ██║   ██║   ██║██╔██╗ ██║██║   ██║ ╚███╔╝
+██║  ██║██╔══██║██║╚██╗██║   ██║   ██║██║╚██╗██║██║   ██║ ██╔██╗
+██████╔╝██║  ██║██║ ╚████║   ██║   ██║██║ ╚████║╚██████╔╝██╔╝ ██╗
+╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝
+```
 
-<em>"Ah JAX, vituperio delle genti..." <br>(Ah JAX, vituperation of the nations...)</em>
+`<i>`{=html}"Ah JAX, vituperio delle genti..."`</i>`{=html}\
+`<b>`{=html}(Ah JAX, the shame of the people...)`</b>`{=html}
 
-<br>
+`<br>`{=html}
+
+A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and
+**Flax NNX**.
+
+Built with equal parts **sweat, tears, and XLA compilation errors**.
+
+`<br>`{=html}
 
 [![JAX](https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white)](https://github.com/google/jax)
-[![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
-[![Python 3.12+](https://img.shields.io/badge/Python_3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![NVIDIA GPU](https://img.shields.io/badge/Hardware-NVIDIA_GPU-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://developer.nvidia.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Flax
+NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
+[![Python
+3.12+](https://img.shields.io/badge/Python_3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![NVIDIA
+GPU](https://img.shields.io/badge/Hardware-NVIDIA_GPU-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://developer.nvidia.com/)
+[![License:
+MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+:::
 
-<br>
-
-A Transformer so "nano" it barely rhymes, implemented in **JAX** and **Flax NNX** with a lot of sweat and absolutely zero pretensions.
-
-</div>
-
-<br>
+`<br>`{=html}
 
 ![DantinoX Architecture](images/dantinox.png)
 
