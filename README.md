@@ -84,11 +84,6 @@ This structure is optimized for **JAX / Flax NNX workflows**.
     └── README.md               # Documentation
 
 ------------------------------------------------------------------------
-# 🧠 DantinoX 
-
-[![JAX](https://img.shields.io/badge/Framework-JAX%20%2F%20Flax_NNX-blue?style=flat-square)](#) [![Architecture](https://img.shields.io/badge/Architecture-Decoder--Only-green?style=flat-square)](#) [![Routing](https://img.shields.io/badge/Routing-Dense%20%7C%20MoE-orange?style=flat-square)](#)
-
-A highly configurable, JAX/Flax-native decoder-only Transformer. Built for extreme compute efficiency, supporting both standard Dense FFNs and Sparse Mixture of Experts (MoE).
 
 ## 📊 Quick Specs & Architecture
 
@@ -112,39 +107,6 @@ A highly configurable, JAX/Flax-native decoder-only Transformer. Built for extre
 
 ---
 
-## 🔬 Deep Dives
-
-<details>
-<summary><b>👀 View Transformer Block Diagram</b></summary>
-
-```text
-       [ Input Token ]
-              │
-              ├──► [ Pre-LayerNorm ] ──► [ Self-Attention ] ──┐
-              │                                               │
-              ◄───────────────── (Residual Add) ──────────────┘
-              │
-              ├──► [ Pre-LayerNorm ] ──► [ MoE / MLP ] ───────┐
-              │                                               │
-              ◄───────────────── (Residual Add) ──────────────┘
-              │
-      [ Output to next Block ]
-```
-</details>
-
-<details>
-<summary><b>⚙️ Code Snippet: Weight Tying</b></summary>
-
-Weight tying reduces total parameters and memory usage by linking the output language modeling head to the token embedding layer:
-
-```python
-# Reusing the embedding matrix for the output head
-self.lm_head.kernel = self.wte.embedding.T
-```
-</details>
-
-------------------------------------------------------------------------
-
 # Technical Summary
 
   Feature               Implementation
@@ -161,7 +123,7 @@ self.lm_head.kernel = self.wte.embedding.T
   Memory Optimization   Gradient checkpointing, weight tying
   Distributed           JAX SPMD (Data / Model / FSDP)
 
-------------------------------------------------------------------------
+---
 
 # ⚙️ Configuration (`config.yaml`)
 
