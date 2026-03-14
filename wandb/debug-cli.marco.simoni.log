@@ -510,3 +510,30 @@
 	weight_tying: False
 2026-03-14 18:35:41 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.0988506860024842 --batch_size=32 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=20 --expansion=4 --grad_accum=8 --kv_heads=2 --lr=0.002375045247126977 --max_context=256 --n_experts=4 --no_sink=True --num_blocks=8 --optimizer=adamw --pos_encoding=absolute --sliding_window=True --tokenizer_type=bpe --top_k_mlp=1 --use_moe=False --warmup_steps=50 --weight_tying=False
 2026-03-14 18:35:46 INFO Running runs: ['xpnu9rml']
+2026-03-14 18:41:34 INFO Cleaning up finished run: xpnu9rml
+2026-03-14 18:41:35 INFO Agent received command: run
+2026-03-14 18:41:35 INFO Agent starting run with config:
+	alpha_balance: 0.04900638432008064
+	batch_size: 32
+	context_window: 128
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 24
+	expansion: 4
+	grad_accum: 8
+	kv_heads: 4
+	lr: 0.0009106735410091676
+	max_context: 512
+	n_experts: 4
+	no_sink: False
+	num_blocks: 4
+	optimizer: adafactor
+	pos_encoding: absolute
+	sliding_window: False
+	tokenizer_type: bpe
+	top_k_mlp: 1
+	use_moe: True
+	warmup_steps: 50
+	weight_tying: False
+2026-03-14 18:41:35 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.04900638432008064 --batch_size=32 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=24 --expansion=4 --grad_accum=8 --kv_heads=4 --lr=0.0009106735410091676 --max_context=512 --n_experts=4 --no_sink=False --num_blocks=4 --optimizer=adafactor --pos_encoding=absolute --sliding_window=False --tokenizer_type=bpe --top_k_mlp=1 --use_moe=True --warmup_steps=50 --weight_tying=False
+2026-03-14 18:41:40 INFO Running runs: ['5kn339cn']

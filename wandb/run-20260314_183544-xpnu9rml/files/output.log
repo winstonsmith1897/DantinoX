@@ -8,3 +8,5 @@ Step   100/380 | Loss: 6.3637 | VRAM: 0.32GB
 Step   150/380 | Loss: 5.8259 | VRAM: 0.33GB
 Step   200/380 | Loss: 5.4698 | VRAM: 0.33GB
 Step   250/380 | Loss: 5.3745 | VRAM: 0.34GB
+Step   300/380 | Loss: 5.3378 | VRAM: 0.34GB
+Step   350/380 | Loss: 5.2687 | VRAM: 0.34GB
