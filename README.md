@@ -1,4 +1,4 @@
-::: {align="center"}
+<div align="center">
 # 𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛
 
 ``` text
