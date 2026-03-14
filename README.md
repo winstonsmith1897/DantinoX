@@ -106,23 +106,21 @@ This structure is optimized for **JAX / Flax NNX workflows**.
 - [x] **Weight Tying**: Reuses the embedding matrix for the LM head (`lm_head.kernel = wte.embedding.T`) to drastically reduce checkpoint size.
 
 ---
+## 📊 Technical Summary
 
-# Technical Summary
-
-  Feature               Implementation
-  --------------------- ----------------------------------------
-  Model Type            Decoder‑only Transformer
-  Framework             JAX / Flax NNX
-  Normalization         LayerNorm (Pre‑Norm)
-  Activation            GELU
-  Positioning           RoPE or Absolute
-  Inference             Autoregressive with KV Cache
-  FFN Types             Dense MLP or Sparse MoE
-  MoE Balance           Auxiliary balancing loss
-  Regularization        Attention, residual, embedding dropout
-  Memory Optimization   Gradient checkpointing, weight tying
-  Distributed           JAX SPMD (Data / Model / FSDP)
-
+| Feature | Implementation |
+| :--- | :--- |
+| **Model Type** | Decoder-only Transformer |
+| **Framework** | JAX / Flax NNX |
+| **Normalization** | LayerNorm (Pre-Norm) |
+| **Activation** | GELU |
+| **Positioning** | RoPE or Absolute |
+| **Inference** | Autoregressive with KV Cache |
+| **FFN Types** | Dense MLP or Sparse MoE |
+| **MoE Balance** | Auxiliary balancing loss |
+| **Regularization** | Attention, residual, embedding dropout |
+| **Memory Optimization** | Gradient checkpointing, weight tying |
+| **Distributed** | Future work |
 ---
 
 # ⚙️ Configuration (`config.yaml`)

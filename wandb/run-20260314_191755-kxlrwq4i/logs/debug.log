@@ -22,3 +22,4 @@ config: {'_wandb': {}}
 2026-03-14 19:20:33,596 INFO    MainThread:2006450 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
 2026-03-14 19:20:33,597 INFO    MainThread:2006450 [wandb_run.py:_restore():2472] restore
 2026-03-14 19:20:33,597 INFO    MainThread:2006450 [wandb_run.py:_restore():2478] restore done
+2026-03-14 19:20:34,606 INFO    MainThread:2006450 [wandb_run.py:_footer_sync_info():3868] logging synced files
