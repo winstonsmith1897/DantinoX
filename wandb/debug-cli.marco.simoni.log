@@ -591,3 +591,84 @@
 	weight_tying: True
 2026-03-14 18:54:18 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.06746754646509796 --batch_size=32 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=20 --expansion=4 --grad_accum=2 --kv_heads=4 --lr=0.0022604912220550665 --max_context=512 --n_experts=4 --no_sink=False --num_blocks=8 --optimizer=adamw --pos_encoding=absolute --sliding_window=False --tokenizer_type=bpe --top_k_mlp=2 --use_moe=True --warmup_steps=200 --weight_tying=True
 2026-03-14 18:54:23 INFO Running runs: ['s234ebln']
+2026-03-14 18:58:21 INFO Cleaning up finished run: s234ebln
+2026-03-14 18:58:22 INFO Agent received command: run
+2026-03-14 18:58:22 INFO Agent starting run with config:
+	alpha_balance: 0.07083837559099332
+	batch_size: 64
+	context_window: 128
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 24
+	expansion: 4
+	grad_accum: 8
+	kv_heads: 4
+	lr: 0.0018544676073741285
+	max_context: 512
+	n_experts: 4
+	no_sink: True
+	num_blocks: 4
+	optimizer: lion
+	pos_encoding: absolute
+	sliding_window: True
+	tokenizer_type: char
+	top_k_mlp: 1
+	use_moe: False
+	warmup_steps: 200
+	weight_tying: True
+2026-03-14 18:58:22 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.07083837559099332 --batch_size=64 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=24 --expansion=4 --grad_accum=8 --kv_heads=4 --lr=0.0018544676073741285 --max_context=512 --n_experts=4 --no_sink=True --num_blocks=4 --optimizer=lion --pos_encoding=absolute --sliding_window=True --tokenizer_type=char --top_k_mlp=1 --use_moe=False --warmup_steps=200 --weight_tying=True
+2026-03-14 18:58:27 INFO Running runs: ['84wj1kln']
+2026-03-14 19:02:51 INFO Cleaning up finished run: 84wj1kln
+2026-03-14 19:02:52 INFO Agent received command: run
+2026-03-14 19:02:52 INFO Agent starting run with config:
+	alpha_balance: 0.023097466745169045
+	batch_size: 64
+	context_window: 64
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 12
+	expansion: 4
+	grad_accum: 2
+	kv_heads: 4
+	lr: 0.0008311389569140608
+	max_context: 256
+	n_experts: 4
+	no_sink: False
+	num_blocks: 12
+	optimizer: lion
+	pos_encoding: absolute
+	sliding_window: False
+	tokenizer_type: char
+	top_k_mlp: 1
+	use_moe: False
+	warmup_steps: 200
+	weight_tying: True
+2026-03-14 19:02:52 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.023097466745169045 --batch_size=64 --context_window=64 --dim=512 --dropout_rate=0.15 --epochs=12 --expansion=4 --grad_accum=2 --kv_heads=4 --lr=0.0008311389569140608 --max_context=256 --n_experts=4 --no_sink=False --num_blocks=12 --optimizer=lion --pos_encoding=absolute --sliding_window=False --tokenizer_type=char --top_k_mlp=1 --use_moe=False --warmup_steps=200 --weight_tying=True
+2026-03-14 19:02:57 INFO Running runs: ['jr310jpr']
+2026-03-14 19:07:27 INFO Cleaning up finished run: jr310jpr
+2026-03-14 19:07:28 INFO Agent received command: run
+2026-03-14 19:07:28 INFO Agent starting run with config:
+	alpha_balance: 0.11012183030742648
+	batch_size: 64
+	context_window: 128
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 20
+	expansion: 4
+	grad_accum: 8
+	kv_heads: 2
+	lr: 0.0012297985485641067
+	max_context: 512
+	n_experts: 4
+	no_sink: True
+	num_blocks: 8
+	optimizer: lion
+	pos_encoding: absolute
+	sliding_window: False
+	tokenizer_type: char
+	top_k_mlp: 1
+	use_moe: False
+	warmup_steps: 200
+	weight_tying: True
+2026-03-14 19:07:28 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.11012183030742648 --batch_size=64 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=20 --expansion=4 --grad_accum=8 --kv_heads=2 --lr=0.0012297985485641067 --max_context=512 --n_experts=4 --no_sink=True --num_blocks=8 --optimizer=lion --pos_encoding=absolute --sliding_window=False --tokenizer_type=char --top_k_mlp=1 --use_moe=False --warmup_steps=200 --weight_tying=True
+2026-03-14 19:07:33 INFO Running runs: ['xx95xge0']

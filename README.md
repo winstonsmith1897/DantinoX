@@ -24,7 +24,8 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 <p align="center">
   <img src="images/dantinox.png" alt="DantinoX Architecture">
 </p>
----
+
+------------------------------------------------------------------------
 
 # Overview: The True Story
 
@@ -84,154 +85,104 @@ This structure is optimized for **JAX / Flax NNX workflows**.
 
 ------------------------------------------------------------------------
 
-# 🧠 Model Architecture
+# 🧠 DantinoX Model Architecture
 
-DantinoX implements a **modern Decoder‑only Transformer** optimized for
-**JAX / Flax NNX**.
+DantinoX implements a modern, highly configurable **decoder-only Transformer** optimized for **JAX / Flax NNX**. The architecture is highly flexible, supports both Dense Feed-Forward Networks (FFN) and Sparse Mixture of Experts (MoE), and is designed for maximum compute efficiency.
 
-The architecture is **highly configurable** and supports both:
+## ⚙️ Architectural Overview
 
--   **Dense FFN layers**
--   **Sparse Mixture of Experts (MoE)**
+| Component | Description |
+| :--- | :--- |
+| **Model Type** | Decoder-only Transformer |
+| **Attention** | Causal self-attention (supports GQA & Sliding Window) |
+| **Positional Encoding** | RoPE / Absolute Sinusoidal / Trainable |
+| **FFN Options** | Dense MLP or Sparse MoE |
+| **Expert Routing** | Top-K token routing (with auxiliary load-balancing loss) |
+| **Memory Opt.** | Gradient checkpointing (`nnx.remat`) |
+| **Inference Opt.** | Static KV-Cache |
+| **Regularization** | Dropout (embedding, attention, residual) |
 
-------------------------------------------------------------------------
+---
 
-# Core Components
+## 📐 Model Specifications
 
-## 1. Hybrid Attention Mechanism (`Attention` class)
+| Parameter | Value |
+| :--- | :--- |
+| **Layers** | `6` |
+| **Hidden Dim** | `512` |
+| **Heads** | `8` |
+| **Experts** | `4` |
+| **Top-K** | `2` |
+| **Context** | `512` |
 
-The Attention module implements **causal self‑attention** with multiple
-advanced capabilities.
+---
 
-### Key Features
+## 🔬 DantinoX Transformer Block
 
--   **Configurable Heads**
-    -   Separate `n_heads` (queries)
-    -   Separate `kv_heads` (keys/values)
-    -   Enables **Grouped Query Attention (GQA)**
--   **Rotary Positional Embeddings (RoPE)**
-    -   Implemented through `__apply_rotation`
-    -   Enables **relative positional reasoning**
--   **Causal Masking**
-    -   Static triangular mask (`self.tril`)
-    -   Dynamic slicing based on `cache_index`
--   **Sliding Window Attention**
-    -   Enabled via `sliding_window=True`
-    -   Restricts attention to `context_window` tokens
--   **Static KV Cache**
-    -   Used when `use_cache=True`
-    -   Key and Value states stored in:
+The fundamental building unit of the model features a Pre-LayerNorm architecture with residual connections and gradient checkpointing.
 
-```{=html}
-<!-- -->
+```text
+       [ Input Token ]
+              │
+              ├──► [ Pre-LayerNorm ]
+              │           │
+              │    [ Self-Attention ]
+              │           │
+              ◄───────────┘ (Residual Add)
+              │
+              ├──► [ Pre-LayerNorm ]
+              │           │
+              │     [ MoE / MLP ]
+              │           │
+              ◄───────────┘ (Residual Add)
+              │
+      [ Output to next Block ]
 ```
-    k_cache
-    v_cache
 
--   **Attention Gating ("no_sink")**
-    -   Optional sigmoid gate (`self.W`)
-    -   Reweights attention output for stability
+---
 
-------------------------------------------------------------------------
+## 🧩 Core Components
 
-## 2. Mixture of Experts (MoE) & MLP
+### 1️⃣ Hybrid Attention Mechanism (`Attention`)
 
-The Feed Forward Network can be configured in **two modes**.
+The attention module implements causal self-attention with several advanced capabilities for scale and efficiency.
 
-### Standard MLP
+* **Grouped Query Attention (GQA):** Uses separate `n_heads` for queries and `kv_heads` for keys/values to reduce memory bandwidth.
+* **Rotary Positional Embeddings (RoPE):** Implemented via `__apply_rotation()` to improve relative positional reasoning and long-context handling.
+* **Causal Masking:** Uses a static triangular mask (`self.tril`) and dynamic slicing (`cache_index`).
+* **Sliding Window Attention:** Optional local attention (`sliding_window = True`) restricts context to a fixed `context_window` to save compute.
+* **Static KV Cache:** Leverages `k_cache` and `v_cache` for fast autoregressive generation.
+* **Attention Gating:** Optional sigmoid gate (`self.W`) re-weights the output to improve stability ("no_sink").
 
-A traditional two‑layer feedforward network:
+### 2️⃣ Mixture of Experts (MoE) & MLP
 
--   Linear → Activation → Linear
--   Activation: **GELU (default)**
--   Dropout regularization
+The Feed-Forward Network supports two execution modes.
 
-### Sparse MoE
+#### Standard MLP
+Traditional two-layer feed-forward network (Linear → GELU → Linear) featuring dropout regularization.
 
-Replaces the dense MLP with **expert networks**.
+#### Sparse Mixture of Experts (MoE)
+Replaces the dense MLP with multiple expert networks to increase capacity without proportional compute costs.
+* **Router:** A linear layer computes expert probabilities.
+* **Top-K Selection:** Only the Top-K experts are activated per token (e.g., `top_k_mlp = 2`).
+* **Load Balancing Loss:** An auxiliary `moe_loss` prevents expert collapse and ensures uniform training across all experts.
 
-#### Router
+### 3️⃣ Transformer Block (`Block`)
 
-A linear layer computes expert probabilities.
+To handle large contexts and parameter counts within VRAM limits, each block natively supports **Gradient Checkpointing**. 
+Using `nnx.remat`, activations are efficiently recomputed during the backward pass to drastically reduce memory consumption.
 
-#### Top‑K Selection
+### 4️⃣ Full Transformer (`Transformer`)
 
-Only the **Top‑K experts** are activated per token.
+The complete model stack consists of the token embedding layer (`wte`), the stack of Transformer blocks, and the output language modeling head (`lm_head`).
 
-Example:
-
-    top_k_mlp = 2
-
-#### Load Balancing Loss
-
-The module computes an auxiliary loss:
-
-    moe_loss
-
-This encourages **balanced expert usage** and prevents **expert
-collapse**.
-
-------------------------------------------------------------------------
-
-## 3. Transformer Block (`Block` class)
-
-The main building unit of the model.
-
-Each block contains:
-
--   **Pre‑LayerNorm**
--   **Attention layer**
--   **MLP / MoE layer**
--   **Residual connections**
-
-### Training Optimization
-
-Supports **gradient checkpointing** using:
-
-    nnx.remat
-
-This recomputes activations during the backward pass to **reduce VRAM
-usage**.
-
-------------------------------------------------------------------------
-
-## 4. Full Transformer (`Transformer` class)
-
-The complete model stack.
-
-### Components
-
--   **Token Embedding Layer** (`wte`)
--   **Stack of Transformer Blocks**
--   **Output LM Head** (`lm_head`)
-
-### Weight Tying
-
-The LM head can reuse the embedding matrix:
-
+* **Weight Tying:** The output head can reuse the embedding matrix.
+    ```python
     self.lm_head.kernel = self.wte.embedding.T
+    ```
+    **Benefits:** Fewer parameters, smaller checkpoints, and reduced memory usage.
 
-Benefits:
-
--   fewer parameters
--   smaller checkpoints
--   reduced VRAM usage
-
-### Positional Encoding Options
-
-Supports:
-
--   **RoPE**
--   **Absolute sinusoidal encoding**
--   **Trainable positional embeddings**
-
-### Regularization
-
-Includes configurable dropout for:
-
--   embeddings
--   attention weights
--   residual connections
+* **Regularization:** Dropout is strategically applied to token embeddings, attention weights, and residual connections to prevent overfitting during training.
 
 ------------------------------------------------------------------------
 
