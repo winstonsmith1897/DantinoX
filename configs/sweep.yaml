@@ -1,11 +1,11 @@
-program: train.py
+program: train_sweep.py
 method: bayes
 metric:
   name: val_loss
   goal: minimize
 parameters:
   epochs:
-    values: [4, 6, 8]
+    values: [12, 16, 20, 24]
   optimizer:
     values: ["adamw", "adafactor", "lion"]
   tokenizer_type:
@@ -51,7 +51,7 @@ parameters:
   no_sink:
     values: [true, false]
   pos_encoding:
-    values: ["rotary", "absolute", "trainable"]
+    values: ["rotary", "absolute"]
 command:
   - ${env}
   - python

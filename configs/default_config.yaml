@@ -18,9 +18,9 @@ moe:
   alpha_balance: 0.1
 
 attention:
-  use_rotary_pos: false
+  use_rotary_pos: true
   trainable_pos: false    
-  absolute_pos: true     
+  absolute_pos: false     
   sliding_window: true
   context_window: 64  #valid only if slinding window is true
   no_sink: true

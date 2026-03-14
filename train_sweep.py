@@ -17,13 +17,15 @@ import dataclasses
 import wandb
 
 def get_optax_optimizer(config, total_steps):
-    warmup_steps = getattr(config, 'warmup_steps', int(total_steps * 0.1))
+    requested_warmup = getattr(config, 'warmup_steps', 0)
+    warmup_steps = min(requested_warmup, int(total_steps * 0.3))
+    safe_total_steps = max(total_steps, warmup_steps + 1)
     
     lr_schedule = optax.warmup_cosine_decay_schedule(
         init_value=0.0,
         peak_value=config.lr,
         warmup_steps=warmup_steps,
-        decay_steps=total_steps,
+        decay_steps=safe_total_steps,
         end_value=config.lr * 0.01  
     )
     
@@ -49,7 +51,8 @@ def parse_args():
         if arg_name not in parser._option_string_actions:
             parser.add_argument(arg_name, type=ftype)
             
-    return parser.parse_args()
+    args, _ = parser.parse_known_args()
+    return args
 
 def get_vram_usage():
     devices = jax.devices()
@@ -81,32 +84,26 @@ def report_model_summary(model, config, optimizer, save_path):
     print(f"Params: {summary['total_params_M']}M | Est. VRAM: {summary['total_est_vram_MB']}MB")
 
 def main():
+    wandb.init()
+    
     args = parse_args()
-    
-    wandb.init(project=args.wandb_project)
-    
     config = Config.from_yaml(args.config)
-    args_dict = vars(args)
-    for field in dataclasses.fields(Config):
-        val = args_dict.get(field.name)
-        if val is not None: setattr(config, field.name, val)
-        
+    
     for k, v in wandb.config.items():
         if hasattr(config, k):
             setattr(config, k, v)
             
-    config.n_heads = config.dim // config.head_size
-    assert config.n_heads % config.kv_heads == 0, f"n_heads ({config.n_heads}) non è divisibile per kv_heads ({config.kv_heads})"
-
-    pos_enc = getattr(config, 'pos_encoding', 'rotary')
+    pos_enc = wandb.config.get('pos_encoding', 'rotary')
     config.use_rotary_pos = (pos_enc == "rotary")
     config.absolute_pos = (pos_enc == "absolute")
-    config.trainable_pos = (pos_enc == "trainable")
+    config.trainable_pos = False
+
+    config.n_heads = config.dim // config.head_size
+    assert config.n_heads % config.kv_heads == 0, f"n_heads ({config.n_heads}) non divisibile per kv_heads ({config.kv_heads})"
     
     run_name = datetime.datetime.now().strftime("run_%Y%m%d_%H%M%S")
     run_dir = os.path.join("runs", run_name)
     os.makedirs(run_dir, exist_ok=True)
-    
     config.save_yaml(os.path.join(run_dir, "config.yaml"))
     
     log_file_path = os.path.join(run_dir, "training_log.csv")
@@ -128,12 +125,11 @@ def main():
     text = '\n\n'.join(formatted_blocks) + '\n'
 
     tokenizer = get_tokenizer(config.tokenizer_type)
-
     if config.tokenizer_type == "char":
         tokenizer.train_from_text(text) 
     elif config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)
- 
+    
     config.vocab_size = tokenizer.vocab_size
     full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
     n = int(0.9 * len(full_data))
@@ -145,7 +141,6 @@ def main():
 
     rngs = nnx.Rngs(config.seed)
     model = Transformer(config, rngs=rngs)
-    
     tx = get_optax_optimizer(config, total_steps)
     optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
     
@@ -162,7 +157,7 @@ def main():
         logits, _, balancing_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
         loss = compute_loss(logits, y)
         if getattr(model, 'use_moe', False):
-            loss = loss + model.alpha_balance * balancing_loss
+            loss = loss + config.alpha_balance * balancing_loss
         return loss, balancing_loss
 
     @jax.jit
@@ -171,14 +166,7 @@ def main():
         x_batches = full_x.reshape(config.grad_accum, micro_batch_size, -1)
         y_batches = full_y.reshape(config.grad_accum, micro_batch_size, -1)
         
-        def compute_loss_for_microbatch(model, x, y):
-            logits, _, balancing_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
-            loss = compute_loss(logits, y)
-            if getattr(model, 'use_moe', False):
-                loss = loss + model.alpha_balance * balancing_loss
-            return loss, balancing_loss
-            
-        grad_fn = nnx.value_and_grad(compute_loss_for_microbatch, has_aux=True)
+        grad_fn = nnx.value_and_grad(loss_fn, has_aux=True)
         grad_acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
         total_loss = jnp.array(0.0)
         total_bal_loss = jnp.array(0.0)
@@ -203,8 +191,7 @@ def main():
     def estimate_loss(key):
         out = {}
         for split, d in [('train', train_data), ('val', val_data)]:
-            losses = []
-            bal_losses = []
+            losses, bal_losses = [], []
             for _ in range(config.eval_iters):
                 key, subkey = jax.random.split(key)
                 x, y = get_batch(d, micro_batch_size, config.max_context, subkey) 
@@ -222,9 +209,11 @@ def main():
         for step in range(total_steps):
             key, subkey = jax.random.split(key)
             x, y = get_batch(train_data, config.batch_size, config.max_context, subkey)
+            
             graphdef, state = nnx.split((model, optimizer, metrics))
-            _, _, new_state = train_step(graphdef, state, x, y)
+            l, bl, new_state = train_step(graphdef, state, x, y)
             nnx.update((model, optimizer, metrics), new_state)
+            
             if step % 50 == 0:
                 t1 = time.time()
                 dt = (t1 - t0) * 1000 / 50 if step > 0 else 0
@@ -233,37 +222,24 @@ def main():
                 losses, key = estimate_loss(key)
                 
                 wandb.log({
+                    "step": step,
                     "train_loss": losses['train'],
                     "val_loss": losses['val'],
                     "train_bal_loss": losses['train_bal'],
-                    "val_bal_loss": losses['val_bal'],
                     "vram_gb": vram,
-                    "ms_per_step": dt,
-                    "step": step
+                    "ms_per_step": dt
                 })
                 
-                print(f"Step {step:5d}/{total_steps} | "
-                      f"Train: {losses['train']:.4f} (Bal: {losses['train_bal']:.4f}) | "
-                      f"Val: {losses['val']:.4f} (Bal: {losses['val_bal']:.4f}) | "
-                      f"VRAM: {vram:.2f}GB")
+                print(f"Step {step:5d}/{total_steps} | Loss: {losses['val']:.4f} | VRAM: {vram:.2f}GB")
                 
-                log_writer.writerow([
-                    step, 
-                    float(losses['train']), 
-                    float(losses['val']), 
-                    float(losses['train_bal']),
-                    float(losses['val_bal']),
-                    round(vram, 3), 
-                    round(dt, 2)
-                ])
+                log_writer.writerow([step, losses['train'], losses['val'], losses['train_bal'], losses['val_bal'], round(vram, 3), round(dt, 2)])
                 log_f.flush()
         
-        print("Saving model weights...")
         final_state_dict = nnx.state(model, nnx.Param).to_pure_dict()
         with open(os.path.join(run_dir, "model_weights.msgpack"), "wb") as f:
             import flax.serialization
             f.write(flax.serialization.msgpack_serialize(final_state_dict))
-        print(f"Model saved to: {run_dir}")
+            
     finally:
         log_f.close()
         wandb.finish()
