@@ -3,4 +3,6 @@
 [34m[1mwandb[0m: For more information, check out the docs at: https://weave-docs.wandb.ai/
 Params: 28.44M | Est. VRAM: 3336.11MB
 Step     0/224 | Loss: 4.8487 | VRAM: 0.13GB
-Step    50/224 | Loss: 3
+Step    50/224 | Loss: 3.1099 | VRAM: 0.13GB
+Step   100/224 | Loss: 3.0486 | VRAM: 0.14GB
+Step   150/224 | Loss: 2.9569 | VRAM: 0.14GB

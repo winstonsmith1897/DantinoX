@@ -2,35 +2,30 @@
 
 # 𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛
 
-<pre>
-██████╗  █████╗ ███╗   ██╗████████╗██╗███╗   ██╗ ██████╗ ██╗  ██╗
-██╔══██╗██╔══██╗████╗  ██║╚══██╔══╝██║████╗  ██║██╔═══██╗╚██╗██╔╝
-██║  ██║███████║██╔██╗ ██║   ██║   ██║██╔██╗ ██║██║   ██║ ╚███╔╝ 
-██║  ██║██╔══██║██║╚██╗██║   ██║   ██║██║╚██╗██║██║   ██║ ██╔██╗ 
-██████╔╝██║  ██║██║ ╚████║   ██║   ██║██║ ╚████║╚██████╔╝██╔╝ ██╗
-╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝
-</pre>
-
-<i>"Ah JAX, vituperio delle genti..."</i><br>
+<i>"Ah JAX, vituperio delle genti..."</i>  
 <b>(Ah JAX, the shame of the people...)</b>
 
-<br><br>
+<br>
 
-A Transformer so "nano" it barely rhymes, implemented in <b>JAX</b> and <b>Flax NNX</b>.<br>
-Built with equal parts sweat, tears, and XLA compilation errors, with absolutely zero pretensions.
+A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**.
 
-<br><br>
+Built with equal parts **sweat**, **tears**, and **XLA compilation errors** —  
+with absolutely **zero pretensions**.
+
+<br>
 
 [![JAX](https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white)](https://github.com/google/jax)
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
-[![Python 3.12+](https://img.shields.io/badge/Python_3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 </div>
 
 <br>
 
-![DantinoX Architecture](images/dantinox.png)
+<p align="center">
+  <img src="images/dantinox.png" alt="DantinoX Architecture">
+</p>
 ---
 
 # Overview: The True Story
