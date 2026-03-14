@@ -50,14 +50,6 @@ Does it always produce pure divine poetry? Let's not exaggerate. But it gets by,
 
 # 🏗️ Project Structure
 
-The **DantinoX repository** follows a modular design separating:
-
--   model architecture
--   utilities
--   data handling
--   training scripts
-
-This structure is optimized for **JAX / Flax NNX workflows**.
 
     DantinoX/
     ├── core/                   # Core neural network logic
@@ -83,45 +75,30 @@ This structure is optimized for **JAX / Flax NNX workflows**.
     ├── requirements.txt        # Python dependencies
     └── README.md               # Documentation
 
-------------------------------------------------------------------------
+## 🛠 Architecture & Technical Specs
 
-## 📊 Quick Specs & Architecture
+DantinoX is a JAX/Flax-native, decoder-only Transformer built for extreme compute and memory efficiency. 
 
-| ⚙️ Dimension | Value | 🏗️ Core Component | Implementation |
-| :--- | :--- | :--- | :--- |
-| **Layers** | `6` | **Attention** | Causal Self-Attention (GQA) |
-| **Hidden Dim** | `512` | **Position Encoding**| RoPE / Absolute / Trainable |
-| **Heads** | `8` | **FFN Module** | Dense MLP / Sparse MoE |
-| **Experts** | `4` | **MoE Routing** | Top-K + Load Balancing Loss |
-| **Top-K** | `2` | **Memory Opt.** | Grad Checkpointing (`nnx.remat`) |
-| **Context** | `512` | **Inference Opt.** | Static KV-Cache |
-
----
-
-## ✨ Features Breakdown
-
-- [x] **Hybrid Attention (`Attention`)**: Supports Grouped Query Attention (GQA), Sliding Window (`context_window`), and stability Gating (`no_sink`).
-- [x] **Sparse MoE (`moe_loss`)**: Replaces dense MLPs with Top-K expert routing, including auxiliary loss to prevent expert collapse.
-- [x] **Memory & Inference Scaling**: Native `nnx.remat` for aggressive VRAM savings during training, and Static KV-Cache (`k_cache`, `v_cache`) for fast generation.
-- [x] **Weight Tying**: Reuses the embedding matrix for the LM head (`lm_head.kernel = wte.embedding.T`) to drastically reduce checkpoint size.
-
----
-## 📊 Technical Summary
-
-| Feature | Implementation |
+| Feature | Implementation Details |
 | :--- | :--- |
-| **Model Type** | Decoder-only Transformer |
-| **Framework** | JAX / Flax NNX |
-| **Normalization** | LayerNorm (Pre-Norm) |
-| **Activation** | GELU |
-| **Positioning** | RoPE or Absolute |
-| **Inference** | Autoregressive with KV Cache |
-| **FFN Types** | Dense MLP or Sparse MoE |
-| **MoE Balance** | Auxiliary balancing loss |
-| **Regularization** | Attention, residual, embedding dropout |
-| **Memory Optimization** | Gradient checkpointing, weight tying |
-| **Distributed** | Future work |
+| **Attention** | Causal Self-Attention with GQA and optional Sliding Window |
+| **Feed-Forward** | Configurable: Dense MLP or Sparse MoE (Top-K Routing) |
+| **Positioning** | Rotary Positional Embeddings (RoPE) or Absolute |
+| **Memory Opt.** | Gradient checkpointing (`nnx.remat`) & Weight Tying |
+| **Inference Opt.**| Autoregressive generation with Static KV-Cache |
+| **Regularization**| Attention, residual, and embedding dropout; auxiliary MoE balancing loss |
+| **Distributed** | JAX SPMD (Data / Model / FSDP) - *Future Work* |
+
+**Example Configuration:** `6` Layers • `512` Hidden Dim • `8` Heads • `512` Context • `4` Experts (Top-`2`)
+
 ---
+
+## ✨ Implementation Highlights
+
+* **Flexible Compute Routing:** Seamlessly toggle between standard dense layers and Mixture of Experts. The MoE router includes a native `load_balancing_loss` to prevent expert collapse.
+* **Aggressive VRAM Savings:** Checkpoint size and memory footprint are drastically reduced by tying the output language modeling head to the token embedding layer (`lm_head.kernel = wte.embedding.T`).
+* **Enhanced Stability:** Attention mechanism supports `no_sink` gating to re-weight outputs and stabilize training trajectories.
+
 
 # ⚙️ Configuration (`config.yaml`)
 

@@ -753,3 +753,30 @@
 	weight_tying: True
 2026-03-14 19:20:38 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.05818172364871465 --batch_size=64 --context_window=128 --dim=256 --dropout_rate=0.15 --epochs=20 --expansion=4 --grad_accum=2 --kv_heads=2 --lr=0.0003952382083928978 --max_context=512 --n_experts=4 --no_sink=True --num_blocks=12 --optimizer=lion --pos_encoding=absolute --sliding_window=True --tokenizer_type=char --top_k_mlp=1 --use_moe=True --warmup_steps=200 --weight_tying=True
 2026-03-14 19:20:43 INFO Running runs: ['oap3c2rd']
+2026-03-14 19:27:12 INFO Cleaning up finished run: oap3c2rd
+2026-03-14 19:27:13 INFO Agent received command: run
+2026-03-14 19:27:13 INFO Agent starting run with config:
+	alpha_balance: 0.12135660788790452
+	batch_size: 32
+	context_window: 64
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 20
+	expansion: 2
+	grad_accum: 2
+	kv_heads: 4
+	lr: 0.0027223461588214157
+	max_context: 256
+	n_experts: 4
+	no_sink: True
+	num_blocks: 12
+	optimizer: lion
+	pos_encoding: absolute
+	sliding_window: False
+	tokenizer_type: char
+	top_k_mlp: 1
+	use_moe: True
+	warmup_steps: 200
+	weight_tying: True
+2026-03-14 19:27:13 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.12135660788790452 --batch_size=32 --context_window=64 --dim=512 --dropout_rate=0.15 --epochs=20 --expansion=2 --grad_accum=2 --kv_heads=4 --lr=0.0027223461588214157 --max_context=256 --n_experts=4 --no_sink=True --num_blocks=12 --optimizer=lion --pos_encoding=absolute --sliding_window=False --tokenizer_type=char --top_k_mlp=1 --use_moe=True --warmup_steps=200 --weight_tying=True
+2026-03-14 19:27:18 INFO Running runs: ['45z2hx8u']
