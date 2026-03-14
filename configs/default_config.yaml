@@ -22,7 +22,7 @@ attention:
   trainable_pos: false    
   absolute_pos: false     
   sliding_window: true
-  context_window: 64
+  context_window: 64  #valid only if slinding window is true
   no_sink: true
 
 tokenizer:
@@ -47,12 +47,12 @@ training:
 
 generation:
   use_cache: true
-  top_p: None
-  top_k: None
+  top_p: null
+  top_k: null
   seed: 42
   greedy: false
   max_generations: 150
-  temperature: 1.0
+  temperature: 1.3
 
 logging:
   eval_iters: 20

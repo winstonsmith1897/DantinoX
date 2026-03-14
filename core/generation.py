@@ -18,7 +18,7 @@ def decode(
 
     return tok
 
-@nnx.jit(static_argnames=['decoding_func', 'use_cache', 'temperature'])
+@nnx.jit(static_argnames=['decoding_func', 'use_cache', 'top_k', 'top_p', 'temperature'])
 def _generate_toks(
     model: nnx.Module,
     x: jnp.ndarray,
@@ -70,7 +70,7 @@ def _generate_toks(
     def generate_with_kv_cache(i, val):
         x, tok, kv_cache, k  = val
         last_logits, new_kv_cache, _ = model(tok, use_cache, kv_cache, i-1, deterministic=True)
-        x, k, next_tok_id = _get_tok_id(i, x, k, last_logits)
+        x, k, next_tok_id = _get_tok_id(i, x, k, last_logits[:, -1, :])
         return x, next_tok_id, new_kv_cache, k
     
     def prefill_or_no_cache(i, val):
@@ -98,7 +98,7 @@ def _generate_toks(
                 
             tok = jax.vmap(sample_base)(probs, batch_keys)
             k = new_key
-            
+        tok = tok.reshape(-1, 1)
         x = x.at[:, i].set(tok[:, 0])
         return x, k, tok
     

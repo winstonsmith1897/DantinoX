@@ -14,9 +14,13 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_dir", type=str, required=True)
     parser.add_argument("--prompt", type=str, default="Nel mezzo del cammin ")
-    parser.add_argument("--max_new_tokens", type=int, default=150)
-    parser.add_argument("--greedy", action="store_true")
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--max_new_tokens", type=int, default=None)
+    parser.add_argument("--greedy", type=str, choices=['true', 'false'], default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--top_k", type=int, default=None)
+    parser.add_argument("--top_p", type=float, default=None)
+    parser.add_argument("--temperature", type=float, default=None)
+    parser.add_argument("--use_cache", type=str, choices=['true', 'false'], default=None)
     return parser.parse_args()
 
 def main():
@@ -60,7 +64,10 @@ def main():
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)  
     
     config.vocab_size = tokenizer.vocab_size
-    rngs = nnx.Rngs(args.seed)
+    
+    gen_seed = flat_cfg.get('seed', 42) if args.seed is None else args.seed
+    
+    rngs = nnx.Rngs(gen_seed)
     model = Transformer(config, rngs=rngs)
     
     if os.path.exists(weights_path):
@@ -80,20 +87,42 @@ def main():
     print(f"\nRun: {args.run_dir}")
     print(f"Prompt: {args.prompt}")
     print("-" * 30)
-    
+
+    gen_max_new_tokens = flat_cfg.get('max_generations', 150) if args.max_new_tokens is None else args.max_new_tokens
+    gen_greedy = flat_cfg.get('greedy', False) if args.greedy is None else (args.greedy == 'true')
+    gen_top_k = flat_cfg.get('top_k', None) if args.top_k is None else args.top_k
+    gen_top_p = flat_cfg.get('top_p', None) if args.top_p is None else args.top_p
+    gen_temperature = flat_cfg.get('temperature', 1.0) if args.temperature is None else args.temperature
+    gen_use_cache = flat_cfg.get('use_cache', True) if args.use_cache is None else (args.use_cache == 'true')
+
+    _ = generate(
+        model=model,
+        x=x,
+        max_generations=1,
+        greedy=gen_greedy,
+        seed=gen_seed,
+        use_cache=gen_use_cache,
+        top_k=gen_top_k,
+        top_p=gen_top_p,
+        temperature=gen_temperature
+    )
+    x.block_until_ready()
+
     t0 = time.time()
     
     output_tokens = generate(
         model=model,
         x=x,
-        max_generations=args.max_new_tokens,
-        greedy=config.greedy,
-        seed=config.seed,
-        use_cache=config.use_cache,
-        top_k=config.top_k,
-        top_p=config.top_p,
-        temperature=config.temperature
+        max_generations=gen_max_new_tokens,
+        greedy=gen_greedy,
+        seed=gen_seed,
+        use_cache=gen_use_cache,
+        top_k=gen_top_k,
+        top_p=gen_top_p,
+        temperature=gen_temperature
     )
+    
+    output_tokens.block_until_ready()
     
     t1 = time.time()
     
