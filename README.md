@@ -7,10 +7,8 @@
 
 <br>
 
-A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**.
+A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with equal parts **sweat**, **tears**, and **XLA compilation errors**.
 
-Built with equal parts **sweat**, **tears**, and **XLA compilation errors** —  
-with absolutely **zero pretensions**.
 
 <br>
 

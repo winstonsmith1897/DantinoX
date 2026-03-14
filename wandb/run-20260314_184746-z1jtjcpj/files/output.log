@@ -6,3 +6,4 @@ Step     0/224 | Loss: 4.8487 | VRAM: 0.13GB
 Step    50/224 | Loss: 3.1099 | VRAM: 0.13GB
 Step   100/224 | Loss: 3.0486 | VRAM: 0.14GB
 Step   150/224 | Loss: 2.9569 | VRAM: 0.14GB
+Step   200/224 | Loss: 2.8712 | VRAM: 0.14GB
