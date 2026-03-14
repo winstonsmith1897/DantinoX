@@ -2,6 +2,8 @@
 
 A high-performance, sub-nano Mixture of Experts (MoE) Transformer implemented in **JAX** and **Flax NNX**. Optimized for efficiency and speed on GPU/TPU devices.
 
+
+
 ![DantinoX Architecture](images/dantinox.png)
 
 ## Overview
@@ -17,94 +19,205 @@ A high-performance, sub-nano Mixture of Experts (MoE) Transformer implemented in
 * **Sub-Nano Scale**: Meticulously designed to minimize parameter count and memory usage, making it faster to train and run than traditional "Nano" models.
 * **KV Cache & Greedy Generation**: High-performance inference with a persistent Key-Value cache and a `generate.py` script featuring throughput metrics.
 
-## Installation
+# 🏗️ Project Structure
 
-```bash
-# Clone the repository
-git clone [https://github.com/winstonsmith1897/DantinoX.git](https://github.com/winstonsmith1897/DantinoX.git)
-cd DantinoX
+The **DantinoX** repository is organized into a modular architecture, separating the model's core logic, data handling, and execution scripts. This structure is designed to leverage the power of **JAX/Flax NNX** for efficient training and inference.
 
-# Install all necessary dependencies
-pip install -r requirements.txt
+```text
+DantinoX/
+├── core/                   # Core neural network logic
+│   ├── config.py           # Configuration parameters (Config Dataclass)
+│   ├── model.py            # Transformer architecture (Attention, MLP, MoE, Block)
+│   ├── generation.py       # Inference engine & static KV-Cache management
+│   └── __init__.py
+├── configs/                # YAML configuration files
+│   ├── default_config.yaml # Standard training setup
+│   └── sweep.yaml          # Hyperparameter search config (W&B)
+├── utils/                  # Utility functions
+│   ├── tokenizer.py        # Tokenizer management (Char-level & Byte-Level BPE)
+│   ├── helpers.py          # Loss functions, Batching, and Sharding logic
+│   └── __init__.py
+├── runs/                   # Training outputs (Weights, logs, saved configs)
+├── analyze_dataset.py      # Statistical analysis script for the corpus
+├── train.py                # Main training execution script
+├── generate.py             # Autoregressive text generation script
+├── requirements.txt        # Python dependencies
+└── README.md               # Project documentation
 
-## Configuration
+## 🧠 Model Architecture
 
-DantinoX uses a centralized YAML configuration system. You can fine-tune the architecture and training parameters in `configs/defaults_config.yaml`:
+DantinoX implements a modern **Decoder-only Transformer** optimized for JAX/Flax NNX. It is designed to be highly configurable, supporting both dense and sparse (MoE) configurations.
+
+
+
+### Core Components
+
+#### 1. Hybrid Attention Mechanism (`Attention` class)
+The Attention module implements a standard causal self-attention mechanism with several advanced features:
+* **Configurable Heads:** Separates `n_heads` (for Queries) from `kv_heads` (for Keys and Values) to support architectures like Grouped Query Attention (GQA).
+* **Rotary Positional Embeddings (RoPE):** Integrated via the `__apply_rotation` method, allowing for better handling of relative positions and context length extrapolation. 
+* **Causal Masking:** Enforced by a static triangular mask (`self.tril`) combined with dynamic slicing based on the current `cache_index`.
+* **Sliding Window Attention:** If enabled (`sliding_window=True`), attention is restricted to a fixed-size window (`context_window`) around the current token, reducing computational complexity.
+* **Static KV-Cache:** During inference (`use_cache=True`), Key and Value states are stored and dynamically updated in pre-allocated buffers (`k_cache`, `v_cache`), significantly speeding up generation.
+* **Attention Gating ("no_sink"):** An optional feature that uses a sigmoid gate (`self.W`) to re-weight the output, potentially helping with stability or initial token attention.
+
+#### 2. Mixture of Experts (MoE) & MLP
+The Feed-Forward Network (FFN) can be either a standard MLP or a Sparse MoE layer:
+* **MLP:** A standard two-layer linear network with a configurable activation function (defaulting to GELU) and dropout.
+* **MoE:** Replaces the dense MLP with a sparse layer.
+    * **Routing:** A `router` linear layer computes probabilities for each expert.
+    * **Top-K Selection:** Only the `top_k_mlp` experts with the highest probabilities are activated for each token.
+    * **Load Balancing Loss:** The module calculates a dedicated loss term (`moe_loss`) based on expert selection frequency and probabilities to ensure all experts are trained evenly and prevent expert collapse. 
+
+#### 3. Transformer Block (`Block` class)
+The fundamental building block of the model, which includes:
+* **Pre-Layer Normalization:** Normalization (`self.ln1`, `self.ln2`) is applied *before* the Attention and FFN layers for more stable training.
+* **Residual Connections:** The outputs of the Attention and FFN layers are added back to the input, facilitating gradient flow in deep networks.
+* **Gradient Checkpointing:** When enabled via `nnx.remat`, block activations are recomputed during the backward pass instead of being stored, saving significant VRAM at the cost of some compute.
+
+#### 4. Full Transformer (`Transformer` class)
+The complete stack of `num_blocks` layers, including:
+* **Embedding Layer (`wte`):** Maps input token IDs to dense vectors.
+* **Output Head (`lm_head`):** Maps the final hidden states back to vocabulary logits.
+* **Weight Tying:** The kernel of `lm_head` can share weights with the `wte` embedding matrix (`self.lm_head.kernel = self.wte.embedding.T`), reducing the model's total parameter count and memory footprint.
+* **Flexible Positional Encodings:** Supports standard RoPE and/or alternative absolute (Fixed Sine/Cosine or Trainable) positional encodings via `wpe`.
+* **Dropout:** Includes customizable dropout for embeddings, attention attention weights, and residual paths to prevent overfitting. 
+
+### Technical Summary
+
+| Feature | Implementation |
+| :--- | :--- |
+| **Model Type** | Decoder-only Transformer |
+| **Framework** | JAX / Flax NNX |
+| **Normalization** | LayerNorm (Pre-Norm config) |
+| **Activation** | GELU (configurable) |
+| **Positioning** | RoPE, Absolute (fixed/trainable) |
+| **Inference** | Autoregressive with Static KV-Cache |
+| **FFN Types** | Dense MLP or Sparse Top-K MoE |
+| **MoE Balance** | Dedicated auxiliary balancing loss |
+| **Regularization**| Attn, Resid, Embed Dropout; Weight Decay |
+| **Memory Opt.** | Gradient Checkpointing (`remat`), Weight Tying |
+| **Distributed** | JAX SPMD sharding (Data/Model/FSDP Parallel) |
+
+## ⚙️ Configuration (`config.yaml`)
+
+DantinoX uses YAML files to define the model architecture and training hyperparameters. This ensures experiments are reproducible and easy to modify without touching the source code.
+
+### Sample Configuration
+
+Below is a typical configuration for a medium-sized model:
 
 ```yaml
 # Model Architecture
-model:
-  dim: 128
-  n_heads: 16
-  head_size: 8
-  num_blocks: 4
-  max_context: 256
-  
-# Mixture of Experts (MoE)
-moe:
-  use_moe: true
-  n_experts: 4            # Total number of experts
-  top_k_mlp: 2            # Experts activated per token
-  expansion: 4            # MLP dimension multiplier
+dim: 512                # Hidden dimension size
+n_heads: 8              # Number of attention heads
+n_experts: 4            # Total number of experts (for MoE)
+top_k_mlp: 2            # Activated experts per token (for MoE)
+num_blocks: 6           # Number of Transformer layers
+max_context: 512        # Maximum sequence length
+vocab_size: 2000        # Vocabulary size (auto-updated by tokenizer)
 
-# Training & Optimization
-training:
-  lr: 0.0005
-  batch_size: 32
-  grad_accum: 4           # Gradient accumulation steps
-  steps: 5000
-  optimizer: "adamw"      # Supports: adamw, adafactor, lion, etc.
+# Positional Encoding & Features
+use_rotary_pos: true    # Enable Rotary Positional Embeddings (RoPE)
+sliding_window: false   # Enable sliding window attention
+weight_tying: true      # Share weights between embedding and output head
+use_moe: true           # Enable Mixture of Experts instead of dense MLP
 
-# Logging
-logging:
-  log_file: "training_log.csv"
-  summary_file: "model_summary.json"
-```
+# Training Hyperparameters
+batch_size: 32          # Global batch size
+grad_accum: 4           # Gradient accumulation steps
+lr: 0.0003              # Peak learning rate
+dropout_rate: 0.1       # Dropout probability
+epochs: 10              # Number of training epochs
+optimizer: "adamw"      # Optimizer type (adamw or adam)
 
-## Usage
+# System & Checkpointing
+gradient_checkpointing: true # Save VRAM by recomputing activations
+alpha_balance: 0.01          # Coefficient for MoE balancing loss
 
-### 1. Training
-The training script supports both local text files and Hugging Face datasets. It automatically handles the tokenizer initialization, train/validation split, and logs performance metrics.
+### 🔍 Parameter Breakdown
+
+#### 🏗️ Architecture
+* **`dim`**: The "width" of the model. Increasing this improves the model's capacity to represent complex patterns but significantly raises VRAM usage.
+* **`n_heads`**: Number of parallel attention mechanisms. It allows the model to simultaneously attend to information from different representation subspaces.
+* **`use_moe`**: If `true`, the model replaces the standard Feed-Forward Network (FFN) with a **Sparse Mixture of Experts**. This allows for a massive increase in total parameters without increasing the computational cost per token (FLOPs).
+* **`top_k_mlp`**: Only used if `use_moe` is active. It defines how many experts are "voted" for by the router for each individual token. Common values are 1 or 2.
+
+#### 📈 Optimization
+* **`grad_accum`**: Gradient Accumulation steps. Used to simulate larger batch sizes. If your GPU has limited VRAM, you can decrease `batch_size` and increase `grad_accum` to maintain training stability without crashing.
+* **`lr`**: The peak learning rate. The model follows a **Cosine Decay Schedule** with an initial 10% warmup period by default to prevent gradient instability at the start of training.
+* **`alpha_balance`**: Specifically for MoE. It controls the penalty for **"Expert Collapse"** (a situation where the router only learns to use one expert, leaving others untrained).
+
+#### 🛠️ Efficiency
+* **`weight_tying`**: Significantly reduces the `.msgpack` file size and VRAM usage by reusing the token embedding matrix for the final output predictions (LM Head).
+* **`gradient_checkpointing`**: Essential for training deep models on consumer-grade GPUs. It trades a bit of computation time (recomputing activations during the backward pass) for massive memory efficiency.
+
+## 🚀 Installation
+
+Follow these steps to set up the environment and get **DantinoX** running on your local machine or server.
+
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/your-username/DantinoX.git](https://github.com/your-username/DantinoX.git)
+cd DantinoX
+
+### 2. Create a Virtual Environment
+It is recommended to use `conda` or `venv` to manage dependencies:
 
 ```bash
-# Training on a local text file
-python train.py --data_path data/dante.txt
+# Using venv
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
 
-# Overriding configuration parameters via CLI
-python train.py --data_path data/math.txt --batch_size 64 --optimizer adafactor
-```
+# Or using Conda
+conda create -n dantinox python=3.12
+conda activate dantinox
 
-During training, metrics are printed every 50 steps and saved to `training_log.csv`.
+### 3. Install Dependencies
+DantinoX is powered by **JAX**. Depending on your hardware (CPU vs GPU), choose the appropriate installation command:
 
-### 2. Inference & Text Generation
-Use the `generate.py` script to test your trained model. It utilizes a persistent **KV Cache** to ensure high-speed, constant-time token generation.
-
+**For NVIDIA GPU (Highly Recommended):**
 ```bash
-python generate.py --prompt "Nel mezzo del cammin " --max_new_tokens 50 --greedy
-```
+pip install --upgrade "jax[cuda12]"
+pip install -r requirements.txt
 
-## Metrics and Monitoring
 
-DantinoX is built for transparency. Every run generates detailed logs for later analysis and plotting:
+## 🚄 Training
 
-* **Model Summary (`model_summary.json`)**: Exported at startup. It contains the total parameter count, estimated VRAM for weights, optimizer states, and peak activation memory.
-* **Training Logs (`training_log.csv`)**: Real-time logging of:
-    * `train_loss` / `val_loss`: Cross-entropy metrics.
-    * `vram_gb`: Actual GPU/TPU memory usage.
-    * `ms_per_step`: Latency per training step.
+The training pipeline is optimized using **JAX/Flax NNX**, featuring functional state management and JIT compilation for maximum hardware utilization.
 
-## Architecture Deep Dive
+### 1. Basic Usage
+To start a training run using the default configuration:
+```bash
+python train.py --config configs/default_config.yaml
 
-### Sub-Nano Strategy
-While "Nano" models usually refer to architectures with 50M+ parameters, **DantinoX** targets the **Sub-Nano** regime (<20M active parameters). By utilizing a **Mixture of Experts (MoE)**, we keep the computational cost per token extremely low while maintaining the representational power of a larger dense model.
+You can also override any configuration parameter directly from the command line:
+```bash
+python train.py --batch_size 64 --lr 5e-4 --use_moe True
 
-### Efficient Attention
-By combining **Sliding Window Attention (SWA)** with **Rotary Positional Embeddings (RoPE)**, DantinoX avoids the memory bottleneck of global self-attention. This allows the model to handle sequences effectively without the quadratic memory growth typical of standard Transformers.
+### 2. Training Features
+* **JIT-Compiled Steps**: The training loop utilizes `@jax.jit` for the core update step, ensuring that the model logic, optimizer updates, and metric calculations are fused into a single optimized XLA kernel.
+* **Gradient Accumulation**: Supports large effective batch sizes on limited VRAM by splitting the global batch into multiple micro-batches via `grad_accum`.
+* **Mixture of Experts (MoE) Balancing**: Automatically monitors and applies an auxiliary `balancing_loss` to ensure even expert utilization and prevent routing collapse.
+* **Automatic Positional Formatting**: The script pre-processes text (specifically optimized for the Divine Comedy) into formatted triplets before tokenization to preserve poetic structure.
 
-## License
+### 3. Monitoring & Logging
+Each training session creates a unique directory in `runs/run_YYYYMMDD_HHMMSS/` containing:
+* `config.yaml`: A snapshot of the parameters used.
+* `model_summary.json`: Estimated VRAM usage and parameter counts.
+* `training_log.csv`: Real-time metrics updated every 50 steps.
+* `model_weights.msgpack`: The final trained weights in a highly compressed format.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Console Output Example:**
+```text
+Step    50/4200 | Train: 4.1204 (Bal: 0.0452) | Val: 4.1560 (Bal: 0.0461) | VRAM: 3.42GB
+Step   100/4200 | Train: 3.8901 (Bal: 0.0421) | Val: 3.9102 (Bal: 0.0415) | VRAM: 3.42GB
 
----
-**DantinoX** - *Small in size, Divine in Architecture.*
-Created by [winstonsmith1897](https://github.com/winstonsmith1897)
+### 4. Metrics Tracked
+
+| Metric | Description |
+| :--- | :--- |
+| **Train/Val Loss** | Standard Cross-Entropy loss for next-token prediction. |
+| **Balancing Loss** | Auxiliary loss ensuring load balancing across MoE experts. |
+| **VRAM GB** | Real-time GPU memory consumption. |
+| **ms_per_step** | Temporal efficiency of the training loop. |

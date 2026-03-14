@@ -6,3 +6,9 @@ Step     0/456 | Loss: 8.1300 | VRAM: 0.16GB
 Step    50/456 | Loss: 7.5040 | VRAM: 0.17GB
 Step   100/456 | Loss: 6.9832 | VRAM: 0.18GB
 Step   150/456 | Loss: 6.7846 | VRAM: 0.18GB
+Step   200/456 | Loss: 6.6844 | VRAM: 0.17GB
+Step   250/456 | Loss: 6.6397 | VRAM: 0.17GB
+Step   300/456 | Loss: 6.5972 | VRAM: 0.17GB
+Step   350/456 | Loss: 6.5692 | VRAM: 0.17GB
+Step   400/456 | Loss: 6.5695 | VRAM: 0.17GB
+Step   450/456 | Loss: 6.5649 | VRAM: 0.17GB

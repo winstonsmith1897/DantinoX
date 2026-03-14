@@ -1,0 +1,46 @@
+wandb_version: 1
+
+alpha_balance:
+  value: 0.06818901323186935
+batch_size:
+  value: 16
+context_window:
+  value: 128
+dim:
+  value: 512
+dropout_rate:
+  value: 0
+epochs:
+  value: 24
+expansion:
+  value: 2
+grad_accum:
+  value: 8
+kv_heads:
+  value: 2
+lr:
+  value: 0.0003037517622770864
+max_context:
+  value: 512
+n_experts:
+  value: 4
+no_sink:
+  value: false
+num_blocks:
+  value: 4
+optimizer:
+  value: lion
+pos_encoding:
+  value: rotary
+sliding_window:
+  value: true
+tokenizer_type:
+  value: bpe
+top_k_mlp:
+  value: 2
+use_moe:
+  value: false
+warmup_steps:
+  value: 50
+weight_tying:
+  value: true
