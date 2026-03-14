@@ -1,39 +1,25 @@
 <div align="center">
+
 # 𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛
 
-``` text
+```text
 ██████╗  █████╗ ███╗   ██╗████████╗██╗███╗   ██╗ ██████╗ ██╗  ██╗
 ██╔══██╗██╔══██╗████╗  ██║╚══██╔══╝██║████╗  ██║██╔═══██╗╚██╗██╔╝
-██║  ██║███████║██╔██╗ ██║   ██║   ██║██╔██╗ ██║██║   ██║ ╚███╔╝
-██║  ██║██╔══██║██║╚██╗██║   ██║   ██║██║╚██╗██║██║   ██║ ██╔██╗
+██║  ██║███████║██╔██╗ ██║   ██║   ██║██╔██╗ ██║██║   ██║ ╚███╔╝ 
+██║  ██║██╔══██║██║╚██╗██║   ██║   ██║██║╚██╗██║██║   ██║ ██╔██╗ 
 ██████╔╝██║  ██║██║ ╚████║   ██║   ██║██║ ╚████║╚██████╔╝██╔╝ ██╗
 ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝
-```
+<i>"Ah JAX, vituperio delle genti..."</i>
 
-`<i>`{=html}"Ah JAX, vituperio delle genti..."`</i>`{=html}\
-`<b>`{=html}(Ah JAX, the shame of the people...)`</b>`{=html}
 
-`<br>`{=html}
+<b>(Ah JAX, the shame of the people...)</b>
 
-A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and
-**Flax NNX**.
+A Transformer so "nano" it barely rhymes, implemented in JAX and Flax NNX.
 
-Built with equal parts **sweat, tears, and XLA compilation errors**.
 
-`<br>`{=html}
+Built with equal parts sweat, tears, and XLA compilation errors, with absolutely zero pretensions.
 
-[![JAX](https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white)](https://github.com/google/jax)
-[![Flax
-NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
-[![Python
-3.12+](https://img.shields.io/badge/Python_3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![NVIDIA
-GPU](https://img.shields.io/badge/Hardware-NVIDIA_GPU-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://developer.nvidia.com/)
-[![License:
-MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-:::
-
-`<br>`{=html}
+</div>
 
 ![DantinoX Architecture](images/dantinox.png)
 
