@@ -87,8 +87,12 @@ def main():
         model=model,
         x=x,
         max_generations=args.max_new_tokens,
-        greedy=args.greedy,
-        seed=args.seed
+        greedy=config.greedy,
+        seed=config.seed,
+        use_cache=config.use_cache,
+        top_k=config.top_k,
+        top_p=config.top_p,
+        temperature=config.temperature
     )
     
     t1 = time.time()

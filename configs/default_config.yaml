@@ -44,6 +44,16 @@ training:
   epochs: 100 #1000
   warmup_steps: 0 #100
 
+
+generation:
+  use_cache: true
+  top_p: None
+  top_k: None
+  seed: 42
+  greedy: false
+  max_generations: 150
+  temperature: 1.0
+
 logging:
   eval_iters: 20
   log_file: "training_log.csv"
