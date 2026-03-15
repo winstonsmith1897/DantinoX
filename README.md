@@ -22,7 +22,7 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 <br>
 
 <p align="center">
-  <img src="images/dantinox.png" alt="DantinoX Architecture">
+  <img src="docs/images/dantinox.png" alt="DantinoX Architecture">
 </p>
 
 ------------------------------------------------------------------------
