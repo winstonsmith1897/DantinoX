@@ -48,8 +48,8 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
       
     
     
@@ -69,7 +69,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -90,7 +90,9 @@
     
       
 
-<header class="md-header" data-md-component="header">
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="DantinoX Documentation" class="md-header__button md-logo" aria-label="DantinoX Documentation" data-md-component="logo">
       
@@ -125,7 +127,21 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
     
   
 </form>
@@ -161,6 +177,8 @@
         </button>
       </nav>
       
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
     </form>
     <div class="md-search__output">
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
@@ -191,14 +209,8 @@
     
   </nav>
   
-</header>
     
-    <div class="md-container" data-md-component="container">
       
-      
-        
-          
-            
 <nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
@@ -284,7 +296,13 @@
     </ul>
   </div>
 </nav>
-          
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
         
       
       <main class="md-main" data-md-component="main">
@@ -653,78 +671,78 @@
 <h2 id="configuration-reference">Configuration Reference</h2>
 <p>DantinoX is entirely driven by a centralized YAML configuration. This design allows you to easily ablate architectural components (like toggling MoE or sliding window attention) without modifying the core JAX codebase.</p>
 <p>Below is the annotated <code>default_config.yaml</code>:</p>
-<h2 id="model-dim-512-core-hidden-dimension-n_heads-16-number-of-query-heads-kv_heads-4-number-of-keyvalue-heads-set-n_heads-for-gqa-head_size-32-dimensionality-of-each-attention-head-num_blocks-12-number-of-transformer-layers-max_context-512-maximum-sequence-length-weight_tying-true-share-weights-between-embedding-and-lm-head-activation-gelu-non-linear-activation-function-gradient_checkpointing-true-enable-nnxremat-to-reduce-vram-usage-dropout_rate-015-regularization-dropout-probability-moe-use_moe-true-toggle-sparse-moe-vs-standard-dense-ffn-n_experts-4-total-number-of-routed-experts-top_k_mlp-2-number-of-experts-activated-per-token-expansion-4-hidden-dimension-expansion-factor-in-experts-alpha_balance-01-weight-of-the-auxiliary-load-balancing-loss-attention-use_rotary_pos-true-enable-rotary-positional-embeddings-rope-trainable_pos-false-enable-standard-learned-positional-embeddings-absolute_pos-false-enable-absolute-sinusoidal-embeddings-sliding_window-true-restrict-attention-to-a-local-past-context-context_window-64-size-of-the-local-window-if-sliding_window-true-no_sink-true-enable-attention-gating-to-stabilize-training-tokenizer-tokenizer_type-char-tokenization-strategy-eg-character-level-bpe-vocab_size-2000-maximum-vocabulary-size-tokenizer_path-configsvocabjson-path-to-saveload-vocabulary-mapping-data-dataset_source-huggingface-source-platform-for-the-training-corpus-dataset_name-danieledante-corpus-dataset-identifier-streaming-true-stream-data-to-bypass-local-ram-constraints-training-lr-00015-peak-learning-rate-batch_size-64-global-batch-size-grad_accum-4-gradient-accumulation-steps-for-large-effective-batches-seed-42-rng-seed-for-reproducibility-optimizer-adamw-optimizer-algorithm-epochs-100-total-training-epochs-warmup_steps-0-number-of-steps-for-learning-rate-warmup-generation-use_cache-true-enable-static-kv-cache-for-fast-autoregressive-decoding-top_p-null-nucleus-sampling-threshold-null-to-disable-top_k-null-top-k-sampling-threshold-null-to-disable-seed-42-rng-seed-for-generation-sampling-greedy-false-toggle-greedy-decoding-vs-stochastic-sampling-max_generations-150-maximum-number-of-tokens-to-generate-temperature-13-sampling-temperature-higher-more-random-logging-eval_iters-20-frequency-of-evaluation-and-metric-logging-log_file-training_logcsv-path-for-training-metrics-output-summary_file-model_summaryjson-path-to-dump-architecture-parameter-summary"><div class="highlight"><pre><span></span><code><span class="nt">model</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span><span class="w">                    </span><span class="c1"># Core hidden dimension</span>
-<span class="w">  </span><span class="nt">n_heads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span><span class="w">                 </span><span class="c1"># Number of query heads</span>
-<span class="w">  </span><span class="nt">kv_heads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                 </span><span class="c1"># Number of key/value heads (set &lt; n_heads for GQA)</span>
-<span class="w">  </span><span class="nt">head_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">32</span><span class="w">               </span><span class="c1"># Dimensionality of each attention head</span>
-<span class="w">  </span><span class="nt">num_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span><span class="w">              </span><span class="c1"># Number of transformer layers</span>
-<span class="w">  </span><span class="nt">max_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span><span class="w">            </span><span class="c1"># Maximum sequence length</span>
-<span class="w">  </span><span class="nt">weight_tying</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">          </span><span class="c1"># Share weights between embedding and LM head</span>
-<span class="w">  </span><span class="nt">activation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gelu</span><span class="w">            </span><span class="c1"># Non-linear activation function</span>
-<span class="w">  </span><span class="nt">gradient_checkpointing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># Enable nnx.remat to reduce VRAM usage</span>
-<span class="w">  </span><span class="nt">dropout_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span><span class="w">          </span><span class="c1"># Regularization dropout probability</span>
-
-<span class="nt">moe</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">use_moe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># Toggle Sparse MoE vs standard Dense FFN</span>
-<span class="w">  </span><span class="nt">n_experts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                </span><span class="c1"># Total number of routed experts</span>
-<span class="w">  </span><span class="nt">top_k_mlp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                </span><span class="c1"># Number of experts activated per token</span>
-<span class="w">  </span><span class="nt">expansion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                </span><span class="c1"># Hidden dimension expansion factor in experts</span>
-<span class="w">  </span><span class="nt">alpha_balance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w">          </span><span class="c1"># Weight of the auxiliary load-balancing loss</span>
-
-<span class="nt">attention</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">use_rotary_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># Enable Rotary Positional Embeddings (RoPE)</span>
-<span class="w">  </span><span class="nt">trainable_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">        </span><span class="c1"># Enable standard learned positional embeddings</span>
-<span class="w">  </span><span class="nt">absolute_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">         </span><span class="c1"># Enable absolute sinusoidal embeddings</span>
-<span class="w">  </span><span class="nt">sliding_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># Restrict attention to a local past context</span>
-<span class="w">  </span><span class="nt">context_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span><span class="w">          </span><span class="c1"># Size of the local window (if sliding_window: true)</span>
-<span class="w">  </span><span class="nt">no_sink</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># Enable attention gating to stabilize training</span>
-
-<span class="nt">tokenizer</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">tokenizer_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;char&quot;</span><span class="w">      </span><span class="c1"># Tokenization strategy (e.g., character-level, BPE)</span>
-<span class="w">  </span><span class="nt">vocab_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000</span><span class="w">            </span><span class="c1"># Maximum vocabulary size</span>
-<span class="w">  </span><span class="nt">tokenizer_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;configs/vocab.json&quot;</span><span class="w"> </span><span class="c1"># Path to save/load vocabulary mapping</span>
-
-<span class="nt">data</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset_source</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;huggingface&quot;</span><span class="w"> </span><span class="c1"># Source platform for the training corpus</span>
-<span class="w">  </span><span class="nt">dataset_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Daniele/dante-corpus&quot;</span><span class="w"> </span><span class="c1"># Dataset identifier</span>
-<span class="w">  </span><span class="nt">streaming</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">             </span><span class="c1"># Stream data to bypass local RAM constraints</span>
-
-<span class="nt">training</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0015</span><span class="w">                  </span><span class="c1"># Peak learning rate</span>
-<span class="w">  </span><span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span><span class="w">              </span><span class="c1"># Global batch size</span>
-<span class="w">  </span><span class="nt">grad_accum</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">               </span><span class="c1"># Gradient accumulation steps for large effective batches</span>
-<span class="w">  </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">42</span><span class="w">                    </span><span class="c1"># RNG seed for reproducibility</span>
-<span class="w">  </span><span class="nt">optimizer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;adamw&quot;</span><span class="w">          </span><span class="c1"># Optimizer algorithm</span>
-<span class="w">  </span><span class="nt">epochs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                 </span><span class="c1"># Total training epochs</span>
-<span class="w">  </span><span class="nt">warmup_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">             </span><span class="c1"># Number of steps for learning rate warmup</span>
-
-<span class="nt">generation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">use_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">             </span><span class="c1"># Enable static KV cache for fast autoregressive decoding</span>
-<span class="w">  </span><span class="nt">top_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                 </span><span class="c1"># Nucleus sampling threshold (null to disable)</span>
-<span class="w">  </span><span class="nt">top_k</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                 </span><span class="c1"># Top-k sampling threshold (null to disable)</span>
-<span class="w">  </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">42</span><span class="w">                    </span><span class="c1"># RNG seed for generation sampling</span>
-<span class="w">  </span><span class="nt">greedy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">               </span><span class="c1"># Toggle greedy decoding vs stochastic sampling</span>
-<span class="w">  </span><span class="nt">max_generations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">150</span><span class="w">        </span><span class="c1"># Maximum number of tokens to generate</span>
-<span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.3</span><span class="w">            </span><span class="c1"># Sampling temperature (higher = more random)</span>
-
-<span class="nt">logging</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">eval_iters</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span><span class="w">              </span><span class="c1"># Frequency of evaluation and metric logging</span>
-<span class="w">  </span><span class="nt">log_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;training_log.csv&quot;</span><span class="w"> </span><span class="c1"># Path for training metrics output</span>
-<span class="w">  </span><span class="nt">summary_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;model_summary.json&quot;</span><span class="w"> </span><span class="c1"># Path to dump architecture parameter summary</span>
-</code></pre></div></h2>
+<h2 id="model-dim-512-core-hidden-dimension-n_heads-16-number-of-query-heads-kv_heads-4-number-of-keyvalue-heads-set-n_heads-for-gqa-head_size-32-dimensionality-of-each-attention-head-num_blocks-12-number-of-transformer-layers-max_context-512-maximum-sequence-length-weight_tying-true-share-weights-between-embedding-and-lm-head-activation-gelu-non-linear-activation-function-gradient_checkpointing-true-enable-nnxremat-to-reduce-vram-usage-dropout_rate-015-regularization-dropout-probability-moe-use_moe-true-toggle-sparse-moe-vs-standard-dense-ffn-n_experts-4-total-number-of-routed-experts-top_k_mlp-2-number-of-experts-activated-per-token-expansion-4-hidden-dimension-expansion-factor-in-experts-alpha_balance-01-weight-of-the-auxiliary-load-balancing-loss-attention-use_rotary_pos-true-enable-rotary-positional-embeddings-rope-trainable_pos-false-enable-standard-learned-positional-embeddings-absolute_pos-false-enable-absolute-sinusoidal-embeddings-sliding_window-true-restrict-attention-to-a-local-past-context-context_window-64-size-of-the-local-window-if-sliding_window-true-no_sink-true-enable-attention-gating-to-stabilize-training-tokenizer-tokenizer_type-char-tokenization-strategy-eg-character-level-bpe-vocab_size-2000-maximum-vocabulary-size-tokenizer_path-configsvocabjson-path-to-saveload-vocabulary-mapping-data-dataset_source-huggingface-source-platform-for-the-training-corpus-dataset_name-danieledante-corpus-dataset-identifier-streaming-true-stream-data-to-bypass-local-ram-constraints-training-lr-00015-peak-learning-rate-batch_size-64-global-batch-size-grad_accum-4-gradient-accumulation-steps-for-large-effective-batches-seed-42-rng-seed-for-reproducibility-optimizer-adamw-optimizer-algorithm-epochs-100-total-training-epochs-warmup_steps-0-number-of-steps-for-learning-rate-warmup-generation-use_cache-true-enable-static-kv-cache-for-fast-autoregressive-decoding-top_p-null-nucleus-sampling-threshold-null-to-disable-top_k-null-top-k-sampling-threshold-null-to-disable-seed-42-rng-seed-for-generation-sampling-greedy-false-toggle-greedy-decoding-vs-stochastic-sampling-max_generations-150-maximum-number-of-tokens-to-generate-temperature-13-sampling-temperature-higher-more-random-logging-eval_iters-20-frequency-of-evaluation-and-metric-logging-log_file-training_logcsv-path-for-training-metrics-output-summary_file-model_summaryjson-path-to-dump-architecture-parameter-summary"><div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span><span class="w">                    </span><span class="c1"># Core hidden dimension</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">n_heads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span><span class="w">                 </span><span class="c1"># Number of query heads</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">kv_heads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                 </span><span class="c1"># Number of key/value heads (set &lt; n_heads for GQA)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">head_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">32</span><span class="w">               </span><span class="c1"># Dimensionality of each attention head</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">num_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span><span class="w">              </span><span class="c1"># Number of transformer layers</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">max_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span><span class="w">            </span><span class="c1"># Maximum sequence length</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">weight_tying</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">          </span><span class="c1"># Share weights between embedding and LM head</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">activation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gelu</span><span class="w">            </span><span class="c1"># Non-linear activation function</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">gradient_checkpointing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># Enable nnx.remat to reduce VRAM usage</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">dropout_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span><span class="w">          </span><span class="c1"># Regularization dropout probability</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">moe</span><span class="p">:</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span><span class="nt">use_moe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># Toggle Sparse MoE vs standard Dense FFN</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="nt">n_experts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                </span><span class="c1"># Total number of routed experts</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="nt">top_k_mlp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                </span><span class="c1"># Number of experts activated per token</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="nt">expansion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                </span><span class="c1"># Hidden dimension expansion factor in experts</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nt">alpha_balance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w">          </span><span class="c1"># Weight of the auxiliary load-balancing loss</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="nt">attention</span><span class="p">:</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">  </span><span class="nt">use_rotary_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># Enable Rotary Positional Embeddings (RoPE)</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">  </span><span class="nt">trainable_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">        </span><span class="c1"># Enable standard learned positional embeddings</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">  </span><span class="nt">absolute_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">         </span><span class="c1"># Enable absolute sinusoidal embeddings</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="nt">sliding_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># Restrict attention to a local past context</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">  </span><span class="nt">context_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span><span class="w">          </span><span class="c1"># Size of the local window (if sliding_window: true)</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span><span class="nt">no_sink</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># Enable attention gating to stabilize training</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="nt">tokenizer</span><span class="p">:</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">  </span><span class="nt">tokenizer_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;char&quot;</span><span class="w">      </span><span class="c1"># Tokenization strategy (e.g., character-level, BPE)</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">  </span><span class="nt">vocab_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000</span><span class="w">            </span><span class="c1"># Maximum vocabulary size</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="nt">tokenizer_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;configs/vocab.json&quot;</span><span class="w"> </span><span class="c1"># Path to save/load vocabulary mapping</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">  </span><span class="nt">dataset_source</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;huggingface&quot;</span><span class="w"> </span><span class="c1"># Source platform for the training corpus</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">  </span><span class="nt">dataset_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Daniele/dante-corpus&quot;</span><span class="w"> </span><span class="c1"># Dataset identifier</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">  </span><span class="nt">streaming</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">             </span><span class="c1"># Stream data to bypass local RAM constraints</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="nt">training</span><span class="p">:</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="nt">lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0015</span><span class="w">                  </span><span class="c1"># Peak learning rate</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span><span class="w">              </span><span class="c1"># Global batch size</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">grad_accum</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">               </span><span class="c1"># Gradient accumulation steps for large effective batches</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">42</span><span class="w">                    </span><span class="c1"># RNG seed for reproducibility</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">  </span><span class="nt">optimizer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;adamw&quot;</span><span class="w">          </span><span class="c1"># Optimizer algorithm</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="nt">epochs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                 </span><span class="c1"># Total training epochs</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">  </span><span class="nt">warmup_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">             </span><span class="c1"># Number of steps for learning rate warmup</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="nt">generation</span><span class="p">:</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">  </span><span class="nt">use_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">             </span><span class="c1"># Enable static KV cache for fast autoregressive decoding</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="w">  </span><span class="nt">top_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                 </span><span class="c1"># Nucleus sampling threshold (null to disable)</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">top_k</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                 </span><span class="c1"># Top-k sampling threshold (null to disable)</span>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">  </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">42</span><span class="w">                    </span><span class="c1"># RNG seed for generation sampling</span>
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">  </span><span class="nt">greedy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">               </span><span class="c1"># Toggle greedy decoding vs stochastic sampling</span>
+</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">  </span><span class="nt">max_generations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">150</span><span class="w">        </span><span class="c1"># Maximum number of tokens to generate</span>
+</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.3</span><span class="w">            </span><span class="c1"># Sampling temperature (higher = more random)</span>
+</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>
+</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="nt">logging</span><span class="p">:</span>
+</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">  </span><span class="nt">eval_iters</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span><span class="w">              </span><span class="c1"># Frequency of evaluation and metric logging</span>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">  </span><span class="nt">log_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;training_log.csv&quot;</span><span class="w"> </span><span class="c1"># Path for training metrics output</span>
+</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">  </span><span class="nt">summary_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;model_summary.json&quot;</span><span class="w"> </span><span class="c1"># Path to dump architecture parameter summary</span>
+</span></code></pre></div></h2>
 <h2 id="quickstart-installation">Quickstart &amp; Installation</h2>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/winstonsmith1897/DantinoX.git
-<span class="nb">cd</span><span class="w"> </span>DantinoX
-
-<span class="c1"># 1. Create and activate environment (Conda recommended)</span>
-conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>dantinox<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.12<span class="w"> </span>-y
-conda<span class="w"> </span>activate<span class="w"> </span>dantinox
-
-<span class="c1"># 2. Install JAX with NVIDIA GPU support, then project dependencies</span>
-pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s2">&quot;jax[cuda12]&quot;</span>
-pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
-</code></pre></div>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/winstonsmith1897/DantinoX.git
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>DantinoX
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># 1. Create and activate environment (Conda recommended)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>dantinox<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.12<span class="w"> </span>-y
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>conda<span class="w"> </span>activate<span class="w"> </span>dantinox
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># 2. Install JAX with NVIDIA GPU support, then project dependencies</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span><span class="s2">&quot;jax[cuda12]&quot;</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</span></code></pre></div>
 <p><em>(Note: For standard <code>venv</code>, use <code>python -m venv venv &amp;&amp; source venv/bin/activate</code> instead).</em></p>
 <hr />
 
@@ -744,8 +762,16 @@ pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </s
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
         
       </main>
       
@@ -776,7 +802,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </s
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
