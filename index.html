@@ -548,24 +548,17 @@
 
 
 <div align="center">
+  <h1>𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛</h1>
 
-# 𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛
+  <p><i>"Ah JAX, vituperio delle genti..."</i><br>
+  <b>(Ah JAX, the shame of the people...)</b></p>
 
-<i>"Ah JAX, vituperio delle genti..."</i>  
-<b>(Ah JAX, the shame of the people...)</b>
+  <p>A Transformer so <b>"nano" it barely rhymes</b>, implemented in <b>JAX</b> and <b>Flax NNX</b>. Built with <b>sweat</b> and <b>XLA errors</b>.</p>
 
-<br>
-
-A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with **sweat** and **XLA errors**.
-
-
-<br>
-
-[![JAX](https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white)](https://github.com/google/jax)
-[![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-
+  <a href="https://github.com/google/jax"><img src="https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white" alt="JAX"></a>
+  <a href="https://github.com/google/flax"><img src="https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white" alt="Flax NNX"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License"></a>
 </div>
 
 <p><br></p>
@@ -597,12 +590,13 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 </blockquote>
 <hr />
 <h1 id="project-structure">Project Structure</h1>
-<pre><code>DantinoX/
+<p>```text
+DantinoX/
 ├── core/                   # Core neural network logic
 │   ├── config.py           # Configuration parameters (Config Dataclass)
 │   ├── model.py            # Transformer architecture (Attention, MLP, MoE, Block)
 │   ├── generation.py       # Inference engine &amp; static KV-Cache management
-│   └── __init__.py
+│   └── <strong>init</strong>.py
 │
 ├── configs/                # YAML configuration files
 │   ├── default_config.yaml # Standard training setup
@@ -611,16 +605,14 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 ├── utils/                  # Utility functions
 │   ├── tokenizer.py        # Tokenizer management (Char-level &amp; Byte-Level BPE)
 │   ├── helpers.py          # Loss functions, batching, sharding logic
-│   └── __init__.py
+│   └── <strong>init</strong>.py
 │
 ├── runs/                   # Training outputs (weights, logs, saved configs)
 │
-├── analyze_dataset.py      # Dataset statistical analysis
 ├── train.py                # Training script
 ├── generate.py             # Text generation script
 ├── requirements.txt        # Python dependencies
-└── README.md               # Documentation
-</code></pre>
+└── README.md               # Documentation</p>
 
 
 
