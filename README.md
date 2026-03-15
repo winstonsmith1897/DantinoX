@@ -310,9 +310,9 @@ Through extensive hyperparameter sweeps (ID: `cacbxc69`) logged via **Weights & 
 
 | ⚙️ Core Optimization & Routing | 🧠 Attention Mechanisms |
 | :---: | :---: |
-| <img src="assets/loss_by_optimizer.png" alt="Optimizer Convergence" width="100%"/> | <img src="assets/loss_by_moe.png" alt="MoE Impact" width="100%"/> |
+| <img src="docs/assets/loss_by_optimizer.png" alt="Optimizer Convergence" width="100%"/> | <img src="docs/assets/loss_by_moe.png" alt="MoE Impact" width="100%"/> |
 | **Convergence by Optimizer:** Isolating the impact of the optimization algorithm across identical architectures. | **Sparse MoE vs Dense:** Evaluating the convergence speed when routing parameters through Top-K experts. |
-| <img src="assets/loss_by_sliding_window.png" alt="Sliding Window" width="100%"/> | <img src="assets/loss_by_no_sink.png" alt="Attention Sink" width="100%"/> |
+| <img src="docs/assets/loss_by_sliding_window.png" alt="Sliding Window" width="100%"/> | <img src="docs/assets/loss_by_no_sink.png" alt="Attention Sink" width="100%"/> |
 | **Sliding Window:** Impact of restricting the attention receptive field on the learning trajectory. | **Attention Sink Gating:** Training stability achieved by applying a sigmoid gate (`no_sink`) to attention outputs. |
 
 ---
@@ -321,7 +321,7 @@ Through extensive hyperparameter sweeps (ID: `cacbxc69`) logged via **Weights & 
 
 | 🔗 Parameter Sharing | 💾 Memory Footprint |
 | :---: | :---: |
-| <img src="assets/loss_by_weight_tying.png" alt="Weight Tying" width="100%"/> | <img src="assets/vram_comparison.png" alt="VRAM Footprint" width="100%"/> |
+| <img src="docs/assets/loss_by_weight_tying.png" alt="Weight Tying" width="100%"/> | <img src="docs/assets/vram_comparison.png" alt="VRAM Footprint" width="100%"/> |
 | **Weight Tying:** Convergence behavior when tying the embedding matrix to the output language modeling head. | **Peak VRAM (Dense vs Sparse MoE):** Scaling capacity via MoE while maintaining a constrained VRAM footprint. |
 
 > *Charts generated automatically from W&B Sweep telemetry using the internal plotting scripts.*
