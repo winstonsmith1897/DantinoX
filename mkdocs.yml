@@ -1,0 +1,28 @@
+site_name: DantinoX Documentation
+site_description: A from-scratch LLM built natively in JAX and Flax NNX.
+site_author: Marco Simoni
+repo_url: https://github.com/winstonsmith1897/DantinoX
+repo_name: winstonsmith1897/DantinoX
+
+theme:
+  name: material
+  features:
+    - navigation.tabs 
+    - navigation.sections
+    - content.code.copy 
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: deep purple
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - tables
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Training & Sweeps: training.md
+  - Inference & Generation: generation.md
