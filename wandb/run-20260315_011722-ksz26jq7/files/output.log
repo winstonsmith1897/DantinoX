@@ -1,0 +1,42 @@
+[34m[1mwandb[0m: Detected [huggingface_hub.inference] in use.
+[34m[1mwandb[0m: Use W&B Weave for improved LLM call tracing. Install Weave with `pip install weave` then add `import weave` to the top of your script.
+[34m[1mwandb[0m: For more information, check out the docs at: https://weave-docs.wandb.ai/
+Params: 23.69M | Est. VRAM: 994.82MB
+Step     0/1856 | Loss: 4.4690 | VRAM: 0.21GB
+Step    50/1856 | Loss: 2.9956 | VRAM: 0.21GB
+Step   100/1856 | Loss: 2.9724 | VRAM: 0.22GB
+Step   150/1856 | Loss: 2.9794 | VRAM: 0.22GB
+Step   200/1856 | Loss: 2.9742 | VRAM: 0.23GB
+Step   250/1856 | Loss: 2.9702 | VRAM: 0.23GB
+Step   300/1856 | Loss: 2.9723 | VRAM: 0.23GB
+Step   350/1856 | Loss: 2.9738 | VRAM: 0.23GB
+Step   400/1856 | Loss: 2.9719 | VRAM: 0.23GB
+Step   450/1856 | Loss: 2.9760 | VRAM: 0.23GB
+Step   500/1856 | Loss: 2.9683 | VRAM: 0.23GB
+Step   550/1856 | Loss: 2.8783 | VRAM: 0.22GB
+Step   600/1856 | Loss: 2.7582 | VRAM: 0.23GB
+Step   650/1856 | Loss: 2.7110 | VRAM: 0.23GB
+Step   700/1856 | Loss: 2.6656 | VRAM: 0.23GB
+Step   750/1856 | Loss: 2.6420 | VRAM: 0.23GB
+Step   800/1856 | Loss: 2.6091 | VRAM: 0.22GB
+Step   850/1856 | Loss: 2.6202 | VRAM: 0.23GB
+Step   900/1856 | Loss: 2.6152 | VRAM: 0.23GB
+Step   950/1856 | Loss: 2.5918 | VRAM: 0.23GB
+Step  1000/1856 | Loss: 2.5866 | VRAM: 0.23GB
+Step  1050/1856 | Loss: 2.5777 | VRAM: 0.23GB
+Step  1100/1856 | Loss: 2.5682 | VRAM: 0.23GB
+Step  1150/1856 | Loss: 2.5611 | VRAM: 0.23GB
+Step  1200/1856 | Loss: 2.5551 | VRAM: 0.23GB
+Step  1250/1856 | Loss: 2.5568 | VRAM: 0.24GB
+Step  1300/1856 | Loss: 2.5527 | VRAM: 0.24GB
+Step  1350/1856 | Loss: 2.5446 | VRAM: 0.24GB
+Step  1400/1856 | Loss: 2.5440 | VRAM: 0.24GB
+Step  1450/1856 | Loss: 2.5264 | VRAM: 0.24GB
+Step  1500/1856 | Loss: 2.5297 | VRAM: 0.24GB
+Step  1550/1856 | Loss: 2.5195 | VRAM: 0.24GB
+Step  1600/1856 | Loss: 2.5221 | VRAM: 0.24GB
+Step  1650/1856 | Loss: 2.5199 | VRAM: 0.24GB
+Step  1700/1856 | Loss: 2.5279 | VRAM: 0.24GB
+Step  1750/1856 | Loss: 2.5333 | VRAM: 0.24GB
+Step  1800/1856 | Loss: 2.5102 | VRAM: 0.24GB
+Step  1850/1856 | Loss: 2.5172 | VRAM: 0.23GB

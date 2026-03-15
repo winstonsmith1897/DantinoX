@@ -1,0 +1,25 @@
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_setup.py:_flush():81] Current SDK version is 0.25.1
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_setup.py:_flush():81] Configure stats pid to 4089867
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX/wandb/run-20260315_001945-eoks0qni/logs/debug.log
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX/wandb/run-20260315_001945-eoks0qni/logs/debug-internal.log
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_init.py:init():844] calling init triggers
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_init.py:init():849] wandb.init called with sweep_config: {'alpha_balance': 0.02986738469765981, 'batch_size': 64, 'context_window': 64, 'dim': 256, 'dropout_rate': 0.1, 'epochs': 12, 'expansion': 2, 'grad_accum': 2, 'kv_heads': 4, 'lr': 0.00020846292100115576, 'max_context': 256, 'n_experts': 4, 'no_sink': True, 'num_blocks': 4, 'optimizer': 'lion', 'pos_encoding': 'rotary', 'sliding_window': False, 'tokenizer_type': 'char', 'top_k_mlp': 2, 'use_moe': False, 'warmup_steps': 100, 'weight_tying': False}
+config: {'_wandb': {}}
+2026-03-15 00:19:45,144 INFO    MainThread:4089867 [wandb_init.py:init():892] starting backend
+2026-03-15 00:19:45,399 INFO    MainThread:4089867 [wandb_init.py:init():895] sending inform_init request
+2026-03-15 00:19:45,405 INFO    MainThread:4089867 [wandb_init.py:init():903] backend started and connected
+2026-03-15 00:19:45,406 INFO    MainThread:4089867 [wandb_run.py:_config_callback():1403] config_cb None None {'alpha_balance': 0.02986738469765981, 'batch_size': 64, 'context_window': 64, 'dim': 256, 'dropout_rate': 0.1, 'epochs': 12, 'expansion': 2, 'grad_accum': 2, 'kv_heads': 4, 'lr': 0.00020846292100115576, 'max_context': 256, 'n_experts': 4, 'no_sink': True, 'num_blocks': 4, 'optimizer': 'lion', 'pos_encoding': 'rotary', 'sliding_window': False, 'tokenizer_type': 'char', 'top_k_mlp': 2, 'use_moe': False, 'warmup_steps': 100, 'weight_tying': False}
+2026-03-15 00:19:45,407 INFO    MainThread:4089867 [wandb_init.py:init():973] updated telemetry
+2026-03-15 00:19:45,413 INFO    MainThread:4089867 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-03-15 00:19:46,225 INFO    MainThread:4089867 [wandb_init.py:init():1042] starting run threads in backend
+2026-03-15 00:19:46,393 INFO    MainThread:4089867 [wandb_run.py:_console_start():2524] atexit reg
+2026-03-15 00:19:46,394 INFO    MainThread:4089867 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-03-15 00:19:46,394 INFO    MainThread:4089867 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-03-15 00:19:46,394 INFO    MainThread:4089867 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-03-15 00:19:46,396 INFO    MainThread:4089867 [wandb_init.py:init():1082] run started, returning control to user process
+2026-03-15 00:22:08,503 INFO    MainThread:4089867 [wandb_run.py:_finish():2291] finishing run iit_cnr/DantinoX/eoks0qni
+2026-03-15 00:22:08,505 INFO    MainThread:4089867 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-03-15 00:22:08,505 INFO    MainThread:4089867 [wandb_run.py:_restore():2472] restore
+2026-03-15 00:22:08,505 INFO    MainThread:4089867 [wandb_run.py:_restore():2478] restore done
+2026-03-15 00:22:09,362 INFO    MainThread:4089867 [wandb_run.py:_footer_sync_info():3868] logging synced files

@@ -1,0 +1,158 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            idf75ko7ensj7v7d3592pzasay9ny0u2:
+                args:
+                    - --alpha_balance=0.08420854951986258
+                    - --batch_size=32
+                    - --context_window=128
+                    - --dim=512
+                    - --dropout_rate=0
+                    - --epochs=16
+                    - --expansion=4
+                    - --grad_accum=2
+                    - --kv_heads=4
+                    - --lr=0.0011086967486458725
+                    - --max_context=256
+                    - --n_experts=4
+                    - --no_sink=False
+                    - --num_blocks=8
+                    - --optimizer=adamw
+                    - --pos_encoding=rotary
+                    - --sliding_window=True
+                    - --tokenizer_type=char
+                    - --top_k_mlp=1
+                    - --use_moe=False
+                    - --warmup_steps=200
+                    - --weight_tying=True
+                codePath: train_sweep.py
+                codePathLocal: train_sweep.py
+                cpu_count: 32
+                cpu_count_logical: 64
+                cudaVersion: "12.4"
+                disk:
+                    /:
+                        total: "942328844288"
+                        used: "48524464128"
+                email: marco.simoni0711@gmail.com
+                executable: /home/marco.simoni/miniconda3/bin/python
+                git:
+                    commit: 420408f89a7ed7b66e6c951ab8c1c3c3eddeb58b
+                    remote: https://winstonsmith1897:@github.com/winstonsmith1897/DantinoX.git
+                gpu: NVIDIA A100-PCIE-40GB
+                gpu_count: 8
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-25388d4a-917b-24f2-d02d-b87289f261fb
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-59ac89a0-9dd2-269a-7d7f-e0ee2de7609f
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-d0e54712-a8e8-5742-aa8b-6921320a131b
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-bb3d5e60-9522-2a6a-1b75-cf8d27e228a7
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-4bf90ae0-7d4f-91ef-fca4-959edcfc35d5
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-0c9d99f0-ee3a-a568-226d-eac9e3015881
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-e03a4a54-dad6-3eb5-0a64-b6687aa7d99b
+                    - architecture: Ampere
+                      cudaCores: 6912
+                      memoryTotal: "42949672960"
+                      name: NVIDIA A100-PCIE-40GB
+                      uuid: GPU-0894c4f1-0724-4bb4-04d4-527cd5e059b1
+                host: gpu1
+                memory:
+                    total: "1623216553984"
+                os: Linux-5.15.0-164-generic-x86_64-with-glibc2.35
+                program: /ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX/train_sweep.py
+                python: CPython 3.12.7
+                root: /ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX
+                startedAt: "2026-03-15T07:16:37.388536Z"
+                writerId: idf75ko7ensj7v7d3592pzasay9ny0u2
+        m: []
+        python_version: 3.12.7
+        t:
+            "1":
+                - 12
+                - 45
+                - 49
+                - 51
+            "2":
+                - 12
+                - 45
+                - 49
+                - 51
+            "3":
+                - 2
+                - 14
+            "4": 3.12.7
+            "5": 0.25.1
+            "12": 0.25.1
+            "13": linux-x86_64
+alpha_balance:
+    value: 0.08420854951986258
+batch_size:
+    value: 32
+context_window:
+    value: 128
+dim:
+    value: 512
+dropout_rate:
+    value: 0
+epochs:
+    value: 16
+expansion:
+    value: 4
+grad_accum:
+    value: 2
+kv_heads:
+    value: 4
+lr:
+    value: 0.0011086967486458725
+max_context:
+    value: 256
+n_experts:
+    value: 4
+no_sink:
+    value: false
+num_blocks:
+    value: 8
+optimizer:
+    value: adamw
+pos_encoding:
+    value: rotary
+sliding_window:
+    value: true
+tokenizer_type:
+    value: char
+top_k_mlp:
+    value: 1
+use_moe:
+    value: false
+warmup_steps:
+    value: 200
+weight_tying:
+    value: true

@@ -7,7 +7,7 @@
 
 <br>
 
-A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with equal parts **sweat**, **tears**, and **XLA compilation errors**.
+A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with **sweat** and **XLA compilation errors**.
 
 
 <br>
@@ -27,28 +27,34 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 
 ------------------------------------------------------------------------
 
-# Overview: The True Story
+# 🏛️ Overview: The DantinoX Project
 
-Let's be honest: the goal of this project is not to achieve AGI or challenge the Silicon Valley giants. The single, true, desperate purpose of **DantinoX** was just one: **learning how to use JAX without ending up in hell.**
+> *"Nel mezzo del cammin di nostra vita / mi ritrovai per una selva oscura, / ché la diritta via era smarrita."*
 
-And what better guide than Dante Alighieri to navigate the "dark wood" (*selva oscura*) of `TypeError`s, failed tensor broadcasting, and XLA compilation crashes?
+**DantinoX** is a from-scratch implementation of a modern Large Language Model built natively in **JAX and Flax NNX**. The primary motivation behind this project is educational and exploratory: to understand the internal mechanics of current transformer architectures and to learn how to write efficient JAX code without constantly fighting XLA compilation errors.
 
-Despite the very humble approach (and the countless hours spent staring at matrix dimensions hoping they would magically align), I decided to get my hands dirty and implement all the trendiest buzzwords in modern Deep Learning from scratch, just to understand how they actually work under the hood:
+To thoroughly understand these constraints, DantinoX implements standard modern Deep Learning components directly from the ground up:
 
-* **Mixture of Experts (MoE) layers:** Because why have a single, confused Multi-Layer Perceptron when you can have four of them bouncing the responsibility around?
-* **Rotary Positional Embeddings (RoPE):** I applied complex rotations to tensors until my own head started spinning.
-* **Sliding Window Attention:** To lighten the memory load and only remind the model of its most recent past.
-* **Static KV Cache:** Because recalculating the entire universe for every single generated letter seemed a bit excessive.
+* **Sparse Mixture of Experts (MoE)** with **Load Balancing Loss**
+* **Rotary Positional Embeddings (RoPE)**
+* **Grouped Query Attention (GQA)**
+* **Sliding Window & Attention Gating**
+* **Static KV Cache**
+* **Weight Tying**
+* **Gradient Checkpointing**
 
-The final result? A fully functional LLM architecture that is incredibly fast on GPUs and has a memory footprint so small it won't melt your computer. 
 
-Does it always produce pure divine poetry? Let's not exaggerate. But it gets by, and above all, it taught me how to tame the XLA compiler. 
+### ⚙️ Highly Customizable
 
-*"And thence we came forth to see again the stars..."*
+Rather than a rigid production artifact, the codebase is designed to be **highly customizable**. The architecture is modular, allowing users to easily toggle between different configurations—such as switching between a standard Dense MLP and Sparse MoE routing—to observe the direct impact on compute requirements and VRAM usage.
+
+The final result is a functional, memory-efficient Transformer. It serves as a practical reference for resolving shape mismatches, managing GPU memory footprint, and successfully taming the XLA compiler.
+
+> *"E quindi uscimmo a riveder le stelle."*
 
 ------------------------------------------------------------------------
 
-# 🏗️ Project Structure
+# Project Structure
 
 
     DantinoX/
@@ -77,155 +83,85 @@ Does it always produce pure divine poetry? Let's not exaggerate. But it gets by,
 
 ## 🛠 Architecture & Technical Specs
 
-DantinoX is a JAX/Flax-native, decoder-only Transformer built for extreme compute and memory efficiency. 
 
 | Feature | Implementation Details |
 | :--- | :--- |
-| **Attention** | Causal Self-Attention with GQA and optional Sliding Window |
+| **Attention** | Causal Self-Attention with GQA and optional Sliding Window and gating `no_sink`|
 | **Feed-Forward** | Configurable: Dense MLP or Sparse MoE (Top-K Routing) |
 | **Positioning** | Rotary Positional Embeddings (RoPE) or Absolute |
-| **Memory Opt.** | Gradient checkpointing (`nnx.remat`) & Weight Tying |
+| **Memory Opt.** | Gradient checkpointing (`nnx.remat`) & Weight Tying (`lm_head.kernel = wte.embedding.T`)|
 | **Inference Opt.**| Autoregressive generation with Static KV-Cache |
-| **Regularization**| Attention, residual, and embedding dropout; auxiliary MoE balancing loss |
+| **Regularization**| Attention, residual, and embedding dropout; auxiliary MoE balancing loss `load_balancing_loss` |
 | **Distributed** | JAX SPMD (Data / Model / FSDP) - *Future Work* |
 
-**Example Configuration:** `6` Layers • `512` Hidden Dim • `8` Heads • `512` Context • `4` Experts (Top-`2`)
 
----
+## ⚙️ Configuration Reference
 
-## ✨ Implementation Highlights
+DantinoX is entirely driven by a centralized YAML configuration. This design allows you to easily ablate architectural components (like toggling MoE or sliding window attention) without modifying the core JAX codebase.
 
-* **Flexible Compute Routing:** Seamlessly toggle between standard dense layers and Mixture of Experts. The MoE router includes a native `load_balancing_loss` to prevent expert collapse.
-* **Aggressive VRAM Savings:** Checkpoint size and memory footprint are drastically reduced by tying the output language modeling head to the token embedding layer (`lm_head.kernel = wte.embedding.T`).
-* **Enhanced Stability:** Attention mechanism supports `no_sink` gating to re-weight outputs and stabilize training trajectories.
+Below is the annotated `default_config.yaml`:
 
+```yaml
+model:
+  dim: 512                    # Core hidden dimension
+  n_heads: 16                 # Number of query heads
+  kv_heads: 4                 # Number of key/value heads (set < n_heads for GQA)
+  head_size: 32               # Dimensionality of each attention head
+  num_blocks: 12              # Number of transformer layers
+  max_context: 512            # Maximum sequence length
+  weight_tying: true          # Share weights between embedding and LM head
+  activation: gelu            # Non-linear activation function
+  gradient_checkpointing: true # Enable nnx.remat to reduce VRAM usage
+  dropout_rate: 0.15          # Regularization dropout probability
 
-# ⚙️ Configuration (`config.yaml`)
+moe:
+  use_moe: true               # Toggle Sparse MoE vs standard Dense FFN
+  n_experts: 4                # Total number of routed experts
+  top_k_mlp: 2                # Number of experts activated per token
+  expansion: 4                # Hidden dimension expansion factor in experts
+  alpha_balance: 0.1          # Weight of the auxiliary load-balancing loss
 
-DantinoX uses **YAML configuration files** to define:
+attention:
+  use_rotary_pos: true        # Enable Rotary Positional Embeddings (RoPE)
+  trainable_pos: false        # Enable standard learned positional embeddings
+  absolute_pos: false         # Enable absolute sinusoidal embeddings
+  sliding_window: true        # Restrict attention to a local past context
+  context_window: 64          # Size of the local window (if sliding_window: true)
+  no_sink: true               # Enable attention gating to stabilize training
 
--   model architecture
--   training parameters
--   optimization strategy
+tokenizer:
+  tokenizer_type: "char"      # Tokenization strategy (e.g., character-level, BPE)
+  vocab_size: 2000            # Maximum vocabulary size
+  tokenizer_path: "configs/vocab.json" # Path to save/load vocabulary mapping
 
-This guarantees **reproducible experiments**.
+data:
+  dataset_source: "huggingface" # Source platform for the training corpus
+  dataset_name: "Daniele/dante-corpus" # Dataset identifier
+  streaming: true             # Stream data to bypass local RAM constraints
 
-## Sample Configuration
+training:
+  lr: 0.0015                  # Peak learning rate
+  batch_size: 64              # Global batch size
+  grad_accum: 4               # Gradient accumulation steps for large effective batches
+  seed: 42                    # RNG seed for reproducibility
+  optimizer: "adamw"          # Optimizer algorithm
+  epochs: 100                 # Total training epochs
+  warmup_steps: 0             # Number of steps for learning rate warmup
 
-``` yaml
-# Model Architecture
-dim: 512
-n_heads: 8
-n_experts: 4
-top_k_mlp: 2
-num_blocks: 6
-max_context: 512
-vocab_size: 2000
+generation:
+  use_cache: true             # Enable static KV cache for fast autoregressive decoding
+  top_p: null                 # Nucleus sampling threshold (null to disable)
+  top_k: null                 # Top-k sampling threshold (null to disable)
+  seed: 42                    # RNG seed for generation sampling
+  greedy: false               # Toggle greedy decoding vs stochastic sampling
+  max_generations: 150        # Maximum number of tokens to generate
+  temperature: 1.3            # Sampling temperature (higher = more random)
 
-# Positional Encoding
-use_rotary_pos: true
-sliding_window: false
-weight_tying: true
-use_moe: true
-
-# Training
-batch_size: 32
-grad_accum: 4
-lr: 0.0003
-dropout_rate: 0.1
-epochs: 10
-optimizer: "adamw"
-
-# System
-gradient_checkpointing: true
-alpha_balance: 0.01
-```
-
-------------------------------------------------------------------------
-
-# Parameter Breakdown
-
-## Architecture
-
-### `dim`
-
-Hidden dimension size.
-
-Increasing this improves model capacity but also increases **VRAM
-usage**.
-
-### `n_heads`
-
-Number of attention heads.
-
-Allows the model to attend to multiple **representation subspaces**
-simultaneously.
-
-### `use_moe`
-
-If enabled, replaces the dense FFN with a **Sparse MoE layer**.
-
-Benefits:
-
--   higher parameter count
--   same FLOPs per token
-
-### `top_k_mlp`
-
-Number of experts activated per token.
-
-Typical values:
-
-    1 or 2
-
-------------------------------------------------------------------------
-
-## Optimization
-
-### `grad_accum`
-
-Gradient accumulation steps.
-
-Useful when **GPU memory is limited**.
-
-Example:
-
-    effective_batch = batch_size × grad_accum
-
-### `lr`
-
-Peak learning rate.
-
-Training uses:
-
--   **Cosine decay schedule**
--   **10% warmup phase**
-
-### `alpha_balance`
-
-Coefficient for **MoE load balancing loss**.
-
-Helps prevent **expert collapse**.
-
-------------------------------------------------------------------------
-
-## Efficiency
-
-### `weight_tying`
-
-Reuses the embedding matrix for the LM head.
-
-Advantages:
-
--   smaller model size
--   reduced VRAM
--   fewer parameters
-
-### `gradient_checkpointing`
-
-Trades extra compute for **lower memory usage** by recomputing
-activations during backpropagation.
-
+logging:
+  eval_iters: 20              # Frequency of evaluation and metric logging
+  log_file: "training_log.csv" # Path for training metrics output
+  summary_file: "model_summary.json" # Path to dump architecture parameter summary
+  
 ------------------------------------------------------------------------
 
 # 🚀 Installation

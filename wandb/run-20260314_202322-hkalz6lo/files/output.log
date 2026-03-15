@@ -1,0 +1,18 @@
+[34m[1mwandb[0m: Detected [huggingface_hub.inference] in use.
+[34m[1mwandb[0m: Use W&B Weave for improved LLM call tracing. Install Weave with `pip install weave` then add `import weave` to the top of your script.
+[34m[1mwandb[0m: For more information, check out the docs at: https://weave-docs.wandb.ai/
+Params: 15.82M | Est. VRAM: 1737.15MB
+Step     0/696 | Loss: 4.8017 | VRAM: 0.14GB
+Step    50/696 | Loss: 3.2872 | VRAM: 0.14GB
+Step   100/696 | Loss: 3.2817 | VRAM: 0.14GB
+Step   150/696 | Loss: 3.3002 | VRAM: 0.14GB
+Step   200/696 | Loss: 3.2919 | VRAM: 0.14GB
+Step   250/696 | Loss: 3.0125 | VRAM: 0.14GB
+Step   300/696 | Loss: 2.8460 | VRAM: 0.14GB
+Step   350/696 | Loss: 2.7646 | VRAM: 0.14GB
+Step   400/696 | Loss: 2.7398 | VRAM: 0.14GB
+Step   450/696 | Loss: 2.7264 | VRAM: 0.14GB
+Step   500/696 | Loss: 2.7254 | VRAM: 0.14GB
+Step   550/696 | Loss: 2.7236 | VRAM: 0.14GB
+Step   600/696 | Loss: 2.7113 | VRAM: 0.14GB
+Step   650/696 | Loss: 2.7141 | VRAM: 0.14GB
