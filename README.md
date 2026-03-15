@@ -2,13 +2,12 @@
 
 # 𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛
 
-<i>"Ah JAX, vituperio delle genti..."</i>  
+<i>"Ah JAX, vituperio delle genti..."</i>  
 <b>(Ah JAX, the shame of the people...)</b>
 
 <br>
 
 A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with **sweat** and **XLA errors**.
-
 
 <br>
 
@@ -16,6 +15,13 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+<br>
+<br>
+
+### 📚 [Read the Official Documentation](https://winstonsmith1897.github.io/DantinoX/)
+
+*(Architecture, Ablation Studies, and Training Guides)*
 
 </div>
 

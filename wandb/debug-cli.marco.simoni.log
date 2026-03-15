@@ -5370,3 +5370,30 @@
 	weight_tying: False
 2026-03-15 16:44:10 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.13431110019836753 --batch_size=32 --context_window=64 --dim=512 --dropout_rate=0 --epochs=20 --expansion=2 --grad_accum=4 --kv_heads=2 --lr=0.001111829007608278 --max_context=256 --n_experts=4 --no_sink=False --num_blocks=12 --optimizer=adafactor --pos_encoding=rotary --sliding_window=False --tokenizer_type=char --top_k_mlp=2 --use_moe=True --warmup_steps=100 --weight_tying=False
 2026-03-15 16:44:15 INFO Running runs: ['5jgem2qh']
+2026-03-15 16:54:32 INFO Cleaning up finished run: 5jgem2qh
+2026-03-15 16:54:33 INFO Agent received command: run
+2026-03-15 16:54:33 INFO Agent starting run with config:
+	alpha_balance: 0.10760421534315624
+	batch_size: 64
+	context_window: 128
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 20
+	expansion: 4
+	grad_accum: 4
+	kv_heads: 4
+	lr: 0.00023951441257774407
+	max_context: 512
+	n_experts: 4
+	no_sink: False
+	num_blocks: 12
+	optimizer: adafactor
+	pos_encoding: rotary
+	sliding_window: True
+	tokenizer_type: char
+	top_k_mlp: 2
+	use_moe: True
+	warmup_steps: 200
+	weight_tying: False
+2026-03-15 16:54:33 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.10760421534315624 --batch_size=64 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=20 --expansion=4 --grad_accum=4 --kv_heads=4 --lr=0.00023951441257774407 --max_context=512 --n_experts=4 --no_sink=False --num_blocks=12 --optimizer=adafactor --pos_encoding=rotary --sliding_window=True --tokenizer_type=char --top_k_mlp=2 --use_moe=True --warmup_steps=200 --weight_tying=False
+2026-03-15 16:54:38 INFO Running runs: ['vhbjke2c']
