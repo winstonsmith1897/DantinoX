@@ -7,7 +7,7 @@
 
 <br>
 
-A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with **sweat** and **XLA compilation errors**.
+A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax NNX**. Built with **sweat** and **XLA errors**.
 
 
 <br>
@@ -27,7 +27,7 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 
 ------------------------------------------------------------------------
 
-# 🏛️ Overview: The DantinoX Project
+# Overview: The DantinoX Project
 
 > *"Nel mezzo del cammin di nostra vita / mi ritrovai per una selva oscura, / ché la diritta via era smarrita."*
 
@@ -44,7 +44,7 @@ To thoroughly understand these constraints, DantinoX implements standard modern 
 * **Gradient Checkpointing**
 
 
-### ⚙️ Highly Customizable
+### Highly Customizable
 
 Rather than a rigid production artifact, the codebase is designed to be **highly customizable**. The architecture is modular, allowing users to easily toggle between different configurations—such as switching between a standard Dense MLP and Sparse MoE routing—to observe the direct impact on compute requirements and VRAM usage.
 
@@ -81,7 +81,7 @@ The final result is a functional, memory-efficient Transformer. It serves as a p
     ├── requirements.txt        # Python dependencies
     └── README.md               # Documentation
 
-## 🛠 Architecture & Technical Specs
+## Architecture & Technical Specs
 
 
 | Feature | Implementation Details |
@@ -95,7 +95,7 @@ The final result is a functional, memory-efficient Transformer. It serves as a p
 | **Distributed** | JAX SPMD (Data / Model / FSDP) - *Future Work* |
 
 
-## ⚙️ Configuration Reference
+## Configuration Reference
 
 DantinoX is entirely driven by a centralized YAML configuration. This design allows you to easily ablate architectural components (like toggling MoE or sliding window attention) without modifying the core JAX codebase.
 
@@ -165,7 +165,7 @@ logging:
 ---
 
 
-## 🚀 Quickstart & Installation
+## Quickstart & Installation
 
 ```bash
 git clone [https://github.com/your-username/DantinoX.git](https://github.com/your-username/DantinoX.git)
@@ -184,7 +184,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🚄 Training Pipeline
+## Training Pipeline
 
 The training loop leverages Flax NNX functional state management. The core update step uses `@jax.jit` to fuse the forward pass, loss computation, and optimizer updates into a single, highly optimized **XLA kernel**.
 
@@ -206,7 +206,7 @@ python train.py --batch_size 64 --lr 5e-4 --use_moe True
 
 ---
 
-## 📊 Monitoring & Logging
+## Monitoring & Logging
 
 Every execution generates an isolated artifact directory (`runs/run_YYYYMMDD_HHMMSS/`) containing the state of the experiment: `config.yaml`, `model_summary.json`, `training_log.csv`, and the serialized `model_weights.msgpack`.
 

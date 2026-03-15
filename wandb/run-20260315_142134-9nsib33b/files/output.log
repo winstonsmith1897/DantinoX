@@ -9,3 +9,7 @@ Step   150/580 | Loss: 2.3095 | VRAM: 0.28GB
 Step   200/580 | Loss: 2.1445 | VRAM: 0.27GB
 Step   250/580 | Loss: 2.0621 | VRAM: 0.27GB
 Step   300/580 | Loss: 2.0052 | VRAM: 0.26GB
+Step   350/580 | Loss: 1.9509 | VRAM: 0.27GB
+Step   400/580 | Loss: 1.9118 | VRAM: 0.27GB
+Step   450/580 | Loss: 1.8823 | VRAM: 0.27GB
+Step   500/580 | Loss: 1.8530 | VRAM: 0.27GB
