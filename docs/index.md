@@ -71,3 +71,4 @@ DantinoX/
 ├── generate.py             # Text generation script
 ├── requirements.txt        # Python dependencies
 └── README.md               # Documentation
+```
