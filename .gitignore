@@ -3,7 +3,10 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 analyze_dataset.py
-
+plot.py
+test.py
+wandb
+runs
 # Data and Logs
 data/
 training_log.csv

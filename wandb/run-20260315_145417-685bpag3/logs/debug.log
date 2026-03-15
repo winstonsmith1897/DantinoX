@@ -18,3 +18,8 @@ config: {'_wandb': {}}
 2026-03-15 14:54:19,133 INFO    MainThread:2893175 [wandb_run.py:_redirect():2442] Wrapping output streams.
 2026-03-15 14:54:19,133 INFO    MainThread:2893175 [wandb_run.py:_redirect():2465] Redirects installed.
 2026-03-15 14:54:19,136 INFO    MainThread:2893175 [wandb_init.py:init():1082] run started, returning control to user process
+2026-03-15 14:57:32,354 INFO    MainThread:2893175 [wandb_run.py:_finish():2291] finishing run iit_cnr/DantinoX/685bpag3
+2026-03-15 14:57:32,355 INFO    MainThread:2893175 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-03-15 14:57:32,355 INFO    MainThread:2893175 [wandb_run.py:_restore():2472] restore
+2026-03-15 14:57:32,355 INFO    MainThread:2893175 [wandb_run.py:_restore():2478] restore done
+2026-03-15 14:57:33,724 INFO    MainThread:2893175 [wandb_run.py:_footer_sync_info():3868] logging synced files
