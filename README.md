@@ -41,7 +41,7 @@ To thoroughly understand these constraints, DantinoX implements standard modern 
 * **Sliding Window & Attention Gating**
 * **Static KV Cache**
 * **Weight Tying**
-* **Gradient Checkpointing**
+* **Gradient Checkpointing and Gradiennt Accumulation**
 
 
 ### Highly Customizable
@@ -168,7 +168,7 @@ logging:
 ## Quickstart & Installation
 
 ```bash
-git clone [https://github.com/your-username/DantinoX.git](https://github.com/your-username/DantinoX.git)
+git clone https://github.com/winstonsmith1897/DantinoX.git
 cd DantinoX
 
 # 1. Create and activate environment (Conda recommended)
@@ -186,7 +186,7 @@ pip install -r requirements.txt
 
 ## Training Pipeline
 
-The training loop leverages Flax NNX functional state management. The core update step uses `@jax.jit` to fuse the forward pass, loss computation, and optimizer updates into a single, highly optimized **XLA kernel**.
+The training loop leverages Flax NNX functional state management. The core update step uses `@jax.jit`  to fuse the forward pass, loss computation, and optimizer updates into a single, highly optimized **XLA kernel**. There is also the "not splitted version", which uses `@nnx.jit`. However, as per flax documentation (https://flax.readthedocs.io/en/stable/guides/performance.html), the one with `@jax.jit` is faster for smaller model/batch size.
 
 ### Execution
 
@@ -197,12 +197,6 @@ python train.py --config configs/default_config.yaml
 # Dynamically override parameters via CLI
 python train.py --batch_size 64 --lr 5e-4 --use_moe True
 ```
-
-### Core Features
-
-* **Gradient Accumulation:** Scales effective batch size under strict VRAM constraints.
-* **MoE Load Balancing:** Automatically applies an auxiliary loss to ensure uniform expert utilization and prevent collapse.
-* **Optimized I/O:** Text preprocessing is specifically tailored and structured into triplets for the Dante corpus.
 
 ---
 
