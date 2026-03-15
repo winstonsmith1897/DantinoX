@@ -161,7 +161,7 @@ logging:
   eval_iters: 20              # Frequency of evaluation and metric logging
   log_file: "training_log.csv" # Path for training metrics output
   summary_file: "model_summary.json" # Path to dump architecture parameter summary
-
+```
 ---
 
 
