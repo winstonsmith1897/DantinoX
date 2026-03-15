@@ -161,143 +161,64 @@ logging:
   eval_iters: 20              # Frequency of evaluation and metric logging
   log_file: "training_log.csv" # Path for training metrics output
   summary_file: "model_summary.json" # Path to dump architecture parameter summary
-  
-------------------------------------------------------------------------
 
-# 🚀 Installation
+## 🚀 Quickstart & Installation
 
-## 1. Clone the Repository
-
-``` bash
-git clone https://github.com/your-username/DantinoX.git
+```bash
+git clone [https://github.com/your-username/DantinoX.git](https://github.com/your-username/DantinoX.git)
 cd DantinoX
-```
 
-------------------------------------------------------------------------
-
-## 2. Create Virtual Environment
-
-### Using venv
-
-``` bash
-python -m venv venv
-source venv/bin/activate
-```
-
-Windows:
-
-``` bash
-venv\Scripts\activate
-```
-
-### Using Conda
-
-``` bash
-conda create -n dantinox python=3.12
+# 1. Create and activate environment (Conda recommended)
+conda create -n dantinox python=3.12 -y
 conda activate dantinox
-```
 
-------------------------------------------------------------------------
-
-## 3. Install Dependencies
-
-DantinoX relies on **JAX**.
-
-### NVIDIA GPU (recommended)
-
-``` bash
-pip install --upgrade "jax[cuda12]"
+# 2. Install JAX with NVIDIA GPU support, then project dependencies
+pip install -U "jax[cuda12]"
 pip install -r requirements.txt
 ```
 
-------------------------------------------------------------------------
+*(Note: For standard `venv`, use `python -m venv venv && source venv/bin/activate` instead).*
 
-# 🚄 Training
+---
 
-The training pipeline is optimized with **JAX / Flax NNX**, using:
+## 🚄 Training Pipeline
 
--   functional state management
--   JIT compilation
--   efficient hardware utilization
+The training loop leverages Flax NNX functional state management. The core update step uses `@jax.jit` to fuse the forward pass, loss computation, and optimizer updates into a single, highly optimized **XLA kernel**.
 
-------------------------------------------------------------------------
+### Execution
 
-## Basic Usage
-
-Start training using the default configuration:
-
-``` bash
+```bash
+# Run using the default configuration file
 python train.py --config configs/default_config.yaml
-```
 
-Override parameters from CLI:
-
-``` bash
+# Dynamically override parameters via CLI
 python train.py --batch_size 64 --lr 5e-4 --use_moe True
 ```
 
-------------------------------------------------------------------------
+### Core Features
 
-# Training Features
+* **Gradient Accumulation:** Scales effective batch size under strict VRAM constraints.
+* **MoE Load Balancing:** Automatically applies an auxiliary loss to ensure uniform expert utilization and prevent collapse.
+* **Optimized I/O:** Text preprocessing is specifically tailored and structured into triplets for the Dante corpus.
 
-### JIT‑Compiled Training Step
+---
 
-The core update step uses:
+## 📊 Monitoring & Logging
 
-    @jax.jit
+Every execution generates an isolated artifact directory (`runs/run_YYYYMMDD_HHMMSS/`) containing the state of the experiment: `config.yaml`, `model_summary.json`, `training_log.csv`, and the serialized `model_weights.msgpack`.
 
-This fuses:
+**Live Console Output:**
 
--   model forward pass
--   loss computation
--   optimizer update
+```text
+Step   50/4200 | Train: 4.1204 (Bal: 0.0452) | Val: 4.1560 (Bal: 0.0461) | VRAM: 3.42GB
+Step  100/4200 | Train: 3.8901 (Bal: 0.0421) | Val: 3.9102 (Bal: 0.0415) | VRAM: 3.42GB
+```
 
-into a single optimized **XLA kernel**.
+**Tracked Metrics:**
 
-### Gradient Accumulation
-
-Allows large **effective batch sizes** with limited VRAM.
-
-### MoE Balancing
-
-Automatically applies **balancing loss** to ensure **uniform expert
-utilization**.
-
-### Dataset Formatting
-
-Text is preprocessed into structured triplets optimized for **Divine
-Comedy training**.
-
-------------------------------------------------------------------------
-
-# Monitoring & Logging
-
-Each run creates a directory:
-
-    runs/run_YYYYMMDD_HHMMSS/
-
-Containing:
-
--   `config.yaml`
--   `model_summary.json`
--   `training_log.csv`
--   `model_weights.msgpack`
-
-------------------------------------------------------------------------
-
-# Console Output Example
-
-    Step    50/4200 | Train: 4.1204 (Bal: 0.0452) | Val: 4.1560 (Bal: 0.0461) | VRAM: 3.42GB
-    Step   100/4200 | Train: 3.8901 (Bal: 0.0421) | Val: 3.9102 (Bal: 0.0415) | VRAM: 3.42GB
-
-------------------------------------------------------------------------
-
-# Metrics Tracked
-
-  Metric            Description
-  ----------------- -------------------------------------
-  Train Loss        Cross‑Entropy next‑token prediction
-  Validation Loss   Validation Cross‑Entropy
-  Balancing Loss    MoE expert balancing
-  VRAM GB           GPU memory usage
-  ms_per_step       Training speed
+| Metric | Description |
+| :--- | :--- |
+| **Train / Val Loss** | Cross-Entropy for autoregressive next-token prediction |
+| **Balancing Loss** | Auxiliary penalty for MoE expert routing |
+| **VRAM GB** | Peak device memory footprint |
+| **ms_per_step** | XLA kernel execution speed and throughput |
