@@ -5019,3 +5019,30 @@
 	weight_tying: False
 2026-03-15 14:47:29 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.06287217268408883 --batch_size=16 --context_window=128 --dim=512 --dropout_rate=0 --epochs=20 --expansion=4 --grad_accum=8 --kv_heads=4 --lr=0.0018169015321393928 --max_context=512 --n_experts=4 --no_sink=False --num_blocks=12 --optimizer=adamw --pos_encoding=rotary --sliding_window=False --tokenizer_type=char --top_k_mlp=2 --use_moe=False --warmup_steps=200 --weight_tying=False
 2026-03-15 14:47:34 INFO Running runs: ['91haof81']
+2026-03-15 14:54:13 INFO Cleaning up finished run: 91haof81
+2026-03-15 14:54:14 INFO Agent received command: run
+2026-03-15 14:54:14 INFO Agent starting run with config:
+	alpha_balance: 0.04120642900743876
+	batch_size: 64
+	context_window: 128
+	dim: 512
+	dropout_rate: 0.15
+	epochs: 12
+	expansion: 4
+	grad_accum: 2
+	kv_heads: 4
+	lr: 0.0007853570937609132
+	max_context: 512
+	n_experts: 4
+	no_sink: True
+	num_blocks: 8
+	optimizer: adamw
+	pos_encoding: rotary
+	sliding_window: True
+	tokenizer_type: char
+	top_k_mlp: 2
+	use_moe: False
+	warmup_steps: 200
+	weight_tying: True
+2026-03-15 14:54:14 INFO About to run command: /usr/bin/env python train_sweep.py --alpha_balance=0.04120642900743876 --batch_size=64 --context_window=128 --dim=512 --dropout_rate=0.15 --epochs=12 --expansion=4 --grad_accum=2 --kv_heads=4 --lr=0.0007853570937609132 --max_context=512 --n_experts=4 --no_sink=True --num_blocks=8 --optimizer=adamw --pos_encoding=rotary --sliding_window=True --tokenizer_type=char --top_k_mlp=2 --use_moe=False --warmup_steps=200 --weight_tying=True
+2026-03-15 14:54:19 INFO Running runs: ['685bpag3']
