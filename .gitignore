@@ -5,8 +5,7 @@ __pycache__/
 analyze_dataset.py
 plot.py
 test.py
-wandb
-runs
+
 # Data and Logs
 data/
 training_log.csv
@@ -14,6 +13,8 @@ model_summary.json
 *.bin
 *.msgpack
 *.csv
+wandb/
+runs/
 
 
 # Environment
