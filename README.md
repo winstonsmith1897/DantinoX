@@ -162,6 +162,9 @@ logging:
   log_file: "training_log.csv" # Path for training metrics output
   summary_file: "model_summary.json" # Path to dump architecture parameter summary
 
+---
+
+
 ## 🚀 Quickstart & Installation
 
 ```bash

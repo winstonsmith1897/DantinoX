@@ -51,3 +51,17 @@
 {"time":"2026-03-15T14:20:10.841288393+01:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
 {"time":"2026-03-15T14:20:25.563180187+01:00","level":"INFO","msg":"filestream: sending request","total_files":4,"history_offset":3,"history_lines":1,"events_offset":42,"events_lines":2,"console_offset":7,"console_lines":1}
 {"time":"2026-03-15T14:20:25.8541968+01:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-15T14:20:40.56269275+01:00","level":"INFO","msg":"filestream: sending request","total_files":1,"events_offset":44,"events_lines":2}
+{"time":"2026-03-15T14:20:40.837388089+01:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-15T14:20:55.563519247+01:00","level":"INFO","msg":"filestream: sending request","total_files":4,"history_offset":4,"history_lines":1,"events_offset":46,"events_lines":2,"console_offset":8,"console_lines":1}
+{"time":"2026-03-15T14:20:55.881732883+01:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-15T14:21:10.562568725+01:00","level":"INFO","msg":"filestream: sending request","total_files":1,"events_offset":48,"events_lines":2}
+{"time":"2026-03-15T14:21:10.789234546+01:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-15T14:21:24.499770261+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-03-15T14:21:24.499940399+01:00","level":"INFO","msg":"filestream: sending request","total_files":3,"history_offset":5,"history_lines":1,"console_offset":9,"console_lines":1,"uploaded_len":3,"complete":true,"exit_code":0}
+{"time":"2026-03-15T14:21:24.734497236+01:00","level":"INFO","msg":"filestream: request sent","status":"200 OK"}
+{"time":"2026-03-15T14:21:24.736259593+01:00","level":"INFO","msg":"handler: operation stats","stats":{}}
+{"time":"2026-03-15T14:21:24.742327173+01:00","level":"INFO","msg":"stream: closing"}
+{"time":"2026-03-15T14:21:24.742367683+01:00","level":"INFO","msg":"handler: closed"}
+{"time":"2026-03-15T14:21:24.74255102+01:00","level":"INFO","msg":"sender: closed"}
+{"time":"2026-03-15T14:21:24.7425646+01:00","level":"INFO","msg":"stream: closed"}
