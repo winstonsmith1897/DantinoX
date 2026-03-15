@@ -15,6 +15,7 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue?style=for-the-badge&logo=github)](https://winstonsmith1897.github.io/DantinoX/)
 
 <br>
 <br>
