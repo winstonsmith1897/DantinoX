@@ -1,1 +1,0 @@
-{"train_loss":6.556723093986511,"_timestamp":1.7735079242489717e+09,"val_loss":6.564869976043701,"train_bal_loss":0,"_wandb":{"runtime":289},"vram_gb":0.173254144,"_step":9,"_runtime":289,"step":450,"ms_per_step":287.3389434814453}
