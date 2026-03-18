@@ -21,7 +21,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install mkdocs-material mkdocstrings[python] mkdocs-minify-plugin
-          # Se il tuo modello ha dipendenze specifiche (jax, flax), aggiungile qui
           pip install jax flax
           
       - name: Deploy to GitHub Pages

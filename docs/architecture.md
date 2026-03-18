@@ -103,3 +103,77 @@ pip install -r requirements.txt
 *(Note: For standard `venv`, use `python -m venv venv && source venv/bin/activate` instead).*
 
 ---
+
+
+## 🔬 Deep Dive: JAX/Flax Implementation
+
+DantinoX incorporates several advanced techniques designed to push the limits of modern LLM architecture. Below is a detailed breakdown of the core components and the mathematical/design philosophy behind them.
+
+### 1. Grouped-Query Attention (GQA) & RoPE
+The `Attention` module implements Grouped-Query Attention to drastically reduce the KV-cache size during inference, alongside Rotary Positional Embeddings (RoPE) for robust context extrapolation.
+
+```python
+# From core/model.py - Attention.__init__
+self.kv_heads = config.kv_heads if config.kv_heads is not None else self.n_heads
+self.qkv = nnx.Linear(self.dim, 
+                      self.dim + 2 * self.kv_heads * self.head_size,
+                      use_bias=False, rngs=rngs)
+```
+
+**Why it matters:** Instead of allocating `n_heads` for Keys and Values, DantinoX allocates a smaller `kv_heads` count. The `qkv` projection elegantly handles this by projecting the query to full dimensionality, while shrinking the K and V projections to `kv_heads * head_size`.
+
+For positional awareness, **RoPE** rotates the Query and Key vectors in the complex plane. The frequencies are pre-computed to avoid redundant calculations, implementing the rotary frequency matrix where the angle for position $m$ and feature dimension $i$ is derived from $\theta_i = 10000^{-2(i-1)/d}$.
+
+### 2. Static KV-Caching (The JAX Way)
+JAX's XLA compiler requires static array shapes. Dynamic appending forces recompilation at every generation step, destroying performance. DantinoX solves this using `jax.lax.dynamic_update_slice`.
+
+```python
+if use_cache:
+    if kv_cache == (None, None):  
+        # 1. Pre-allocate the maximum possible cache size with zeros
+        k_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
+        v_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=v.dtype)
+        k_cache, v_cache = k_cache.at[:, :, :, :T, :].set(k), v_cache.at[:, :, :, :T, :].set(v)
+    else:
+        # 2. Surgically insert the new token's K and V at the specific cache_index
+        k_cache, v_cache = map(
+            lambda x, y, index: jax.lax.dynamic_update_slice(x, y, (0, 0, 0, index, 0)), 
+            (kv_cache[0], kv_cache[1]), (k, v), (cache_index, cache_index)
+        )
+```
+
+**How it works:** During the first forward pass (prefill), we initialize a tensor of size `max_context`. In subsequent decoding steps, we update only the slice at `cache_index`. This keeps the memory footprint bounded and XLA highly optimized.
+
+### 3. Sliding Window & Attention Gating (`no_sink`)
+To handle infinite generation without memory degradation, DantinoX implements a Sliding Window mask and a custom Attention Gating mechanism.
+
+* **Sliding Window:** Adds a pre-computed banded matrix of `-1e9` to the attention scores, restricting the softmax to attend only to the last `context_window` tokens, reducing complexity from $O(T^2)$ to $O(T \times W)$.
+* **Attention Gating (`no_sink`):** The phenomenon of "Attention Sinks" is mitigated here. We apply a learned sigmoid gate $\sigma(W \cdot X)$ to the attention output $Y$, allowing the model to smoothly ignore irrelevant context:
+  $$ \text{Output} = Y \odot \sigma(W \cdot X) $$
+
+### 4. Sparse Mixture of Experts (MoE) & Load Balancing
+Instead of a monolithic Feed-Forward Network, DantinoX supports a routed MoE architecture to scale parameters without proportionally increasing active compute.
+
+```python
+# From core/model.py - MoE.__call__
+x_routed = self.router(x)
+probs    = jax.nn.softmax(x_routed)
+values, indices = jax.lax.top_k(probs, self.top_k_mlp)
+```
+
+**The mechanism:**
+1. A linear router predicts which experts are best for each specific token.
+2. `jax.lax.top_k` selects only the top $k$ experts, masking out the rest.
+3. A **Load Balancing Loss** is computed. Without this, the network tends to collapse, routing all tokens to expert 0. The loss forces uniform utilization across the expert pool:
+   $$ L_{balance} = N \sum_{i=1}^{N} f_i \cdot P_i $$
+   *(Where $N$ is the total number of experts, $f_i$ is the empirical token assignment frequency, and $P_i$ is the mean routing probability).*
+
+### 5. Gradient Checkpointing (Rematerialization)
+Training LLMs requires massive VRAM. DantinoX uses Flax's `nnx.remat` to trade a small amount of compute for a massive reduction in memory.
+
+```python
+if self.gradient_checkpointing and not use_cache:
+    checkpointed_block = nnx.remat(lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic))
+```
+
+When `gradient_checkpointing` is enabled, the intermediate activations inside the Transformer blocks are discarded after the forward pass. During the backward pass, JAX automatically recomputes them on-the-fly. This enables training much deeper models or using larger batch sizes on a single GPU.

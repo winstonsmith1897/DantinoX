@@ -1,5 +1,5 @@
 program: train_sweep.py
-method: bayes
+method: random
 metric:
   name: val_loss
   goal: minimize
@@ -11,43 +11,47 @@ parameters:
   tokenizer_type:
     values: ["char", "bpe"]
   max_context:
-    values: [256, 512]
+    values: [128, 192, 256, 384, 512] 
   weight_tying:
     values: [true, false]
   dropout_rate:
-    values: [0.0, 0.1, 0.15]
+    distribution: uniform 
+    min: 0.0
+    max: 0.3
   lr:
     distribution: log_uniform_values
-    min: 0.0001
-    max: 0.005
+    min: 0.00001 
+    max: 0.02    
   batch_size:
-    values: [16, 32, 64]
+    values: [8, 16, 24, 32, 48, 64] 
   grad_accum:
-    values: [2, 4, 8]
+    values: [1, 2, 3, 4, 6, 8]
   warmup_steps:
-    values: [50, 100, 200]
+    distribution: int_uniform 
+    min: 0
+    max: 300
   dim:
-    values: [256, 512]
+    values: [128, 192, 256, 384, 512, 768] 
   num_blocks:
-    values: [8, 12, 16]
+    values: [4, 6, 8, 10, 12, 14, 16, 20] 
   kv_heads:
-    values: [2, 4]
+    values: [1, 2, 4, 8]
   use_moe:
     values: [true, false]
   n_experts:
-    values: [4, 6]
+    values: [2, 4, 6, 8, 12, 16]
   top_k_mlp:
-    values: [1, 2]
+    values: [1, 2, 3, 4]
   expansion:
-    values: [2, 4]
+    values: [2, 4, 6, 8]
   alpha_balance:
-    distribution: uniform
-    min: 0.01
-    max: 0.15
+    distribution: uniform 
+    min: 0.001
+    max: 0.3
   sliding_window:
-    values: [true, false]
+    values: [true]
   context_window:
-    values: [32, 64, 128]
+    values: [16, 32, 48, 64, 96, 128, 192]
   no_sink:
     values: [true, false]
   pos_encoding:

@@ -99,7 +99,7 @@ def main():
     config.trainable_pos = False
 
     config.n_heads = config.dim // config.head_size
-    assert config.n_heads % config.kv_heads == 0, f"n_heads ({config.n_heads}) non divisibile per kv_heads ({config.kv_heads})"
+    assert config.n_heads % config.kv_heads == 0, f"n_heads ({config.n_heads}) cannot be divided per kv_heads ({config.kv_heads})"
     
     run_name = datetime.datetime.now().strftime("run_%Y%m%d_%H%M%S")
     run_dir = os.path.join("runs", run_name)
