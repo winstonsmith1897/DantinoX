@@ -52,6 +52,8 @@ parameters:
     values: [true, false]
   pos_encoding:
     values: ["rotary", "absolute"]
+  use_swiglu:
+    values: [true, false]
 command:
   - ${env}
   - python

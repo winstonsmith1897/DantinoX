@@ -153,11 +153,19 @@ class Activation(nnx.Module):
         act_fn = getattr(jax.nn, self.activation_name.lower(), jax.nn.gelu)
         return act_fn(x)
     
+class Swiglu(nnx.Module):
+    def __call__(self, x: jnp.ndarray):
+        gate, data = jnp.split(x, 2, axis=-1)
+        return jax.nn.silu(gate) * data
+
+
 class MLP(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
-        self.up_proj    = nnx.Linear(config.dim, config.dim*config.expansion, rngs=rngs)
-        self.down_proj  = nnx.Linear(config.dim * config.expansion, config.dim, rngs=rngs)
-        self.activation = Activation(config.activation)
+        intermediate_dim = config.dim * config.expansion
+        up_proj_dim = intermediate_dim * 2 if config.use_swiglu else intermediate_dim
+        self.up_proj    = nnx.Linear(config.dim, up_proj_dim, rngs=rngs)
+        self.down_proj  = nnx.Linear(intermediate_dim, config.dim, rngs=rngs)
+        self.activation = Swiglu() if config.use_swiglu else Activation(config.activation) 
         self.dropout    = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.mlp_loss   = 0
 
