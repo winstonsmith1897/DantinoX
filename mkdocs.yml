@@ -1,5 +1,5 @@
-site_name: DantinoX Documentation
-site_description: A from-scratch LLM built natively in JAX and Flax NNX.
+site_name: DantinoX
+site_description: A high-performance, from-scratch LLM natively built in JAX and Flax NNX.
 site_author: Marco Simoni
 repo_url: https://github.com/winstonsmith1897/DantinoX
 repo_name: winstonsmith1897/DantinoX
@@ -12,34 +12,50 @@ theme:
   font:
     text: Inter
     code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
   features:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
+    - navigation.expand
     - navigation.top
     - navigation.tracking
+    - navigation.indexes
     - search.suggest
     - search.highlight
     - content.code.copy
+    - content.code.annotate
     - content.tabs.link
+    - toc.follow
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: deep purple
+      primary: grey
       accent: deep purple
       toggle:
-        icon: material/weather-night
+        icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: deep purple
+      primary: black
       accent: deep purple
       toggle:
-        icon: material/weather-sunny
+        icon: material/brightness-4
         name: Switch to light mode
 
 plugins:
   - search
+  - minify:
+      minify_html: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
 
 markdown_extensions:
   - admonition
@@ -47,9 +63,14 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite
   - pymdownx.mark
+  - pymdownx.snippets
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.arithmatex:
@@ -66,11 +87,11 @@ markdown_extensions:
 
 extra_javascript:
   - javascripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - 🏠 Home: index.md
-  - 🧠 Architecture: architecture.md
-  - 🚄 Training & Sweeps: training.md
-  - 🎭 Inference & Generation: generation.md
+  - Home: index.md
+  - Core Architecture: architecture.md
+  - Training & Sweeps: training.md
+  - Inference & Generation: generation.md
+  - API Reference: api.md

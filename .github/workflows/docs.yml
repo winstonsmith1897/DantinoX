@@ -1,0 +1,30 @@
+name: publish-docs
+on:
+  push:
+    branches:
+      - main  
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure Python
+        uses: actions/setup-python@v5
+        with:
+          python-level: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mkdocstrings[python] mkdocs-minify-plugin
+          # Se il tuo modello ha dipendenze specifiche (jax, flax), aggiungile qui
+          pip install jax flax
+          
+      - name: Deploy to GitHub Pages
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          mkdocs gh-deploy --forces
