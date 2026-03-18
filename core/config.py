@@ -15,7 +15,7 @@ class Config:
     activation: str = "gelu"
     gradient_checkpointing: bool = True
     dropout_rate: float = 0.15
-
+    use_swiglu: bool = True
     # MoE
     use_moe: bool = False
     n_experts: int = 4
