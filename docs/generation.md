@@ -84,13 +84,7 @@ python generate.py --run_dir runs/run_xxx --top_k 50 --temperature 1.2
 > **Note on Performance:** The first token generation might experience a slight delay due to JIT compilation. Subsequent tokens and runs will benefit from the optimized XLA kernel, and the script will report the **tokens per second (tok/s)** throughput at the end of the run.
 
 ---
-# 🎭 Inference & Text Generation Engine
 
-Autoregressive generation in JAX presents unique challenges. Because the XLA compiler requires static tensor shapes and strictly bounded operations, standard Python `for` loops or dynamic array appending cause catastrophic recompilations at every token step. 
-
-DantinoX's generation engine (`core/generation.py`) circumvents these limitations by utilizing static padding, XLA-native control flow (`jax.lax.fori_loop`), and fully vectorized sampling strategies. Below is the complete, line-by-line anatomical breakdown of the generation pipeline.
-
----
 
 ## 🔬 Deep Dive: The Generation Pipeline
 
