@@ -20,6 +20,8 @@ A Transformer so **"nano" it barely rhymes**, implemented in **JAX** and **Flax 
 <br>
 <br>
 
+[![Model Tests](https://github.com/winstonsmith1897/DantinoX/actions/workflows/tests.yml/badge.svg)](https://github.com/winstonsmith1897/DantinoX/actions)
+
 ### 📚 [Read the Official Documentation](https://winstonsmith1897.github.io/DantinoX/)
 
 *(Architecture, Ablation Studies, and Training Guides)*
