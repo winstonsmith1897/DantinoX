@@ -16,6 +16,7 @@ class Config:
     gradient_checkpointing: bool = True
     dropout_rate: float = 0.15
     use_swiglu: bool = True
+    
     # MoE
     use_moe: bool = False
     n_experts: int = 4
@@ -30,6 +31,14 @@ class Config:
     sliding_window: bool = False
     context_window: int = 4
     no_sink: bool = True
+    
+    # === NUOVI PARAMETRI PER MLA ===
+    mla: bool = False
+    inference: bool = False
+    down_dim_q: int = 256  # Dimensione latente per Query
+    down_dim_kv: int = 256 # Dimensione latente per KV (e Cache)
+    rope_dim: int = 32     # Dimensione Decoupled RoPE
+    # ===============================
     
     # Tokenizer
     tokenizer_type: str = "char"
@@ -57,8 +66,12 @@ class Config:
     def __post_init__(self):
         if self.kv_heads is None:
             self.kv_heads = self.n_heads // 4
-        assert self.dim == self.n_heads * self.head_size
-        assert self.n_heads % self.kv_heads == 0
+            
+        assert self.dim == self.n_heads * self.head_size, "Dim should be n_heads * head_size"
+        assert self.n_heads % self.kv_heads == 0, "n_heads should be a multiple of kv_heads"
+        
+        if self.mla and self.use_rotary_pos:
+            assert self.rope_dim <= self.head_size, "rope_dim should not be higher than head_size to not have an exploding complexity"
 
     @classmethod
     def from_yaml(cls, path: str):

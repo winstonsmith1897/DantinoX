@@ -8,6 +8,7 @@ import csv
 import os
 import json
 import datetime
+import math
 from datasets import load_dataset
 from core.config import Config
 from core.model import Transformer
@@ -98,8 +99,18 @@ def main():
     config.absolute_pos = (pos_enc == "absolute")
     config.trainable_pos = False
 
+    config.head_size = 32
     config.n_heads = config.dim // config.head_size
-    assert config.n_heads % config.kv_heads == 0, f"n_heads ({config.n_heads}) cannot be divided per kv_heads ({config.kv_heads})"
+    
+    if config.n_heads % config.kv_heads != 0:
+        config.kv_heads = math.gcd(config.n_heads, config.kv_heads)
+        
+    if getattr(config, 'mla', False) and getattr(config, 'use_rotary_pos', False):
+        if getattr(config, 'rope_dim', 32) > config.head_size:
+            config.rope_dim = max(1, config.head_size // 2)
+            
+    assert config.n_heads % config.kv_heads == 0
+    assert not (config.mla and config.rope_dim > config.head_size)
     
     run_name = datetime.datetime.now().strftime("run_%Y%m%d_%H%M%S")
     run_dir = os.path.join("runs", run_name)

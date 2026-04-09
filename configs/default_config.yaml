@@ -26,6 +26,10 @@ attention:
   sliding_window: true
   context_window: 64  #valid only if slinding window is true
   no_sink: true
+  mla: true
+  down_dim_q: 256    
+  down_dim_kv: 128    
+  rope_dim: 16        
 
 tokenizer:
   tokenizer_type: "char"      

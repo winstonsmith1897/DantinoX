@@ -4,7 +4,7 @@ import flax.nnx as nnx
 import math
 from .config import Config
 
-class MultiLatentAttention(nnx.Module):
+class Attention(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
         self.max_context:int = config.max_context
         self.head_size:int   = config.head_size
@@ -220,12 +220,15 @@ class MultiLatentAttention(nnx.Module):
         trilled = jnp.where(mask, 0.0, -1e9)
 
         attn = attn + trilled
-
+        
         if self.sliding_window:
-            attn = attn + jax.lax.dynamic_slice_in_dim(operand=self.window,
-                                                start_index=cache_index,
-                                                slice_size=T,
-                                                axis=0)
+            window_mask = jax.lax.dynamic_slice(
+                self.window,
+                start_indices=(cache_index, 0),
+                slice_sizes=(T, S)
+            )
+            attn = attn + window_mask
+            
         causal_attn = jax.nn.softmax(attn)
         causal_attn = self.attn_dropout(causal_attn, deterministic=deterministic)
 

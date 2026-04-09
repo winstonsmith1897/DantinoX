@@ -58,6 +58,14 @@ parameters:
     values: ["rotary", "absolute"]
   use_swiglu:
     values: [true, false]
+  mla:
+    values: [true, false]
+  down_dim_q:
+    values: [64, 128, 192, 256]
+  down_dim_kv:
+    values: [32, 64, 96, 128]
+  rope_dim:
+    values: [8, 16, 32]
 command:
   - ${env}
   - python
