@@ -4,12 +4,6 @@ import flax.nnx as nnx
 import math
 from .config import Config
 
-import jax
-import jax.numpy as jnp
-import flax.nnx as nnx
-import math
-from .config import Config
-
 class Attention(nnx.Module):
     def __init__(self, config: Config, rngs: nnx.Rngs):
         self.max_context:int = config.max_context
@@ -119,10 +113,16 @@ class Attention(nnx.Module):
 
         k = jnp.swapaxes(k, -2, -1)
         attn = q @ k / math.sqrt(self.head_size)
-        mask = jax.lax.dynamic_slice_in_dim(operand=self.tril, 
-                                            start_index=cache_index,
-                                            slice_size=T, 
-                                            axis=0) 
+        # mask = jax.lax.dynamic_slice_in_dim(operand=self.tril, 
+        #                                     start_index=cache_index,
+        #                                     slice_size=T, 
+        #                                     axis=0) 
+        S = attn.shape[-1]
+        mask = jax.lax.dynamic_slice(
+            self.tril, 
+            start_indices=(cache_index, 0),
+            slice_sizes=(T, S)
+        )
         trilled = jnp.where(mask, 0.0, -1e9)
 
         attn = attn + trilled

@@ -16,7 +16,9 @@ model_summary.json
 wandb/
 runs/
 analyze_runs.py
+tests/
 
 # Environment
 venv/
 .env
+
