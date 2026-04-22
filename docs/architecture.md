@@ -245,7 +245,6 @@ else:
     checkpointed_block = lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic)
 ```
 
-
 ### 6. Multi-Head Latent Attention (MLA) & Weight Absorption
 Standard Multi-Head Attention (and even GQA) suffers from a massive KV-cache memory footprint during long-context generation. DantinoX supports **Multi-Head Latent Attention (MLA)**, which dramatically shrinks the KV-cache by compressing Key and Value states into a single, low-dimensional latent vector (`c_kv`) per token.
 
