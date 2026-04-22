@@ -112,7 +112,7 @@ The `Attention` module implements GQA to reduce KV-cache memory, alongside RoPE 
 
 **Grouped-Query Attention Projection:**
 ```python
-# From core/model.py - Attention.__init__
+# From core/attention.py - Attention.__init__
 self.kv_heads = config.kv_heads if config.kv_heads is not None else self.n_heads
 
 # Single projection for Q, K, and V to optimize memory bandwidth
@@ -153,7 +153,7 @@ def __apply_rotation(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
 JAX's XLA compiler requires static array shapes. Dynamic array appending (like `jnp.concatenate`) forces expensive recompilations. DantinoX solves this using `jax.lax.dynamic_update_slice`.
 
 ```python
-# From core/model.py - Attention.__call__
+# From core/attention.py - Attention.__call__
 if use_cache:
     if kv_cache == (None, None):  
         # 1. PREFILL: Pre-allocate the static cache with zeros up to max_context
@@ -204,7 +204,7 @@ The MLP layer can be dynamically replaced by a routed MoE architecture, using To
 
 **Routing and Load Balancing Loss:**
 ```python
-# From core/model.py - MoE.__call__
+# From core/attention.py - MoE.__call__
 x_routed = self.router(x)
 probs    = jax.nn.softmax(x_routed)
 values, indices = jax.lax.top_k(probs, self.top_k_mlp)
@@ -233,7 +233,7 @@ for i in range(self.n_experts):
 To support massive batch sizes and deep networks, DantinoX wraps the Transformer blocks in `nnx.remat`. This discards intermediate activations in the forward pass and recomputes them during the backward pass.
 
 ```python
-# From core/model.py - Transformer.__call__
+# From core/attention.py - Transformer.__call__
 def block_fn(block_module, hidden_state, kv_c, det):
     return block_module(hidden_state, use_cache=use_cache, kv_cache=kv_c, 
                         cache_index=cache_index, deterministic=det)
@@ -243,4 +243,82 @@ if self.gradient_checkpointing and not use_cache:
     checkpointed_block = nnx.remat(lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic))
 else:
     checkpointed_block = lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic)
+```
+
+
+### 6. Multi-Head Latent Attention (MLA) & Weight Absorption
+Standard Multi-Head Attention (and even GQA) suffers from a massive KV-cache memory footprint during long-context generation. DantinoX supports **Multi-Head Latent Attention (MLA)**, which dramatically shrinks the KV-cache by compressing Key and Value states into a single, low-dimensional latent vector (`c_kv`) per token.
+
+**Latent Compression & Cache Storage:**
+Instead of storing multi-head Keys and Values, the model projects the input down into smaller latent dimensions (`down_dim_q` and `down_dim_kv`). During inference, **only the compressed `c_kv` vector is cached**, massively reducing memory bandwidth requirements.
+
+```python
+# From core/attention.py - Attention.__call__
+if self.mla is True:
+    # 1. Compress inputs into low-dimensional latent spaces
+    q = self.norm_q(self.down_q(x))      
+    c_kv = self.norm_kv(self.down_kv(x)) 
+    
+    # ... inside inference mode:
+    # We only store c_kv (and the decoupled RoPE keys) in the cache!
+    kv_cache, k_rope, k, v = self._compute_cache(
+        kv_cache, cache_index, B, T, k=None, v=None, c_kv=c_kv, k_rope=k_rope
+    )
+```
+
+**Decoupled Rotary Positional Embeddings (RoPE):**
+Because positional information cannot be cleanly extracted from a compressed latent space without losing shift-invariance, MLA computes RoPE on parallel, dedicated projections (`q_pe` and `k_pe`) that bypass the main latent compression.
+
+```python
+if self.use_rotary:
+    # Generate parallel vectors strictly for positional data
+    q_rope = self.q_pe(x)[:, None, None, :, :]
+    k_rope = self.k_pe(x)[:, None, None, :, :]
+
+    # Apply RoPE rotations to these dedicated vectors
+    q_rope, k_rope = map(self.__apply_rotation, (q_rope, k_rope), (cache_index, cache_index))
+```
+
+**Inference Optimization: Weight Absorption (The "Faster" Path)**
+During decoding (`inference=True`), explicitly up-projecting `c_kv` back into the full multi-head space to compute attention would be computationally devastating. 
+
+Instead, DantinoX uses a **Weight Absorption** (or Factored Computation) trick. By leveraging the associative property of matrix multiplication, the up-projection weights for queries (`W_UQ`) and keys (`W_UK`) are pre-multiplied together. The query latent is projected directly into this absorbed weight, and then multiplied directly against the compressed cache.
+
+```python
+# Factored computation: avoids materializing the massive (n, g, down_dim_q, down_dim_kv) 
+# weight product that the naive/fused form would create every step.
+
+# 1. Reshape kernels
+q_proj = self.up_q.kernel.reshape(self.down_dim_q, self.kv_heads, 
+                                  self.n_heads // self.kv_heads, self.head_size)
+k_proj = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
+
+# 2. Absorb weights: Pre-multiply Q and K up-projections
+attn_proj = jnp.einsum('qngh, knh -> ngqk', q_proj, k_proj)
+
+# 3. Project the query latent directly through the absorbed weights
+attn_proj = jnp.einsum('btq, ngqk -> btngk', q, attn_proj)
+
+# 4. Compute attention directly against the compressed latent cache (k)
+attn = jnp.einsum('btngk, bsk -> bngts', attn_proj, k)
+
+# Finally, add the decoupled RoPE attention
+attn_rope = q_rope @ jnp.swapaxes(k_rope, -2, -1)
+attn = (attn + attn_rope) / math.sqrt(self.head_size + self.rope_dim)
+```
+
+**Output Weight Absorption:**
+A similar absorption trick is used at the output projection. If attention gating (`no_sink`) is disabled, the value up-projection (`W_V`) and the final output projection (`W_O`) are fused into a single tensor (`W_VO`), completely skipping the materialization of the full multi-head value states.
+
+```python
+# If not using attention gating, we can fuse W_v and W_o
+W_v = self.up_v.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
+W_o = self.o_proj.kernel.reshape(self.kv_heads, self.n_heads // self.kv_heads, 
+                                 self.head_size, self.dim)
+
+# Absorb W_v into W_o
+W_vo = jnp.einsum('dnh, nghc -> dngc', W_v, W_o)
+
+# Direct projection from latent attention sum to output dimension
+out = jnp.einsum('bngtd, dngc -> btc', L, W_vo)
 ```
