@@ -39,7 +39,7 @@ class Transformer(nnx.Module):
 
             self.wpe: jnp.ndarray  = _build_compute_absolute_pos(config.max_context, config.dim)
 
-    def __call__(self, 
+    def __call__(self,
                  x: jnp.ndarray, 
                  use_cache:bool, 
                  kv_caches: tuple | None, 

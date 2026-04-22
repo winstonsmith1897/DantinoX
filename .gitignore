@@ -18,7 +18,8 @@ runs/
 analyze_runs.py
 *.ipynb
 core/old_model.py
-
+plot.py
+plot_compression.py
 
 # Environment
 venv/

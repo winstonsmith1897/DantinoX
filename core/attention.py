@@ -31,13 +31,7 @@ class Attention(nnx.Module):
             self.window = jnp.where(mask, 0, -1e9)
 
         self.use_rotary: bool = config.use_rotary_pos
-        if self.use_rotary:
-            def __compute_angle(T:int, C:int) -> jnp.ndarray:
-                P = jnp.arange(T)
-                W = 1 / (1000 ** (jnp.arange(C//2) / C))
-                degree = jnp.einsum('i,j->ij', P, W)[None, None, None, :, :]
-                return degree
-            
+        
         self.attn_dropout: nnx.Dropout  = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.resid_dropout: nnx.Dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
 
@@ -59,28 +53,41 @@ class Attention(nnx.Module):
         if self.mla:
             self.q_pe: nnx.Linear = nnx.Linear(config.dim, self.rope_dim, rngs=rngs)
             self.k_pe: nnx.Linear = nnx.Linear(config.dim, self.rope_dim, rngs=rngs)
+            self.norm_q = nnx.LayerNorm(config.down_dim_q, rngs=rngs)
+            self.norm_kv = nnx.LayerNorm(config.down_dim_kv, rngs=rngs)
 
         rope_dim_size           = self.head_size if self.mla is False else self.rope_dim
-        self.angle: jnp.ndarray = __compute_angle(self.max_context, rope_dim_size) 
 
+        self.angle: jnp.ndarray = self._compute_angle(self.max_context, rope_dim_size)
+
+    def _compute_angle(self, T: int, C: int) -> jnp.ndarray:
+        P = jnp.arange(T, dtype=jnp.float32)
+        inv_freq = 1.0 / (10000 ** (jnp.arange(0, C, 2, dtype=jnp.float32) / C))
+        degree = jnp.einsum('i,j->ij', P, inv_freq)
+        return degree[None, None, None, :, :]
 
     def __apply_rotation(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
         T = x.shape[3]
-        odd     = x[:, :, :, :, 0::2]
-        even    = x[:, :, :, :, 1::2]
+        x_left = x[..., 0::2]
+        x_right = x[..., 1::2]
 
-        angle   = jax.lax.dynamic_slice_in_dim(
-                self.angle, 
-                start_index=cache_index, 
-                slice_size=T, 
-                axis=3
-            )
-        x_odd  = jax.lax.cos(angle) * odd - jax.lax.sin(angle) * even
-        x_even = jax.lax.sin(angle) * odd + jax.lax.cos(angle) * even
-
-        y = jnp.stack([x_even, x_odd], axis=-1).reshape(x.shape)
-        return y
-    
+        angle = jax.lax.dynamic_slice_in_dim(
+            self.angle, 
+            start_index=cache_index, 
+            slice_size=T, 
+            axis=3
+        )
+        
+        cos_a = jax.lax.cos(angle)
+        sin_a = jax.lax.sin(angle)
+        
+        out_left = x_left * cos_a - x_right * sin_a
+        out_right = x_left * sin_a + x_right * cos_a
+        
+        out = jnp.empty_like(x)
+        out = out.at[..., 0::2].set(out_left)
+        out = out.at[..., 1::2].set(out_right)
+        return out
     
     def _compute_cache(self, kv_cache, cache_index, B, T, k=None, v=None, c_kv=None, k_rope=None):
         if self.mla is False:
@@ -154,7 +161,9 @@ class Attention(nnx.Module):
 
             q = self.down_q(x)     
             c_kv = self.down_kv(x)
-
+            q = self.norm_q(q)
+            c_kv = self.norm_kv(c_kv)
+            
             if self.use_rotary:
                 q_rope = self.q_pe(x)[:, None, None, :, :]
                 k_rope = self.k_pe(x)[:, None, None, :, :]
@@ -182,16 +191,27 @@ class Attention(nnx.Module):
                     kv_cache, k_rope, k, v = self._compute_cache(kv_cache, cache_index, B, T, k=None, v=None, c_kv=c_kv, k_rope=k_rope)
 
 
-                q_proj    = self.up_q.kernel.reshape(self.down_dim_q, self.kv_heads, 
-                                                self.n_heads // self.kv_heads, self.head_size)
-                
-                k_proj    = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
-                
+                # Factored computation: project q → full head space first (tiny for T=1),
+                # then against W_uk, then against the cache.
+                # This avoids materialising the large (n,g,down_dim_q,down_dim_kv) weight
+                # product that the fused form would create every step.
+                q_proj = self.up_q.kernel.reshape(self.down_dim_q, self.kv_heads,
+                                                  self.n_heads // self.kv_heads, self.head_size)
+                k_proj = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
+
+                # ========================  SLOWER ==========================
+                # # (B, T, down_q) × (down_q, n, g, h) → (B, n, g, T, h)
+                # q_up   = jnp.einsum('btq, qngh -> bngth', q, q_proj)
+                # # (B, n, g, T, h) × (down_kv, n, h) → (B, n, g, T, down_kv)
+                # q_k    = jnp.einsum('bngth, knh -> bngtk', q_up, k_proj)
+                # # (B, n, g, T, down_kv) × (B, S, down_kv) → (B, n, g, T, S)
+                # attn   = jnp.einsum('bngtk, bsk -> bngts', q_k, k)
+
+                #========================== FASTER ===========================
                 attn_proj = jnp.einsum('qngh, knh -> ngqk', q_proj, k_proj)
 
-                attn_proj = jnp.einsum('btq, ngqk  -> btngk', q, attn_proj)
-
-                attn      = jnp.einsum('btngk, bsk -> bngts', attn_proj, k) 
+                attn_proj = jnp.einsum('btq, ngqk -> btngk', q, attn_proj)
+                attn      = jnp.einsum('btngk, bsk -> bngts', attn_proj, k)
 
                 attn_rope = q_rope @ jnp.swapaxes(k_rope, -2, -1)
 

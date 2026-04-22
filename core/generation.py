@@ -5,6 +5,13 @@ from flax import nnx
 
 DecodeFunc = Callable[[jnp.ndarray, jax.Array | None], jnp.ndarray]
 
+
+def _greedy_decode(v, key=None):
+    return jnp.argmax(v, axis=-1, keepdims=True)
+
+def _sampling_decode(v, key):
+    return jax.random.categorical(key, jnp.log(v + 1e-10), axis=-1)
+
 def decode(
         probs: jnp.ndarray,
         decoding_func: DecodeFunc,
@@ -142,10 +149,10 @@ def generate(
 
     if greedy:
         key = None
-        decoding_func = lambda v, key=None: jnp.argmax(v, axis=-1, keepdims=True)
+        decoding_func = _greedy_decode
     else:
         key = jax.random.key(seed)
-        decoding_func = lambda v, key: jax.random.categorical(key, jnp.log(v + 1e-10), axis=-1)
+        decoding_func = _sampling_decode
         
     x = _generate_toks(model, 
                        x_padded, 

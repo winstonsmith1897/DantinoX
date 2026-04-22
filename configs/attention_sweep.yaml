@@ -1,0 +1,69 @@
+program: train_sweep_attention_comparison.py
+method: random  
+metric:
+  name: val_loss
+  goal: minimize
+
+parameters:
+  # --- FISSI ---
+  epochs:
+    value: 50
+  batch_size:
+    value: 64
+  grad_accum:
+    value: 4
+  max_context:
+    value: 512
+  pos_encoding:
+    value: "rotary" # Usiamo 'value' (singolo) perché vuoi sempre questo
+
+  # --- VARIABILI (Usa sempre 'values' per le liste) ---
+  lr:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.0015   
+  
+  use_moe:
+    values: [true, false] # FIX: ora sceglierà uno dei due
+  n_experts:
+    values: [6, 8, 16]
+  top_k_mlp:
+    values: [2, 4]
+  expansion:
+    values: [4, 8]
+  
+  attention_type:
+    values: ["mla"] #["standard_mha", "standard_gqa", "mla"]
+  dim:
+    values: [256, 512]
+  num_blocks:
+    values: [8, 12, 16] 
+  optimizer:
+    values: ["adamw", "lion"] 
+  
+  sliding_window:
+    values: [true, false]
+  context_window:
+    values: [64, 128, 192]
+  no_sink:
+    values: [true, false]
+
+  # Parametri MLA
+  down_dim_q:
+    values: [128, 192, 256] 
+  down_dim_kv:
+    values: [64, 96, 128]   
+  rope_dim:
+    values: [16, 32]
+
+  # Logica Activation
+  activation:
+    values: ["gelu", "silu"] # Aggiungiamolo qui per controllarlo
+  use_swiglu:
+    values: [true, false]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}

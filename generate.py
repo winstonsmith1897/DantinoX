@@ -40,6 +40,12 @@ def main():
         flat_cfg = raw_cfg
     
     config = Config(**{k: v for k, v in flat_cfg.items() if k in Config.__dataclass_fields__})
+
+    # MLA training path (inference=False) never updates the KV cache, so token-by-token
+    # generation would attend to only the current single token — no context. Force the
+    # inference-optimised path (compressed cache) which is mathematically equivalent.
+    if config.mla:
+        config.inference = True
     
     if config.dataset_source == "huggingface":
         from datasets import load_dataset
@@ -75,11 +81,12 @@ def main():
             from flax.serialization import _msgpack_ext_unpack
             raw_data = f.read()
             state_dict = msgpack.unpackb(
-                raw_data, 
-                ext_hook=_msgpack_ext_unpack, 
+                raw_data,
+                ext_hook=_msgpack_ext_unpack,
                 strict_map_key=False
             )
         nnx.update(model, state_dict)
+
 
     tokens = tokenizer.encode(args.prompt)
     x = jnp.array([tokens], dtype=jnp.int32)
@@ -95,7 +102,11 @@ def main():
     gen_temperature = flat_cfg.get('temperature', 1.0) if args.temperature is None else args.temperature
     gen_use_cache = flat_cfg.get('use_cache', True) if args.use_cache is None else (args.use_cache == 'true')
 
-    _ = generate(
+    print(f"JAX devices : {jax.devices()}")
+    print(f"JAX backend : {jax.default_backend()}")
+
+    t_compile = time.time()
+    _warmup = generate(
         model=model,
         x=x,
         max_generations=1,
@@ -106,7 +117,8 @@ def main():
         top_p=gen_top_p,
         temperature=gen_temperature
     )
-    x.block_until_ready()
+    _warmup.block_until_ready()   # wait on the OUTPUT, not the input
+    print(f"Compile+warmup : {time.time() - t_compile:.2f}s")
 
     t0 = time.time()
     
