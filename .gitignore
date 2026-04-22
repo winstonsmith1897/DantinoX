@@ -20,6 +20,7 @@ analyze_runs.py
 core/old_model.py
 plot.py
 plot_compression.py
+benchmark_analysis.py
 
 # Environment
 venv/
