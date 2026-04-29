@@ -1,41 +1,71 @@
-<div align="center">
+---
+hide:
+  - toc
+  - navigation
+---
+
+<div class="home-hero" markdown>
 
 # DantinoX
 
-*"E quindi uscimmo a riveder le stelle."*
+<p class="hero-tagline">"E quindi uscimmo a riveder le stelle."</p>
+<p class="hero-sub">A decoder-only Transformer — built from scratch in JAX and Flax NNX.</p>
 
-A from-scratch Large Language Model built natively in **JAX** and **Flax NNX**.
+[Get Started](architecture.md){ .md-button .md-button--primary }
+[View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
-[![JAX](https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white)](https://github.com/google/jax)
-[![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
-[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+<div class="stat-chips" markdown>
+<span class="stat-chip">:material-language-python: Python 3.12+</span>
+<span class="stat-chip">:material-memory: MLA · GQA · MHA</span>
+<span class="stat-chip">:material-lightning-bolt: XLA-Native</span>
+<span class="stat-chip">:material-license: MIT</span>
+</div>
+
+<div class="hero-badges" markdown>
+[![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=JAX&logoColor=white)](https://github.com/google/jax)
+[![Flax NNX](https://img.shields.io/badge/Flax_NNX-5E17EB?style=flat-square&logoColor=white)](https://github.com/google/flax)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](https://opensource.org/licenses/MIT)
+[![W&B](https://img.shields.io/badge/Tracked%20with-W%26B-FFBE00?style=flat-square&logo=weightsandbiases&logoColor=black)](https://wandb.ai)
+</div>
 
 </div>
 
-<p align="center">
-  <img src="images/dantinox.png" alt="DantinoX logo" width="180">
-</p>
+<div class="grid cards" markdown>
 
----
+-   :material-layers-triple-outline: &nbsp;**Three Attention Families**
 
-## Overview
+    ---
 
-**DantinoX** is a fully self-contained implementation of a modern Transformer, built without framework shortcuts. The primary goal is educational: to understand the internal mechanics of current LLM architectures and to write efficient JAX code that plays well with the XLA compiler.
+    MHA, GQA, and **Multi-Head Latent Attention (MLA)** with decoupled RoPE and full weight absorption — all switchable via a single config flag.
 
-Every component is implemented from first principles, then validated empirically through large-scale hyperparameter sweeps logged to **Weights & Biases**.
+    [:octicons-arrow-right-24: Core Architecture](architecture.md)
 
-### Key Features
+-   :material-lightning-bolt-circle: &nbsp;**JAX-Native, XLA-First**
 
-| Component | Implementation |
-| :--- | :--- |
-| **Attention** | MHA · GQA · **Multi-Head Latent Attention (MLA)** with decoupled RoPE and weight absorption |
-| **KV Cache** | MLA compresses cache to `down_dim_kv + rope_dim` per token (~4–16× vs MHA); XLA-safe via `dynamic_update_slice` |
-| **Feed-Forward** | Dense MLP (SwiGLU) or Sparse Mixture of Experts (Top-K routing + load-balancing loss) |
-| **Positional Encoding** | Rotary (RoPE) · absolute sinusoidal · learned — configurable per run |
-| **Regularization** | Dropout (attention, residual, embedding) · MoE load-balancing · attention gating (`no_sink`) |
-| **Training** | `@jax.jit` update step · `nnx.remat` gradient checkpointing · `optax.MultiSteps` accumulation |
-| **Generation** | Greedy · Top-K · Top-P nucleus sampling · `jax.lax.fori_loop` decode loop |
+    ---
+
+    Static KV cache via `dynamic_update_slice`, `@jax.jit` training loop, and `jax.lax.fori_loop` decode — zero dynamic shapes, zero recompilation.
+
+    [:octicons-arrow-right-24: Inference & Generation](generation.md)
+
+-   :material-chart-bar: &nbsp;**90+ Runs, Fully Benchmarked**
+
+    ---
+
+    Bayesian sweeps over 20+ hyperparameters logged to W&B. Results visualised in 2D and 3D across throughput, FLOPs, and KV cache size.
+
+    [:octicons-arrow-right-24: Benchmarks](benchmarks.md)
+
+-   :material-tune: &nbsp;**Single-File Configuration**
+
+    ---
+
+    Every architectural decision — attention type, MoE, positional encoding, regularization — is controlled via one YAML. No source changes required.
+
+    [:octicons-arrow-right-24: Configuration reference](architecture.md#configuration-reference)
+
+</div>
 
 ---
 
@@ -45,32 +75,32 @@ Every component is implemented from first principles, then validated empirically
 git clone https://github.com/winstonsmith1897/DantinoX.git
 cd DantinoX
 
-# Create environment (Conda recommended)
+# Create and activate environment
 conda create -n dantinox python=3.12 -y && conda activate dantinox
 
 # Install JAX with CUDA 12 support, then project dependencies
 pip install -U "jax[cuda12]"
 pip install -r requirements.txt
 
-# Train with the default configuration
+# Train
 python train.py --config configs/default_config.yaml
 
-# Generate text from a trained run
+# Generate from a trained checkpoint
 python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
 ```
 
 ---
 
-## Documentation Guide
+## Documentation
 
-| Page | What you'll find |
-| :--- | :--- |
-| [Core Architecture](architecture.md) | Attention types (MHA/GQA/MLA), math, configuration reference, implementation deep-dives |
-| [Training & Sweeps](training.md) | Training loop internals, W&B sweep setup, MLA training notes |
-| [Inference & Generation](generation.md) | KV-cache pipeline, sampling strategies, MLA inference mode |
-| [Benchmarks](benchmarks.md) | Empirical comparison of MHA / GQA / MLA — throughput, cache, FLOPs, 3D surfaces |
-| [Ablation Studies](ablation_studies.md) | W&B sweep results: optimizer, MoE, positional encoding, regularization |
-| [API Reference](api.md) | Auto-generated docs for `core.model`, `core.config`, `core.generation` |
+| | Page | What you'll find |
+| :--- | :--- | :--- |
+| :material-layers-outline: | [Core Architecture](architecture.md) | Attention types, math, full configuration reference, implementation deep-dives |
+| :material-school-outline: | [Training & Sweeps](training.md) | Training loop, W&B sweep setup, MLA training notes |
+| :material-play-box-outline: | [Inference & Generation](generation.md) | KV-cache pipeline, sampling strategies, MLA inference mode |
+| :material-chart-scatter-plot: | [Benchmarks](benchmarks.md) | MHA vs GQA vs MLA — throughput, cache size, FLOPs, 3D surfaces |
+| :material-microscope: | [Ablation Studies](ablation_studies.md) | Optimizer, MoE, positional encoding, regularization |
+| :material-book-open-outline: | [API Reference](api.md) | Auto-generated docs for `core.model`, `core.config`, `core.generation` |
 
 ---
 

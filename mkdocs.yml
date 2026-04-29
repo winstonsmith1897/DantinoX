@@ -14,39 +14,59 @@ theme:
     code: JetBrains Mono
   icon:
     repo: fontawesome/brands/github
+    admonition:
+      note:    octicons/tag-16
+      tip:     octicons/squirrel-16
+      warning: octicons/alert-16
+      danger:  octicons/zap-16
+      info:    octicons/info-16
   features:
+    - navigation.instant
+    - navigation.instant.prefetch
     - navigation.tabs
     - navigation.tabs.sticky
+    - navigation.path
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.footer
     - navigation.tracking
     - navigation.indexes
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
     - content.code.annotate
+    - content.code.select
     - content.tabs.link
+    - content.tooltips
     - toc.follow
+    - header.autohide
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: grey
-      accent: deep purple
+      primary: indigo
+      accent: cyan
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: black
-      accent: deep purple
+      primary: indigo
+      accent: cyan
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
 
 plugins:
   - search
-  - glightbox
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
   - minify:
       minify_html: true
   - mkdocstrings:
@@ -57,12 +77,15 @@ plugins:
             show_source: true
             show_root_heading: true
             show_category_heading: true
+            show_signature_annotations: true
+            separate_signature: true
 
 markdown_extensions:
   - admonition
   - tables
   - attr_list
   - md_in_html
+  - footnotes
   - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
@@ -85,6 +108,13 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.keys
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+extra_css:
+  - stylesheets/extra.css
 
 extra_javascript:
   - javascripts/mathjax.js
