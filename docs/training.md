@@ -3,7 +3,10 @@
 
 ## Training Pipeline
 
-The training loop leverages Flax NNX functional state management. The core update step uses `@jax.jit`  to fuse the forward pass, loss computation, and optimizer updates into a single, highly optimized **XLA kernel**. There is also the "not splitted version", which uses `@nnx.jit`. However, as per flax documentation (https://flax.readthedocs.io/en/stable/guides/performance.html), the one with `@jax.jit` is faster for smaller model/batch size.
+The training loop uses Flax NNX functional state management. The core update step fuses the forward pass, loss computation, and gradient updates into a single XLA kernel via `@jax.jit`.
+
+!!! tip "Why `@jax.jit` over `@nnx.jit`?"
+    Manually splitting the model (`nnx.split`) and passing only the `state` pytree into a `@jax.jit`-decorated function reduces Python dispatch overhead. For models up to ~100M parameters this yields measurably faster step times than the higher-level `@nnx.jit` wrapper. See the [Flax performance guide](https://flax.readthedocs.io/en/stable/guides/performance.html) for details.
 
 ### Execution
 
@@ -118,80 +121,89 @@ wandb agent <USERNAME/PROJECT/SWEEP_ID>
 ```
 
 !!! warning "GQA Shape Consistency"
-    To prevent tensor shape mismatches and XLA compilation crashes during the automated search, the total number of query heads (`n_heads`) and head dimensions (`head_size`) are **dynamically calculated** inside `train_sweep.py` based on the selected `dim` and `kv_heads`. This ensures that the attention projections remain mathematically consistent across all Bayesian trials.
+    To prevent tensor shape mismatches and XLA compilation crashes during the automated search, `n_heads` and `head_size` are **dynamically derived** from `dim` and `kv_heads` inside `train_sweep.py`. This guarantees that `dim == n_heads × head_size` holds for every Bayesian trial.
+
+---
+
+## Training MLA Models
+
+MLA introduces two additional config flags that interact with the training/inference split:
+
+| Flag | Training | Inference |
+| :--- | :--- | :--- |
+| `mla` | `true` | `true` |
+| `inference` | **`false`** | **`true`** |
+
+During training (`inference: false`) the model materialises full $K$ and $V$ tensors from the latent compression to compute gradients normally. Weight absorption is not differentiable in the same sense and is irrelevant to parameter updates.
+
+At generation time, reload the checkpoint with `inference: true` to activate weight absorption without changing the saved weights:
+
+```python
+config = Config.from_yaml("runs/<run>/config.yaml")
+config.inference = True          # override for decode — weights are unchanged
+model = Transformer(config, rngs=nnx.Rngs(0))
+# ... load weights ...
+```
+
+!!! note
+    The `inference` flag is **not** saved into the checkpoint weights — it only affects the forward-pass computation graph. You can safely switch between training and inference modes without re-saving the model.
+
+---
 
 ## Deep Dive: JAX/Flax NNX Training Loop
 
 Training in JAX requires bridging the gap between stateful model architectures and pure, functional transformations like `jax.grad` and `jax.jit`. DantinoX implements a highly optimized update step, explicitly managing the functional state to maximize XLA compilation efficiency.
 
-### 1. Functional State Management (Graph vs State)
-Flax NNX allows models to be written like standard Python objects, but JAX transformations strictly require pure functions. While DantinoX supports `@nnx.jit` for simplicity, the core training loop uses an explicit `@jax.jit` implementation.
+### 1. Functional State Management
+
+Flax NNX models are stateful Python objects, but `jax.grad` requires pure functions. The solution is to split the model into a static graph definition and a dynamic state pytree, pass only the state into the JIT-compiled function, and merge them back inside `loss_fn`:
 
 ```python
-# Extracting the static graph and the dynamic state/weights
-graphdef, state = nnx.split(model)
+graphdef, state = nnx.split(model)   # once, outside the training loop
 ```
-**Why do this?** As per the official Flax performance guides, manually splitting the model and passing only the `state` into a `@jax.jit` compiled function significantly reduces Python overhead. For smaller models or smaller batch sizes, this explicit functional split yields noticeably faster step times than the higher-level `@nnx.jit` wrapper.
 
-### 2. The Core Update Step (`@jax.jit`)
-The entire forward pass, loss computation, and backpropagation are fused into a single XLA kernel.
+### 2. The Core Update Step
+
+The entire forward pass, loss computation, and backpropagation are fused into a single XLA kernel:
 
 ```python
 @jax.jit
 def train_step(graphdef, state, opt_state, batch):
     def loss_fn(current_state):
-        # 1. Reconstruct the stateful model inside the pure function
         model = nnx.merge(graphdef, current_state)
-        
-        # 2. Forward pass (returns logits, kv_cache, and MoE balancing loss)
-        logits, _, balancing_loss = model(batch['input_ids'], 
-                                          use_cache=False, 
-                                          kv_caches=None, 
-                                          cache_index=None, 
-                                          deterministic=False)
-        
-        # 3. Autoregressive Cross-Entropy Loss
-        # Shifting logits and labels for next-token prediction
-        shift_logits = logits[:, :-1, :]
-        shift_labels = batch['labels'][:, 1:]
-        
-        ce_loss = optax.softmax_cross_entropy_with_integer_labels(
-            logits=shift_logits, labels=shift_labels
-        ).mean()
-        
-        # 4. Total Loss Calculation
-        total_loss = ce_loss + balancing_loss
-        
-        # 5. Extract the updated state (e.g., updated PRNGs for dropout)
-        _, new_state = nnx.split(model)
-        
-        return total_loss, (new_state, balancing_loss, ce_loss)
 
-    # Compute gradients and extract auxiliary outputs
+        logits, _, balancing_loss = model(
+            batch['input_ids'], use_cache=False,
+            kv_caches=None, cache_index=None, deterministic=False
+        )
+
+        # Autoregressive next-token prediction
+        ce_loss = optax.softmax_cross_entropy_with_integer_labels(
+            logits=logits[:, :-1, :], labels=batch['labels'][:, 1:]
+        ).mean()
+
+        _, new_state = nnx.split(model)
+        return ce_loss + balancing_loss, (new_state, balancing_loss, ce_loss)
+
     grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
     (loss, (new_state, bal_loss, ce_loss)), grads = grad_fn(state)
-    
-    # Apply gradients via Optax
+
     updates, new_opt_state = optimizer.update(grads, opt_state, new_state)
     new_state = optax.apply_updates(new_state, updates)
-    
     return new_state, new_opt_state, loss, bal_loss, ce_loss
 ```
 
-**Key Mechanics:**
-* **`loss_fn` purity:** The model is merged and re-split entirely *inside* the loss function. This ensures `jax.value_and_grad` can trace the exact flow of gradients through the state without side-effects.
-* **`has_aux=True`:** Allows the loss function to return the updated model state (crucial for updating Dropout PRNG keys) and individual loss metrics alongside the total scalar loss.
+The model is merged and re-split *inside* `loss_fn` so that `jax.value_and_grad` can trace gradient flow through the full state pytree. `has_aux=True` lets the function return the updated state (needed to propagate Dropout PRNG keys) alongside the scalar loss.
 
-### 3. Gradient Accumulation in XLA
-For training on standard hardware, matching a large target global batch size requires gradient accumulation. In PyTorch, this is usually a manual loop. In JAX, writing custom accumulation loops breaks the static execution graph.
+### 3. Gradient Accumulation
 
-DantinoX handles this elegantly by pushing the accumulation logic directly into the Optax optimizer definition:
+Python-level accumulation loops break XLA's static graph requirements. DantinoX delegates accumulation entirely to Optax via `MultiSteps`, keeping the compiled graph fixed:
 
 ```python
-# Handled cleanly via Optax wrapper
 optimizer = optax.MultiSteps(
-    optax.adamw(learning_rate=config.lr), 
-    every_k_schedule=config.grad_accum
+    optax.adamw(learning_rate=config.lr),
+    every_k_schedule=config.grad_accum    # weight update every N micro-steps
 )
 ```
-This guarantees that `optax.apply_updates` tracks the micro-steps internally and only alters the weights once every `grad_accum` steps, keeping the XLA graph perfectly static and avoiding unnecessary VRAM spikes.
+
+`optax.apply_updates` tracks micro-step state internally and emits a weight update exactly every `grad_accum` calls, with no VRAM spike from intermediate gradient buffers.

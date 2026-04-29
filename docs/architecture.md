@@ -1,325 +1,323 @@
-
 # Core Architecture
 
-## Technical Specs
+DantinoX implements a decoder-only Transformer with a modular design: every major component — attention type, feed-forward network, positional encoding — is toggled via configuration without changing any source code.
 
+---
 
-| Feature | Implementation Details |
-| :--- | :--- |
-| **Attention** | Causal Self-Attention with GQA and optional Sliding Window and gating `no_sink`|
-| **Feed-Forward** | Configurable: Dense MLP or Sparse MoE (Top-K Routing) |
-| **Positioning** | Rotary Positional Embeddings (RoPE) or Absolute |
-| **Memory Opt.** | Gradient checkpointing (`nnx.remat`) & Weight Tying (`lm_head.kernel = wte.embedding.T`)|
-| **Inference Opt.**| Autoregressive generation with Static KV-Cache |
-| **Regularization**| Attention, residual, and embedding dropout; auxiliary MoE balancing loss `load_balancing_loss` |
-| **Distributed** | JAX SPMD (Data / Model / FSDP) - *Future Work* |
+## Attention Mechanisms
 
+Three attention families are supported, all sharing the same causal mask and KV-cache infrastructure. The choice is driven by the `mla` flag in the configuration.
+
+### Comparison
+
+| | **MHA** | **GQA** | **MLA** |
+| :--- | :--- | :--- | :--- |
+| Config | `mla: false`, `kv_heads = n_heads` | `mla: false`, `kv_heads < n_heads` | `mla: true` |
+| KV cache per token per layer | $2 \cdot H_{\text{kv}} \cdot d_h$ values | $2 \cdot H_{\text{kv}} \cdot d_h$ values | $d_c^{KV} + d_r$ values |
+| KV cache at 512 tok, 12 layers¹ | **384 KB** | **96 KB** | **~23 KB** |
+| Decoupled RoPE | ✗ | ✗ | ✓ |
+| Weight absorption at decode | ✗ | ✗ | ✓ |
+| Extra parameters vs GQA | — | — | +4 projections +2 norms |
+
+> ¹ With $H=16$, $H_{\text{kv}}=4$, $d_h=32$, $d_c^{KV}=64$, $d_r=32$ — all in fp32.
+
+---
+
+### Multi-Head Attention (MHA) & Grouped-Query Attention (GQA)
+
+Standard MHA projects the input $\mathbf{x}$ to queries, keys, and values via a fused `qkv` projection.
+GQA is MHA with $H_{\text{kv}} < H$: KV heads are repeated to match query heads during the dot-product, reducing cache by a factor of $H / H_{\text{kv}}$.
+
+```python
+# core/attention.py — fused QKV projection (MHA / GQA)
+self.qkv = nnx.Linear(
+    dim,
+    dim + 2 * kv_heads * head_size,   # Q + K + V in a single matmul
+    use_bias=False, rngs=rngs
+)
+```
+
+Set `kv_heads = n_heads` for MHA or `kv_heads < n_heads` for GQA.
+
+---
+
+### Multi-Head Latent Attention (MLA)
+
+MLA (introduced in DeepSeek-V2) replaces the standard KV projection with a low-rank bottleneck. Instead of caching $K$ and $V$ tensors directly, only a small latent vector $\mathbf{c}_{KV}$ is stored per token. Full keys and values are reconstructed on-the-fly during training, or bypassed entirely at decode time via weight absorption.
+
+#### Latent Compression
+
+$$
+\mathbf{c}_Q = \text{Norm}(W_{DQ}\,\mathbf{x}), \quad \mathbf{c}_{KV} = \text{Norm}(W_{DKV}\,\mathbf{x})
+$$
+
+$$
+\mathbf{q} = W_{UQ}\,\mathbf{c}_Q, \quad
+\mathbf{k} = W_{UK}\,\mathbf{c}_{KV}, \quad
+\mathbf{v} = W_{UV}\,\mathbf{c}_{KV}
+$$
+
+where $W_{DQ} \in \mathbb{R}^{d \times d_c^Q}$, $W_{DKV} \in \mathbb{R}^{d \times d_c^{KV}}$, and the up-projections restore the full multi-head dimensionality. **Only $\mathbf{c}_{KV}$ is cached** — a vector of $d_c^{KV}$ scalars instead of $2 \cdot H_{\text{kv}} \cdot d_h$.
+
+#### Decoupled RoPE
+
+Rotary embeddings cannot be applied inside the latent space because the compressed representation must remain position-independent for the cache to be reusable. MLA adds parallel lightweight projections that carry positional information separately:
+
+$$
+\mathbf{q}^r = \text{RoPE}(W_{Q}^r\,\mathbf{x}), \quad \mathbf{k}^r = \text{RoPE}(W_{K}^r\,\mathbf{x})
+$$
+
+```python
+# core/attention.py — decoupled RoPE projections (MLA)
+self.q_pe = nnx.Linear(dim, rope_dim, rngs=rngs)   # W_Q^r
+self.k_pe = nnx.Linear(dim, rope_dim, rngs=rngs)   # W_K^r
+```
+
+The final attention score combines content and position channels:
+
+$$
+s = \frac{\mathbf{q} \cdot \mathbf{k}^\top + \mathbf{q}^r \cdot (\mathbf{k}^r)^\top}{\sqrt{d_h + d_r}}
+$$
+
+#### Weight Absorption (Inference Path)
+
+During decode (`inference=True`), up-projecting the cached $\mathbf{c}_{KV}$ back to full multi-head $K$ and $V$ would be wasteful. Instead, the associativity of matrix multiplication allows pre-fusing the projections into absorbed weight matrices that operate directly on the latent cache:
+
+$$
+A_{QK} = W_{UQ}^\top W_{UK} \in \mathbb{R}^{d_c^Q \times d_c^{KV}}
+\quad\Rightarrow\quad
+\mathbf{q} \cdot \mathbf{k}^\top = \mathbf{c}_Q \cdot A_{QK} \cdot \mathbf{c}_{KV}^\top
+$$
+
+$$
+A_{VO} = W_{UV} W_O \in \mathbb{R}^{d_c^{KV} \times d}
+\quad\Rightarrow\quad
+\text{out} = \sum_s \alpha_s\,\mathbf{c}_{KV}^{(s)} \cdot A_{VO}
+$$
+
+The full multi-head $K$, $V$ tensors are never materialised. Only the compressed latent cache ($d_c^{KV}$ scalars per token) is read from HBM:
+
+```python
+# core/attention.py — weight absorption at decode
+q_proj    = self.up_q.kernel.reshape(down_dim_q, kv_heads, n_heads // kv_heads, head_size)
+k_proj    = self.up_k.kernel.reshape(down_dim_kv, kv_heads, head_size)
+attn_proj = jnp.einsum('qngh, knh -> ngqk', q_proj, k_proj)   # pre-fuse W_UQ · W_UK
+attn_proj = jnp.einsum('btq,  ngqk -> btngk', q, attn_proj)   # project latent Q
+attn      = jnp.einsum('btngk, bsk -> bngts', attn_proj, k)   # attend on latent K cache
+
+W_v  = self.up_v.kernel.reshape(down_dim_kv, kv_heads, head_size)
+W_o  = self.o_proj.kernel.reshape(kv_heads, n_heads // kv_heads, head_size, dim)
+W_vo = jnp.einsum('dnh, nghc -> dngc', W_v, W_o)              # pre-fuse W_UV · W_O
+out  = jnp.einsum('bngtd, dngc -> btc', L, W_vo)              # project from latent V cache
+```
+
+!!! warning "Training vs. Inference"
+    Set `inference: false` during training — weight absorption is decode-only. After training, reload the checkpoint with `inference: true` to activate the optimised decode path. The saved weights are identical; only the forward-pass computation graph changes.
+
+---
+
+## Feed-Forward Network
+
+The FFN is selected per `use_moe`:
+
+=== "Dense MLP"
+
+    A standard two-layer feed-forward block with optional SwiGLU gating
+    (`use_swiglu: true` replaces GELU with a gated linear unit for better gradient flow):
+
+    ```
+    hidden = activation(W₁ x) ⊙ (W_gate x)   # SwiGLU
+    out    = W₂ hidden
+    ```
+
+=== "Sparse MoE"
+
+    A top-K router selects `top_k_mlp` out of `n_experts` expert MLPs per token.
+    An auxiliary load-balancing loss prevents expert collapse:
+
+    $$\mathcal{L}_{\text{bal}} = \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i$$
+
+    where $f_i$ is the fraction of tokens routed to expert $i$ and $P_i$ is the mean router probability for expert $i$.
+
+---
+
+## Positional Encoding
+
+| Mode | Config | Notes |
+| :--- | :--- | :--- |
+| **Rotary (RoPE)** | `use_rotary_pos: true` | Default. Decoupled variant used with MLA. |
+| **Absolute sinusoidal** | `absolute_pos: true` | Fixed frequencies, no learned parameters. |
+| **Learned** | `trainable_pos: true` | Standard learned position embeddings. |
+
+RoPE frequencies are pre-computed at init and cached as a static array. At each forward pass, `jax.lax.dynamic_slice_in_dim` extracts the relevant sub-sequence without triggering recompilation:
+
+```python
+# core/attention.py — dynamic RoPE slice (XLA-safe)
+angle = jax.lax.dynamic_slice_in_dim(self.angle, start_index=cache_index, slice_size=T, axis=3)
+```
+
+---
 
 ## Configuration Reference
 
-DantinoX is entirely driven by a centralized YAML configuration. This design allows you to easily ablate architectural components (like toggling MoE or sliding window attention) without modifying the core JAX codebase.
+All parameters live in a single `Config` dataclass and are loaded from YAML. CLI overrides are merged at runtime.
 
-Below is the annotated `default_config.yaml`:
+??? note "Full annotated YAML"
 
-??? note "Click to expand the full YAML Configuration"
     ```yaml
     model:
-      dim: 512                    # Core hidden dimension
-      n_heads: 16                 # Number of query heads
-      kv_heads: 4                 # Number of key/value heads (set < n_heads for GQA)
-      head_size: 32               # Dimensionality of each attention head
-      num_blocks: 12              # Number of transformer layers
-      max_context: 512            # Maximum sequence length
-      weight_tying: true          # Share weights between embedding and LM head
-      activation: gelu            # Non-linear activation function
-      gradient_checkpointing: true # Enable nnx.remat to reduce VRAM usage
-      dropout_rate: 0.15          # Regularization dropout probability
+      dim: 512                      # Hidden dimension d; must equal n_heads × head_size
+      n_heads: 16                   # Number of query heads H
+      kv_heads: 4                   # KV heads H_kv (H_kv = H → MHA; H_kv < H → GQA)
+      head_size: 32                 # Head dimension d_h; dim = n_heads × head_size
+      num_blocks: 12                # Number of Transformer layers L
+      max_context: 512              # Maximum sequence length for KV cache allocation
+      weight_tying: true            # Tie lm_head weights to token embedding matrix
+      activation: gelu              # FFN activation: "gelu" or "swiglu"
+      use_swiglu: true              # Use SwiGLU gating in the FFN
+      gradient_checkpointing: true  # Recompute activations on backward (nnx.remat)
+      dropout_rate: 0.15            # Dropout probability (attention, residual, embedding)
+
+    mla:
+      mla: false                    # Enable Multi-Head Latent Attention
+      inference: false              # Activate weight absorption — set true for generation only
+      down_dim_q: 256               # Query latent dimension d_c^Q
+      down_dim_kv: 64               # KV latent dimension d_c^KV (= cache size per token)
+      rope_dim: 32                  # Decoupled RoPE dimension d_r (≤ head_size)
 
     moe:
-      use_moe: true               # Toggle Sparse MoE vs standard Dense FFN
-      n_experts: 4                # Total number of routed experts
-      top_k_mlp: 2                # Number of experts activated per token
-      expansion: 4                # Hidden dimension expansion factor in experts
-      alpha_balance: 0.1          # Weight of the auxiliary load-balancing loss
+      use_moe: false                # Replace Dense FFN with Sparse MoE
+      n_experts: 4                  # Total number of expert MLPs N
+      top_k_mlp: 2                  # Experts activated per token K
+      expansion: 4                  # FFN expansion factor inside each expert
+      alpha_balance: 0.1            # Load-balancing loss weight α
 
     attention:
-      use_rotary_pos: true        # Enable Rotary Positional Embeddings (RoPE)
-      trainable_pos: false        # Enable standard learned positional embeddings
-      absolute_pos: false         # Enable absolute sinusoidal embeddings
-      sliding_window: true        # Restrict attention to a local past context
-      context_window: 64          # Size of the local window (if sliding_window: true)
-      no_sink: true               # Enable attention gating to stabilize training
+      use_rotary_pos: true          # Enable Rotary Positional Embeddings
+      trainable_pos: false          # Learned absolute positional embeddings
+      absolute_pos: false           # Fixed sinusoidal embeddings
+      sliding_window: false         # Restrict attention to a local causal window
+      context_window: 64            # Window size (tokens) when sliding_window: true
+      no_sink: true                 # Sigmoid gate on attention output (prevents attention sink)
 
     tokenizer:
-      tokenizer_type: "char"      # Tokenization strategy (e.g., character-level, BPE)
-      vocab_size: 2000            # Maximum vocabulary size
-      tokenizer_path: "configs/vocab.json" # Path to save/load vocabulary mapping
+      tokenizer_type: "char"        # "char" for character-level, "bpe" for Byte-Pair Encoding
+      vocab_size: 2000              # Maximum vocabulary size
+      tokenizer_path: "configs/vocab.json"
 
     data:
-      dataset_source: "huggingface" # Source platform for the training corpus
-      dataset_name: "Daniele/dante-corpus" # Dataset identifier
-      streaming: true             # Stream data to bypass local RAM constraints
+      dataset_source: "huggingface" # "huggingface" or "local"
+      dataset_name: "Daniele/dante-corpus"
+      streaming: true               # Stream from HuggingFace to avoid local RAM pressure
 
     training:
-      lr: 0.0015                  # Peak learning rate
-      batch_size: 64              # Global batch size
-      grad_accum: 4               # Gradient accumulation steps for large effective batches
-      seed: 42                    # RNG seed for reproducibility
-      optimizer: "adamw"          # Optimizer algorithm
-      epochs: 100                 # Total training epochs
-      warmup_steps: 0             # Number of steps for learning rate warmup
+      lr: 0.0015                    # Peak learning rate (cosine decay)
+      batch_size: 64                # Per-device batch size
+      grad_accum: 4                 # Gradient accumulation steps
+      seed: 42
+      optimizer: "adamw"            # "adamw", "adafactor", or "lion"
+      epochs: 100
+      warmup_steps: 0               # Linear LR warmup steps
 
     generation:
-      use_cache: true             # Enable static KV cache for fast autoregressive decoding
-      top_p: null                 # Nucleus sampling threshold (null to disable)
-      top_k: null                 # Top-k sampling threshold (null to disable)
-      seed: 42                    # RNG seed for generation sampling
-      greedy: false               # Toggle greedy decoding vs stochastic sampling
-      max_generations: 150        # Maximum number of tokens to generate
-      temperature: 1.3            # Sampling temperature (higher = more random)
+      use_cache: true               # Static KV cache for autoregressive decode
+      greedy: false                 # Greedy decoding (overrides sampling)
+      temperature: 1.3
+      top_p: null                   # Nucleus sampling threshold (null = disabled)
+      top_k: null                   # Top-K sampling (null = disabled)
+      max_generations: 150
+      seed: 42
 
     logging:
-      eval_iters: 20              # Frequency of evaluation and metric logging
-      log_file: "training_log.csv" # Path for training metrics output
-      summary_file: "model_summary.json" # Path to dump architecture parameter summary
+      eval_iters: 20
+      log_file: "training_log.csv"
+      summary_file: "model_summary.json"
     ```
 
 ---
 
+## Implementation Details
 
-## Quickstart & Installation
+### Static KV-Cache (XLA-Compatible)
 
-```bash
-git clone https://github.com/winstonsmith1897/DantinoX.git
-cd DantinoX
+JAX's XLA compiler requires all array shapes to be known at trace time. Dynamic concatenation forces recompilation on every new token, which is unacceptable for autoregressive decode. DantinoX pre-allocates a fixed-size cache buffer at prefill and uses `jax.lax.dynamic_update_slice` for O(1) positional writes:
 
-# 1. Create and activate environment (Conda recommended)
-conda create -n dantinox python=3.12 -y
-conda activate dantinox
+=== "MHA / GQA"
 
-# 2. Install JAX with NVIDIA GPU support, then project dependencies
-pip install -U "jax[cuda12]"
-pip install -r requirements.txt
-```
+    ```python
+    # Prefill: allocate zeros and fill the prompt slice
+    k_cache = jnp.zeros((B, kv_heads, 1, max_context, head_size), dtype=k.dtype)
+    k_cache = k_cache.at[:, :, :, :T, :].set(k)
 
-*(Note: For standard `venv`, use `python -m venv venv && source venv/bin/activate` instead).*
+    # Decode: surgical insert at cache_index — no recompilation
+    k_cache = jax.lax.dynamic_update_slice(k_cache, k, (0, 0, 0, cache_index, 0))
+    ```
 
----
-## Deep Dive: JAX/Flax Implementation
+=== "MLA"
 
-DantinoX incorporates several advanced techniques designed to push the limits of modern LLM architecture. Below is a detailed breakdown of the core components, showcasing the actual JAX/Flax code used in the engine.
+    The cache stores the compressed latent $\mathbf{c}_{KV}$ and the decoupled RoPE keys — not the full $K$/$V$ tensors.
 
-### 1. Grouped-Query Attention (GQA) & Rotary Positional Embeddings (RoPE)
-The `Attention` module implements GQA to reduce KV-cache memory, alongside RoPE to inject absolute positional information into queries and keys via complex rotations.
+    ```python
+    # Prefill
+    c_cache     = jnp.zeros((B, max_context, down_dim_kv), dtype=c_kv.dtype)
+    c_cache     = c_cache.at[:, :T, :].set(c_kv)
+    k_rope_cache = jnp.zeros((B, 1, 1, max_context, rope_dim), dtype=c_kv.dtype)
 
-**Grouped-Query Attention Projection:**
-```python
-# From core/attention.py - Attention.__init__
-self.kv_heads = config.kv_heads if config.kv_heads is not None else self.n_heads
+    # Decode
+    c_cache = jax.lax.dynamic_update_slice(c_cache, c_kv, (0, cache_index, 0))
+    ```
 
-# Single projection for Q, K, and V to optimize memory bandwidth
-self.qkv = nnx.Linear(self.dim, 
-                      self.dim + 2 * self.kv_heads * self.head_size,
-                      use_bias=False, rngs=rngs)
-```
+    Cache footprint per token per layer: `(down_dim_kv + rope_dim) × 4 bytes` vs `2 × kv_heads × head_size × 4 bytes` for GQA.
 
-**RoPE Frequencies Pre-computation:**
-Instead of computing frequencies at every step, DantinoX caches the inverse frequencies matrix $\theta_i = 10000^{-2(i-1)/d}$ during initialization.
-```python
-def __compute_angle(T:int, C:int) -> jnp.ndarray:
-    P = jnp.arange(T)
-    W = 1 / (1000 ** (jnp.arange(C//2) / C))
-    degree = jnp.einsum('i,j->ij', P, W)[None, None, None, :, :]
-    return degree
+### Sliding Window Attention & Attention Gating
 
-self.angle: jnp.ndarray = __compute_angle(self.max_context, self.head_size)
-```
-
-**Applying the Rotation (Forward Pass):**
-During the forward pass, the angles are dynamically sliced to match the current token index, and the rotation is applied mathematically.
-```python
-def __apply_rotation(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
-    T = x.shape[3]
-    odd  = x[:, :, :, :, 0::2]
-    even = x[:, :, :, :, 1::2]
-
-    angle = jax.lax.dynamic_slice_in_dim(self.angle, start_index=cache_index, slice_size=T, axis=3)
-    
-    x_odd  = jax.lax.cos(angle) * odd - jax.lax.sin(angle) * even
-    x_even = jax.lax.sin(angle) * odd + jax.lax.cos(angle) * even
-
-    return jnp.stack([x_even, x_odd], axis=-1).reshape(x.shape)
-```
-
-### 2. Static KV-Caching for XLA Compilation
-JAX's XLA compiler requires static array shapes. Dynamic array appending (like `jnp.concatenate`) forces expensive recompilations. DantinoX solves this using `jax.lax.dynamic_update_slice`.
+**Sliding window** restricts each token to attend only to the previous `context_window` tokens, preventing quadratic memory growth during long-context generation:
 
 ```python
-# From core/attention.py - Attention.__call__
-if use_cache:
-    if kv_cache == (None, None):  
-        # 1. PREFILL: Pre-allocate the static cache with zeros up to max_context
-        k_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
-        v_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=v.dtype)
-        k_cache, v_cache = k_cache.at[:, :, :, :T, :].set(k), v_cache.at[:, :, :, :T, :].set(v)
-    else:
-        # 2. GENERATION: Surgically insert new tokens at the specific cache_index
-        k_cache, v_cache = map(
-            lambda x, y, index: jax.lax.dynamic_update_slice(x, y, (0, 0, 0, index, 0)), 
-            (kv_cache[0], kv_cache[1]), (k, v), (cache_index, cache_index)
-        )
+table  = jnp.arange(max_context)[:, None] - jnp.arange(max_context)[None, :]
+mask   = (table <= context_window) & (table >= 0)
+window = jnp.where(mask, 0.0, -1e9)
+# Applied via dynamic_slice_in_dim at each forward pass
 ```
 
-### 3. Sliding Window & Attention Gating (`no_sink`)
-To handle infinite generation and avoid memory degradation, DantinoX restricts the attention span and prevents the "Attention Sink" phenomenon.
+**Attention gating** (`no_sink`) multiplies the attention output by a sigmoid-projected gate computed from the input residual. This prevents the degenerate "attention sink" pattern — where initial tokens accumulate disproportionate attention mass — that degrades generation quality at long sequences:
 
-**Sliding Window Mask Initialization:**
 ```python
-if self.sliding_window:
-    # Build a banded matrix where values outside the context window are masked
-    table = jnp.arange(self.max_context)[:, None] - jnp.arange(self.max_context)[None, :]
-    mask  = (table <= config.context_window) & (table >= 0)
-    self.window = jnp.where(mask, 0, -1e9)
-```
-
-**Applying the Window and Gating in Forward Pass:**
-```python
-# 1. Apply Sliding Window Mask
-if self.sliding_window:
-    attn = attn + jax.lax.dynamic_slice_in_dim(operand=self.window,
-                                               start_index=cache_index,
-                                               slice_size=T,
-                                               axis=0)
-
-# Softmax and context projection ...
-causal_attn = jax.nn.softmax(attn)
-y = causal_attn @ v
-
-# 2. Apply Attention Gating (no_sink)
 if self.no_sink:
-    # Modulate the attention output with a sigmoid projection of the original input
     y = y * jax.nn.sigmoid(self.W(x))
 ```
 
-### 4. Sparse Mixture of Experts (MoE) & Load Balancing
-The MLP layer can be dynamically replaced by a routed MoE architecture, using Top-K selection and an auxiliary loss to ensure expert utilization.
+### Sparse Mixture of Experts
 
-**Routing and Load Balancing Loss:**
 ```python
-# From core/attention.py - MoE.__call__
-x_routed = self.router(x)
-probs    = jax.nn.softmax(x_routed)
-values, indices = jax.lax.top_k(probs, self.top_k_mlp)
+# core/attention.py — MoE routing
+probs          = jax.nn.softmax(self.router(x))
+values, idx    = jax.lax.top_k(probs, self.top_k_mlp)
+values         = values / jnp.sum(values, axis=-1, keepdims=True)   # renormalise
 
-# Normalize Top-K probabilities
-values = values / jnp.sum(values, axis=-1, keepdims=True)
-
-# Compute Load Balancing Loss
-expert_mean_prob = jnp.mean(jnp.reshape(probs, (B*T, self.n_experts)), axis=0)
-freq = jnp.mean(jnp.sum(jax.nn.one_hot(indices, self.n_experts), axis=2), axis=(0, 1))
-moe_loss = jnp.sum(freq * expert_mean_prob) * self.n_experts
+# Load-balancing loss (auxiliary, added to cross-entropy)
+f   = jnp.mean(jnp.sum(jax.nn.one_hot(idx, n_experts), axis=2), axis=(0, 1))
+P   = jnp.mean(probs.reshape(B * T, n_experts), axis=0)
+moe_loss = jnp.sum(f * P) * n_experts * alpha_balance
 ```
 
-**Expert Computation:**
+Expert outputs are accumulated in a static zero buffer to keep array shapes fixed for XLA:
+
 ```python
 y = jnp.zeros_like(x)
-for i in range(self.n_experts):
-    mask = (indices == i)
-    # Mask out non-selected experts to save compute
-    expert_weight = jnp.sum(jnp.where(mask, values, 0), axis=-1, keepdims=True)
-    expert_out, _ = self.experts[i](x, deterministic=deterministic)
-    y = y + (expert_weight * expert_out)
+for i in range(n_experts):
+    w   = jnp.sum(jnp.where(idx == i, values, 0), axis=-1, keepdims=True)
+    out, _ = self.experts[i](x, deterministic=deterministic)
+    y   = y + w * out
 ```
 
-### 5. Gradient Checkpointing (Rematerialization)
-To support massive batch sizes and deep networks, DantinoX wraps the Transformer blocks in `nnx.remat`. This discards intermediate activations in the forward pass and recomputes them during the backward pass.
+### Gradient Checkpointing
+
+`nnx.remat` discards intermediate activations during the forward pass and recomputes them on demand during backpropagation. This trades compute for memory, enabling larger batch sizes or deeper models on a fixed VRAM budget. Checkpointing is automatically disabled in inference mode (where `jax.grad` is never called):
 
 ```python
-# From core/attention.py - Transformer.__call__
-def block_fn(block_module, hidden_state, kv_c, det):
-    return block_module(hidden_state, use_cache=use_cache, kv_cache=kv_c, 
-                        cache_index=cache_index, deterministic=det)
-
-# Rematerialize only if gradient checkpointing is ON and we are NOT in inference mode
 if self.gradient_checkpointing and not use_cache:
-    checkpointed_block = nnx.remat(lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic))
+    block_fn = nnx.remat(lambda m, h, c: m(h, use_cache=False, kv_cache=c, ...))
 else:
-    checkpointed_block = lambda bm, hs, kvc: block_fn(bm, hs, kvc, deterministic)
-```
-
-### 6. Multi-Head Latent Attention (MLA) & Weight Absorption
-Standard Multi-Head Attention (and even GQA) suffers from a massive KV-cache memory footprint during long-context generation. DantinoX supports **Multi-Head Latent Attention (MLA)**, which dramatically shrinks the KV-cache by compressing Key and Value states into a single, low-dimensional latent vector (`c_kv`) per token.
-
-**Latent Compression & Cache Storage:**
-Instead of storing multi-head Keys and Values, the model projects the input down into smaller latent dimensions (`down_dim_q` and `down_dim_kv`). During inference, **only the compressed `c_kv` vector is cached**, massively reducing memory bandwidth requirements.
-
-```python
-# From core/attention.py - Attention.__call__
-if self.mla is True:
-    # 1. Compress inputs into low-dimensional latent spaces
-    q = self.norm_q(self.down_q(x))      
-    c_kv = self.norm_kv(self.down_kv(x)) 
-    
-    # ... inside inference mode:
-    # We only store c_kv (and the decoupled RoPE keys) in the cache!
-    kv_cache, k_rope, k, v = self._compute_cache(
-        kv_cache, cache_index, B, T, k=None, v=None, c_kv=c_kv, k_rope=k_rope
-    )
-```
-
-**Decoupled Rotary Positional Embeddings (RoPE):**
-Because positional information cannot be cleanly extracted from a compressed latent space without losing shift-invariance, MLA computes RoPE on parallel, dedicated projections (`q_pe` and `k_pe`) that bypass the main latent compression.
-
-```python
-if self.use_rotary:
-    # Generate parallel vectors strictly for positional data
-    q_rope = self.q_pe(x)[:, None, None, :, :]
-    k_rope = self.k_pe(x)[:, None, None, :, :]
-
-    # Apply RoPE rotations to these dedicated vectors
-    q_rope, k_rope = map(self.__apply_rotation, (q_rope, k_rope), (cache_index, cache_index))
-```
-
-**Inference Optimization: Weight Absorption (The "Faster" Path)**
-During decoding (`inference=True`), explicitly up-projecting `c_kv` back into the full multi-head space to compute attention would be computationally devastating. 
-
-Instead, DantinoX uses a **Weight Absorption** (or Factored Computation) trick. By leveraging the associative property of matrix multiplication, the up-projection weights for queries (`W_UQ`) and keys (`W_UK`) are pre-multiplied together. The query latent is projected directly into this absorbed weight, and then multiplied directly against the compressed cache.
-
-```python
-# Factored computation: avoids materializing the massive (n, g, down_dim_q, down_dim_kv) 
-# weight product that the naive/fused form would create every step.
-
-# 1. Reshape kernels
-q_proj = self.up_q.kernel.reshape(self.down_dim_q, self.kv_heads, 
-                                  self.n_heads // self.kv_heads, self.head_size)
-k_proj = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
-
-# 2. Absorb weights: Pre-multiply Q and K up-projections
-attn_proj = jnp.einsum('qngh, knh -> ngqk', q_proj, k_proj)
-
-# 3. Project the query latent directly through the absorbed weights
-attn_proj = jnp.einsum('btq, ngqk -> btngk', q, attn_proj)
-
-# 4. Compute attention directly against the compressed latent cache (k)
-attn = jnp.einsum('btngk, bsk -> bngts', attn_proj, k)
-
-# Finally, add the decoupled RoPE attention
-attn_rope = q_rope @ jnp.swapaxes(k_rope, -2, -1)
-attn = (attn + attn_rope) / math.sqrt(self.head_size + self.rope_dim)
-```
-
-**Output Weight Absorption:**
-A similar absorption trick is used at the output projection. If attention gating (`no_sink`) is disabled, the value up-projection (`W_V`) and the final output projection (`W_O`) are fused into a single tensor (`W_VO`), completely skipping the materialization of the full multi-head value states.
-
-```python
-# If not using attention gating, we can fuse W_v and W_o
-W_v = self.up_v.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
-W_o = self.o_proj.kernel.reshape(self.kv_heads, self.n_heads // self.kv_heads, 
-                                 self.head_size, self.dim)
-
-# Absorb W_v into W_o
-W_vo = jnp.einsum('dnh, nghc -> dngc', W_v, W_o)
-
-# Direct projection from latent attention sum to output dimension
-out = jnp.einsum('bngtd, dngc -> btc', L, W_vo)
+    block_fn = lambda m, h, c: m(h, use_cache=use_cache, kv_cache=c, ...)
 ```

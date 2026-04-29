@@ -3,33 +3,33 @@
 
 ## Generation Engine
 
-DantinoX implements an autoregressive generation pipeline utilizing `jax.lax.fori_loop` and `nnx.jit` to maintain execution efficiency across extended sequences.
+DantinoX implements a two-phase autoregressive pipeline compiled with `@nnx.jit` and driven by `jax.lax.fori_loop`:
 
-### Technical Implementation
-* **Static KV Caching:** Prevents redundant computation of previously processed tokens. The model transitions from a quadratic complexity prefill stage to a linear complexity decoding phase.
-* **Decoding Strategies:**
-    * **Greedy Search:** Deterministic selection of the highest-probability token.
-    * **Top-K & Top-P (Nucleus) Sampling:** Stochastic sampling methods to control distribution entropy and semantic coherence.
-    * **Temperature Scaling:** Adjusts the logit distribution before the softmax layer to modulate output variance.
+| Phase | Input | Complexity | Cache operation |
+| :--- | :--- | :--- | :--- |
+| **Prefill** | Full prompt (length $T$) | $O(T^2)$ | Allocate + fill |
+| **Decode** | Single token | $O(S)$ where $S$ = cached length | Insert at `cache_index` |
 
-
-### Usage Logic
-
-The generation process is encapsulated in the `_generate_toks` function, which handles state management for both the initial context processing and the subsequent token generation loop:
+Supported decoding strategies: **greedy**, **temperature**, **Top-K**, **Top-P (nucleus)**. All sampling is vectorised over the batch dimension via `jax.vmap`.
 
 ```python
-# Functional interface for sequence generation
 output_ids = generate(
-    model, 
-    input_ids, 
-    max_generations=150, 
-    temperature=1.3, 
-    top_p=0.9, 
-    use_cache=True
+    model, input_ids,
+    max_generations=150, temperature=1.3, top_p=0.9, use_cache=True
 )
 ```
 
-> **Note on Vectorization:** The sampling logic uses `jax.vmap` to perform batch-level operations for Top-K and Top-P filtering, ensuring that probability masking and token selection do not introduce bottlenecks during the inference cycle.
+!!! warning "MLA models require `inference=True`"
+    Before calling `generate()` with an MLA checkpoint, set `config.inference = True`.
+    This activates weight absorption — the decode path operates directly on the cached latent
+    $\mathbf{c}_{KV}$ without materialising full $K$ and $V$ tensors, reducing both memory
+    bandwidth and effective cache size.
+
+    ```python
+    config = Config.from_yaml("runs/<run>/config.yaml")
+    config.inference = True    # enable weight absorption for decode
+    model = load_model(config, "runs/<run>/model_weights.msgpack")
+    ```
 
 ---
 
@@ -81,66 +81,57 @@ python generate.py --run_dir runs/run_xxx --top_k 50 --temperature 1.2
 | `--top_k` | `int` | `null` | Limits sampling to the top K most likely tokens. |
 | `--use_cache` | `bool` | `true` | Toggles the static KV-cache for faster generation. |
 
-> **Note on Performance:** The first token generation might experience a slight delay due to JIT compilation. Subsequent tokens and runs will benefit from the optimized XLA kernel, and the script will report the **tokens per second (tok/s)** throughput at the end of the run.
+!!! note "First-token latency"
+    The first call to `generate()` triggers XLA compilation. Subsequent calls reuse the compiled kernel. The script reports **tokens per second (tok/s)** throughput at the end of each run.
 
 ---
 
 
 ## Deep Dive: The Generation Pipeline
 
-The pipeline is split into an uncompiled public wrapper (`generate`) that handles dynamic shapes, and a highly optimized, strictly static JIT-compiled core (`_generate_toks`).
+The pipeline separates dynamic Python logic (shape handling, strategy dispatch) from the static JIT-compiled core (`_generate_toks`).
 
-### 1. The Public API & Static Padding (`generate`)
-The entry point of the module calculates how many tokens to generate and prepares the tensors for XLA compilation.
+### 1. Static Padding
 
-```python
-B, T = x.shape
-to_generate = min(model.max_context, T + max_generations) - T
+XLA requires all array shapes to be fixed at trace time. The public `generate()` wrapper pre-allocates a zero buffer of size `(B, max_context)` and inserts the prompt at position 0:
 
-if to_generate <= 0:
-    return x
-```
-**Static Padding:** XLA cannot compile functions where the input sizes change at runtime. To solve this, DantinoX creates a static buffer `x_padded` of size `(B, max_context)` filled with zeros, and drops the input prompt `x` into the beginning of it.
 ```python
 x_padded = jnp.zeros((B, model.max_context), dtype=x.dtype)
 x_padded = x_padded.at[:, :T].set(x)
 ```
 
-**Decoding Strategy Setup:** Depending on the `greedy` flag, the engine defines a lambda function. Greedy decoding uses `jnp.argmax`, while stochastic decoding uses `jax.random.categorical`.
-```python
-if greedy:
-    key = None
-    decoding_func = lambda v, key=None: jnp.argmax(v, axis=-1, keepdims=True)
-else:
-    key = jax.random.key(seed)
-    decoding_func = lambda v, key: jax.random.categorical(key, jnp.log(v + 1e-10), axis=-1)
-```
+### 2. JIT-Compiled Core (`_generate_toks`)
 
-### 2. The JIT-Compiled Engine (`_generate_toks`)
-This function is decorated with `@nnx.jit`. Crucially, control-flow flags like `use_cache`, `top_k`, and `top_p` are passed as `static_argnames`. This tells JAX to compile a specific, optimized C++ graph for the exact sampling strategy requested, stripping away all unused `if/else` branches.
+Decorated with `@nnx.jit`. Boolean flags (`use_cache`, `top_k`, `top_p`) are declared as `static_argnames` so JAX compiles a specialised kernel for each unique combination, eliminating dead branches from the computation graph.
 
-#### 2.1 The Control Flow (`jax.lax.fori_loop`)
-JAX forbids native Python loops for dynamic state updates. Instead, we use `fori_loop`, which carries a "state tuple" (`init_val`) across iterations.
+#### Control Flow (`jax.lax.fori_loop`)
 
-**Scenario A: Without KV-Cache**
-If caching is disabled, the model recalculates the entire sequence at every step.
-```python
-if use_cache is False:
-    x, _, _, _   = jax.lax.fori_loop(lower=start_pos, 
-                                     upper=start_pos + max_generations, 
-                                     body_fun=prefill_or_no_cache, 
-                                     init_val=(x, init_kv_cache, dummy_tok, key))
-```
+Python `for` loops introduce dynamic control flow that breaks XLA tracing. `fori_loop` carries a fixed-schema state tuple across iterations:
 
-**Scenario B: With KV-Cache (Standard)**
-This is split into two phases. First, a manual call to `prefill_or_no_cache` processes the initial prompt and populates the KV-cache. Then, the `fori_loop` takes over using `generate_with_kv_cache`, feeding only the last generated token back into the model.
-```python
-else:
+=== "Without KV-Cache"
+
+    The full sequence is re-processed at every step (useful for debugging):
+
+    ```python
+    x, _, _, _ = jax.lax.fori_loop(
+        lower=start_pos, upper=start_pos + max_generations,
+        body_fun=prefill_or_no_cache,
+        init_val=(x, init_kv_cache, dummy_tok, key)
+    )
+    ```
+
+=== "With KV-Cache (default)"
+
+    Prefill populates the cache once; the decode loop feeds a single token per step:
+
+    ```python
     x, kv_cache, tok, key = prefill_or_no_cache(start_pos, (x, init_kv_cache, dummy_tok, key))
-    x, _, _ , _ = jax.lax.fori_loop(lower=start_pos + 1, 
-                                    upper=start_pos + max_generations, 
-                                    body_fun=generate_with_kv_cache, 
-                                    init_val=(x, tok, kv_cache, key))
+    x, _, _, _ = jax.lax.fori_loop(
+        lower=start_pos + 1, upper=start_pos + max_generations,
+        body_fun=generate_with_kv_cache,
+        init_val=(x, tok, kv_cache, key)
+    )
+    ```
 ```
 
 #### 2.2 The Body Functions

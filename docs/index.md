@@ -29,13 +29,13 @@ Every component is implemented from first principles, then validated empirically
 
 | Component | Implementation |
 | :--- | :--- |
-| **Attention** | MHA · GQA · Multi-Head Latent Attention (MLA) with weight absorption |
-| **Feed-Forward** | Dense MLP or Sparse Mixture of Experts (Top-K routing) |
-| **Positional Encoding** | Rotary (RoPE), absolute sinusoidal, or learned |
-| **KV Cache** | Static cache with `jax.lax.dynamic_update_slice` — no recompilation |
-| **Regularization** | Dropout (attention, residual, embedding) + MoE load-balancing loss |
-| **Training** | Gradient checkpointing (`nnx.remat`), gradient accumulation via Optax |
-| **Generation** | Greedy, Top-K, Top-P (nucleus) sampling inside `jax.lax.fori_loop` |
+| **Attention** | MHA · GQA · **Multi-Head Latent Attention (MLA)** with decoupled RoPE and weight absorption |
+| **KV Cache** | MLA compresses cache to `down_dim_kv + rope_dim` per token (~4–16× vs MHA); XLA-safe via `dynamic_update_slice` |
+| **Feed-Forward** | Dense MLP (SwiGLU) or Sparse Mixture of Experts (Top-K routing + load-balancing loss) |
+| **Positional Encoding** | Rotary (RoPE) · absolute sinusoidal · learned — configurable per run |
+| **Regularization** | Dropout (attention, residual, embedding) · MoE load-balancing · attention gating (`no_sink`) |
+| **Training** | `@jax.jit` update step · `nnx.remat` gradient checkpointing · `optax.MultiSteps` accumulation |
+| **Generation** | Greedy · Top-K · Top-P nucleus sampling · `jax.lax.fori_loop` decode loop |
 
 ---
 
@@ -58,6 +58,19 @@ python train.py --config configs/default_config.yaml
 # Generate text from a trained run
 python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
 ```
+
+---
+
+## Documentation Guide
+
+| Page | What you'll find |
+| :--- | :--- |
+| [Core Architecture](architecture.md) | Attention types (MHA/GQA/MLA), math, configuration reference, implementation deep-dives |
+| [Training & Sweeps](training.md) | Training loop internals, W&B sweep setup, MLA training notes |
+| [Inference & Generation](generation.md) | KV-cache pipeline, sampling strategies, MLA inference mode |
+| [Benchmarks](benchmarks.md) | Empirical comparison of MHA / GQA / MLA — throughput, cache, FLOPs, 3D surfaces |
+| [Ablation Studies](ablation_studies.md) | W&B sweep results: optimizer, MoE, positional encoding, regularization |
+| [API Reference](api.md) | Auto-generated docs for `core.model`, `core.config`, `core.generation` |
 
 ---
 
