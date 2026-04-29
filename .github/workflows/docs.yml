@@ -16,14 +16,14 @@ jobs:
       - name: Configure Python
         uses: actions/setup-python@v5
         with:
-          python-level: '3.10'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
-          pip install mkdocs-material mkdocstrings[python] mkdocs-minify-plugin
+          pip install mkdocs-material mkdocstrings[python] mkdocs-minify-plugin mkdocs-glightbox
           pip install jax flax
           
       - name: Deploy to GitHub Pages
         run: |
           export PYTHONPATH=$PYTHONPATH:.
-          mkdocs gh-deploy --forces
+          mkdocs gh-deploy --force

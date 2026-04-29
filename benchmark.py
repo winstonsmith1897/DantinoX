@@ -21,6 +21,8 @@ RUNS_DIR    = "runs"
 OUT_CSV     = "benchmark_results.csv"
 OUT_PLOT    = "plots/benchmark_mla_vs_gqa_mha.png"
 SEQ_LENS    = [64, 128, 256, 512]   # sequence lengths tested for throughput scaling
+BATCH_SIZES = [1, 4, 16, 64, 128, 256] # Batch sizes to stress-test memory bandwidth
+FIXED_SEQ   = 256                   # The sequence length used for the batch scaling test
 N_WARMUP    = 3
 N_MEASURE   = 20                    # decode steps measured per seq-len trial
 
@@ -29,8 +31,6 @@ N_MEASURE   = 20                    # decode steps measured per seq-len trial
 # --------------------------------------------------------------------------- #
 @nnx.jit
 def _decode_step(model, tok, cache, idx):
-    # Depending on your model's exact signature, it may return just logits, 
-    # or (logits, updated_cache). We execute the forward pass here.
     return model(tok, use_cache=True, kv_caches=cache, cache_index=idx)
 
 @nnx.jit
@@ -59,7 +59,7 @@ def _detect_actual_vocab(state_dict, dim: int) -> int | None:
             return None
         v = d.get(key)
         if v is None:
-            v = d.get(key.encode())  # bytes key fallback
+            v = d.get(key.encode())
         return v
 
     def _unwrap(obj):
@@ -123,7 +123,6 @@ def _val_loss(run_path: str) -> float | None:
         return None
 
 def _xla_costs(fn, *args):
-    """Return (flops, bytes_accessed) from XLA, or (nan, nan) on failure."""
     try:
         costs = fn.lower(*args).cost_analysis()
         if isinstance(costs, list):
@@ -137,7 +136,6 @@ def _xla_costs(fn, *args):
         return float("nan"), float("nan")
 
 def _count_params(model) -> float:
-    # Get parameters via nnx graph traversal
     _, state = nnx.split(model)
     total_params = sum(x.size for x in jax.tree_util.tree_leaves(state) if hasattr(x, "size"))
     return total_params / 1e6
@@ -159,7 +157,7 @@ def benchmark_run(run_name: str) -> dict:
     tok = jnp.ones((1, 1), dtype=jnp.int32)
     
     # 1. Prefill latency measurement
-    _ = _prefill_step(model, prompt) # Warmup
+    _ = _prefill_step(model, prompt)
     jax.block_until_ready(_)
     
     t0 = time.perf_counter()
@@ -167,46 +165,72 @@ def benchmark_run(run_name: str) -> dict:
     jax.block_until_ready(out)
     prefill_ms = (time.perf_counter() - t0) * 1000
 
-    # 2. Decode Throughput
+    # 2. Decode Throughput (Seq-Len Scaling @ BS=1)
     tps_by_seqlen = {}
+    print("  [Sequence Length Scaling @ BS=1]")
     for seq_len in SEQ_LENS:
         if seq_len > config.max_context:
             tps_by_seqlen[seq_len] = float("nan")
-            print(f"  ⏭️  Skipping seq_len {seq_len} (exceeds max_context {config.max_context})")
+            print(f"    ⏭️  Skipping seq_len {seq_len} (exceeds max_context)")
             continue
             
         cache = None 
-        
         try:
-            # --- Warmup ---
             for _ in range(N_WARMUP):
                 out = _decode_step(model, tok, cache, seq_len)
-                
             jax.block_until_ready(out)
             
-            # --- Measure ---
             t0 = time.perf_counter()
             for i in range(N_MEASURE):
                 out = _decode_step(model, tok, cache, seq_len)
-                
-                # Optional: print a tiny dot every 5 steps just to see it's alive
-                # if (i + 1) % 5 == 0:
-                #     print(".", end="", flush=True)
-                    
             jax.block_until_ready(out)
             
             duration = time.perf_counter() - t0
             tps_by_seqlen[seq_len] = N_MEASURE / duration
-            
-            # Print Success!
-            print(f"  ✅ [Success] seq_len {seq_len:>3}: {tps_by_seqlen[seq_len]:.2f} tokens/sec")
-
+            print(f"    ✅ seq_len {seq_len:>3}: {tps_by_seqlen[seq_len]:.2f} tokens/sec")
         except Exception as e:
-            # Print Failure (e.g., OOM error) and record NaN so the benchmark continues
-            print(f"  ❌ [Failed]  seq_len {seq_len:>3}: {str(e).splitlines()[0]}")
+            print(f"    ❌ seq_len {seq_len:>3}: [Failed] {str(e).splitlines()[0]}")
             tps_by_seqlen[seq_len] = float("nan")
 
-    # 3. FLOPs & memory traffic via XLA
+    # 3. Batch Size Scaling & OOM Limit
+    tps_by_batch = {}
+    max_batch_survived = 0
+    print(f"  [Batch Scaling Test @ SeqLen {FIXED_SEQ}]")
+    
+    for bs in BATCH_SIZES:
+        if FIXED_SEQ > config.max_context:
+            tps_by_batch[bs] = float("nan")
+            continue
+            
+        tok_b = jnp.ones((bs, 1), dtype=jnp.int32)
+        cache = None 
+        
+        try:
+            for _ in range(N_WARMUP):
+                out = _decode_step(model, tok_b, cache, FIXED_SEQ)
+            jax.block_until_ready(out)
+            
+            t0 = time.perf_counter()
+            for _ in range(N_MEASURE):
+                out = _decode_step(model, tok_b, cache, FIXED_SEQ)
+            jax.block_until_ready(out)
+            
+            duration = time.perf_counter() - t0
+            total_tokens = N_MEASURE * bs
+            tps = total_tokens / duration
+            
+            tps_by_batch[bs] = tps
+            max_batch_survived = bs
+            print(f"    ✅ BS {bs:>3}: {tps:>8.2f} tokens/sec (Total)")
+        except Exception as e:
+            print(f"    ❌ BS {bs:>3}: [OOM] Max batch size reached.")
+            tps_by_batch[bs] = float("nan")
+            break 
+            
+    for missing_bs in [b for b in BATCH_SIZES if b not in tps_by_batch]:
+        tps_by_batch[missing_bs] = float("nan")
+
+    # 4. FLOPs & memory traffic via XLA
     cache_mid = None
     mid_idx = min(config.max_context // 2, config.max_context - 1)
     
@@ -218,11 +242,9 @@ def benchmark_run(run_name: str) -> dict:
     decode_arith_int   = round(decode_flops  / max(decode_bytes,  1), 4) if not np.isnan(decode_bytes)  else float("nan")
     prefill_arith_int  = round(prefill_flops / max(prefill_bytes, 1), 4) if not np.isnan(prefill_bytes) else float("nan")
 
-    # Achieved TFLOP/s at the largest measured seq-len
     best_tps = tps_by_seqlen.get(max(s for s in SEQ_LENS if s <= config.max_context), float("nan"))
     decode_tflops_s = round(decode_gflops * best_tps / 1e3, 4) if not np.isnan(decode_gflops) else float("nan")
-
-    vram_cache_mb = round(_theoretical_kv_cache_mb(config), 2) # Fallback if direct profiling isn't implemented
+    vram_cache_mb = round(_theoretical_kv_cache_mb(config), 2)
 
     result = {
         "run":                    run_name,
@@ -244,18 +266,19 @@ def benchmark_run(run_name: str) -> dict:
         "decode_arith_int":       decode_arith_int,
         "prefill_arith_int":      prefill_arith_int,
         "decode_tflops_s":        decode_tflops_s,
+        "max_batch_survived":     max_batch_survived,
         **{f"tps_{s}": tps_by_seqlen.get(s, float("nan")) for s in SEQ_LENS},
+        **{f"tps_bs{b}": tps_by_batch.get(b, float("nan")) for b in BATCH_SIZES},
     }
 
     del model
     return result
 
 # --------------------------------------------------------------------------- #
-# Grouping helpers                                                            #
+# Grouping & Plotting Helpers                                                 #
 # --------------------------------------------------------------------------- #
 TYPE_COLORS   = {"MLA": "#4C9BE8", "GQA": "#E87B4C", "MHA": "#4CE87B"}
 TYPE_ORDER    = ["MLA", "GQA", "MHA"]
-MOE_LABELS    = {True: "MoE", False: "Dense"}
 
 def _family_key(row) -> str:
     moe = "MoE" if row["moe"] else "Dense"
@@ -266,17 +289,12 @@ def _add_family(df: pd.DataFrame) -> pd.DataFrame:
     df["family"] = df.apply(_family_key, axis=1)
     return df
 
-# --------------------------------------------------------------------------- #
-# Plotting Functions                                                          #
-# --------------------------------------------------------------------------- #
 def _grouped_bar(ax, df, col, ylabel, title, log=False):
     families = sorted(df["family"].unique())
     types    = [t for t in TYPE_ORDER if t in df["type"].unique()]
-
-    n_fam  = len(families)
-    n_type = len(types)
-    width  = 0.8 / max(n_type, 1)
-    x      = np.arange(n_fam)
+    n_fam, n_type = len(families), len(types)
+    width = 0.8 / max(n_type, 1)
+    x = np.arange(n_fam)
 
     for ti, t in enumerate(types):
         sub    = df[df["type"] == t].groupby("family")[col].agg(["mean", "std"])
@@ -286,8 +304,7 @@ def _grouped_bar(ax, df, col, ylabel, title, log=False):
         offset = (ti - n_type / 2 + 0.5) * width
         bars   = ax.bar(x + offset, means, width, label=t,
                         color=TYPE_COLORS[t], edgecolor="black", linewidth=0.5, zorder=3)
-        ax.errorbar(x + offset, means, yerr=stds,
-                    fmt="none", color="black", capsize=3, linewidth=1, zorder=4)
+        ax.errorbar(x + offset, means, yerr=stds, fmt="none", color="black", capsize=3, linewidth=1, zorder=4)
         for bar, m in zip(bars, means):
             if not np.isnan(m):
                 ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() * 1.02,
@@ -299,8 +316,7 @@ def _grouped_bar(ax, df, col, ylabel, title, log=False):
     ax.set_title(title, fontweight="bold")
     ax.legend(fontsize=8)
     ax.grid(axis="y", alpha=0.3, zorder=0)
-    if log:
-        ax.set_yscale("log")
+    if log: ax.set_yscale("log")
 
 def _line_scaling(ax, df):
     families = sorted(df["family"].unique())
@@ -311,17 +327,39 @@ def _line_scaling(ax, df):
         sub_fam = df[df["family"] == fam]
         for t in types:
             sub = sub_fam[sub_fam["type"] == t]
-            if sub.empty:
-                continue
+            if sub.empty: continue
             ys = [sub[f"tps_{s}"].dropna().mean() for s in SEQ_LENS]
             ls = linestyles[fi % len(linestyles)]
-            ax.plot(SEQ_LENS, ys, marker="o", linestyle=ls,
-                    label=f"{fam} / {t}",
+            ax.plot(SEQ_LENS, ys, marker="o", linestyle=ls, label=f"{fam} / {t}",
                     color=TYPE_COLORS.get(t, "grey"), linewidth=1.8)
 
-    ax.set_xlabel("Sequence length")
+    ax.set_xlabel("Sequence Length")
     ax.set_ylabel("Tokens / sec")
-    ax.set_title("Throughput vs Sequence Length (per family)", fontweight="bold")
+    ax.set_title("Throughput vs Sequence Length (BS=1)", fontweight="bold")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(alpha=0.3)
+
+def _batch_scaling_plot(ax, df):
+    families = sorted(df["family"].unique())
+    types    = [t for t in TYPE_ORDER if t in df["type"].unique()]
+    linestyles = ["-", "--", ":", "-."]
+
+    for fi, fam in enumerate(families):
+        sub_fam = df[df["family"] == fam]
+        for t in types:
+            sub = sub_fam[sub_fam["type"] == t]
+            if sub.empty: continue
+            ys = [sub[f"tps_bs{b}"].dropna().mean() for b in BATCH_SIZES]
+            ls = linestyles[fi % len(linestyles)]
+            ax.plot(BATCH_SIZES, ys, marker="o", linestyle=ls, label=f"{fam} / {t}",
+                    color=TYPE_COLORS.get(t, "grey"), linewidth=2.0)
+
+    ax.set_xlabel("Batch Size")
+    ax.set_ylabel("Total Tokens / sec")
+    ax.set_title(f"Throughput vs Batch Size (Seq={FIXED_SEQ})", fontweight="bold")
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(BATCH_SIZES)
+    ax.set_xticklabels([str(b) for b in BATCH_SIZES])
     ax.legend(fontsize=7, ncol=2)
     ax.grid(alpha=0.3)
 
@@ -332,14 +370,10 @@ def _scatter_params_tps(ax, df):
         sub = df[df["family"] == fam]
         for t in TYPE_ORDER:
             pts = sub[sub["type"] == t]
-            if pts.empty:
-                continue
-            ax.scatter(pts["params_m"], pts[f"tps_{SEQ_LENS[-1]}"],
-                       label=f"{fam}/{t}",
-                       color=TYPE_COLORS.get(t, "grey"),
-                       marker=markers[fi % len(markers)],
+            if pts.empty: continue
+            ax.scatter(pts["params_m"], pts[f"tps_{SEQ_LENS[-1]}"], label=f"{fam}/{t}",
+                       color=TYPE_COLORS.get(t, "grey"), marker=markers[fi % len(markers)],
                        edgecolors="black", linewidth=0.5, s=80, zorder=3)
-
     ax.set_xlabel("Parameters (M)")
     ax.set_ylabel(f"Tokens/sec  (seq={SEQ_LENS[-1]})")
     ax.set_title("Parameters vs Throughput", fontweight="bold")
@@ -353,14 +387,10 @@ def _cache_comparison(ax, df):
         sub = df[df["family"] == fam]
         for t in TYPE_ORDER:
             pts = sub[sub["type"] == t]
-            if pts.empty:
-                continue
-            ax.scatter(pts["theoretical_cache_mb"], pts["measured_cache_mb"],
-                       label=f"{fam}/{t}",
-                       color=TYPE_COLORS.get(t, "grey"),
-                       marker=markers[fi % len(markers)],
+            if pts.empty: continue
+            ax.scatter(pts["theoretical_cache_mb"], pts["measured_cache_mb"], label=f"{fam}/{t}",
+                       color=TYPE_COLORS.get(t, "grey"), marker=markers[fi % len(markers)],
                        edgecolors="black", linewidth=0.5, s=80, zorder=3)
-
     lim = max(df["theoretical_cache_mb"].max(), df["measured_cache_mb"].max(), 1) * 1.1
     ax.plot([0, lim], [0, lim], "k--", linewidth=0.8, label="y=x")
     ax.set_xlabel("Theoretical cache (MB)")
@@ -374,14 +404,13 @@ def make_plots(df: pd.DataFrame):
     df = _add_family(df)
 
     fig = plt.figure(figsize=(22, 20))
-    fig.suptitle("MLA vs GQA vs MHA — Fair Comparison by Architecture Family",
-                 fontsize=14, fontweight="bold")
+    fig.suptitle("MLA vs GQA vs MHA — Fair Comparison by Architecture Family", fontsize=14, fontweight="bold")
     gs = gridspec.GridSpec(4, 3, figure=fig, hspace=0.60, wspace=0.38)
 
     ax_tps      = fig.add_subplot(gs[0, 0])
     ax_cache    = fig.add_subplot(gs[0, 1])
     ax_prefill  = fig.add_subplot(gs[0, 2])
-    ax_loss     = fig.add_subplot(gs[1, 0])
+    ax_batch    = fig.add_subplot(gs[1, 0])
     ax_flops    = fig.add_subplot(gs[1, 1])
     ax_tflops_s = fig.add_subplot(gs[1, 2])
     ax_scale    = fig.add_subplot(gs[2, :])
@@ -392,11 +421,7 @@ def make_plots(df: pd.DataFrame):
     _grouped_bar(ax_cache,   df, "theoretical_cache_mb", "MB",          "KV Cache size (theoretical)")
     _grouped_bar(ax_prefill, df, "prefill_ms",           "ms",          "Prefill latency")
 
-    if df["val_loss"].notna().any():
-        _grouped_bar(ax_loss, df, "val_loss", "Val loss (NLL)", "Final Validation Loss")
-    else:
-        ax_loss.text(0.5, 0.5, "No val-loss data", ha="center", va="center", transform=ax_loss.transAxes, fontsize=11)
-        ax_loss.set_title("Final Validation Loss", fontweight="bold")
+    _batch_scaling_plot(ax_batch, df)
 
     if df["decode_gflops"].notna().any():
         _grouped_bar(ax_flops,    df, "decode_gflops",   "GFLOPs",   "Decode FLOPs (T=1, XLA)")
@@ -418,10 +443,10 @@ def make_plots(df: pd.DataFrame):
 # --------------------------------------------------------------------------- #
 def _print_fair_summary(df: pd.DataFrame):
     df = _add_family(df)
-    agg_cols = (["theoretical_cache_mb", "measured_cache_mb", "prefill_ms", "val_loss",
-                 "decode_gflops", "prefill_gflops", "decode_arith_int", "prefill_arith_int",
-                 "decode_tflops_s"]
-                + [f"tps_{s}" for s in SEQ_LENS])
+    agg_cols = (["theoretical_cache_mb", "measured_cache_mb", "prefill_ms",
+                 "max_batch_survived"]
+                + [f"tps_{s}" for s in SEQ_LENS]
+                + [f"tps_bs{b}" for b in BATCH_SIZES])
     
     agg_cols = [c for c in agg_cols if c in df.columns]
 
@@ -435,14 +460,12 @@ def _print_fair_summary(df: pd.DataFrame):
         print("\n=== Dense vs MoE — throughput ===")
         print(df.groupby(["moe", "type"])[[f"tps_{s}" for s in SEQ_LENS]].mean().to_string())
 
-
 def main():
     if not os.path.exists(RUNS_DIR):
         print(f"Error: {RUNS_DIR} directory not found.")
         return
 
     run_dirs = [d for d in os.listdir(RUNS_DIR) if os.path.isdir(os.path.join(RUNS_DIR, d))]
-    
     if not run_dirs:
         print(f"No run directories found in {RUNS_DIR}/")
         return

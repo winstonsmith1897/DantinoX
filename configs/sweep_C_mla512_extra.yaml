@@ -1,0 +1,62 @@
+# Sweep C extra — single missing run: dim=512, MLA Dense, down_dim_kv=64
+#
+# MHA Dense and GQA Dense at dim=512 already exist in the runs folder.
+# This 1-run sweep closes the gap so the width-ladder plot has all three
+# attention types at every dim point.
+#
+# Launch alongside the other two sweeps:
+#   wandb sweep configs/sweep_C_mla512_extra.yaml   → gives SWEEP_ID
+#   wandb agent <SWEEP_ID>
+
+program: train_sweep_attention_comparison.py
+method: grid
+metric:
+  name: val_loss
+  goal: minimize
+
+parameters:
+  attention_type:
+    value: "mla"
+  dim:
+    value: 512
+  num_blocks:
+    value: 12
+  use_moe:
+    value: false
+  down_dim_kv:
+    value: 64
+  rope_dim:
+    value: 16
+  expansion:
+    value: 4
+
+  epochs:
+    value: 50
+  batch_size:
+    value: 64
+  grad_accum:
+    value: 4
+  lr:
+    value: 0.001
+  optimizer:
+    value: "adamw"
+  warmup_steps:
+    value: 100
+  dropout_rate:
+    value: 0.1
+  use_swiglu:
+    value: true
+  weight_tying:
+    value: true
+  max_context:
+    value: 512
+  sliding_window:
+    value: false
+  no_sink:
+    value: true
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}

@@ -189,7 +189,11 @@ class Attention(nnx.Module):
             else:
                 if use_cache:
                     kv_cache, k_rope, k, v = self._compute_cache(kv_cache, cache_index, B, T, k=None, v=None, c_kv=c_kv, k_rope=k_rope)
-
+                else:
+                    # Prefill with inference path: no cache update, use full-sequence
+                    # latent KV directly (c_kv shape: B,T,down_dim_kv).
+                    k = c_kv
+                    v = c_kv
 
                 # Factored computation: project q → full head space first (tiny for T=1),
                 # then against W_uk, then against the cache.

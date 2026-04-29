@@ -1,5 +1,7 @@
 
-## Architecture & Technical Specs
+# Core Architecture
+
+## Technical Specs
 
 
 | Feature | Implementation Details |

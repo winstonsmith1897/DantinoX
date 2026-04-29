@@ -1,0 +1,72 @@
+# Sweep B — down_dim_kv ladder
+#
+# Goal: show cache ↔ quality Pareto curve for MLA by varying ONLY down_dim_kv.
+# Everything else (architecture + training) is fixed so the plot is clean.
+#
+# Architecture anchor: dim=256, num_blocks=12, Dense — same as the best
+# existing runs so results are directly comparable.
+#
+# Skipped values: 64, 96, 128 already exist in the runs folder.
+# New runs: 7  (down_dim_kv ∈ {32, 48, 80, 112, 160, 192, 256})
+#
+# Launch:
+#   wandb sweep configs/sweep_B_down_dim_kv.yaml   → gives SWEEP_ID
+#   wandb agent <SWEEP_ID>                          → one agent per GPU
+
+program: train_sweep_attention_comparison.py
+method: grid
+metric:
+  name: val_loss
+  goal: minimize
+
+parameters:
+
+  # ── Architectural axis (only this changes) ──────────────────────────────
+  down_dim_kv:
+    values: [32, 48, 80, 112, 160, 192, 256]
+
+  # ── Architectural constants ──────────────────────────────────────────────
+  attention_type:
+    value: "mla"
+  dim:
+    value: 256
+  num_blocks:
+    value: 12
+  use_moe:
+    value: false
+  expansion:
+    value: 4
+  rope_dim:
+    value: 16
+
+  # ── Training constants (fixed for reproducibility) ───────────────────────
+  epochs:
+    value: 50
+  batch_size:
+    value: 64
+  grad_accum:
+    value: 4
+  lr:
+    value: 0.001
+  optimizer:
+    value: "adamw"
+  warmup_steps:
+    value: 100
+  dropout_rate:
+    value: 0.1
+  use_swiglu:
+    value: true
+  weight_tying:
+    value: true
+  max_context:
+    value: 512
+  sliding_window:
+    value: false
+  no_sink:
+    value: true
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}

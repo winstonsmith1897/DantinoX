@@ -46,6 +46,7 @@ theme:
 
 plugins:
   - search
+  - glightbox
   - minify:
       minify_html: true
   - mkdocstrings:
@@ -94,5 +95,6 @@ nav:
   - Core Architecture: architecture.md
   - Training & Sweeps: training.md
   - Inference & Generation: generation.md
-  - Ablation Studies: ablation_studies.md 
+  - Ablation Studies: ablation_studies.md
+  - Benchmarks: benchmarks.md
   - API Reference: api.md

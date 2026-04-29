@@ -5,10 +5,10 @@ from .config import Config
 from .block import Block    
 
 
-class Transformer(nnx.Module):
+class Transformer(nnx.Module, pytree=False):
     def __init__(self, config: Config,  rngs: nnx.Rngs):
         self.num_blocks: int     = config.num_blocks
-        self.blocks: nnx.List    = nnx.List([Block(config, rngs=rngs) for _ in range(self.num_blocks)])
+        self.blocks: list        = [Block(config, rngs=rngs) for _ in range(self.num_blocks)]
         self.lm_head: nnx.Linear = nnx.Linear(config.dim, config.vocab_size, rngs=rngs)
         self.wte: nnx.Embed      = nnx.Embed(config.vocab_size, config.dim, rngs=rngs)
         self.trainable_pos: bool = config.trainable_pos

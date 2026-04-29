@@ -427,7 +427,8 @@ def _cache_comparison(ax, df):
 # --------------------------------------------------------------------------- #
 def make_plots(df: pd.DataFrame):
     os.makedirs(os.path.dirname(OUT_PLOT), exist_ok=True)
-    df = _add_family(df)
+    if "family" not in df.columns:
+        df = _add_family(df)
 
     fig = plt.figure(figsize=(22, 20))
     fig.suptitle("MLA vs GQA vs MHA — Fair Comparison by Architecture Family",
@@ -498,30 +499,47 @@ def _print_fair_summary(df: pd.DataFrame):
 # Main                                                                         #
 # --------------------------------------------------------------------------- #
 if __name__ == "__main__":
-    runs_found = [
+    # Load existing results so we can skip already-benchmarked runs
+    if os.path.exists(OUT_CSV):
+        existing_df   = pd.read_csv(OUT_CSV)
+        already_done  = set(existing_df["run"].astype(str))
+        existing_rows = existing_df.to_dict("records")
+        print(f"Loaded {len(already_done)} existing results from {OUT_CSV}")
+    else:
+        already_done  = set()
+        existing_rows = []
+
+    all_runs = sorted([
         r for r in os.listdir(RUNS_DIR)
         if os.path.isdir(os.path.join(RUNS_DIR, r))
         and os.path.exists(os.path.join(RUNS_DIR, r, "model_weights.msgpack"))
-    ]
-    print(f"Found {len(runs_found)} runs to benchmark.")
+    ])
+    pending = [r for r in all_runs if r not in already_done]
+    print(f"Found {len(all_runs)} runs total — {len(already_done)} already done, "
+          f"{len(pending)} to benchmark.")
 
-    results = []
-    for i, run in enumerate(sorted(runs_found), 1):
-        print(f"  [{i}/{len(runs_found)}] {run} ...", end=" ", flush=True)
+    new_results = []
+    for i, run in enumerate(pending, 1):
+        print(f"  [{i}/{len(pending)}] {run} ...", end=" ", flush=True)
         try:
-            results.append(run_benchmark(run))
-            r = results[-1]
+            new_results.append(run_benchmark(run))
+            r = new_results[-1]
             print(f"OK  type={r['type']}  family={_family_key(r)}  tps@{SEQ_LENS[-1]}={r[f'tps_{SEQ_LENS[-1]}']}")
         except Exception as e:
             print(f"SKIP ({e})")
 
-    if not results:
+    all_results = existing_rows + new_results
+    if not all_results:
         print("No valid runs found.")
         raise SystemExit(1)
 
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(all_results)
     df.to_csv(OUT_CSV, index=False)
-    print(f"\nResults saved to {OUT_CSV}")
+    if new_results:
+        print(f"\nAdded {len(new_results)} new results → {OUT_CSV}")
+    else:
+        print("\nNo new runs — CSV unchanged.")
 
+    df = _add_family(df)
     _print_fair_summary(df)
     make_plots(df)

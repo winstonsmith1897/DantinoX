@@ -1,0 +1,82 @@
+# Sweep C — model width ladder (all three attention types)
+#
+# Goal: show that MLA cache stays flat as dim grows, while MHA/GQA cache
+# scales linearly with dim.  The plot should show a horizontal MLA line
+# and two rising MHA/GQA lines on a (params, cache) chart.
+#
+# Fixed: num_blocks=12, Dense, down_dim_kv=64 for MLA (kept small so the
+# flat line effect is clearest; rope_dim=16 → total KV dim = 80/layer).
+# kv_heads is derived automatically by the training script (n_heads // 4).
+#
+# Existing runs already cover dim ∈ {256, 512} for MHA and GQA, and
+# dim=256 for MLA with down_dim_kv=64.  The only missing combo at dim=512
+# is MLA Dense with down_dim_kv=64 — add it as a 13th standalone run:
+#
+#   wandb sweep configs/sweep_C_mla512_extra.yaml
+#
+# New runs from this file: 12
+#   [128, 192, 384, 768] × [standard_mha, standard_gqa, mla]
+#
+# Launch (in parallel with sweep_B):
+#   wandb sweep configs/sweep_C_width_ladder.yaml   → gives SWEEP_ID
+#   wandb agent <SWEEP_ID>                           → one agent per GPU
+
+program: train_sweep_attention_comparison.py
+method: grid
+metric:
+  name: val_loss
+  goal: minimize
+
+parameters:
+
+  # ── The two axes of the grid ─────────────────────────────────────────────
+  dim:
+    values: [128, 192, 384, 768]
+
+  attention_type:
+    values: ["standard_mha", "standard_gqa", "mla"]
+
+  # ── Architectural constants ──────────────────────────────────────────────
+  num_blocks:
+    value: 12
+  use_moe:
+    value: false
+  expansion:
+    value: 4
+  # down_dim_kv=64 is fixed for MLA (ignored for MHA/GQA by the script)
+  down_dim_kv:
+    value: 64
+  rope_dim:
+    value: 16
+
+  # ── Training constants (identical to sweep_B for cross-sweep consistency) ─
+  epochs:
+    value: 50
+  batch_size:
+    value: 64
+  grad_accum:
+    value: 4
+  lr:
+    value: 0.001
+  optimizer:
+    value: "adamw"
+  warmup_steps:
+    value: 100
+  dropout_rate:
+    value: 0.1
+  use_swiglu:
+    value: true
+  weight_tying:
+    value: true
+  max_context:
+    value: 512
+  sliding_window:
+    value: false
+  no_sink:
+    value: true
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}

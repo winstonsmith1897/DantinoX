@@ -1,74 +1,85 @@
 <div align="center">
-  <h1>𝔇𝔞𝔫𝔱𝔦𝔫𝔬𝔛</h1>
-  
-  <p><i>"Ah JAX, vituperio delle genti..."</i><br>
-  <b>(Ah JAX, the shame of the people...)</b></p>
-  
-  <p>A Transformer so <b>"nano" it barely rhymes</b>, implemented in <b>JAX</b> and <b>Flax NNX</b>. Built with <b>sweat</b> and <b>XLA errors</b>.</p>
 
-  <a href="https://github.com/google/jax"><img src="https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white" alt="JAX"></a>
-  <a href="https://github.com/google/flax"><img src="https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white" alt="Flax NNX"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License"></a>
+# DantinoX
+
+*"E quindi uscimmo a riveder le stelle."*
+
+A from-scratch Large Language Model built natively in **JAX** and **Flax NNX**.
+
+[![JAX](https://img.shields.io/badge/JAX-000000?style=for-the-badge&logo=JAX&logoColor=white)](https://github.com/google/jax)
+[![Flax NNX](https://img.shields.io/badge/Flax_NNX-8A2BE2?style=for-the-badge&logo=flax&logoColor=white)](https://github.com/google/flax)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
 </div>
 
-<br>
-
 <p align="center">
-  <img src="images/dantinox.png" alt="DantinoX Architecture">
+  <img src="images/dantinox.png" alt="DantinoX logo" width="180">
 </p>
 
 ---
 
-# Overview: The DantinoX Project
+## Overview
 
-> *"Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura, ché la diritta via era smarrita."*
+**DantinoX** is a fully self-contained implementation of a modern Transformer, built without framework shortcuts. The primary goal is educational: to understand the internal mechanics of current LLM architectures and to write efficient JAX code that plays well with the XLA compiler.
 
-**DantinoX** is a from-scratch implementation of a modern Large Language Model built natively in **JAX and Flax NNX**. The primary motivation behind this project is educational and exploratory: to understand the internal mechanics of current transformer architectures and to learn how to write efficient JAX code without constantly fighting XLA compilation errors.
+Every component is implemented from first principles, then validated empirically through large-scale hyperparameter sweeps logged to **Weights & Biases**.
 
-To thoroughly understand these constraints, DantinoX implements standard modern Deep Learning components directly from the ground up:
+### Key Features
 
-* **Sparse Mixture of Experts (MoE)** with **Load Balancing Loss**
-* **Rotary Positional Embeddings (RoPE)**
-* **Grouped Query Attention (GQA)**
-* **Sliding Window & Attention Gating**
-* **Static KV Cache**
-* **Weight Tying**
-* **Gradient Checkpointing and Gradient Accumulation**
-
-### Highly Customizable
-
-Rather than a rigid production artifact, the codebase is designed to be **highly customizable**. The architecture is modular, allowing users to easily toggle between different configurations—such as switching between a standard Dense MLP and Sparse MoE routing—to observe the direct impact on compute requirements and VRAM usage.
-
-The final result is a functional, memory-efficient Transformer. It serves as a practical reference for resolving shape mismatches, managing GPU memory footprint, and successfully taming the XLA compiler.
-
-> *"E quindi uscimmo a riveder le stelle."*
+| Component | Implementation |
+| :--- | :--- |
+| **Attention** | MHA · GQA · Multi-Head Latent Attention (MLA) with weight absorption |
+| **Feed-Forward** | Dense MLP or Sparse Mixture of Experts (Top-K routing) |
+| **Positional Encoding** | Rotary (RoPE), absolute sinusoidal, or learned |
+| **KV Cache** | Static cache with `jax.lax.dynamic_update_slice` — no recompilation |
+| **Regularization** | Dropout (attention, residual, embedding) + MoE load-balancing loss |
+| **Training** | Gradient checkpointing (`nnx.remat`), gradient accumulation via Optax |
+| **Generation** | Greedy, Top-K, Top-P (nucleus) sampling inside `jax.lax.fori_loop` |
 
 ---
 
-# Project Structure
+## Quickstart
+
+```bash
+git clone https://github.com/winstonsmith1897/DantinoX.git
+cd DantinoX
+
+# Create environment (Conda recommended)
+conda create -n dantinox python=3.12 -y && conda activate dantinox
+
+# Install JAX with CUDA 12 support, then project dependencies
+pip install -U "jax[cuda12]"
+pip install -r requirements.txt
+
+# Train with the default configuration
+python train.py --config configs/default_config.yaml
+
+# Generate text from a trained run
+python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
+```
+
+---
+
+## Project Structure
 
 ```text
 DantinoX/
-├── core/                   # Core neural network logic
-│   ├── config.py           # Configuration parameters (Config Dataclass)
-│   ├── model.py            # Transformer architecture (Attention, MLP, MoE, Block)
-│   ├── generation.py       # Inference engine & static KV-Cache management
-│   └── __init__.py
+├── core/
+│   ├── config.py           # Config dataclass — single source of truth
+│   ├── model.py            # Transformer, Attention (MHA/GQA/MLA), MoE, Block
+│   ├── attention.py        # Attention kernels and KV-cache logic
+│   └── generation.py       # Autoregressive inference engine
 │
-├── configs/                # YAML configuration files
+├── configs/
 │   ├── default_config.yaml # Standard training setup
-│   └── sweep.yaml          # Hyperparameter search config (W&B)
+│   └── sweep.yaml          # W&B Bayesian sweep configuration
 │
-├── utils/                  # Utility functions
-│   ├── tokenizer.py        # Tokenizer management (Char-level & Byte-Level BPE)
-│   ├── helpers.py          # Loss functions, batching, sharding logic
-│   └── __init__.py
+├── utils/
+│   ├── tokenizer.py        # Character-level and Byte-Level BPE tokenizers
+│   └── helpers.py          # Loss functions, batching, sharding utilities
 │
-├── runs/                   # Training outputs (weights, logs, saved configs)
-│
-├── train.py                # Training script
-├── generate.py             # Text generation script
-├── requirements.txt        # Python dependencies
-└── README.md               # Documentation
+├── train.py                # Training entry point
+├── generate.py             # Generation entry point
+└── requirements.txt
 ```
