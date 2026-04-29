@@ -1,9 +1,10 @@
-# 🛠 API Reference
+# API Reference
 
-Technical documentation for DantinoX core modules. These docs are automatically generated from the source code.
+Technical documentation for DantinoX core modules. These docs are automatically generated from source docstrings via [mkdocstrings](https://mkdocstrings.github.io/).
 
-## 🧠 Model Architecture
-Core Transformer components implemented in Flax NNX.
+## Model Architecture
+
+Core Transformer components implemented in Flax NNX — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA), `MoE`, and `MLP`.
 
 ::: core.model
     options:
@@ -12,8 +13,9 @@ Core Transformer components implemented in Flax NNX.
 
 ---
 
-## ⚙️ Configuration
-Hyperparameters and model settings.
+## Configuration
+
+The `Config` dataclass is the single source of truth for all architectural and training hyperparameters. Pass it to `Transformer.__init__` and to the training/generation scripts.
 
 ::: core.config
     options:
@@ -21,8 +23,9 @@ Hyperparameters and model settings.
 
 ---
 
-## 🎭 Generation
-Inference logic and sampling strategies.
+## Generation
+
+Autoregressive inference engine. Handles static KV-cache management, `jax.lax.fori_loop` token generation, and all sampling strategies (greedy, Top-K, Top-P).
 
 ::: core.generation
     options:

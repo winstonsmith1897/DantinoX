@@ -1,4 +1,4 @@
-# 🔬 Comprehensive Ablation Studies & Empirical Insights
+# Ablation Studies
 
 To rigorously validate the architectural choices within DantinoX, we conducted extensive hyperparameter sweeps using **Weights & Biases (W&B)**. Instead of relying on conventional wisdom, every major component—from routing penalties to attention mechanics—was empirically tested against hardware constraints and convergence stability.
 
@@ -19,10 +19,10 @@ This section analyzes how fundamental model scaling laws (depth vs. width) and c
 
 ### Optimizer & Learning Rate Sensitivity
 
-| 📉 Learning Rate vs Optimizer |
+| Learning Rate vs Optimizer |
 | :---: |
 | ![LR vs Optimizer](assets/wandb_insights/insight_lr_vs_optimizer.png){ width="80%" } |
-| **Optimizer Convergence Basins:** A logarithmic analysis comparing AdamW, Adafactor, and Lion across different learning rates. This visualization is crucial for identifying which optimizer provides the most stable convergence basin for the JAX/Flax state management. |
+| **Optimizer Convergence Basins:** A logarithmic analysis comparing AdamW, Adafactor, and Lion across different learning rates, identifying the most stable convergence basin for each. |
 
 ---
 
@@ -32,14 +32,14 @@ Modern LLM engineering is primarily memory-bound. This section proves the effici
 
 ### Parameter Sharing & Attention Optimizations
 
-| 🔗 Weight Tying VRAM Savings | 🧠 GQA Efficiency (VRAM vs Speed) |
-| :---: | :---: |
-| ![Weight Tying VRAM](assets/wandb_insights/perf_weight_tying_vram.png){ width="100%" } | ![GQA Efficiency](assets/wandb_insights/perf_gqa_efficiency.png){ width="100%" } |
-| **Weight Tying Enabled:** Empirical verification of VRAM reduction achieved by sharing the embedding matrix with the output language modeling head across different model dimensions. | **GQA Ratio:** A dual-axis plot analyzing how sharing Key/Value heads across multiple Query heads (Grouped Query Attention) drastically reduces peak VRAM while maintaining hardware throughput. |
+| Weight Tying VRAM Savings |
+| :---: |
+| ![Weight Tying VRAM](assets/wandb_insights/perf_weight_tying_vram.png){ width="80%" } |
+| **Weight Tying:** Empirical verification of VRAM reduction achieved by sharing the embedding matrix with the output LM head across different model dimensions. |
 
 ### VRAM Scaling Laws
 
-| 📏 Context Length Memory Tax | 🧱 Model Capacity VRAM Heatmap |
+| Context Length Memory Cost | Model Capacity VRAM Heatmap |
 | :---: | :---: |
 | ![VRAM vs Context](assets/wandb_insights/perf_vram_vs_context.png){ width="100%" } | ![VRAM Capacity Heatmap](assets/wandb_insights/perf_vram_capacity_heatmap.png){ width="100%" } |
 | **Context Window:** Proves the linear/quadratic VRAM cost associated with expanding the sequence length, highlighting the critical need for optimizations like Sliding Window attention. | **VRAM Lookup Heatmap:** A visual reference guide mapping hidden dimension (`dim`) and layer count (`num_blocks`) against peak VRAM usage. This allows for instant hardware requirement estimation. |
@@ -50,7 +50,7 @@ Modern LLM engineering is primarily memory-bound. This section proves the effici
 
 Implementing MoE in JAX requires careful balancing of speed overhead and routing quality. This section provides a deep dive into the performance trade-offs of the gated MLP blocks.
 
-| 🚀 Dense vs MoE Step Time | ⚖️ Balancing Penalty Trade-off |
+| Dense vs MoE Step Time | Balancing Penalty Trade-off |
 | :---: | :---: |
 | ![MoE Step Time Overhead](assets/wandb_insights/perf_moe_step_time.png){ width="100%" } | ![MoE Alpha Penalty](assets/wandb_insights/insight_moe_alpha_penalty.png){ width="100%" } |
 | **Routing Overhead:** Direct comparison of milliseconds-per-step between Dense and MoE models, quantifying the actual XLA compilation and execution cost of token routing. | **Expert Load Balancing:** Regression plot illustrating the tension between routing fairness (Alpha Balance penalty) and cross-entropy loss. High penalties force expert usage but may degrade final language modeling accuracy. |
@@ -61,7 +61,7 @@ Implementing MoE in JAX requires careful balancing of speed overhead and routing
 
 The final section evaluates how to control overfitting and maximize the utilization of hardware resources during the training loop.
 
-| 🛡️ Dropout Effectiveness by Size | ⏳ Gradient Accumulation Penalty |
+| Dropout Effectiveness by Model Size | Gradient Accumulation Overhead |
 | :---: | :---: |
 | ![Dropout vs Capacity](assets/wandb_insights/insight_dropout_vs_capacity.png){ width="100%" } | ![Grad Accum Speed](assets/wandb_insights/perf_grad_accum_speed.png){ width="100%" } |
 | **Dropout Regularization:** Analyzes the interaction between dropout rate and model capacity. It proves the rule of thumb that smaller models degrade with high dropout, while larger models require it to prevent overfitting. | **Execution Speed:** Boxplot distribution showing how execution time scales with gradient accumulation steps. While accumulation saves VRAM, it introduces a subtle time penalty per virtual step. |
@@ -102,4 +102,4 @@ For full transparency and reproducibility, the following expandable section cont
     | ![Hidden Dimension](assets/wandb_insights/base_scatter_dim.png){ width="100%" } | ![Number of Experts](assets/wandb_insights/base_scatter_n_experts.png){ width="100%" } |
     | ![Number of Blocks](assets/wandb_insights/base_scatter_num_blocks.png){ width="100%" } | ![Top-K MLP](assets/wandb_insights/base_scatter_top_k_mlp.png){ width="100%" } |
     | ![KV Heads (GQA)](assets/wandb_insights/base_scatter_kv_heads.png){ width="100%" } | ![Alpha Balance](assets/wandb_insights/base_scatter_alpha_balance.png){ width="100%" } |
-    | ![Expansion Factor](assets/wandb_insights/base_scatter_expansion.png){ width="100%" } | *Empty Slot* |
+    | ![Expansion Factor](assets/wandb_insights/base_scatter_expansion.png){ width="100%" } | |

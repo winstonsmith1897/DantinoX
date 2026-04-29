@@ -105,7 +105,7 @@ pip install -r requirements.txt
 *(Note: For standard `venv`, use `python -m venv venv && source venv/bin/activate` instead).*
 
 ---
-## 🔬 Deep Dive: JAX/Flax Implementation
+## Deep Dive: JAX/Flax Implementation
 
 DantinoX incorporates several advanced techniques designed to push the limits of modern LLM architecture. Below is a detailed breakdown of the core components, showcasing the actual JAX/Flax code used in the engine.
 

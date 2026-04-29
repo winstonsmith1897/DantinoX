@@ -1,7 +1,7 @@
 
----
+# Inference & Generation
 
-## Inference & Generation Engine
+## Generation Engine
 
 DantinoX implements an autoregressive generation pipeline utilizing `jax.lax.fori_loop` and `nnx.jit` to maintain execution efficiency across extended sequences.
 
@@ -86,7 +86,7 @@ python generate.py --run_dir runs/run_xxx --top_k 50 --temperature 1.2
 ---
 
 
-## 🔬 Deep Dive: The Generation Pipeline
+## Deep Dive: The Generation Pipeline
 
 The pipeline is split into an uncompiled public wrapper (`generate`) that handles dynamic shapes, and a highly optimized, strictly static JIT-compiled core (`_generate_toks`).
 
