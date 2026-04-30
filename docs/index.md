@@ -9,7 +9,7 @@ hide:
 # DantinoX
 
 <p class="hero-tagline">"E quindi uscimmo a riveder le stelle."</p>
-<p class="hero-sub">A decoder-only Transformer — built from scratch in JAX and Flax NNX.</p>
+<p class="hero-sub">A decoder-only Transformer library — built from scratch in JAX and Flax NNX.</p>
 
 [Get Started](architecture.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
@@ -18,6 +18,7 @@ hide:
 <span class="stat-chip">:material-language-python: Python 3.12+</span>
 <span class="stat-chip">:material-memory: MLA · GQA · MHA</span>
 <span class="stat-chip">:material-lightning-bolt: XLA-Native</span>
+<span class="stat-chip">:material-package-variant: pip install</span>
 <span class="stat-chip">:material-license: MIT</span>
 </div>
 
@@ -57,13 +58,13 @@ hide:
 
     [:octicons-arrow-right-24: Benchmarks](benchmarks.md)
 
--   :material-tune: &nbsp;**Single-File Configuration**
+-   :material-package-variant-closed: &nbsp;**pip-Installable Library**
 
     ---
 
-    Every architectural decision — attention type, MoE, positional encoding, regularization — is controlled via one YAML. No source changes required.
+    `Trainer`, `Generator`, `BenchmarkRunner`, and `Plotter` classes expose the full experiment lifecycle programmatically. One `dantinox` CLI covers train, generate, sweep, benchmark, and plot.
 
-    [:octicons-arrow-right-24: Configuration reference](architecture.md#configuration-reference)
+    [:octicons-arrow-right-24: API Reference](api.md)
 
 </div>
 
@@ -71,23 +72,58 @@ hide:
 
 ## Quickstart
 
-```bash
-git clone https://github.com/winstonsmith1897/DantinoX.git
-cd DantinoX
+=== "Library (Python API)"
 
-# Create and activate environment
-conda create -n dantinox python=3.12 -y && conda activate dantinox
+    ```bash
+    git clone https://github.com/winstonsmith1897/DantinoX.git
+    cd DantinoX
 
-# Install JAX with CUDA 12 support, then project dependencies
-pip install -U "jax[cuda12]"
-pip install -r requirements.txt
+    conda create -n dantinox python=3.12 -y && conda activate dantinox
+    pip install -U "jax[cuda12]"
+    pip install -e ".[all]"
+    ```
 
-# Train
-python train.py --config configs/default_config.yaml
+    ```python
+    from dantinox import Config, Trainer, Generator, BenchmarkRunner
+    from dantinox.plotting import Plotter
 
-# Generate from a trained checkpoint
-python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
-```
+    # 1. Train
+    config = Config.from_yaml("configs/default_config.yaml")
+    run_dir = Trainer(config).fit("data/corpus.txt")
+
+    # 2. Generate
+    text = Generator(run_dir).generate("Nel mezzo del cammin ")
+    print(text)
+
+    # 3. Benchmark all runs, then plot
+    df = BenchmarkRunner("runs").run(out_csv="benchmark_results.csv")
+    Plotter("benchmark_results.csv").run()
+    ```
+
+=== "CLI"
+
+    ```bash
+    # Train
+    dantinox train --config configs/default_config.yaml --data_path data/corpus.txt
+
+    # Generate
+    dantinox generate --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
+
+    # Sweep (W&B Bayesian)
+    dantinox sweep --sweep_config configs/sweep.yaml --data_path data/corpus.txt
+
+    # Benchmark, then generate all plots
+    dantinox benchmark --runs_dir runs --out_csv benchmark_results.csv
+    dantinox plot --in_csv benchmark_results.csv --out_dir plots/
+    ```
+
+=== "Scripts (legacy)"
+
+    ```bash
+    python train.py    --config configs/default_config.yaml
+    python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
+    python benchmark.py
+    ```
 
 ---
 
@@ -100,7 +136,7 @@ python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
 | :material-play-box-outline: | [Inference & Generation](generation.md) | KV-cache pipeline, sampling strategies, MLA inference mode |
 | :material-chart-scatter-plot: | [Benchmarks](benchmarks.md) | MHA vs GQA vs MLA — throughput, cache size, FLOPs, 3D surfaces |
 | :material-microscope: | [Ablation Studies](ablation_studies.md) | Optimizer, MoE, positional encoding, regularization |
-| :material-book-open-outline: | [API Reference](api.md) | Auto-generated docs for `core.model`, `core.config`, `core.generation` |
+| :material-book-open-outline: | [API Reference](api.md) | `Trainer`, `Generator`, `BenchmarkRunner`, `Plotter`, and core modules |
 
 ---
 
@@ -108,7 +144,15 @@ python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
 
 ```text
 DantinoX/
-├── core/
+├── dantinox/               # Public library API
+│   ├── __init__.py         # Top-level imports
+│   ├── trainer.py          # Trainer — programmatic training
+│   ├── generator.py        # Generator — checkpoint loading + generation
+│   ├── bench.py            # BenchmarkRunner — throughput / FLOPs benchmarks
+│   ├── plotting.py         # Plotter — automated plot generation
+│   └── cli.py              # dantinox CLI entry point
+│
+├── core/                   # Internal implementation
 │   ├── config.py           # Config dataclass — single source of truth
 │   ├── model.py            # Transformer, Attention (MHA/GQA/MLA), MoE, Block
 │   ├── attention.py        # Attention kernels and KV-cache logic
@@ -122,7 +166,11 @@ DantinoX/
 │   ├── tokenizer.py        # Character-level and Byte-Level BPE tokenizers
 │   └── helpers.py          # Loss functions, batching, sharding utilities
 │
-├── train.py                # Training entry point
-├── generate.py             # Generation entry point
+├── plot_insights.py        # Insight figures (Pareto, serving, MLA dial)
+├── plot_perf.py            # Performance figures (cache, FLOPs, throughput)
+├── plot_3d.py              # 3D surface figures
+├── plot_3d_dkv.py          # down_dim_kv sensitivity figures
+│
+├── pyproject.toml          # pip install -e ".[all]"
 └── requirements.txt
 ```

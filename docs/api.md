@@ -1,10 +1,64 @@
 # API Reference
 
-Technical documentation for DantinoX core modules. These docs are automatically generated from source docstrings via [mkdocstrings](https://mkdocstrings.github.io/).
+Auto-generated from source docstrings via [mkdocstrings](https://mkdocstrings.github.io/).
 
-## Model Architecture
+---
 
-Core Transformer components implemented in Flax NNX — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA), `MoE`, and `MLP`.
+## High-level API
+
+The `dantinox` package exposes four classes that cover the full lifecycle — training, generation, benchmarking, and plotting — without touching internal modules.
+
+### Trainer
+
+::: dantinox.trainer.Trainer
+    options:
+      show_source: true
+      members:
+        - __init__
+        - fit
+
+---
+
+### Generator
+
+::: dantinox.generator.Generator
+    options:
+      show_source: true
+      members:
+        - __init__
+        - generate
+
+---
+
+### BenchmarkRunner
+
+::: dantinox.bench.BenchmarkRunner
+    options:
+      show_source: true
+      members:
+        - __init__
+        - run
+
+---
+
+### Plotter
+
+::: dantinox.plotting.Plotter
+    options:
+      show_source: true
+      members:
+        - __init__
+        - run
+
+---
+
+## Core modules
+
+Internal implementation. Import directly when you need low-level access.
+
+### Model architecture
+
+Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA), `MoE`, and `MLP`.
 
 ::: core.model
     options:
@@ -13,9 +67,9 @@ Core Transformer components implemented in Flax NNX — `Transformer`, `Block`, 
 
 ---
 
-## Configuration
+### Configuration
 
-The `Config` dataclass is the single source of truth for all architectural and training hyperparameters. Pass it to `Transformer.__init__` and to the training/generation scripts.
+The `Config` dataclass is the single source of truth for all architectural and training hyperparameters.
 
 ::: core.config
     options:
@@ -23,9 +77,9 @@ The `Config` dataclass is the single source of truth for all architectural and t
 
 ---
 
-## Generation
+### Generation engine
 
-Autoregressive inference engine. Handles static KV-cache management, `jax.lax.fori_loop` token generation, and all sampling strategies (greedy, Top-K, Top-P).
+Autoregressive inference with static KV-cache management, `jax.lax.fori_loop` token loop, and sampling strategies (greedy, Top-K, Top-P).
 
 ::: core.generation
     options:

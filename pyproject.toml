@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "dantinox"
+version = "0.1.0"
+description = "A decoder-only Transformer built from scratch in JAX and Flax NNX"
+authors = [{name = "Marco Simoni"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jax",
+    "jaxlib",
+    "flax",
+    "optax",
+    "pyyaml",
+    "tokenizers",
+    "msgpack",
+]
+
+[project.optional-dependencies]
+data = ["datasets"]
+benchmark = ["pandas", "matplotlib", "numpy"]
+all = ["dantinox[data,benchmark]"]
+
+[project.scripts]
+dantinox = "dantinox.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dantinox*", "core*", "utils*"]

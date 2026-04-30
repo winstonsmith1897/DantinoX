@@ -1,28 +1,71 @@
+# ── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-.ipynb_checkpoints/
-.DS_Store
-analyze_dataset.py
-plot.py
-test.py
+*.pyo
+*.pyd
 
-# Data and Logs
-data/
+# ── Package / build artifacts ────────────────────────────────────────────────
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+*.whl
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env
+.conda/
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── JAX / XLA cache ──────────────────────────────────────────────────────────
+jax_cache/
+
+# ── Model checkpoints & training artefacts ───────────────────────────────────
+runs/
+*.msgpack
+*.bin
+*.safetensors
+
+# ── Benchmark results & generated plots ──────────────────────────────────────
+benchmark_results.csv
+batch_sweep_results.csv
+plots/
+
+# ── Logs & metrics ───────────────────────────────────────────────────────────
 training_log.csv
 model_summary.json
-*.bin
-*.msgpack
-*.csv
+*.log
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+data/
+
+# ── MkDocs generated site ────────────────────────────────────────────────────
+site/
+
+# ── Weights & Biases ─────────────────────────────────────────────────────────
 wandb/
-runs/
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# ── Scratchpad / one-off scripts not part of the library ─────────────────────
+analyze_dataset.py
 analyze_runs.py
-*.ipynb
-core/old_model.py
+benchmark_analysis.py
 plot.py
 plot_compression.py
-benchmark_analysis.py
 plot_linkedin.py
-# Environment
-venv/
-.env
-
+plot_results.py
+plot_sweeps.py
+core/old_model.py
+test.py

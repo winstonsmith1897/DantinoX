@@ -1,0 +1,2292 @@
+Step,Validation Loss,Optimizer,Architecture,Attention Type,Weight Tying,Attention Sink
+0.0,8.130005359649658,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,7.503970694541931,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,6.983235621452332,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,6.784577155113221,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,6.684448599815369,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,6.639694929122925,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,6.597186803817749,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,6.569159483909607,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,6.569544506072998,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,6.564869976043701,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,8.043206930160522,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,6.492440986633301,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,6.366578197479248,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,6.345562553405761,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,6.347910451889038,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,6.36746392250061,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,6.325902938842773,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,6.237571334838867,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,6.171642804145813,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,6.10602457523346,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,6.05813581943512,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,5.9707444190979,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+12.0,5.932065176963806,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+13.0,5.923629117012024,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+14.0,5.907580113410949,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+15.0,5.869414472579956,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+16.0,5.861437916755676,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+17.0,5.872026419639587,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+18.0,5.853861832618714,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,8.10654444694519,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,6.636317729949951,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,6.063418388366699,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,5.779982113838196,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,5.479731822013855,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,5.33098452091217,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,5.28801531791687,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,5.244130301475525,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,8.005525970458985,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,6.629721140861511,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,6.2139736890792845,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,5.985912179946899,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,5.84486141204834,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,5.836896228790283,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,5.876270437240601,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,5.856785368919373,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,5.856188583374023,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,5.912519645690918,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,8.136729621887207,LION,Dense,Full Context,Tied Weights,Standard Attention
+1.0,6.693081879615784,LION,Dense,Full Context,Tied Weights,Standard Attention
+2.0,6.470260834693908,LION,Dense,Full Context,Tied Weights,Standard Attention
+3.0,6.418428254127503,LION,Dense,Full Context,Tied Weights,Standard Attention
+4.0,6.35804283618927,LION,Dense,Full Context,Tied Weights,Standard Attention
+5.0,6.310010886192321,LION,Dense,Full Context,Tied Weights,Standard Attention
+6.0,6.3115540742874146,LION,Dense,Full Context,Tied Weights,Standard Attention
+7.0,6.285594916343689,LION,Dense,Full Context,Tied Weights,Standard Attention
+8.0,6.277067542076111,LION,Dense,Full Context,Tied Weights,Standard Attention
+9.0,6.308576679229736,LION,Dense,Full Context,Tied Weights,Standard Attention
+0.0,8.231606721878052,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+1.0,6.566161298751831,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+0.0,8.001676154136657,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+1.0,6.393071150779724,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+2.0,6.37930269241333,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+3.0,6.374986171722412,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+4.0,6.344625306129456,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+5.0,6.148717999458313,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+6.0,5.902866077423096,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+7.0,5.741982102394104,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+8.0,5.680508923530579,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+9.0,5.668494057655335,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+0.0,4.6283468246459964,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.110029363632202,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,3.0610785365104674,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,3.0232669353485107,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.9954457879066467,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.9776138067245483,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.9769009709358216,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,8.144062614440918,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,6.404159808158875,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,6.363674354553223,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,5.825862550735474,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,5.469754934310913,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,5.374492979049682,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,5.337773704528809,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,5.268720245361328,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,8.16861958503723,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,6.804771423339844,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,6.4788978576660154,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,6.435969281196594,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,6.42781138420105,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.848733448982239,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.109932708740234,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,3.048572075366974,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.956854057312012,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.8711967706680297,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,8.244903469085694,ADAMW,MoE,Full Context,Tied Weights,Standard Attention
+1.0,6.883223009109497,ADAMW,MoE,Full Context,Tied Weights,Standard Attention
+2.0,6.75868034362793,ADAMW,MoE,Full Context,Tied Weights,Standard Attention
+3.0,6.348228883743286,ADAMW,MoE,Full Context,Tied Weights,Standard Attention
+0.0,4.955947899818421,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.013445234298706,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.989412987232208,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.9760868906974793,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.9622129559516908,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.885480356216431,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.8513395309448244,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.682876634597778,LION,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.993492138385773,LION,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.9821858763694764,LION,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.980683946609497,LION,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.9762362003326417,LION,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.976582884788513,LION,Dense,Full Context,Tied Weights,Standard Attention
+6.0,2.9724045634269713,LION,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.651350712776184,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.005995213985443,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.9830760836601256,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.9750006437301635,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.973802888393402,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.950310802459717,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.7545002698898315,LION,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.1882285594940187,LION,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.3158231496810915,LION,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.2550394177436828,LION,MoE,Full Context,Untied Weights,Standard Attention
+4.0,3.1840102910995483,LION,MoE,Full Context,Untied Weights,Standard Attention
+5.0,3.134093201160431,LION,MoE,Full Context,Untied Weights,Standard Attention
+6.0,3.1199942111968992,LION,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.863821315765381,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.3687214970588686,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,3.136067807674408,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,3.128223240375519,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.91788330078125,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.0742579340934753,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,3.0691490650177,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,3.0604796767234803,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,3.053117299079895,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,3.047430765628815,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.938519787788391,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.1825292348861693,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,3.148644769191742,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,3.2822849273681642,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,3.144825828075409,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,3.1398001313209534,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,3.3122468829154967,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,3.1849430799484253,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,3.1322936415672302,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,3.1913384079933165,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,3.0257075548172,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.945640230178833,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,2.8810643315315247,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,2.8431396007537844,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+14.0,2.8160388588905336,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+15.0,2.8048580408096315,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+16.0,2.825572395324707,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+17.0,2.8283424019813537,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+18.0,2.8353264212608336,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+19.0,2.8299372673034666,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+20.0,2.809131348133087,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+21.0,2.7938461661338807,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+22.0,2.794079089164734,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+23.0,2.7855131149291994,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.957933759689331,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.2013408064842226,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,3.184433615207672,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,3.0943459987640383,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,3.0315728902816774,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.860563373565674,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.803421676158905,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.984973645210266,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.089371407032013,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,3.0568990468978883,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,3.0414918065071106,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.857298111915588,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,3.019683229923248,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,3.0207962155342103,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.9903040409088133,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.9769623041152955,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.982811164855957,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.2355933666229246,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,3.210047483444214,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,3.189484441280365,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,3.175067865848541,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,3.162401580810547,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,3.1516332149505617,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+7.0,3.1385472416877747,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+8.0,3.1252827286720275,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+9.0,3.1181593894958497,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+10.0,3.10861793756485,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+11.0,3.106839966773987,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.727574133872986,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.9870323181152343,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.974861764907837,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.9717982053756713,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.9714622616767885,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.9653852343559266,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.40194079875946,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,3.041854453086853,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,3.0790573716163636,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,3.0227551460266113,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.992363393306732,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,2.9753801226615906,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.63412082195282,LION,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.9981629610061646,LION,Dense,Full Context,Untied Weights,Standard Attention
+2.0,3.0344144105911255,LION,Dense,Full Context,Untied Weights,Standard Attention
+3.0,2.996400463581085,LION,Dense,Full Context,Untied Weights,Standard Attention
+4.0,2.812572884559631,LION,Dense,Full Context,Untied Weights,Standard Attention
+5.0,2.7166196703910828,LION,Dense,Full Context,Untied Weights,Standard Attention
+6.0,2.6958105087280275,LION,Dense,Full Context,Untied Weights,Standard Attention
+0.0,5.042298197746277,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,3.0008699536323546,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.9802111387252808,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.9779745817184446,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.979903185367584,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.801680779457092,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.287160360813141,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,3.2816786766052246,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,3.300206196308136,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,3.291939926147461,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,3.0125454306602477,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.8460182547569275,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.764591193199158,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.739812695980072,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.7264207363128663,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,2.7254045724868776,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.723574161529541,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,2.711324656009674,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,2.714145028591156,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.668262791633606,LION,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.9349239587783815,LION,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.61605761051178,LION,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.5260660529136656,LION,Dense,Full Context,Tied Weights,Standard Attention
+0.0,5.197780179977417,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.143351876735687,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.6222703099250793,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.5031763434410097,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.9729856014251705,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.1237715005874636,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,3.0958029985427857,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,3.085609185695648,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,3.0903430700302126,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.874740791320801,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.1949745655059814,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,3.191219222545624,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,3.2252646327018737,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,3.1516123056411742,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,3.0317055940628053,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.9427616953849793,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,2.895873188972473,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,2.896722137928009,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,2.8725927829742433,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+10.0,2.80209333896637,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+11.0,2.823441672325134,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+12.0,2.783415341377258,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+13.0,2.8714747190475465,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+14.0,2.962531554698944,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+15.0,2.9821855545043947,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+16.0,3.0186558604240417,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+17.0,3.073487389087677,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+18.0,3.0795911073684694,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+19.0,3.066532921791077,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+20.0,3.0605841279029846,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+21.0,3.057953381538391,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+22.0,3.0487159967422484,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+23.0,3.040072166919708,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.817120957374573,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.995031702518463,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.9796802759170533,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.982423758506775,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.966751444339752,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.893905448913574,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.788096618652344,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.6747114062309265,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.62420414686203,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.6109625101089478,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.342743873596191,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.383861804008484,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.247258114814758,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.2252490401268004,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,3.2348782896995543,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+5.0,3.223552906513214,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+6.0,3.0490002036094666,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+7.0,2.892063021659851,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+8.0,2.817450022697449,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+9.0,2.7397444248199463,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+10.0,2.72273371219635,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+11.0,2.665737736225128,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+12.0,2.6347687602043153,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+13.0,2.6084908127784727,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+14.0,2.5987672328948976,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+15.0,2.588049924373627,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+16.0,2.5663291215896606,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+17.0,2.56994172334671,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+18.0,2.569902038574219,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.987965869903564,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+1.0,3.1549512267112734,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+2.0,3.0691246509552004,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+3.0,3.015499496459961,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.9975669980049133,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.9814969897270203,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+6.0,2.978037452697754,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+7.0,2.9604339838027953,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+8.0,2.913929045200348,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+9.0,2.8539819002151487,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+10.0,2.8112066268920897,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+11.0,2.7927157878875732,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+12.0,2.7710567355155944,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+13.0,2.769725811481476,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+0.0,5.0397765874862674,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.5053038001060486,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,3.2560237526893614,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,3.1577951550483703,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,3.016460859775543,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.94520001411438,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,3.1598389625549315,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,3.0133501291275024,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.8323267817497255,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.684930074214935,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,2.6474870800971986,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,5.07942271232605,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,3.2688883781433105,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,3.3073045015335083,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,3.2979052305221557,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,3.2817314147949217,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,3.225865924358368,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,3.1310298085212707,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.998441076278686,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.2326438307762144,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,3.6262935042381286,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,3.1219775319099425,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,2.9689576864242553,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,2.9250752210617064,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,2.897215700149536,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,4.914696455001831,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.2009735226631166,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,3.203096306324005,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,3.2273860335350038,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,3.241217827796936,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,3.2139734268188476,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,3.192960500717163,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,3.1673149347305296,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,3.1579891204833985,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,3.150036907196045,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+10.0,3.1441168785095215,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+11.0,3.136075294017792,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+12.0,3.1314024448394777,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+13.0,3.133845353126526,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,5.148908114433288,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.26220383644104,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,3.2365732192993164,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,3.214964306354523,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,3.2087944865226747,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,5.123597359657287,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.1893744707107543,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,3.1863242268562315,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,3.069269573688507,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,3.0253053069114686,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,2.984284996986389,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,2.8394977331161497,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,5.0369268417358395,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.116029965877533,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.902321088314056,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.813890814781189,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.7495775699615477,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.755493426322937,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.7921241760253905,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,2.797068512439728,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,2.8394094705581665,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,2.795820713043213,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+10.0,2.788545918464661,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+11.0,2.777919256687164,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+12.0,2.777364504337311,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+13.0,2.762185049057007,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,5.024503421783447,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.1665683150291444,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,3.149535346031189,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,3.144722604751587,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,3.057723009586334,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.968297600746155,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,3.0625571966171266,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,3.0608739137649534,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,3.06061646938324,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,3.051431405544281,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+10.0,2.9620502471923826,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+11.0,2.9118182182312013,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+12.0,2.8684606671333315,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+13.0,2.859818363189697,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.6001704454422,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.9923148155212402,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.9800794959068297,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.976313090324402,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.9704731941223144,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.932682287693024,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.8625385642051695,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.209514737129211,LION,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.164470076560974,LION,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.129599928855896,LION,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.1256720542907717,LION,MoE,Full Context,Untied Weights,Standard Attention
+4.0,3.227316951751709,LION,MoE,Full Context,Untied Weights,Standard Attention
+5.0,3.206224513053894,LION,MoE,Full Context,Untied Weights,Standard Attention
+6.0,3.1867157220840454,LION,MoE,Full Context,Untied Weights,Standard Attention
+7.0,3.1704448103904723,LION,MoE,Full Context,Untied Weights,Standard Attention
+8.0,3.1346522212028503,LION,MoE,Full Context,Untied Weights,Standard Attention
+9.0,3.0117679476737975,LION,MoE,Full Context,Untied Weights,Standard Attention
+10.0,2.961459827423096,LION,MoE,Full Context,Untied Weights,Standard Attention
+11.0,2.9438550233840943,LION,MoE,Full Context,Untied Weights,Standard Attention
+0.0,5.183968615531922,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.480164349079132,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,3.709265375137329,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,3.584022605419159,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,3.3019938707351684,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,3.196249616146088,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,3.1534973859786986,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+7.0,3.126881170272827,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+8.0,3.123771870136261,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+9.0,3.0796781182289124,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+10.0,3.0558025598526,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+11.0,3.0451496481895446,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+12.0,3.0237446784973145,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+13.0,3.0237466216087343,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.715806412696838,LION,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.9923457145690917,LION,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.98111834526062,LION,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.9780317544937134,LION,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.977747714519501,LION,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.971896934509277,LION,Dense,Full Context,Tied Weights,Standard Attention
+0.0,5.0709408044815065,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,3.015253710746765,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.9994242906570436,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.995220398902893,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.995085370540619,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,2.9849250078201295,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,2.983762967586517,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,2.977714312076569,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,2.9823300719261168,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,2.979900026321411,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,5.0627923011779785,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.2470498204231264,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,3.119568920135498,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,3.073804271221161,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.741515254974365,LION,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.199336493015289,LION,MoE,Full Context,Tied Weights,Standard Attention
+2.0,3.2091384649276735,LION,MoE,Full Context,Tied Weights,Standard Attention
+3.0,3.109496557712555,LION,MoE,Full Context,Tied Weights,Standard Attention
+4.0,3.1739538669586183,LION,MoE,Full Context,Tied Weights,Standard Attention
+5.0,3.112079453468323,LION,MoE,Full Context,Tied Weights,Standard Attention
+6.0,3.127504885196686,LION,MoE,Full Context,Tied Weights,Standard Attention
+7.0,3.1309541702270507,LION,MoE,Full Context,Tied Weights,Standard Attention
+8.0,3.1152578711509706,LION,MoE,Full Context,Tied Weights,Standard Attention
+9.0,3.109166753292084,LION,MoE,Full Context,Tied Weights,Standard Attention
+10.0,3.106497085094452,LION,MoE,Full Context,Tied Weights,Standard Attention
+11.0,3.100112593173981,LION,MoE,Full Context,Tied Weights,Standard Attention
+0.0,4.946201777458191,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.6927682399749755,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,3.848080563545227,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,3.686896574497223,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,3.5937312841415405,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,3.575901198387146,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,3.5740814089775084,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,5.124771857261658,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,3.0604504466056826,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.971044731140137,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.9510802030563354,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.99100546836853,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.6558305382728578,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.299913728237152,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.0949391961097716,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,1.967545211315155,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,1.8700086772441864,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,1.8127150177955627,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,1.770368653535843,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,1.7362720310688018,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,1.7292452216148377,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,5.2127423763275145,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.242119812965393,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.1393106460571287,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.1247456073760986,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.987940406799316,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.931488502025604,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.5966979265213013,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.4160548210144044,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.2630938291549683,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.187986409664154,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.1524330615997314,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.657481050491333,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.8903143286705015,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.5403231501579286,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.3304835200309753,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.174615466594696,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,2.0515308499336244,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.9727201104164123,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.9025049388408661,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.85262411236763,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.816690319776535,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,1.7866827487945556,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,1.7825133740901946,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,5.387422204017639,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.003840112686157,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,2.5788708090782166,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,2.3939013838768006,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,5.21963140964508,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.048669362068176,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,2.9661515235900877,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,2.675807237625122,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,2.4346845984458922,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,2.265041136741638,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,2.1459933519363403,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+7.0,2.0595725893974306,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+8.0,2.010988485813141,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+9.0,1.9762062013149262,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+10.0,1.9519086003303527,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+11.0,1.9471669375896454,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,4.91223304271698,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.99508318901062,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.98618004322052,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.9830692291259764,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.9778504729270936,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.949801516532898,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.07995228767395,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.1160155296325684,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.7833418250083923,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.508989655971527,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.3318718671798706,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.223784303665161,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.1571946263313295,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,2.1075026869773863,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,2.0898126125335694,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,2.0788861989974974,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.825255799293518,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.698391914367676,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.489991641044617,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.3232253909111025,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.2205618977546693,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.142036426067352,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.1034822821617127,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.04941189289093,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.023570442199707,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.007129406929016,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.9871318936347961,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.9701720833778382,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.942585176229477,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.9448281466960906,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.898321437835693,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.999579334259033,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.982814371585846,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.9842647314071655,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.9750305891036986,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.9187077641487122,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.860852527618408,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.130513620376587,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.7456440806388853,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.5211131453514097,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.4057196259498594,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.3111322641372682,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.0749900341033936,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.03888863325119,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.7254693865776063,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.540601372718811,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.3888595700263977,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.3033129572868347,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.2687899231910706,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.106774306297302,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.2685077667236326,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.2004974722862243,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.1810887336730955,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,3.0863438844680786,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+5.0,2.8578401803970337,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+6.0,2.7373554706573486,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+7.0,2.6596565008163453,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+8.0,2.610656213760376,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+9.0,2.5797634363174438,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+10.0,2.5754435658454895,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+11.0,2.574132204055786,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.468954968452453,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,2.995563495159149,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.9723994016647337,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,2.9793734312057496,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,2.974230194091797,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,2.9702007293701174,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,2.972330689430237,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,2.9738476276397705,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,2.9719411730766296,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,2.9760295391082763,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,2.968294823169708,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,2.878289186954498,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,2.7582162618637085,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,2.7109890222549438,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+14.0,2.6655588030815123,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+15.0,2.6419607281684874,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+16.0,2.60909218788147,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+17.0,2.6202284693717957,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+18.0,2.6151511549949644,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+19.0,2.5917928218841553,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+20.0,2.5866087555885313,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+21.0,2.577746570110321,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+22.0,2.568197178840637,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+23.0,2.5611239790916445,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+24.0,2.555144417285919,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+25.0,2.5567571401596068,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+26.0,2.552723491191864,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+27.0,2.5446298837661745,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+28.0,2.5439928650856016,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+29.0,2.526352334022522,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+30.0,2.5296939849853515,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+31.0,2.519483745098114,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+32.0,2.5221070766448976,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+33.0,2.5199337244033813,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+34.0,2.527926671504974,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+35.0,2.5332600235939027,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+36.0,2.510164272785187,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+37.0,2.5171949744224547,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,4.822270464897156,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.8967724800109864,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.5536548018455507,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.399590861797333,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.2207057595252992,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.135607290267944,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.0748235106468202,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,2.031955587863922,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,2.008160936832428,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,2.0003045558929444,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.866561365127564,LION,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.2319021582603455,LION,MoE,Full Context,Tied Weights,Standard Attention
+2.0,3.1750381350517274,LION,MoE,Full Context,Tied Weights,Standard Attention
+3.0,3.03148832321167,LION,MoE,Full Context,Tied Weights,Standard Attention
+4.0,2.8986604809761047,LION,MoE,Full Context,Tied Weights,Standard Attention
+0.0,4.574765086174011,LION,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.2239399790763854,LION,MoE,Full Context,Tied Weights,Standard Attention
+2.0,3.195570397377014,LION,MoE,Full Context,Tied Weights,Standard Attention
+3.0,3.1904919505119325,LION,MoE,Full Context,Tied Weights,Standard Attention
+4.0,3.1818670630455017,LION,MoE,Full Context,Tied Weights,Standard Attention
+5.0,3.1579084038734435,LION,MoE,Full Context,Tied Weights,Standard Attention
+6.0,2.992893159389496,LION,MoE,Full Context,Tied Weights,Standard Attention
+7.0,2.8992846488952635,LION,MoE,Full Context,Tied Weights,Standard Attention
+8.0,2.8461105823516846,LION,MoE,Full Context,Tied Weights,Standard Attention
+9.0,2.7936705589294433,LION,MoE,Full Context,Tied Weights,Standard Attention
+10.0,2.770080769062042,LION,MoE,Full Context,Tied Weights,Standard Attention
+11.0,2.762148416042328,LION,MoE,Full Context,Tied Weights,Standard Attention
+12.0,2.734732449054718,LION,MoE,Full Context,Tied Weights,Standard Attention
+13.0,2.7159488558769227,LION,MoE,Full Context,Tied Weights,Standard Attention
+14.0,2.693989884853363,LION,MoE,Full Context,Tied Weights,Standard Attention
+15.0,2.677107405662537,LION,MoE,Full Context,Tied Weights,Standard Attention
+16.0,2.658077120780945,LION,MoE,Full Context,Tied Weights,Standard Attention
+17.0,2.6463814854621885,LION,MoE,Full Context,Tied Weights,Standard Attention
+18.0,2.6374019384384155,LION,MoE,Full Context,Tied Weights,Standard Attention
+19.0,2.6238478899002073,LION,MoE,Full Context,Tied Weights,Standard Attention
+20.0,2.6290427565574648,LION,MoE,Full Context,Tied Weights,Standard Attention
+21.0,2.62578946352005,LION,MoE,Full Context,Tied Weights,Standard Attention
+22.0,2.628661596775055,LION,MoE,Full Context,Tied Weights,Standard Attention
+23.0,2.6224225759506226,LION,MoE,Full Context,Tied Weights,Standard Attention
+0.0,5.0069057703018185,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.0590436697006225,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.9860333681106566,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.9867232203483582,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.9833292365074158,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.975302255153656,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.971933889389038,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.520284700393677,LION,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.9943341970443726,LION,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.6056634068489073,LION,Dense,Full Context,Untied Weights,Standard Attention
+3.0,2.4368507504463195,LION,Dense,Full Context,Untied Weights,Standard Attention
+4.0,2.353327012062073,LION,Dense,Full Context,Untied Weights,Standard Attention
+5.0,2.291754448413849,LION,Dense,Full Context,Untied Weights,Standard Attention
+6.0,2.254609990119934,LION,Dense,Full Context,Untied Weights,Standard Attention
+7.0,2.2089850306510925,LION,Dense,Full Context,Untied Weights,Standard Attention
+8.0,2.2093461394309997,LION,Dense,Full Context,Untied Weights,Standard Attention
+9.0,2.1912891626358033,LION,Dense,Full Context,Untied Weights,Standard Attention
+0.0,5.17639536857605,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.3601005554199217,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,2.9978413939476014,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,2.7464784383773804,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,2.5978672981262205,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+5.0,2.4190837502479554,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+6.0,2.318800485134125,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+7.0,2.2284257650375365,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+8.0,2.164619040489197,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+9.0,2.109423816204071,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+10.0,2.067081594467163,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+11.0,2.0490115880966187,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+12.0,2.0362610101699827,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+13.0,2.0342941999435427,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.882751536369324,LION,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.2942959547042845,LION,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.2601742148399353,LION,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.218504846096039,LION,MoE,Full Context,Untied Weights,Standard Attention
+4.0,3.0371639370918273,LION,MoE,Full Context,Untied Weights,Standard Attention
+5.0,2.9761976480484007,LION,MoE,Full Context,Untied Weights,Standard Attention
+0.0,5.14194130897522,LION,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.993776547908783,LION,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.731851816177368,LION,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.416755270957947,LION,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.2043657541275024,LION,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.0532178401947023,LION,Dense,Full Context,Tied Weights,Standard Attention
+6.0,1.9983260571956634,LION,Dense,Full Context,Tied Weights,Standard Attention
+7.0,1.9376440644264221,LION,Dense,Full Context,Tied Weights,Standard Attention
+8.0,1.8626659035682678,LION,Dense,Full Context,Tied Weights,Standard Attention
+9.0,1.8318356037139893,LION,Dense,Full Context,Tied Weights,Standard Attention
+10.0,1.8168044090270996,LION,Dense,Full Context,Tied Weights,Standard Attention
+11.0,1.781810426712036,LION,Dense,Full Context,Tied Weights,Standard Attention
+12.0,1.7475504934787751,LION,Dense,Full Context,Tied Weights,Standard Attention
+13.0,1.7392750322818755,LION,Dense,Full Context,Tied Weights,Standard Attention
+14.0,1.701784896850586,LION,Dense,Full Context,Tied Weights,Standard Attention
+15.0,1.7071322679519654,LION,Dense,Full Context,Tied Weights,Standard Attention
+16.0,1.673091071844101,LION,Dense,Full Context,Tied Weights,Standard Attention
+17.0,1.6628034472465516,LION,Dense,Full Context,Tied Weights,Standard Attention
+18.0,1.6528882682323456,LION,Dense,Full Context,Tied Weights,Standard Attention
+19.0,1.6270901083946228,LION,Dense,Full Context,Tied Weights,Standard Attention
+20.0,1.6165855705738068,LION,Dense,Full Context,Tied Weights,Standard Attention
+21.0,1.6147150456905366,LION,Dense,Full Context,Tied Weights,Standard Attention
+22.0,1.6006925880908967,LION,Dense,Full Context,Tied Weights,Standard Attention
+23.0,1.5870798528194427,LION,Dense,Full Context,Tied Weights,Standard Attention
+24.0,1.586221045255661,LION,Dense,Full Context,Tied Weights,Standard Attention
+25.0,1.5959740698337554,LION,Dense,Full Context,Tied Weights,Standard Attention
+26.0,1.5808746218681335,LION,Dense,Full Context,Tied Weights,Standard Attention
+27.0,1.5827015221118927,LION,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.520228433609009,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,3.0093709230422974,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.7840444922447203,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.746970534324646,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.737020266056061,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,2.6850631713867186,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,2.642352819442749,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,2.651465928554535,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,2.6124922156333925,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,2.5898772954940794,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,2.573998010158539,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,2.553118920326233,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+12.0,2.522883415222168,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+13.0,2.5182071566581725,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.960058188438415,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.6732459902763366,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.4534008383750914,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.305190718173981,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.1479540824890138,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.0579856634140015,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.008573853969574,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.000537443161011,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.5906564831733703,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.240743434429169,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.11525502204895,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.0155683636665342,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,1.9078030645847321,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,1.8645581126213073,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,1.831903439760208,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,1.7985672354698181,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,1.7650912761688233,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,1.7320324063301087,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,1.7286620438098907,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.933401727676392,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,3.0363520622253417,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.574520528316498,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.214785575866699,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.056681978702545,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.9663658440113068,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.8731351792812347,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.8033072710037232,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.7590620577335359,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.7210630178451538,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,1.6803302884101867,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,1.6714895844459534,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+12.0,1.6623450636863708,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+13.0,1.6588053822517395,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.912629008293152,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.651675987243652,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.5010913014411926,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.401423728466034,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.322603476047516,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.2544095277786256,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.212086570262909,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.789367699623108,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.6244358897209166,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.3149047017097475,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.1530007839202883,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.09424489736557,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.1290789604187013,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.108483147621155,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.1033334732055664,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.0721991062164307,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.0710448741912844,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,2.052445673942566,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.0426018238067627,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.117677497863769,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.6628807902336122,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.2960784077644347,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.0482477068901064,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,1.9361619472503662,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,1.8569745481014253,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,1.8385623693466187,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.832185006141662,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,3.1302266836166384,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,3.0628762006759644,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,3.0363958835601808,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,3.0039667010307314,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,2.9815590023994445,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,2.966923189163208,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,2.9291890144348143,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,2.7119231700897215,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,2.621852898597717,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,2.5551290035247805,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,2.5121197938919066,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,2.4729369401931764,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,2.4685784935951234,ADAFACTOR,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,4.639037561416626,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,3.6602904915809633,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.958652639389038,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.691868019104004,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.542405736446381,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,2.4603127241134644,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,2.42197322845459,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,2.385750675201416,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,2.3663803339004517,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,2.349801182746887,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,2.341459095478058,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,2.339120101928711,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.837581276893616,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.933842658996582,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.5760186553001403,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.3610113978385927,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.2184737086296082,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.115504705905914,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.044674289226532,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,1.9836126446723938,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,1.9408358693122865,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,1.8981750190258027,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+10.0,1.872629350423813,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+11.0,1.8492444634437561,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+12.0,1.8281006813049316,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+13.0,1.8266201317310333,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,5.009005212783814,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.285255992412567,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,3.1636320829391478,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,3.114947426319122,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,3.1022509217262266,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+5.0,3.073883020877838,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+6.0,3.0162155270576476,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+7.0,2.9519335985183717,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+8.0,2.90125629901886,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+9.0,2.8651843309402465,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+10.0,2.8431424856185914,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+11.0,2.832412374019623,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+12.0,2.8156104683876038,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+13.0,2.8160728454589843,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.84042911529541,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.7187135219573975,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.531540846824646,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.3205763339996337,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.149441111087799,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.0472769737243652,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.9897461712360383,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.9487227380275727,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.8981351017951966,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.8808336675167083,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.8604779720306397,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.8440556526184082,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.8176095485687256,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.790805208683014,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+14.0,1.7760905563831328,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+15.0,1.7766649007797242,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+16.0,1.7563729286193848,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+17.0,1.7526832699775696,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+18.0,1.7448495864868163,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.830811953544616,LION,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.005916655063629,LION,MoE,Full Context,Tied Weights,Standard Attention
+2.0,2.6738513469696046,LION,MoE,Full Context,Tied Weights,Standard Attention
+3.0,2.437626099586487,LION,MoE,Full Context,Tied Weights,Standard Attention
+0.0,4.904319477081299,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.3318114042282105,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,3.3521105885505675,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,3.264495885372162,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.8442620992660523,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.733014178276062,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.6773922085762023,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.841344237327576,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.837343192100525,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.5428138375282288,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.440354025363922,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.4049757361412047,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.024814033508301,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.6829361438751222,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.384875309467316,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.281912076473236,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,2.224856972694397,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,2.194509494304657,LION,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,5.155917859077453,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,2.889004147052765,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.5585397720336913,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,2.392192506790161,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,2.3443591356277467,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,2.3344003558158875,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,2.4652794122695925,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,2.5046458005905152,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,2.5321327090263366,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,2.5317036747932433,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,2.4873089671134947,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,2.457784616947174,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,2.420989429950714,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,2.4111151933670043,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+14.0,2.3955670952796937,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+15.0,2.405630373954773,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+16.0,2.383377492427826,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+17.0,2.373125970363617,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+18.0,2.3434024691581725,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+19.0,2.334420359134674,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+20.0,2.336459589004517,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+21.0,2.3237711787223816,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+22.0,2.3238484263420105,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+23.0,2.3100638508796694,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,5.059172987937927,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.709630525112152,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.315696120262146,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.1374924540519715,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.070833671092987,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.0054013609886168,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.9768209517002107,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.9034153878688813,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.8614739298820495,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.8209420502185822,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.7805581092834473,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.7632427513599396,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.9731395721435545,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,2.9104989647865294,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.630611765384674,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,2.510107672214508,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,2.5427214384078978,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,2.546038019657135,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,2.5697583198547362,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,2.5949256658554076,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,2.5395095586776733,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,2.509136462211609,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,2.4776169061660767,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,2.4685056805610657,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,4.797744941711426,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.245627593994141,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.8505473375320434,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.7083186745643615,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.5692256927490233,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.466649889945984,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.406747877597809,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,2.3298593044281004,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,2.2865543723106385,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,2.2460265159606934,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+10.0,2.2106713891029357,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+11.0,2.1908330798149107,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+12.0,2.1545689344406127,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+13.0,2.1403342485427856,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+14.0,2.1284634470939636,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+15.0,2.121955704689026,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+16.0,2.1108681201934814,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+17.0,2.1059189081192016,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+18.0,2.092082953453064,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+19.0,2.086804461479187,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+20.0,2.094191861152649,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+21.0,2.082095432281494,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+22.0,2.0856690049171447,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+23.0,2.078671967983246,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.888895916938782,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.582478427886963,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,1.9972762286663055,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,1.7743873417377471,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.6443344414234162,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.5929342329502105,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.5586779177188874,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.55569429397583,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.5678695678710937,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.58887477517128,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,1.5890586376190186,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,1.6079781889915465,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,5.100356936454773,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.548692059516907,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.2487000107765196,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.1024759650230407,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.017425948381424,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,1.982585883140564,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,5.494364213943482,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.140762484073639,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,3.016229176521301,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.6218348503112794,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.546096587181091,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.143133926391601,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+1.0,4.169793796539307,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+2.0,3.277595114707947,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+3.0,3.1012042641639708,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+4.0,3.0358742117881774,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+5.0,2.986310935020447,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+6.0,2.9193168759346007,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+7.0,2.8502296924591066,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+8.0,2.796066975593567,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+9.0,2.759402906894684,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+10.0,2.7397639036178587,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+11.0,2.726578986644745,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+12.0,2.7097437262535093,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+13.0,2.70831983089447,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+0.0,4.5239681005477905,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.9423160433769224,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.483767938613892,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+3.0,2.216925346851349,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+4.0,2.067072343826294,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+5.0,1.957020741701126,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+6.0,1.9121721744537354,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+7.0,1.8378637552261352,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+8.0,1.79257173538208,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+9.0,1.7452818036079407,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+10.0,1.7041092455387115,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+11.0,1.6897188544273376,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+12.0,1.6776511907577514,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+13.0,1.6762675166130065,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+0.0,4.564610314369202,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.792301595211029,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.1910905718803404,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.047064280509949,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.947964185476303,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.837699109315872,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.7443030655384064,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.690208947658539,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.665228259563446,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.6180617213249207,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,1.626679688692093,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,1.631820797920227,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+12.0,1.6344276547431946,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+13.0,1.6641282320022583,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+14.0,1.678800505399704,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+15.0,1.720014262199402,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+16.0,1.7344708263874054,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+17.0,1.7728842318058013,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+18.0,1.8312503099441528,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+19.0,1.8686205804347993,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+20.0,1.8671971201896667,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+21.0,1.8923449277877809,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+22.0,1.8954555213451385,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+23.0,1.8804036200046539,ADAFACTOR,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.881451725959778,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.8511321783065795,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.297975993156433,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.026113599538803,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.8972455203533172,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.8173932671546935,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.7665517151355743,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.7298510670661926,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.7183220028877257,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.7206572532653808,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,5.251001858711243,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.9330880522727965,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.7138325452804564,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.489937949180603,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.3883491158485413,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.2999601006507873,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.262687849998474,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+7.0,2.224090850353241,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+8.0,2.197113907337189,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+9.0,2.183433675765991,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+10.0,2.163455069065094,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+11.0,2.1549914956092833,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+12.0,2.125127613544464,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+13.0,2.125547909736633,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.580934166908264,LION,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.0788329601287843,LION,MoE,Full Context,Tied Weights,Standard Attention
+2.0,3.0639288783073426,LION,MoE,Full Context,Tied Weights,Standard Attention
+3.0,3.0703959703445434,LION,MoE,Full Context,Tied Weights,Standard Attention
+4.0,3.0649359107017515,LION,MoE,Full Context,Tied Weights,Standard Attention
+5.0,3.057149684429169,LION,MoE,Full Context,Tied Weights,Standard Attention
+6.0,3.048495554924011,LION,MoE,Full Context,Tied Weights,Standard Attention
+7.0,2.9610731959342957,LION,MoE,Full Context,Tied Weights,Standard Attention
+8.0,2.877762830257416,LION,MoE,Full Context,Tied Weights,Standard Attention
+9.0,2.853508102893829,LION,MoE,Full Context,Tied Weights,Standard Attention
+0.0,5.067517209053039,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.21353657245636,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.789386522769928,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.4580383896827698,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.280179512500763,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.135166072845459,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.053911876678467,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,1.9881328225135804,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,1.9182771265506744,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,1.8744211614131927,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+10.0,1.8665632069110871,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+11.0,1.861307567358017,ADAFACTOR,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.9766041994094845,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.0482139945030213,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.90885591506958,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.9422078490257264,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.9036011576652525,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.8283583164215087,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.802786636352539,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,2.7536423087120054,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,2.748155915737152,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,2.7458574533462525,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.985931944847107,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.8376163840293884,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.397149753570557,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.200164020061493,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.967535758018494,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.652941334247589,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.4469005465507507,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.3497262716293337,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.315488839149475,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.3197205901145934,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.302909529209137,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.351069188117981,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.327852261066437,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.30295934677124,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,2.345642292499542,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.331544291973114,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+12.0,2.3086748123168945,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+13.0,2.3112529516220093,LION,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.847738456726074,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.7744094252586367,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.458407533168793,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.3476598024368287,LION,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,5.064120507240295,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.6941052675247192,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.4283668279647825,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.2575533986091614,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.1401220321655274,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.0506479859352114,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,1.99425910115242,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,1.9418709039688111,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,1.9089339971542358,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,1.8783442318439483,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+10.0,1.8668821215629579,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+11.0,1.860428237915039,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.495042562484741,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.051331567764282,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.6939712285995485,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.550631248950958,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.318696165084839,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.1778270840644836,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.0505425572395324,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,1.9813263654708861,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,1.9520769655704497,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,1.9466772675514221,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.783910322189331,LION,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.9995540142059327,LION,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.7289795875549316,LION,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.4316187739372253,LION,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.2651695251464843,LION,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.1381039142608644,LION,Dense,Full Context,Tied Weights,Standard Attention
+6.0,2.0636418163776398,LION,Dense,Full Context,Tied Weights,Standard Attention
+7.0,1.9843684017658234,LION,Dense,Full Context,Tied Weights,Standard Attention
+8.0,1.9326850473880768,LION,Dense,Full Context,Tied Weights,Standard Attention
+9.0,1.8933943867683412,LION,Dense,Full Context,Tied Weights,Standard Attention
+10.0,1.8616528272628785,LION,Dense,Full Context,Tied Weights,Standard Attention
+11.0,1.8336186587810517,LION,Dense,Full Context,Tied Weights,Standard Attention
+12.0,1.808708280324936,LION,Dense,Full Context,Tied Weights,Standard Attention
+13.0,1.808393543958664,LION,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.791044211387634,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.5818670630455016,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.2198370695114136,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,1.8948823392391205,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,1.7556679964065551,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,1.681031060218811,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,1.6556007385253906,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,5.084810709953308,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.0746395111083986,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.783730983734131,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.624194073677063,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.551489198207855,LION,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.590073227882385,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.435417628288269,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.8194262385368347,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.640927731990814,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.5319473505020142,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.461096453666687,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.410544764995575,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+7.0,2.3280349254608153,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+8.0,2.2698572635650636,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+9.0,2.2227158427238463,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+10.0,2.1772781014442444,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+11.0,2.1568806886672975,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+12.0,2.136429822444916,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+13.0,2.1318654775619508,ADAFACTOR,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.9580793380737305,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,3.1475852370262145,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.664063882827759,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.5089577198028565,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.4054916501045227,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,2.315140926837921,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,2.2379778623580933,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,2.181766390800476,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,2.165250074863434,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,2.1516504764556883,ADAFACTOR,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.828146958351136,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.7483166098594665,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.2068993926048277,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+3.0,1.9670740246772767,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+4.0,1.8411927759647368,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+5.0,1.748963224887848,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+6.0,1.6912572026252746,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+7.0,1.6402051150798798,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+8.0,1.6110819637775422,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+9.0,1.5765695869922638,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+10.0,1.5703700959682465,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+11.0,1.5477800726890565,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+12.0,1.5229771077632903,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+13.0,1.5250240743160248,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+14.0,1.503663992881775,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+15.0,1.5135717511177063,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+16.0,1.485504573583603,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+17.0,1.4934916555881501,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+18.0,1.4914350867271424,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.737923097610474,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.8733495235443116,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.5678266644477845,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.427737629413605,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.3385591983795164,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.206722104549408,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.1047540664672852,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.0384262084960936,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.0225929260253905,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.0065156519412994,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.101909637451172,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,2.390589439868927,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,1.8816190838813782,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,1.7070911705493927,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,1.7652663052082063,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,1.9338017225265502,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,4.916427278518677,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.0794483065605163,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,2.7193344950675966,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,2.484771203994751,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,2.371840786933899,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,2.289540874958038,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,2.243870937824249,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+7.0,2.2516712307929994,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+8.0,2.2285526156425477,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+9.0,2.253443121910095,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+10.0,2.330583119392395,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+11.0,2.354427921772003,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+12.0,2.3334810972213744,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+13.0,2.3034271597862244,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+14.0,2.313724601268768,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+15.0,2.3363677144050596,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+16.0,2.3138554811477663,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+17.0,2.3639482378959658,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+18.0,2.3415823578834534,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+19.0,2.286200833320618,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+20.0,2.2730535864830017,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+21.0,2.2393462538719175,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+22.0,2.220306658744812,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+23.0,2.2074056267738342,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+24.0,2.2048187255859375,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+25.0,2.1813228368759154,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+26.0,2.1732961416244505,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+27.0,2.1692670464515684,LION,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,4.623181080818176,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.709900510311127,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.1749516487121583,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,1.952126044034958,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.8138785719871522,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.7542667508125305,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.7210565865039826,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.5388751983642575,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.55507116317749,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.2112048745155333,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.006869727373123,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,1.8603740692138673,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,1.7501522779464722,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,1.6886948823928833,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,1.6361834824085235,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,1.6118558168411254,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,1.5801692128181457,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+10.0,1.5634630978107453,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+11.0,1.5521903336048126,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+12.0,1.5462151765823364,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+13.0,1.5545795559883118,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.04174838066101,LION,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.1314807891845704,LION,MoE,Full Context,Tied Weights,Standard Attention
+2.0,2.799701154232025,LION,MoE,Full Context,Tied Weights,Standard Attention
+3.0,2.6156635165214537,LION,MoE,Full Context,Tied Weights,Standard Attention
+4.0,2.508341360092163,LION,MoE,Full Context,Tied Weights,Standard Attention
+5.0,2.4169901251792907,LION,MoE,Full Context,Tied Weights,Standard Attention
+6.0,2.3573620319366455,LION,MoE,Full Context,Tied Weights,Standard Attention
+7.0,2.3121147632598875,LION,MoE,Full Context,Tied Weights,Standard Attention
+8.0,2.2870738387107847,LION,MoE,Full Context,Tied Weights,Standard Attention
+9.0,2.279548716545105,LION,MoE,Full Context,Tied Weights,Standard Attention
+0.0,5.018074083328247,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.5719911813735963,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.32805997133255,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.1569809556007384,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.0704043984413145,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.030055010318756,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.01968452334404,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,1.9895336627960205,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,1.9849910020828248,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,1.9422173082828522,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+10.0,1.9428255558013916,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+11.0,1.906237357854843,LION,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.979092717170715,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+1.0,2.911606419086456,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+2.0,2.3593165278434753,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.1033731579780577,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+4.0,1.9697261095046996,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+5.0,1.866243577003479,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+6.0,1.8057161450386048,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+7.0,1.7433845341205596,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+8.0,1.7082437753677369,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+9.0,1.681316077709198,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+10.0,1.6626158356666565,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+11.0,1.6322864234447478,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+12.0,1.6073686897754669,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+13.0,1.6052484154701232,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+14.0,1.5862554728984832,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+15.0,1.5863966524600983,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+16.0,1.5500729858875275,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+17.0,1.5477801144123078,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+18.0,1.544543045759201,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+19.0,1.5255025148391723,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+20.0,1.5237665712833404,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+21.0,1.5302514612674714,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+22.0,1.5145881175994873,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+23.0,1.5050195157527924,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+24.0,1.49973167181015,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+25.0,1.514710384607315,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+26.0,1.4988045692443848,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+27.0,1.4953165709972382,ADAMW,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.831202340126038,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,2.4563990354537966,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,1.9303792536258697,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,1.7710776448249816,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,5.028985071182251,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.101191830635071,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,2.7938604593276977,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,2.5507091283798218,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,2.356238090991974,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+5.0,2.18534060716629,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+6.0,2.0273173272609712,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+7.0,1.9232637882232666,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+8.0,1.8569202244281768,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+9.0,1.818819922208786,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+10.0,1.793050181865692,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+11.0,1.7903524518013,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.628212547302246,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.8120257377624513,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.274817204475403,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.0221385300159453,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.947476851940155,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.8325726747512818,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.7584834933280944,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.7066958963871002,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.6959059834480286,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.652168881893158,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,1.6458159744739533,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,1.6357516407966615,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+12.0,1.6365721642971038,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+13.0,1.615396922826767,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+14.0,1.599595981836319,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+15.0,1.5947331666946412,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+16.0,1.5458298563957213,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+17.0,1.5573289930820464,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+18.0,1.575839775800705,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+19.0,1.5674816191196441,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+20.0,1.5477610647678375,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+21.0,1.5842803239822387,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+22.0,1.5152554929256439,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+23.0,1.5347572982311248,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+24.0,1.5299895048141479,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+25.0,1.5549304068088532,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+26.0,1.5681062459945678,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+27.0,1.5321506142616272,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+28.0,1.5688335299491882,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+29.0,1.5733880639076232,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+30.0,1.5651335060596465,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+31.0,1.551026952266693,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+32.0,1.5417185306549073,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+33.0,1.5715694785118104,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+34.0,1.5651566326618194,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+35.0,1.557204008102417,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+36.0,1.55427428483963,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+37.0,1.5757085740566255,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+38.0,1.6108604609966277,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+39.0,1.5947820246219635,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+40.0,1.5800919234752655,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+41.0,1.632213020324707,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+42.0,1.5875957608222961,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+43.0,1.6467130601406097,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+44.0,1.6096424341201783,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+45.0,1.6233502447605133,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+46.0,1.6228943288326263,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+47.0,1.5925109148025514,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+48.0,1.6330789148807525,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+49.0,1.6368878304958343,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+50.0,1.6378753423690795,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+51.0,1.6151979923248292,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+52.0,1.6488675892353057,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+53.0,1.6708569705486298,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+54.0,1.6207994878292085,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+55.0,1.6387756943702698,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.594614624977112,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.937506985664368,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.371405577659607,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,2.027279186248779,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.88622944355011,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.758557105064392,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.6899019598960876,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+7.0,1.6429629027843475,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+8.0,1.610217696428299,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+9.0,1.5853381633758545,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+10.0,1.5792191565036773,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+11.0,1.560943454504013,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+12.0,1.5544592499732972,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+13.0,1.5563289821147919,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,4.5666628122329715,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.5219537019729614,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.052517867088318,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+3.0,1.8774162828922272,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+4.0,1.7768136262893677,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+5.0,1.7136745929718018,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+6.0,1.661926454305649,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+7.0,1.6475573778152466,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+8.0,1.6268420577049256,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+9.0,1.6070656776428223,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+10.0,1.57181978225708,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+11.0,1.5650071442127227,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+12.0,1.5479012191295625,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+13.0,1.5274410188198089,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+14.0,1.5120583057403565,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+15.0,1.5063095211982727,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+16.0,1.481620854139328,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+17.0,1.4766230583190918,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+18.0,1.4627204954624176,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+19.0,1.44193474650383,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+20.0,1.451073944568634,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+21.0,1.4408538699150086,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+22.0,1.4382935166358948,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+23.0,1.4407612562179566,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+0.0,4.821229863166809,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,2.6330259442329407,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.040290629863739,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,1.843381267786026,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,1.6834016621112824,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,1.619909930229187,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,1.5695610165596008,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,1.5513079285621643,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,1.5453136444091797,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,1.5482243120670318,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,1.5259939074516295,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,1.5723288297653197,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,1.6012364029884338,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,1.6474617183208466,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+14.0,1.7227822184562682,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+15.0,1.807587343454361,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+16.0,1.8815773665904998,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+17.0,1.9204989910125732,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+18.0,1.9488518178462981,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,4.63965322971344,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.2121421217918398,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,1.8828609824180602,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,1.8047336876392364,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,1.7373380005359649,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,1.717537134885788,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,1.673266977071762,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,1.672147661447525,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,1.6851322650909424,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,1.6624548971652984,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,1.707109308242798,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,1.6797044277191162,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+12.0,1.6977882027626037,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+13.0,1.7395677626132966,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+14.0,1.7205810606479646,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+15.0,1.781030136346817,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+16.0,1.7225493848323823,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+17.0,1.6600825548171998,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+18.0,1.6667350709438324,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+19.0,1.66412912607193,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+20.0,1.630497193336487,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+21.0,1.6397254467010498,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+22.0,1.6060139000415803,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+23.0,1.6002003788948058,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+24.0,1.5720594763755797,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+25.0,1.6162656545639038,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+26.0,1.5603517651557923,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+27.0,1.5407529771327972,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+28.0,1.5591944813728333,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+29.0,1.544687283039093,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+30.0,1.5396288096904756,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+31.0,1.5291879236698152,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+32.0,1.5009656608104707,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+33.0,1.5137046873569489,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+34.0,1.509774923324585,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+35.0,1.499447476863861,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+36.0,1.4871752202510833,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+37.0,1.4872066676616669,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.611230731010437,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+1.0,2.576517653465271,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+2.0,2.0982385635375977,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+3.0,1.8928140699863434,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+4.0,1.8103293657302857,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+5.0,1.725243902206421,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+6.0,1.683993363380432,ADAMW,Dense,Sliding Window,Untied Weights,Standard Attention
+0.0,5.029629206657409,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.276567578315735,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+2.0,2.951127123832703,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+3.0,2.705414116382599,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+4.0,2.4801005721092224,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+5.0,2.345180559158325,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+6.0,2.250057780742645,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+7.0,2.1659537672996523,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+8.0,2.110921859741211,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+9.0,2.056273710727692,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+10.0,2.0180377781391146,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+11.0,1.986153495311737,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+12.0,1.9439117193222046,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+13.0,1.9357022523880005,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+14.0,1.8986193478107452,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+15.0,1.8859282851219177,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+16.0,1.8595309913158418,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+17.0,1.846228402853012,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+18.0,1.8464354753494263,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+19.0,1.8396468877792358,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+20.0,1.8199442505836487,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+21.0,1.825873577594757,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+22.0,1.7976946175098418,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+23.0,1.799061942100525,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+24.0,1.7984457790851593,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+25.0,1.7994875490665436,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+26.0,1.792557805776596,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+27.0,1.7756638824939728,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+0.0,4.83279390335083,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.810614895820618,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.5037204027175903,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.2972426652908324,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.1580262780189514,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.051490592956543,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.987293189764023,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.9215417444705962,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.8856062293052673,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.8582906901836396,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.836704957485199,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.805545163154602,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.7748448848724365,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.769110119342804,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+14.0,1.7445658802986146,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+15.0,1.746710753440857,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+16.0,1.7271466612815858,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+17.0,1.7266479849815368,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+18.0,1.7232004404067993,LION,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.812870907783508,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.790797233581543,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.562682366371155,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.2500950932502746,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.136154592037201,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.0236638367176054,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.924928367137909,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.8725047767162324,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.8310175657272338,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.7711477160453797,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.7521960377693175,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.7220794677734375,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.6910362124443055,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.6801458716392517,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+14.0,1.6633689284324646,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+15.0,1.6814956784248352,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+16.0,1.6509842157363892,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+17.0,1.6459644317626954,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+18.0,1.6474079728126525,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+19.0,1.637213444709778,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+20.0,1.6332364559173584,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+21.0,1.643091881275177,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+22.0,1.634723287820816,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+23.0,1.6327545404434205,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.528308320045471,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.8886212706565857,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.551713788509369,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.4321935057640074,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.410031521320343,ADAFACTOR,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.956586599349976,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,2.618554639816284,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.0361192166805266,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,1.7408229887485505,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,1.643084454536438,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,1.5862741410732268,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,1.5906963884830474,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,1.6448085367679597,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,1.7428298950195313,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,1.8977658212184907,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,2.1202189564704894,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,2.3300684094429016,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,2.4909491181373595,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,2.567738878726959,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,4.556924605369568,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,2.845848059654236,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.5341347813606263,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.282896304130554,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.1436488151550295,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.070251166820526,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.785891366004944,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.682549810409546,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.3899947881698607,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.153719758987427,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,1.9894720256328582,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,1.8434902131557465,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,1.7644237160682679,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,1.7114852011203765,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,1.6889131605625152,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,1.637366569042206,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+10.0,1.6322970509529113,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+11.0,1.6136997163295745,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+12.0,1.5876728415489196,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+13.0,1.5943905472755433,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+14.0,1.574689608812332,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+15.0,1.5827145636081696,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+16.0,1.5485402464866638,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+17.0,1.5612483143806457,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+18.0,1.5695981979370117,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+19.0,1.5674886524677276,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+20.0,1.5524962425231934,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+21.0,1.5507492661476134,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+22.0,1.539075630903244,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+23.0,1.53720281124115,ADAMW,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,5.182828831672668,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.178408622741699,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,2.7644564151763915,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,2.5303550720214845,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,2.3662049412727355,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,2.2905579447746276,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,4.648205637931824,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,2.9321483373641968,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.6503897428512575,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.531566047668457,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.4660419106483458,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.398698318004608,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.3553494215011597,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,2.3223530292510985,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,2.306656265258789,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,2.294718825817108,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,5.028656721115112,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.6902308225631715,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.8991808176040648,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.6721208930015563,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.5398187041282654,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.4723291993141174,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.4040557742118835,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.337252604961395,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.3093114614486696,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.260534942150116,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,2.2204111576080323,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.1816222310066222,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+12.0,2.1496492981910706,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+13.0,2.1476564168930055,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+14.0,2.12567538022995,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+15.0,2.116648542881012,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+16.0,2.0906610012054445,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+17.0,2.0896923184394836,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+18.0,2.077842539548874,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+19.0,2.077456021308899,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+20.0,2.070325267314911,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+21.0,2.0644998431205748,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+22.0,2.052324432134628,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+23.0,2.05782408118248,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.116637825965881,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,3.7944152116775514,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,3.1877244472503663,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,3.0880973100662232,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,2.9828032493591308,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,2.8101492404937742,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,2.6921210885047913,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+7.0,2.623120367527008,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+8.0,2.567738711833954,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+9.0,2.5224884748458862,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+10.0,2.483563184738159,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+11.0,2.429011809825897,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+12.0,2.3846405863761904,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+13.0,2.3730127930641176,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+14.0,2.3509737968444826,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+15.0,2.3359002590179445,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+16.0,2.2969902992248534,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+17.0,2.301752734184265,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+18.0,2.2803985238075257,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+19.0,2.2733230233192443,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+20.0,2.2631504058837892,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+21.0,2.2545857787132264,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+22.0,2.235349702835083,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+23.0,2.23697270154953,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+24.0,2.248149013519287,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+25.0,2.2344942569732664,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+26.0,2.229604494571686,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+27.0,2.215163016319275,ADAFACTOR,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,5.026386427879333,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.823399376869202,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.469050407409668,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.3655099987983705,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.243780755996704,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.156226658821106,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.0966958522796633,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.0548301219940184,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.0034777343273165,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.9805638492107391,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.9530789732933045,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.9465515911579132,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.926863557100296,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.9220853865146637,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.6652421951293945,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.481750500202179,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.0223550140857696,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+3.0,1.819306617975235,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+4.0,1.7325519144535064,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+5.0,1.64434295296669,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+6.0,1.6102487981319427,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+7.0,1.5738966107368468,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+8.0,1.5447699844837188,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+9.0,1.5136330068111419,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+10.0,1.528346735239029,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+11.0,1.4867429733276367,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+12.0,1.5060169041156768,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+13.0,1.4802811741828918,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+14.0,1.5091934680938721,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+15.0,1.5058739244937898,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+16.0,1.5277932405471801,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+17.0,1.5332282185554504,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+18.0,1.542177641391754,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+19.0,1.601917278766632,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+20.0,1.6059106588363647,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+21.0,1.679131430387497,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+22.0,1.727543866634369,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+23.0,1.7620201230049133,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+24.0,1.8239505887031555,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+25.0,1.8445194363594055,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+26.0,1.872761309146881,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+27.0,1.9028869450092316,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+0.0,5.333637404441833,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+1.0,2.8383546710014342,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+2.0,2.150032329559326,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+3.0,1.9043338537216186,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+4.0,1.7531520485877992,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+5.0,1.6953185200691223,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+6.0,1.637794029712677,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+7.0,1.6105936944484711,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+8.0,1.6006480574607849,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+9.0,1.5875563621520996,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+10.0,1.5667243540287017,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+11.0,1.5635746777057649,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+12.0,1.5658671617507935,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+13.0,1.558981716632843,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+14.0,1.566393542289734,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+15.0,1.5952150762081145,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+16.0,1.5986339330673218,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+17.0,1.625099527835846,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+18.0,1.6609471440315247,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+19.0,1.6792382180690766,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+20.0,1.7515254497528077,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+21.0,1.8330843925476075,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+22.0,1.8936596810817719,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+23.0,2.004237526655197,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+24.0,2.05452042222023,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+25.0,2.140749931335449,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+26.0,2.199195694923401,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+27.0,2.199262726306915,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+0.0,5.048819208145142,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.165219557285309,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.698949360847473,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.5975722908973693,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.5507614493370054,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.593935751914978,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.528088593482971,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.055853533744812,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+3.0,1.871983939409256,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+4.0,1.7537246763706207,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+5.0,1.6689611673355103,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+6.0,1.6340882658958436,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+0.0,5.11138813495636,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.7454169631004333,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.874717104434967,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.624562704563141,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.5258716106414796,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.45737601518631,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.425784134864807,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.384430706501007,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.352155077457428,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.3248427867889405,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,2.317959189414978,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.306483542919159,ADAFACTOR,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.78655595779419,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.007793128490448,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.6747000575065614,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.521116816997528,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.3919105768203734,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.280117404460907,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.190472674369812,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,2.1201481342315676,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,2.097158908843994,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,2.083849275112152,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.599535322189331,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.8797299742698668,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.4868661046028135,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+3.0,2.3170238852500917,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+4.0,2.1608765959739684,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+5.0,2.0561953663825987,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+6.0,2.0100372612476347,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+7.0,1.9490250587463378,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+8.0,1.92112056016922,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+9.0,1.894241589307785,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+10.0,1.9039986193180085,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+11.0,1.8828437507152558,ADAFACTOR,Dense,Full Context,Untied Weights,Standard Attention
+0.0,4.950982165336609,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+1.0,2.7739396572113035,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+2.0,2.212829625606537,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+3.0,1.911127072572708,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+4.0,1.8390732824802398,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+5.0,1.8878109574317932,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+6.0,2.0146255791187286,ADAMW,MoE,Sliding Window,Untied Weights,Standard Attention
+0.0,5.12862982749939,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+1.0,2.620947527885437,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+2.0,2.1704631090164184,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+3.0,1.9423053681850433,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+4.0,1.820222055912018,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+5.0,1.7501787900924684,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+6.0,1.6931819796562195,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+7.0,1.6374805688858032,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+8.0,1.611389124393463,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+9.0,1.5715445816516875,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+10.0,1.583889639377594,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+11.0,1.558612096309662,ADAMW,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.643248653411865,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.6469284534454345,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.5315577149391175,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.391527473926544,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.3366878151893617,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,2.278220522403717,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,2.274622547626495,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,2.224920630455017,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,2.2390066385269165,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,2.2348262548446653,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,2.2098976254463194,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,2.1994907021522523,LION,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,5.1261046648025514,LION,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.0791405916213987,LION,MoE,Full Context,Untied Weights,Standard Attention
+2.0,2.7860219836235047,LION,MoE,Full Context,Untied Weights,Standard Attention
+3.0,2.682196927070618,LION,MoE,Full Context,Untied Weights,Standard Attention
+4.0,2.651336634159088,LION,MoE,Full Context,Untied Weights,Standard Attention
+5.0,2.5942877292633058,LION,MoE,Full Context,Untied Weights,Standard Attention
+6.0,2.56092312335968,LION,MoE,Full Context,Untied Weights,Standard Attention
+7.0,2.5296578645706176,LION,MoE,Full Context,Untied Weights,Standard Attention
+8.0,2.530851864814758,LION,MoE,Full Context,Untied Weights,Standard Attention
+9.0,2.5085616230964662,LION,MoE,Full Context,Untied Weights,Standard Attention
+10.0,2.4846805691719056,LION,MoE,Full Context,Untied Weights,Standard Attention
+11.0,2.4656198620796204,LION,MoE,Full Context,Untied Weights,Standard Attention
+12.0,2.4543866157531737,LION,MoE,Full Context,Untied Weights,Standard Attention
+13.0,2.4528037309646606,LION,MoE,Full Context,Untied Weights,Standard Attention
+0.0,4.747968363761902,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,2.6229387402534483,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.133386719226837,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,1.9400292038917542,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,1.812090241909027,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,1.7477680623531342,ADAMW,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.867316102981567,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.636368656158447,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.286738860607147,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.0243955671787264,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,1.8532841205596924,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,1.7304951846599579,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,1.6506451070308685,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,1.6054738640785218,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,1.5676931262016296,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,1.553273570537567,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+10.0,1.523467981815338,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+11.0,1.521677988767624,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+12.0,1.5029152989387513,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+13.0,1.4994591176509857,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+14.0,1.5051816821098327,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+15.0,1.5160446107387542,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+16.0,1.5072332620620728,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+17.0,1.5144571244716645,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+18.0,1.5180711686611175,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+19.0,1.5099283456802368,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+20.0,1.5164223253726958,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+21.0,1.5182751178741456,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+22.0,1.516130381822586,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+23.0,1.5225926339626312,ADAMW,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.211400508880615,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.6366922497749328,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.3031914710998533,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.0863905549049377,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.0200794458389284,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,1.935543429851532,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,1.8962602615356445,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+7.0,1.8409897089004517,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+8.0,1.8010541558265687,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+9.0,1.7502506017684936,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+10.0,1.736462914943695,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+11.0,1.6821578681468963,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+12.0,1.6769018948078156,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+13.0,1.644869041442871,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.790819430351258,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,3.4603702783584596,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,2.972732734680176,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,2.7566182136535646,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,2.6646918416023255,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,2.5995119333267214,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,2.5718329310417176,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,2.5466819643974303,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,2.551430606842041,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,2.5347117304801943,ADAFACTOR,MoE,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.52762999534607,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,3.110121560096741,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.7329366326332094,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.5924054265022276,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.4670920848846434,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.4155637979507447,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.3353878021240235,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,2.2565414786338804,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,2.1968146443367003,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,2.1667437076568605,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+10.0,2.132212460041046,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+11.0,2.0965416550636293,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+12.0,2.0623863697052003,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+13.0,2.0595705807209015,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+14.0,2.0440180122852327,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+15.0,2.0249394714832305,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+16.0,1.9914606273174287,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+17.0,1.9909911274909973,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+18.0,1.9702059984207154,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+19.0,1.9713034927845001,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+20.0,1.9560442209243774,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+21.0,1.9353326857089996,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+22.0,1.917989867925644,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+23.0,1.9129431784152984,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+24.0,1.9134169042110443,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+25.0,1.910669708251953,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+26.0,1.8898662090301515,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+27.0,1.889058232307434,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+28.0,1.9109893262386322,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+29.0,1.8856101512908936,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+30.0,1.8840543985366822,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+31.0,1.8729477107524872,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+32.0,1.8772699952125549,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+33.0,1.884578913450241,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+34.0,1.895838314294815,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+35.0,1.880610316991806,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+36.0,1.8694650828838348,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+37.0,1.8703600823879243,ADAFACTOR,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.986680340766907,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.4100184440612793,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.042926901578903,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,1.840188777446747,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,1.736657154560089,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,1.6682375729084016,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.6300544798374177,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.5930753707885743,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.5722386717796326,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.5442612528800965,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.5606354773044586,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.5362086713314056,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.026930975914001,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.3250447869300843,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,1.9383625030517577,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,1.8145165383815764,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+4.0,1.76301811337471,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+5.0,1.661609834432602,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+6.0,1.6109191477298737,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+7.0,1.5710831880569458,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+8.0,1.5849737286567689,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+9.0,1.5426310420036315,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+10.0,1.5504972279071807,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+11.0,1.5325866401195527,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+12.0,1.5423722326755525,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+13.0,1.5198077142238617,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+14.0,1.5097761154174805,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+15.0,1.520125263929367,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+16.0,1.4773695468902588,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+17.0,1.5000575482845306,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+18.0,1.5501869380474091,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+19.0,1.5717023015022278,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+20.0,1.5572419703006743,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+21.0,1.620729959011078,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+22.0,1.6265153229236602,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+23.0,1.6424578785896302,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+24.0,1.6745434165000916,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+25.0,1.7471682608127594,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+26.0,1.8148520827293395,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+27.0,1.7489327609539032,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.903445672988892,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.4930569887161256,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.195302367210388,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,1.9640194714069366,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,1.8358860790729523,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,1.7409452557563783,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+6.0,1.6677488446235658,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+7.0,1.618905395269394,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+8.0,1.5885741353034972,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+9.0,1.5696869015693664,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+10.0,1.5490889489650725,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+11.0,1.5364075481891633,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+12.0,1.5347728252410888,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+13.0,1.5329101741313935,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+14.0,1.5386631667613984,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+15.0,1.5641422152519227,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+16.0,1.5555197775363923,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+17.0,1.5799219608306885,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+18.0,1.609295779466629,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+19.0,1.6391377747058868,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+20.0,1.6637209117412568,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+21.0,1.6979722738265992,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+22.0,1.7026314079761504,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+23.0,1.7076032042503357,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,5.116209506988525,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.7567664980888367,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,2.5870978951454164,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,2.488431119918823,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,2.4172502517700196,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,2.354535460472107,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,2.3375306963920592,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,2.299567234516144,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,2.2825450539588927,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,2.2811359763145447,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,2.2853362798690795,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,2.2763318181037904,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+12.0,2.262255907058716,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+13.0,2.2530412554740904,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+14.0,2.242212450504303,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+15.0,2.2386613726615905,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+16.0,2.2361754417419433,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+17.0,2.243944251537323,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+18.0,2.247723472118378,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+19.0,2.2444016456604006,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+20.0,2.247498333454132,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+21.0,2.235502600669861,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+22.0,2.2224396586418154,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+23.0,2.2014540433883667,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+24.0,2.2138826847076416,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+25.0,2.205259358882904,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+26.0,2.200861084461212,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+27.0,2.2030776381492614,LION,MoE,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.907144379615784,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.305689346790314,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,1.8891797482967376,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,1.6877186298370361,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,1.6299046874046326,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,1.5779853999614715,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,1.5773542046546936,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+7.0,1.6044902801513672,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+8.0,1.6447427153587342,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+9.0,1.668652307987213,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+10.0,1.7060970842838288,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+11.0,1.7586584866046906,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+12.0,1.8814722776412964,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+13.0,2.0093594789505005,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+14.0,2.1553272366523744,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+15.0,2.3519744634628297,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+16.0,2.5201937317848206,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+17.0,2.7036579966545107,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+18.0,2.782443177700043,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+19.0,2.921960186958313,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+20.0,2.984977626800537,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+21.0,3.060470795631409,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+22.0,3.0598832607269286,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+23.0,3.0800787925720217,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,5.026386427879333,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.3921233892440794,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+2.0,1.9749554932117461,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+3.0,1.7208524465560913,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+4.0,1.604502534866333,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+5.0,1.5451216578483582,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.524493044614792,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.5521764397621154,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.6140537858009338,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.6778400659561157,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.7574171721935272,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.828381496667862,ADAMW,Dense,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.100702571868896,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+1.0,3.1683189392089846,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+2.0,3.010084903240204,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.676594877243042,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.5315532207489015,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.4149465560913086,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+6.0,2.3423922181129457,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+7.0,2.301163399219513,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+8.0,2.2809663653373717,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+9.0,2.2770182967185972,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+0.0,5.147043228149414,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,3.02085417509079,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.9311374545097353,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,2.8052056431770325,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,2.6466766238212585,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,2.530463755130768,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,2.459613049030304,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,2.375851881504059,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,2.310561454296112,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,2.2576393246650697,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,2.237804639339447,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,2.2009265661239623,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,2.198695170879364,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,2.173576068878174,LION,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,5.040096402168274,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+1.0,2.307088840007782,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+2.0,1.9476609647274017,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+3.0,1.7923114240169524,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+4.0,1.6907205939292909,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+5.0,1.6185411930084228,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+6.0,1.568733274936676,ADAMW,Dense,Sliding Window,Untied Weights,No Sink (Gated)
+0.0,4.842852592468262,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.3109046816825867,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+2.0,1.9584649920463562,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+3.0,1.7770569682121278,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+4.0,1.6699850976467132,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+5.0,1.6256456136703492,ADAMW,MoE,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.7369205236434935,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+1.0,3.0221730947494505,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+2.0,2.6041763067245483,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+3.0,2.3095113396644593,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+4.0,2.144507908821106,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+5.0,2.0621037125587462,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+6.0,2.0052088260650636,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+7.0,1.9509283661842347,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+8.0,1.911806881427765,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+9.0,1.882272857427597,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+10.0,1.8529662609100341,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+11.0,1.84943630695343,LION,MoE,Sliding Window,Tied Weights,Standard Attention
+0.0,4.862008166313172,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,2.830113184452057,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.4879206895828245,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.311385226249695,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.15025794506073,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.03232701420784,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,1.9668941974639893,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,1.898936378955841,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,1.8555192649364471,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,1.8241397857666015,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,1.8066276967525483,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,1.764793688058853,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.7479478001594544,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.7422409772872924,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+14.0,1.7207978904247283,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+15.0,1.7314429223537444,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+16.0,1.7097238957881928,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+17.0,1.7122101426124572,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+18.0,1.7174360811710359,ADAMW,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,4.8330844163894655,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+1.0,2.799666142463684,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+2.0,2.4877655625343325,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+3.0,2.2762061595916747,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+4.0,2.149143362045288,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+5.0,2.0659130692481993,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+6.0,2.009590721130371,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+7.0,1.9703330636024474,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+8.0,1.9485089480876923,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+9.0,1.9439923346042634,LION,Dense,Full Context,Untied Weights,No Sink (Gated)
+0.0,4.953423738479614,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+1.0,3.21069518327713,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+2.0,3.0261134266853333,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+3.0,2.74282306432724,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.59249484539032,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.5161265969276427,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+6.0,2.468765676021576,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+7.0,2.422671747207642,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+8.0,2.4004279255867003,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+9.0,2.4050973773002626,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+0.0,4.5551735162734985,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+1.0,2.62277090549469,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+2.0,2.085202533006668,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+3.0,1.8339711487293244,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+4.0,1.7532604932785034,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+5.0,1.6886293172836304,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+6.0,1.6344468891620636,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+7.0,1.593405282497406,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+8.0,1.5699886620044707,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+9.0,1.5565886318683624,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+10.0,1.5593642950057984,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+11.0,1.5228279769420623,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+12.0,1.5218725025653839,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+13.0,1.5062604010105134,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+14.0,1.5207691431045531,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+15.0,1.5216747879981996,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+16.0,1.531611341238022,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+17.0,1.5400390148162841,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+18.0,1.587573951482773,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+19.0,1.5675639510154724,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+20.0,1.6147205054759979,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+21.0,1.6831346333026886,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+22.0,1.7010619997978211,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+23.0,1.7169893562793732,ADAMW,Dense,Full Context,Untied Weights,Standard Attention
+0.0,4.967425036430359,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+1.0,2.363890862464905,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+2.0,1.9843761920928955,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+3.0,1.8950309693813323,ADAMW,Dense,Sliding Window,Tied Weights,No Sink (Gated)
+0.0,4.800940704345703,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+1.0,3.6141509056091308,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+2.0,3.222164285182953,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+3.0,3.1153162121772766,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+4.0,2.9086466431617737,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+5.0,2.80103223323822,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+6.0,2.7326478362083435,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+7.0,2.6982787251472473,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+8.0,2.6852148532867433,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+9.0,2.6806583166122437,ADAFACTOR,MoE,Full Context,Tied Weights,Standard Attention
+0.0,4.743437576293945,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+1.0,3.062249004840851,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+2.0,2.9108402848243715,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+3.0,2.52388676404953,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+4.0,2.280096936225891,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+5.0,2.138209652900696,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+6.0,2.043036609888077,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+7.0,1.9772387981414794,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+8.0,1.9272139966487885,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+9.0,1.8952840626239777,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+10.0,1.856764906644821,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+11.0,1.8356885194778443,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+12.0,1.7988264083862304,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+13.0,1.7828912019729615,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+14.0,1.7684428095817566,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+15.0,1.7669065237045287,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+16.0,1.7499702751636506,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+17.0,1.7435344338417054,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+18.0,1.735737383365631,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+19.0,1.7223787546157836,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+20.0,1.7303879797458648,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+21.0,1.7200060427188872,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+22.0,1.7202232301235199,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+23.0,1.7142004132270814,ADAMW,Dense,Sliding Window,Tied Weights,Standard Attention
+0.0,4.946270942687988,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+1.0,3.1477150082588197,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+2.0,2.745098280906677,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+3.0,2.5778820514678955,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+4.0,2.4237417697906496,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+5.0,2.2956347703933715,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+6.0,2.251294255256653,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+7.0,2.1754672527313232,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+8.0,2.1303643345832826,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+9.0,2.099515438079834,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+10.0,2.0600956439971925,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+11.0,2.0355452060699464,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+12.0,1.991884607076645,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+13.0,1.9751046419143676,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+14.0,1.9494050741195679,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+15.0,1.9431030333042145,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+16.0,1.903292465209961,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+17.0,1.899601149559021,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+18.0,1.897345596551895,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+19.0,1.8800452411174775,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+20.0,1.8528931736946106,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+21.0,1.8604776442050934,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+22.0,1.8263021171092988,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+23.0,1.817149132490158,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+24.0,1.819721418619156,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+25.0,1.8221742272377015,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+26.0,1.798989748954773,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+27.0,1.7883447468280793,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+28.0,1.79439834356308,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+29.0,1.7861469864845276,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+30.0,1.7783837080001832,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+31.0,1.7821744561195374,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+32.0,1.7619941115379334,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+33.0,1.7703224778175355,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+34.0,1.7782229006290435,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+35.0,1.7582452118396759,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+36.0,1.748378473520279,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+37.0,1.7534831941127778,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+38.0,1.7651749908924104,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+39.0,1.764218133687973,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+40.0,1.7640117168426515,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+41.0,1.7455449163913728,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+42.0,1.7542199969291687,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+43.0,1.7714191734790803,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+44.0,1.7595725417137147,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+45.0,1.7659929931163787,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+46.0,1.7450350940227508,ADAFACTOR,MoE,Full Context,Tied Weights,No Sink (Gated)
+0.0,5.141941332817078,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+1.0,4.1067416906356815,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+2.0,3.2041595935821534,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+3.0,3.056591796875,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+4.0,2.98197226524353,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+5.0,2.8774915099143983,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+6.0,2.7348958611488343,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+7.0,2.6411301136016845,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+8.0,2.5640034437179566,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+9.0,2.524237811565399,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+10.0,2.465035080909729,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+11.0,2.405617046356201,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+12.0,2.3629872679710386,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+13.0,2.332421088218689,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+14.0,2.3118305087089537,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+15.0,2.2991873741149904,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+16.0,2.261329936981201,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+17.0,2.2536672353744507,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+18.0,2.2368632674217226,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+19.0,2.2252511978149414,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+20.0,2.2146981596946715,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+21.0,2.2058524608612062,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+22.0,2.203606140613556,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+23.0,2.1824424386024477,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+24.0,2.194748067855835,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+25.0,2.1920008182525637,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+26.0,2.187693202495575,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+27.0,2.18358256816864,ADAFACTOR,Dense,Full Context,Tied Weights,Standard Attention
+0.0,5.024216079711914,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+1.0,3.3003770112991333,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+2.0,2.8999213337898255,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+3.0,2.6499948024749758,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+4.0,2.4121373653411866,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+5.0,2.245644783973694,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+6.0,2.14808794260025,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+7.0,2.0683549284934997,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+8.0,2.0032120883464812,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+9.0,1.938845008611679,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+10.0,1.9189309298992157,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
+11.0,1.905921757221222,ADAFACTOR,MoE,Full Context,Untied Weights,Standard Attention
