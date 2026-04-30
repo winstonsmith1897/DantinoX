@@ -84,13 +84,26 @@ def _model_summary(model: Transformer, config: Config, optimizer: nnx.Optimizer)
     opt_params = sum(
         x.size for x in jax.tree_util.tree_leaves(opt_state) if isinstance(x, jax.Array)
     )
-    act = config.batch_size * config.max_context * config.dim * config.num_blocks * 8 * 4
+    bpp = 2 if getattr(config, "use_bf16", False) else 4
+    act = config.batch_size * config.max_context * config.dim * config.num_blocks * 8 * bpp
     return {
         "total_params_M": round(total / 1e6, 2),
-        "weights_mem_MB": round(total * 4 / 1e6, 2),
-        "optimizer_mem_MB": round(opt_params * 4 / 1e6, 2),
+        "dtype": "bfloat16" if bpp == 2 else "float32",
+        "weights_mem_MB": round(total * bpp / 1e6, 2),
+        "optimizer_mem_MB": round(opt_params * bpp / 1e6, 2),
         "est_activations_MB": round(act / 1e6, 2),
     }
+
+
+def _cast_params(model: Transformer, dtype: jnp.dtype) -> None:
+    params = nnx.state(model, nnx.Param)
+    nnx.update(
+        model,
+        jax.tree_util.tree_map(
+            lambda x: x.astype(dtype) if jnp.issubdtype(x.dtype, jnp.floating) else x,
+            params,
+        ),
+    )
 
 
 def _save_weights(model: Transformer, path: str) -> None:
@@ -193,6 +206,9 @@ class Trainer:
         tx = _build_optimizer(config, total_steps)
         rngs = nnx.Rngs(config.seed)
         model = Transformer(config, rngs=rngs)
+        if getattr(config, "use_bf16", False):
+            _cast_params(model, jnp.bfloat16)
+            log.info("Model cast to bfloat16")
         optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
 
         start_step = 0
@@ -369,3 +385,121 @@ class Trainer:
         _save_weights(model, weights_path)
         log.info("Checkpoint saved: %s", weights_path)
         return run_dir
+
+    def find_lr(
+        self,
+        data_path: str | None = None,
+        *,
+        min_lr: float = 1e-7,
+        max_lr: float = 1.0,
+        num_steps: int = 100,
+        smoothing: float = 0.9,
+    ) -> tuple[float, list[float], list[float]]:
+        """
+        LR range test (Smith 2015).
+
+        Trains for ``num_steps`` steps while exponentially increasing the
+        learning rate from ``min_lr`` to ``max_lr``.  Returns a tuple of
+        ``(suggested_lr, lr_history, loss_history)``.
+
+        Parameters
+        ----------
+        data_path : str, optional
+            Path to the training corpus.
+        min_lr : float
+            Starting learning rate (default 1e-7).
+        max_lr : float
+            Maximum learning rate (default 1.0).
+        num_steps : int
+            Number of steps in the sweep (default 100).
+        smoothing : float
+            Exponential smoothing factor for the loss curve (default 0.9).
+
+        Returns
+        -------
+        tuple[float, list[float], list[float]]
+            ``(suggested_lr, lr_history, loss_history)``
+        """
+        import math
+
+        config = self.config
+        text = _format_text(_load_text(config, data_path))
+
+        tokenizer = get_tokenizer(config.tokenizer_type)
+        if config.tokenizer_type == "char":
+            tokenizer.train_from_text(text)
+        elif config.tokenizer_type == "bpe":
+            tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+
+        config.vocab_size = tokenizer.vocab_size
+        full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
+        train_data = full_data[: int(0.9 * len(full_data))]
+
+        rngs = nnx.Rngs(config.seed)
+        model = Transformer(config, rngs=rngs)
+        if getattr(config, "use_bf16", False):
+            _cast_params(model, jnp.bfloat16)
+
+        log_multiplier = math.log(max_lr / min_lr) / max(1, num_steps - 1)
+
+        def _lr_fn(step: jnp.ndarray) -> jnp.ndarray:
+            return jnp.array(min_lr, jnp.float32) * jnp.exp(
+                step.astype(jnp.float32) * jnp.array(log_multiplier, jnp.float32)
+            )
+
+        tx = optax.chain(optax.clip_by_global_norm(1.0), optax.adamw(learning_rate=_lr_fn))
+        optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+
+        @nnx.jit
+        def _step(model, opt, x, y):
+            def loss_fn(m):
+                logits, _, _ = m(x, use_cache=False, kv_caches=None, cache_index=0)
+                return compute_loss(logits, y)
+
+            loss, grads = nnx.value_and_grad(loss_fn)(model)
+            opt.update(model, grads)
+            return loss
+
+        key = jax.random.PRNGKey(config.seed)
+        lr_history: list[float] = []
+        loss_history: list[float] = []
+        smooth_loss = 0.0
+        best_loss = float("inf")
+
+        pbar = tqdm(range(num_steps), desc="LR finder", unit="step", dynamic_ncols=True)
+        for step in pbar:
+            key, sub = jax.random.split(key)
+            x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
+            loss_val = float(_step(model, optimizer, x, y))
+
+            smooth_loss = (
+                loss_val if step == 0
+                else smoothing * smooth_loss + (1 - smoothing) * loss_val
+            )
+            debiased = smooth_loss / (1 - smoothing ** (step + 1))
+
+            current_lr = float(_lr_fn(jnp.array(step)))
+            lr_history.append(current_lr)
+            loss_history.append(debiased)
+
+            pbar.set_postfix(lr=f"{current_lr:.2e}", loss=f"{debiased:.4f}")
+
+            if debiased < best_loss:
+                best_loss = debiased
+            if debiased > 4 * best_loss:
+                log.info("Loss diverging at step %d — stopping sweep early", step)
+                break
+
+        pbar.close()
+
+        if len(loss_history) > 2:
+            slopes = [loss_history[i + 1] - loss_history[i] for i in range(len(loss_history) - 1)]
+            suggested_lr = lr_history[min(range(len(slopes)), key=lambda i: slopes[i])]
+        else:
+            suggested_lr = min_lr
+
+        log.info(
+            "LR finder done — suggested lr=%.2e (sweep range [%.2e, %.2e])",
+            suggested_lr, min_lr, max_lr,
+        )
+        return suggested_lr, lr_history, loss_history

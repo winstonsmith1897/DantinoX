@@ -134,6 +134,61 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
     wandb.agent(sweep_id, function=_agent_fn, count=getattr(args, "count", None))  # type: ignore[attr-defined]
 
 
+def _cmd_find_lr(args: argparse.Namespace) -> None:
+    config = Config.from_yaml(args.config)
+    config = _apply_overrides(config, args)
+
+    from dantinox.trainer import Trainer
+    trainer = Trainer(config)
+    suggested_lr, lr_hist, loss_hist = trainer.find_lr(
+        args.data_path,
+        min_lr=args.min_lr,
+        max_lr=args.max_lr,
+        num_steps=args.num_steps,
+    )
+    print(f"\nSuggested learning rate: {suggested_lr:.2e}")
+    if args.plot:
+        try:
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(lr_hist, loss_hist)
+            ax.axvline(suggested_lr, color="red", linestyle="--", label=f"suggested: {suggested_lr:.2e}")
+            ax.set_xscale("log")
+            ax.set_xlabel("Learning rate")
+            ax.set_ylabel("Smoothed loss")
+            ax.set_title("LR Range Test")
+            ax.legend()
+            plt.tight_layout()
+            out = args.plot_out or "lr_finder.png"
+            fig.savefig(out, dpi=150)
+            print(f"Plot saved to: {out}")
+        except ImportError:
+            print("matplotlib not installed — skipping plot (pip install matplotlib)")
+
+
+def _cmd_push(args: argparse.Namespace) -> None:
+    from dantinox.hub import push
+    url = push(
+        args.run_dir,
+        args.repo,
+        private=args.private,
+        token=args.token,
+        commit_message=args.message,
+    )
+    print(f"Uploaded to: {url}")
+
+
+def _cmd_pull(args: argparse.Namespace) -> None:
+    from dantinox.hub import pull
+    run_dir = pull(
+        args.repo,
+        local_dir=args.local_dir,
+        token=args.token,
+        revision=args.revision,
+    )
+    print(f"Downloaded to: {run_dir}")
+
+
 def _cmd_plot(args: argparse.Namespace) -> None:
     from dantinox.plotting import Plotter
     groups = args.groups if args.groups else None
@@ -211,6 +266,33 @@ def _build_parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--runs", nargs="*", help="Specific run names to benchmark (default: all)")
     p_bench.add_argument("--out_csv", default=None, help="Write results to this CSV file")
 
+    # ── find-lr ────────────────────────────────────────────────────────────────
+    p_flr = sub.add_parser("find-lr", help="Run the LR range test and suggest a learning rate")
+    p_flr.add_argument("--config", default="configs/default_config.yaml",
+                       help="Path to a YAML config file")
+    p_flr.add_argument("--data_path", required=True, help="Path to the training corpus")
+    p_flr.add_argument("--min_lr", type=float, default=1e-7, help="Start LR (default 1e-7)")
+    p_flr.add_argument("--max_lr", type=float, default=1.0, help="End LR (default 1.0)")
+    p_flr.add_argument("--num_steps", type=int, default=100, help="Sweep steps (default 100)")
+    p_flr.add_argument("--plot", action="store_true", help="Save a loss-vs-LR PNG")
+    p_flr.add_argument("--plot_out", default=None, help="Output PNG path (default: lr_finder.png)")
+    _add_config_overrides(p_flr)
+
+    # ── push ───────────────────────────────────────────────────────────────────
+    p_push = sub.add_parser("push", help="Upload a checkpoint to HuggingFace Hub")
+    p_push.add_argument("--run_dir", required=True, help="Local run directory to upload")
+    p_push.add_argument("--repo", required=True, help="Hub repo id (e.g. my-org/my-model)")
+    p_push.add_argument("--private", action="store_true", help="Create a private repository")
+    p_push.add_argument("--token", default=None, help="HuggingFace access token")
+    p_push.add_argument("--message", default=None, help="Commit message")
+
+    # ── pull ───────────────────────────────────────────────────────────────────
+    p_pull = sub.add_parser("pull", help="Download a checkpoint from HuggingFace Hub")
+    p_pull.add_argument("--repo", required=True, help="Hub repo id (e.g. my-org/my-model)")
+    p_pull.add_argument("--local_dir", default=None, help="Where to save the files")
+    p_pull.add_argument("--token", default=None, help="HuggingFace access token")
+    p_pull.add_argument("--revision", default=None, help="Branch, tag, or commit SHA")
+
     # ── plot ────────────────────────────────────────────────────────────────
     p_plot = sub.add_parser("plot", help="Generate benchmark plots from a results CSV")
     p_plot.add_argument("--in_csv", default="benchmark_results.csv",
@@ -241,6 +323,9 @@ def main(argv: list[str] | None = None) -> None:
         "sweep":     _cmd_sweep,
         "benchmark": _cmd_benchmark,
         "plot":      _cmd_plot,
+        "find-lr":   _cmd_find_lr,
+        "push":      _cmd_push,
+        "pull":      _cmd_pull,
     }
     dispatch[args.command](args)
 

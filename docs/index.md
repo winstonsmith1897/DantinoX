@@ -18,6 +18,8 @@ hide:
 <span class="stat-chip">:material-language-python: Python 3.12+</span>
 <span class="stat-chip">:material-memory: MLA · GQA · MHA</span>
 <span class="stat-chip">:material-lightning-bolt: XLA-Native</span>
+<span class="stat-chip">:material-chip: bfloat16</span>
+<span class="stat-chip">:material-hub: HF Hub</span>
 <span class="stat-chip">:material-package-variant: pip install</span>
 <span class="stat-chip">:material-license: MIT</span>
 </div>
@@ -58,11 +60,11 @@ hide:
 
     [:octicons-arrow-right-24: Benchmarks](benchmarks.md)
 
--   :material-package-variant-closed: &nbsp;**pip-Installable Library**
+-   :material-package-variant-closed: &nbsp;**Production-Ready Library**
 
     ---
 
-    `Trainer`, `Generator`, `BenchmarkRunner`, and `Plotter` classes expose the full experiment lifecycle programmatically. One `dantinox` CLI covers train, generate, sweep, benchmark, and plot.
+    `Trainer`, `Generator`, `BenchmarkRunner`, and `Plotter` with bfloat16, gradient clipping, early stopping, checkpoint resume, batch & streaming generation, and HuggingFace Hub push/pull.
 
     [:octicons-arrow-right-24: API Reference](api.md)
 
@@ -72,7 +74,7 @@ hide:
 
 ## Quickstart
 
-=== "Library (Python API)"
+=== "Python API"
 
     ```bash
     git clone https://github.com/winstonsmith1897/DantinoX.git
@@ -84,45 +86,76 @@ hide:
     ```
 
     ```python
-    from dantinox import Config, Trainer, Generator, BenchmarkRunner
-    from dantinox.plotting import Plotter
+    from dantinox import Config, Trainer, Generator
 
-    # 1. Train
-    config = Config.from_yaml("configs/default_config.yaml")
+    # 1. Train — bfloat16, gradient clipping, early stopping
+    config = Config(
+        dim=512, n_heads=16, head_size=32, num_blocks=8,
+        lr=3e-4, grad_clip=1.0, use_bf16=True,
+        patience=5,          # stop if val loss stalls for 5 evals
+    )
     run_dir = Trainer(config).fit("data/corpus.txt")
 
-    # 2. Generate
-    text = Generator(run_dir).generate("Nel mezzo del cammin ")
-    print(text)
+    # 2. Single-prompt generation
+    gen = Generator(run_dir)
+    print(gen.generate("Nel mezzo del cammin ", max_new_tokens=200))
 
-    # 3. Benchmark all runs, then plot
-    df = BenchmarkRunner("runs").run(out_csv="benchmark_results.csv")
-    Plotter("benchmark_results.csv").run()
+    # 3. Batched generation — one forward pass for all prompts
+    texts = gen.generate_batch(
+        ["Nel mezzo", "Lasciate ogni speranza", "Per me si va"],
+        max_new_tokens=100, temperature=0.8,
+    )
+
+    # 4. Streaming generation — yield tokens as they are produced
+    for chunk in gen.stream("Nel mezzo del cammin ", max_new_tokens=150):
+        print(chunk, end="", flush=True)
+
+    # 5. Find the right learning rate before a full run
+    lr, lrs, losses = Trainer(config).find_lr("data/corpus.txt", num_steps=100)
+    print(f"Suggested LR: {lr:.2e}")
+
+    # 6. Push to HuggingFace Hub / pull on another machine
+    from dantinox import push, pull
+    push(run_dir, "my-org/dantinox-dante", private=False)
+    run_dir = pull("my-org/dantinox-dante")
     ```
 
 === "CLI"
 
     ```bash
-    # Train
-    dantinox train --config configs/default_config.yaml --data_path data/corpus.txt
+    # Train with bfloat16 and gradient clipping
+    dantinox train \
+      --config configs/default_config.yaml \
+      --data_path data/corpus.txt \
+      --use_bf16 True --grad_clip 1.0 --patience 5
 
-    # Generate
-    dantinox generate --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
+    # Resume an interrupted run
+    dantinox train --config configs/default_config.yaml \
+      --data_path data/corpus.txt \
+      --run_dir runs/run_20260101_120000 --resume
+
+    # Find the best learning rate before committing to a long run
+    dantinox find-lr \
+      --config configs/default_config.yaml \
+      --data_path data/corpus.txt \
+      --min_lr 1e-6 --max_lr 1e-2 --num_steps 100 --plot
+
+    # Generate text
+    dantinox generate \
+      --run_dir runs/run_20260101_120000 \
+      --prompt "Nel mezzo del cammin " \
+      --max_new_tokens 200 --temperature 0.8 --top_k 40
 
     # Sweep (W&B Bayesian)
     dantinox sweep --sweep_config configs/sweep.yaml --data_path data/corpus.txt
 
-    # Benchmark, then generate all plots
+    # Benchmark all runs, then plot
     dantinox benchmark --runs_dir runs --out_csv benchmark_results.csv
     dantinox plot --in_csv benchmark_results.csv --out_dir plots/
-    ```
 
-=== "Scripts (legacy)"
-
-    ```bash
-    python train.py    --config configs/default_config.yaml
-    python generate.py --run_dir runs/<run_name> --prompt "Nel mezzo del cammin "
-    python benchmark.py
+    # Share your checkpoint on HuggingFace Hub
+    dantinox push --run_dir runs/run_20260101_120000 --repo my-org/dantinox-dante
+    dantinox pull --repo my-org/dantinox-dante --local_dir runs/pulled
     ```
 
 ---
@@ -132,11 +165,11 @@ hide:
 | | Page | What you'll find |
 | :--- | :--- | :--- |
 | :material-layers-outline: | [Core Architecture](architecture.md) | Attention types, math, full configuration reference, implementation deep-dives |
-| :material-school-outline: | [Training & Sweeps](training.md) | Training loop, W&B sweep setup, MLA training notes |
-| :material-play-box-outline: | [Inference & Generation](generation.md) | KV-cache pipeline, sampling strategies, MLA inference mode |
+| :material-school-outline: | [Training & Sweeps](training.md) | bfloat16, grad clipping, early stopping, resume, LR finder, W&B sweeps |
+| :material-play-box-outline: | [Inference & Generation](generation.md) | Single, batch & streaming generation, KV-cache pipeline, sampling strategies |
 | :material-chart-scatter-plot: | [Benchmarks](benchmarks.md) | MHA vs GQA vs MLA — throughput, cache size, FLOPs, 3D surfaces |
 | :material-microscope: | [Ablation Studies](ablation_studies.md) | Optimizer, MoE, positional encoding, regularization |
-| :material-book-open-outline: | [API Reference](api.md) | `Trainer`, `Generator`, `BenchmarkRunner`, `Plotter`, and core modules |
+| :material-book-open-outline: | [API Reference](api.md) | `Trainer`, `Generator`, `BenchmarkRunner`, `Plotter`, Hub, and core modules |
 
 ---
 
@@ -145,12 +178,14 @@ hide:
 ```text
 DantinoX/
 ├── dantinox/               # Public library API
-│   ├── __init__.py         # Top-level imports
-│   ├── trainer.py          # Trainer — programmatic training
-│   ├── generator.py        # Generator — checkpoint loading + generation
+│   ├── __init__.py         # Top-level imports and __version__
+│   ├── trainer.py          # Trainer — training, gradient clipping, early stopping, LR finder
+│   ├── generator.py        # Generator — single, batch & streaming generation
+│   ├── hub.py              # push() / pull() — HuggingFace Hub integration
 │   ├── bench.py            # BenchmarkRunner — throughput / FLOPs benchmarks
 │   ├── plotting.py         # Plotter — automated plot generation
-│   └── cli.py              # dantinox CLI entry point
+│   ├── exceptions.py       # DantinoXError hierarchy
+│   └── cli.py              # dantinox CLI (train, generate, find-lr, push, pull, ...)
 │
 ├── core/                   # Internal implementation
 │   ├── config.py           # Config dataclass — single source of truth
@@ -158,19 +193,17 @@ DantinoX/
 │   ├── attention.py        # Attention kernels and KV-cache logic
 │   └── generation.py       # Autoregressive inference engine
 │
+├── utils/
+│   ├── tokenizer.py        # CharTokenizer, BPETokenizer, save/load
+│   └── helpers.py          # Loss, batching utilities
+│
 ├── configs/
 │   ├── default_config.yaml # Standard training setup
 │   └── sweep.yaml          # W&B Bayesian sweep configuration
 │
-├── utils/
-│   ├── tokenizer.py        # Character-level and Byte-Level BPE tokenizers
-│   └── helpers.py          # Loss functions, batching, sharding utilities
+├── tests/                  # pytest integration + unit tests
+├── examples/
+│   └── quickstart.py       # Train → generate end-to-end demo
 │
-├── plot_insights.py        # Insight figures (Pareto, serving, MLA dial)
-├── plot_perf.py            # Performance figures (cache, FLOPs, throughput)
-├── plot_3d.py              # 3D surface figures
-├── plot_3d_dkv.py          # down_dim_kv sensitivity figures
-│
-├── pyproject.toml          # pip install -e ".[all]"
-└── requirements.txt
+└── pyproject.toml          # pip install -e ".[all]"
 ```

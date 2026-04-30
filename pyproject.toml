@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 data      = ["datasets"]
+hub       = ["huggingface-hub"]
 benchmark = ["pandas", "matplotlib", "numpy", "scipy"]
 dev       = [
     "pytest>=8",
@@ -37,7 +38,7 @@ dev       = [
     "mkdocs-glightbox",
     "mkdocstrings[python]",
 ]
-all = ["dantinox[data,benchmark,dev]"]
+all = ["dantinox[data,hub,benchmark,dev]"]
 
 [project.scripts]
 dantinox = "dantinox.cli:main"

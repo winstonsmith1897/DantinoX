@@ -1,73 +1,200 @@
-
 # Training & Sweeps
 
-## Training Pipeline
-
-The training loop uses Flax NNX functional state management. The core update step fuses the forward pass, loss computation, and gradient updates into a single XLA kernel via `@jax.jit`.
-
-!!! tip "Why `@jax.jit` over `@nnx.jit`?"
-    Manually splitting the model (`nnx.split`) and passing only the `state` pytree into a `@jax.jit`-decorated function reduces Python dispatch overhead. For models up to ~100M parameters this yields measurably faster step times than the higher-level `@nnx.jit` wrapper. See the [Flax performance guide](https://flax.readthedocs.io/en/stable/guides/performance.html) for details.
-
-### Execution
+## Quick Start
 
 ```bash
-# Run using the default configuration file
-python train.py --config configs/default_config.yaml
+# Minimal — auto-generates a timestamped run directory
+dantinox train --config configs/default_config.yaml --data_path data/corpus.txt
 
-# Dynamically override parameters via CLI
-python train.py --batch_size 64 --lr 5e-4 --use_moe True
+# With bfloat16 and gradient clipping (recommended for GPU training)
+dantinox train \
+  --config configs/default_config.yaml \
+  --data_path data/corpus.txt \
+  --use_bf16 True --grad_clip 1.0
+
+# Resume an interrupted run from the last saved checkpoint
+dantinox train \
+  --config configs/default_config.yaml \
+  --data_path data/corpus.txt \
+  --run_dir runs/run_20260101_120000 --resume
+```
+
+Or via the Python API:
+
+```python
+from dantinox import Config, Trainer
+
+config = Config.from_yaml("configs/default_config.yaml")
+run_dir = Trainer(config).fit("data/corpus.txt")
+print(f"Saved to: {run_dir}")
 ```
 
 ---
 
-## Monitoring & Logging
+## Run Directory
 
-Every execution generates an isolated artifact directory (`runs/run_YYYYMMDD_HHMMSS/`) containing the state of the experiment: `config.yaml`, `model_summary.json`, `training_log.csv`, and the serialized `model_weights.msgpack`.
+Every training run writes its artifacts to an isolated directory (`runs/run_YYYYMMDD_HHMMSS/` by default, or whatever you pass via `--run_dir`):
 
-**Live Console Output:**
+| File | Contents |
+| :--- | :--- |
+| `config.yaml` | Full config snapshot |
+| `tokenizer.json` | Serialised vocabulary (no corpus needed at inference) |
+| `model_weights.msgpack` | Latest checkpoint (updated every 50 steps) |
+| `best_model_weights.msgpack` | Best checkpoint by validation loss |
+| `training_cursor.json` | Last saved step (used by `--resume`) |
+| `model_summary.json` | Parameter count and memory estimates |
+| `training_log.csv` | Per-eval step, train/val loss, bal loss, ms/step |
 
-```text
-Step   50/4200 | Train: 4.1204 (Bal: 0.0452) | Val: 4.1560 (Bal: 0.0461) | VRAM: 3.42GB
-Step  100/4200 | Train: 3.8901 (Bal: 0.0421) | Val: 3.9102 (Bal: 0.0415) | VRAM: 3.42GB
+---
+
+## Gradient Clipping
+
+Enabled by default (`grad_clip = 1.0`). The optimizer is wrapped with `optax.clip_by_global_norm` before the weight update, preventing gradient explosions with large models or high learning rates:
+
+```yaml
+# configs/default_config.yaml
+grad_clip: 1.0   # set to 0 to disable
 ```
 
-**Tracked Metrics:**
+```python
+config = Config(grad_clip=1.0)   # default
+config = Config(grad_clip=0.0)   # disabled
+```
+
+!!! tip
+    For very small models (dim < 128) or low LRs, clipping is rarely needed. For anything larger, keep it at `1.0`.
+
+---
+
+## bfloat16 / Mixed Precision
+
+Set `use_bf16: true` to halve GPU memory use with negligible loss quality impact. All learnable parameters — and their optimizer moments — are cast to `bfloat16` immediately after model construction:
+
+```yaml
+use_bf16: true
+```
+
+```python
+config = Config(use_bf16=True)
+run_dir = Trainer(config).fit("data/corpus.txt")
+```
+
+The `model_summary.json` will report `"dtype": "bfloat16"` and halved `weights_mem_MB` and `optimizer_mem_MB` estimates.
+
+!!! note "Checkpoints are dtype-preserving"
+    Weights are saved in whatever dtype the model is running in. A `bfloat16` checkpoint loads as `bfloat16` in `Generator` automatically — no extra flags needed.
+
+---
+
+## Early Stopping
+
+Set `patience > 0` to stop training automatically when the validation loss has not improved for `patience` consecutive evaluation intervals (every 50 steps):
+
+```yaml
+patience: 5   # stop after 5 evals with no improvement (0 = disabled)
+```
+
+```python
+config = Config(patience=5)
+```
+
+The best-ever checkpoint is always written to `best_model_weights.msgpack`, independently of whether early stopping fires.
+
+---
+
+## Checkpoint Resumption
+
+If a run is interrupted, resume from the last saved step with `--resume`:
+
+```bash
+dantinox train \
+  --config configs/default_config.yaml \
+  --data_path data/corpus.txt \
+  --run_dir runs/run_20260101_120000 \
+  --resume
+```
+
+Python API:
+
+```python
+run_dir = Trainer(config).fit(
+    "data/corpus.txt",
+    run_dir="runs/run_20260101_120000",
+    resume=True,
+)
+```
+
+!!! warning "Optimizer state"
+    The model weights and step cursor are restored exactly. Optimizer moments (Adam's first and second moments) are **not** preserved — they restart from zero. The learning rate schedule resumes from the saved step, so the LR is correct; only the warm-up of the moments is lost (typically negligible after a few steps).
+
+---
+
+## Learning Rate Finder
+
+Before committing to a long run, use the LR range test (Smith 2015) to identify a good peak learning rate. It sweeps from `min_lr` to `max_lr` over `num_steps` steps and reports the point of steepest loss descent:
+
+```bash
+dantinox find-lr \
+  --config configs/default_config.yaml \
+  --data_path data/corpus.txt \
+  --min_lr 1e-6 --max_lr 1e-2 \
+  --num_steps 100 --plot
+```
+
+```python
+from dantinox import Trainer, Config
+
+config = Config.from_yaml("configs/default_config.yaml")
+suggested_lr, lr_history, loss_history = Trainer(config).find_lr(
+    "data/corpus.txt",
+    min_lr=1e-6,
+    max_lr=1e-2,
+    num_steps=100,
+)
+print(f"Suggested LR: {suggested_lr:.2e}")
+```
+
+The `--plot` flag saves `lr_finder.png` with the smoothed loss curve and a vertical marker at the suggested LR.
+
+!!! tip "How to read the chart"
+    Pick the LR just **before** the loss bottoms out — not the minimum itself. The minimum is typically already past the regime where training is stable.
+
+---
+
+## Monitored Metrics
+
+Every 50 steps, training evaluates `eval_iters` random batches on both splits and logs:
 
 | Metric | Description |
 | :--- | :--- |
-| **Train / Val Loss** | Cross-Entropy for autoregressive next-token prediction |
-| **Balancing Loss** | Auxiliary penalty for MoE expert routing |
-| **VRAM GB** | Peak device memory footprint |
-| **ms_per_step** | XLA kernel execution speed and throughput |
+| `train_loss` | Cross-entropy on a random training batch |
+| `val_loss` | Cross-entropy on held-out validation data |
+| `train_bal` / `val_bal` | MoE routing balance loss (zero for non-MoE models) |
+| `ms_per_step` | Milliseconds per training step (wall-clock) |
 
+---
 
-## Hyperparameter Tuning (W&B Sweeps)
+## Hyperparameter Sweeps (W&B)
 
-DantinoX natively supports automated hyperparameter search using **Weights & Biases (W&B)**. The search relies on a Bayesian optimization strategy designed to minimize the validation loss (`val_loss`) by efficiently exploring architectural and training configurations.
+DantinoX integrates with **Weights & Biases** Bayesian sweeps via the `dantinox sweep` subcommand.
 
-To launch a sweep, use the provided configuration.
+```bash
+dantinox sweep \
+  --sweep_config configs/sweep.yaml \
+  --data_path data/corpus.txt \
+  --wandb_project DantinoX \
+  --count 50
+```
 
-### Sweep Configuration (`sweep.yaml`)
+### Example sweep config
 
 ```yaml
-program: train_sweep.py
+# configs/sweep.yaml
 method: bayes
 metric:
   name: val_loss
   goal: minimize
 parameters:
-  epochs:
-    values: [12, 16, 20, 24]
-  optimizer:
-    values: ["adamw", "adafactor", "lion"]
-  tokenizer_type:
-    values: ["char", "bpe"]
-  max_context:
-    values: [256, 512]
-  weight_tying:
-    values: [true, false]
-  dropout_rate:
-    values: [0.0, 0.1, 0.15]
   lr:
     distribution: log_uniform_values
     min: 0.0001
@@ -82,128 +209,57 @@ parameters:
     values: [256, 512]
   num_blocks:
     values: [4, 8, 12]
-  kv_heads:
-    values: [2, 4]
+  optimizer:
+    values: ["adamw", "adafactor", "lion"]
+  tokenizer_type:
+    values: ["char", "bpe"]
+  dropout_rate:
+    values: [0.0, 0.1, 0.15]
   use_moe:
     values: [true, false]
-  n_experts:
-    values: [4]
-  top_k_mlp:
-    values: [1, 2]
-  expansion:
-    values: [2, 4]
-  alpha_balance:
-    distribution: uniform
-    min: 0.01
-    max: 0.15
-  sliding_window:
-    values: [true, false]
-  context_window:
-    values: [32, 64, 128]
-  no_sink:
-    values: [true, false]
-  pos_encoding:
-    values: ["rotary", "absolute"]
-command:
-  - ${env}
-  - python
-  - ${program}
-  - ${args}
 ```
 
-### Execution
-
-Initialize the sweep and start the agent:
-
-```bash
-wandb sweep sweep.yaml
-wandb agent <USERNAME/PROJECT/SWEEP_ID>
-```
-
-!!! warning "GQA Shape Consistency"
-    To prevent tensor shape mismatches and XLA compilation crashes during the automated search, `n_heads` and `head_size` are **dynamically derived** from `dim` and `kv_heads` inside `train_sweep.py`. This guarantees that `dim == n_heads × head_size` holds for every Bayesian trial.
+!!! warning "GQA shape consistency"
+    Ensure `dim == n_heads × head_size` holds for every trial. Pin `n_heads` and `head_size` in the sweep config and let `dim` derive from them, or add a validation step in your sweep agent.
 
 ---
 
 ## Training MLA Models
 
-MLA introduces two additional config flags that interact with the training/inference split:
+MLA introduces a training/inference split controlled by the `inference` flag:
 
 | Flag | Training | Inference |
 | :--- | :--- | :--- |
 | `mla` | `true` | `true` |
 | `inference` | **`false`** | **`true`** |
 
-During training (`inference: false`) the model materialises full $K$ and $V$ tensors from the latent compression to compute gradients normally. Weight absorption is not differentiable in the same sense and is irrelevant to parameter updates.
-
-At generation time, reload the checkpoint with `inference: true` to activate weight absorption without changing the saved weights:
-
-```python
-config = Config.from_yaml("runs/<run>/config.yaml")
-config.inference = True          # override for decode — weights are unchanged
-model = Transformer(config, rngs=nnx.Rngs(0))
-# ... load weights ...
-```
+Train with `inference: false`. At generation time, `Generator` automatically sets `inference = True` when it detects `mla = True` in the saved config — no manual intervention needed.
 
 !!! note
-    The `inference` flag is **not** saved into the checkpoint weights — it only affects the forward-pass computation graph. You can safely switch between training and inference modes without re-saving the model.
+    The `inference` flag only affects the computation graph, not the saved weights. Switching modes does not require re-saving the checkpoint.
 
 ---
 
-## Deep Dive: JAX/Flax NNX Training Loop
+## Training Loop: Deep Dive
 
-Training in JAX requires bridging the gap between stateful model architectures and pure, functional transformations like `jax.grad` and `jax.jit`. DantinoX implements a highly optimized update step, explicitly managing the functional state to maximize XLA compilation efficiency.
+### Functional State Management
 
-### 1. Functional State Management
-
-Flax NNX models are stateful Python objects, but `jax.grad` requires pure functions. The solution is to split the model into a static graph definition and a dynamic state pytree, pass only the state into the JIT-compiled function, and merge them back inside `loss_fn`:
+Flax NNX models are stateful Python objects. `jax.jit` requires pure functions, so the training step splits the model into a static graph definition and a dynamic state pytree, operates on the pytree inside JIT, then merges back:
 
 ```python
-graphdef, state = nnx.split(model)   # once, outside the training loop
+graphdef, state = nnx.split((model, optimizer, metrics))
+_, _, new_state = train_step(graphdef, state, x, y)
+nnx.update((model, optimizer, metrics), new_state)
 ```
 
-### 2. The Core Update Step
+### Gradient Accumulation
 
-The entire forward pass, loss computation, and backpropagation are fused into a single XLA kernel:
+Gradient accumulation is implemented as a manual micro-batch loop inside `@jax.jit`. This keeps the compiled graph fixed while effectively multiplying the batch size by `grad_accum`:
 
 ```python
-@jax.jit
-def train_step(graphdef, state, opt_state, batch):
-    def loss_fn(current_state):
-        model = nnx.merge(graphdef, current_state)
-
-        logits, _, balancing_loss = model(
-            batch['input_ids'], use_cache=False,
-            kv_caches=None, cache_index=None, deterministic=False
-        )
-
-        # Autoregressive next-token prediction
-        ce_loss = optax.softmax_cross_entropy_with_integer_labels(
-            logits=logits[:, :-1, :], labels=batch['labels'][:, 1:]
-        ).mean()
-
-        _, new_state = nnx.split(model)
-        return ce_loss + balancing_loss, (new_state, balancing_loss, ce_loss)
-
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (loss, (new_state, bal_loss, ce_loss)), grads = grad_fn(state)
-
-    updates, new_opt_state = optimizer.update(grads, opt_state, new_state)
-    new_state = optax.apply_updates(new_state, updates)
-    return new_state, new_opt_state, loss, bal_loss, ce_loss
+for i in range(config.grad_accum):
+    (loss, bal), grads = grad_fn(model, xs[i], ys[i])
+    acc = tree_map(lambda a, g: a + g / config.grad_accum, acc, grads)
 ```
 
-The model is merged and re-split *inside* `loss_fn` so that `jax.value_and_grad` can trace gradient flow through the full state pytree. `has_aux=True` lets the function return the updated state (needed to propagate Dropout PRNG keys) alongside the scalar loss.
-
-### 3. Gradient Accumulation
-
-Python-level accumulation loops break XLA's static graph requirements. DantinoX delegates accumulation entirely to Optax via `MultiSteps`, keeping the compiled graph fixed:
-
-```python
-optimizer = optax.MultiSteps(
-    optax.adamw(learning_rate=config.lr),
-    every_k_schedule=config.grad_accum    # weight update every N micro-steps
-)
-```
-
-`optax.apply_updates` tracks micro-step state internally and emits a weight update exactly every `grad_accum` calls, with no VRAM spike from intermediate gradient buffers.
+The accumulated gradient `acc` is applied in a single optimizer update step.

@@ -32,6 +32,7 @@ from dantinox.exceptions import (
     PlotError,
 )
 from dantinox.generator import Generator
+from dantinox.hub import pull, push
 from dantinox.plotting import Plotter
 from dantinox.trainer import Trainer
 
@@ -48,6 +49,8 @@ __all__ = [
     "Generator",
     "BenchmarkRunner",
     "Plotter",
+    "push",
+    "pull",
     # exceptions
     "DantinoXError",
     "ConfigError",

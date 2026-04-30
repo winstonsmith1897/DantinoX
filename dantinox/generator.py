@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterator
 
+import jax
 import jax.numpy as jnp
 import msgpack
 import yaml
@@ -29,6 +31,63 @@ _BPE_REPLACEMENTS = [
     ("Ã", "à"),
 ]
 
+
+# ── JIT-compiled streaming step functions ────────────────────────────────────
+
+@nnx.jit
+def _stream_prefill(model: nnx.Module, x: jnp.ndarray, kv_cache: tuple) -> tuple:
+    """Full prompt forward pass. Returns (logits [B,T,V], filled_kv_cache)."""
+    logits, new_cache, _ = model(x, True, kv_cache, 0, deterministic=True)
+    return logits, new_cache
+
+
+@nnx.jit
+def _stream_decode(model: nnx.Module, tok: jnp.ndarray, kv_cache: tuple, pos: jax.Array) -> tuple:
+    """Single-token decode step. Returns (logits [B,1,V], new_kv_cache)."""
+    logits, new_cache, _ = model(tok, True, kv_cache, pos, deterministic=True)
+    return logits, new_cache
+
+
+def _sample_logit(
+    logits: jnp.ndarray,
+    key: jax.Array,
+    greedy: bool,
+    temperature: float,
+    top_k: int | None,
+    top_p: float | None,
+) -> tuple[int, jax.Array]:
+    """Sample one token id from a [V] logit vector. Returns (token_id, new_key)."""
+    log_probs = jax.nn.log_softmax(logits[0].astype(jnp.float32) / temperature)
+
+    if greedy:
+        return int(jnp.argmax(log_probs)), key
+
+    if top_k is not None:
+        top_k_vals, top_k_idx = jax.lax.top_k(jnp.exp(log_probs), top_k)
+        filtered = jnp.full_like(log_probs, -jnp.inf)
+        filtered = filtered.at[top_k_idx].set(
+            jnp.log(top_k_vals / top_k_vals.sum() + 1e-10)
+        )
+        log_probs = filtered
+
+    if top_p is not None:
+        probs = jnp.exp(log_probs)
+        sorted_idx = jnp.argsort(probs)[::-1]
+        sorted_probs = probs[sorted_idx]
+        cum = jnp.cumsum(sorted_probs)
+        mask = (cum - sorted_probs) >= top_p
+        filtered_p = jnp.where(mask, 0.0, sorted_probs)
+        filtered_p = filtered_p / (filtered_p.sum() + 1e-10)
+        filtered_lp = jnp.full_like(log_probs, -jnp.inf)
+        filtered_lp = filtered_lp.at[sorted_idx].set(jnp.log(filtered_p + 1e-10))
+        log_probs = filtered_lp
+
+    new_key, subkey = jax.random.split(key)
+    tok_id = int(jax.random.categorical(subkey, log_probs))
+    return tok_id, new_key
+
+
+# ── Checkpoint loader ─────────────────────────────────────────────────────────
 
 def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Tokenizer]:
     """Return (config, model, tokenizer) loaded from a run directory."""
@@ -107,6 +166,8 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
     return config, model, tokenizer
 
 
+# ── Generator ─────────────────────────────────────────────────────────────────
+
 class Generator:
     """
     Loads a trained DantinoX checkpoint and generates text.
@@ -122,7 +183,7 @@ class Generator:
     Raises
     ------
     CheckpointError
-        If the run directory, config, or dataset cannot be loaded.
+        If the run directory or config cannot be loaded.
 
     Examples
     --------
@@ -139,6 +200,14 @@ class Generator:
     def __repr__(self) -> str:
         attn = "MLA" if self.config.mla else ("GQA" if self.config.kv_heads < self.config.n_heads else "MHA")
         return f"Generator(run_dir={self.run_dir!r}, attn={attn}, seed={self.seed})"
+
+    def _bpe_fix(self, text: str) -> str:
+        if self.config.tokenizer_type == "bpe":
+            for old, new in _BPE_REPLACEMENTS:
+                text = text.replace(old, new)
+        return text
+
+    # ── Single-prompt generation ──────────────────────────────────────────────
 
     def generate(
         self,
@@ -197,8 +266,154 @@ class Generator:
         )
         output.block_until_ready()
 
-        text = self.tokenizer.decode(output[0].tolist())
-        if self.config.tokenizer_type == "bpe":
-            for old, new in _BPE_REPLACEMENTS:
-                text = text.replace(old, new)
-        return text
+        return self._bpe_fix(self.tokenizer.decode(output[0].tolist()))
+
+    # ── Batched generation ────────────────────────────────────────────────────
+
+    def generate_batch(
+        self,
+        prompts: list[str],
+        *,
+        max_new_tokens: int = 150,
+        greedy: bool = False,
+        top_k: int | None = None,
+        top_p: float | None = None,
+        temperature: float = 1.0,
+        use_cache: bool = True,
+    ) -> list[str]:
+        """
+        Generate text for multiple prompts in a single batched forward pass.
+
+        Shorter prompts are left-padded with zeros so all share the same
+        sequence length.  This runs a true batch through the model, so
+        throughput scales with GPU parallelism.
+
+        Parameters
+        ----------
+        prompts : list[str]
+            Input prefixes to generate from.
+        max_new_tokens : int
+            Tokens to generate per prompt (default 150).
+        greedy : bool
+            Greedy decoding (default False).
+        top_k : int, optional
+            Top-k filtering before sampling.
+        top_p : float, optional
+            Nucleus sampling threshold.
+        temperature : float
+            Softmax temperature (default 1.0).
+        use_cache : bool
+            Enable KV-cache (default True).
+
+        Returns
+        -------
+        list[str]
+            Generated strings (prompt + continuation) in the same order as
+            ``prompts``.
+        """
+        if not prompts:
+            return []
+
+        encoded = [self.tokenizer.encode(p) for p in prompts]
+        max_len = max(len(e) for e in encoded)
+
+        # Left-pad shorter prompts with zeros so all share the same start position.
+        padded = [([0] * (max_len - len(e))) + e for e in encoded]
+        x = jnp.array(padded, dtype=jnp.int32)  # [B, max_len]
+
+        log.debug("Batch generating: B=%d max_prompt_len=%d max_new=%d", len(prompts), max_len, max_new_tokens)
+
+        output = _generate(
+            model=self.model,
+            x=x,
+            max_generations=max_new_tokens,
+            greedy=greedy,
+            seed=self.seed,
+            use_cache=use_cache,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+        )
+        output.block_until_ready()
+
+        results = []
+        for i, enc in enumerate(encoded):
+            # Strip the left-padding: prompt starts at (max_len - len(enc))
+            start = max_len - len(enc)
+            tokens_out = output[i, start:].tolist()
+            results.append(self._bpe_fix(self.tokenizer.decode(tokens_out)))
+        return results
+
+    # ── Streaming generation ──────────────────────────────────────────────────
+
+    def stream(
+        self,
+        prompt: str,
+        *,
+        max_new_tokens: int = 150,
+        greedy: bool = False,
+        top_k: int | None = None,
+        top_p: float | None = None,
+        temperature: float = 1.0,
+    ) -> Iterator[str]:
+        """
+        Stream generated tokens one at a time as they are produced.
+
+        Uses the KV-cache path: the prompt is prefilled in one forward pass,
+        then each new token is decoded individually.  Each ``yield`` returns
+        the string for one generated token (may be a character or a BPE
+        subword).
+
+        Parameters
+        ----------
+        prompt : str
+            The input prefix.
+        max_new_tokens : int
+            Maximum number of tokens to generate (default 150).
+        greedy : bool
+            Greedy decoding (default False).
+        top_k : int, optional
+            Top-k filtering.
+        top_p : float, optional
+            Nucleus sampling threshold.
+        temperature : float
+            Softmax temperature (default 1.0).
+
+        Yields
+        ------
+        str
+            Decoded string for each generated token.
+
+        Examples
+        --------
+        >>> gen = Generator("runs/my_run")
+        >>> for chunk in gen.stream("Nel mezzo", max_new_tokens=50):
+        ...     print(chunk, end="", flush=True)
+        """
+        tokens = self.tokenizer.encode(prompt)
+        T = len(tokens)
+        max_ctx = self.config.max_context  # type: ignore[attr-defined]
+        num_blocks = self.config.num_blocks  # type: ignore[attr-defined]
+
+        # Build full-context input with prompt at the start.
+        x = jnp.zeros((1, max_ctx), dtype=jnp.int32)
+        x = x.at[0, :T].set(jnp.array(tokens, dtype=jnp.int32))
+
+        init_kv_cache = tuple((None, None) for _ in range(num_blocks))
+        key = jax.random.key(self.seed)
+
+        # Prefill: one pass over the entire prompt, populate KV cache.
+        logits, kv_cache = _stream_prefill(self.model, x, init_kv_cache)
+
+        # Sample the first generated token from the last prompt position.
+        tok_id, key = _sample_logit(logits[:, T - 1, :], key, greedy, temperature, top_k, top_p)
+        yield self._bpe_fix(self.tokenizer.decode([tok_id]))
+
+        # Autoregressive decode loop.
+        for pos in range(T, T + max_new_tokens - 1):
+            if pos >= max_ctx:
+                break
+            tok = jnp.array([[tok_id]], dtype=jnp.int32)
+            logits, kv_cache = _stream_decode(self.model, tok, kv_cache, jnp.array(pos))
+            tok_id, key = _sample_logit(logits[:, 0, :], key, greedy, temperature, top_k, top_p)
+            yield self._bpe_fix(self.tokenizer.decode([tok_id]))

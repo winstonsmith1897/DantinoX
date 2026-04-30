@@ -129,3 +129,8 @@ nav:
   - Benchmarks: benchmarks.md
   - API Reference: api.md
   - Coverage Report: coverage/index.html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/winstonsmith1897/DantinoX
