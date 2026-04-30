@@ -7,6 +7,7 @@ import logging
 import os
 import time
 
+import flax.serialization
 import jax
 import jax.numpy as jnp
 import optax
@@ -17,7 +18,7 @@ from core.config import Config
 from core.model import Transformer
 from dantinox.exceptions import ConfigError
 from utils.helpers import compute_loss, get_batch
-from utils.tokenizer import get_tokenizer
+from utils.tokenizer import get_tokenizer, load_tokenizer_from_file
 
 log = logging.getLogger(__name__)
 
@@ -39,12 +40,18 @@ def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransfor
     )
     name = config.optimizer.lower()
     if name == "adamw":
-        return optax.adamw(learning_rate=schedule)
-    if name == "adafactor":
-        return optax.adafactor(learning_rate=schedule)
-    if name == "lion":
-        return optax.lion(learning_rate=schedule)
-    return optax.adam(learning_rate=schedule)
+        base_opt: optax.GradientTransformation = optax.adamw(learning_rate=schedule)
+    elif name == "adafactor":
+        base_opt = optax.adafactor(learning_rate=schedule)
+    elif name == "lion":
+        base_opt = optax.lion(learning_rate=schedule)
+    else:
+        base_opt = optax.adam(learning_rate=schedule)
+
+    grad_clip = getattr(config, "grad_clip", 0.0)
+    if grad_clip > 0:
+        return optax.chain(optax.clip_by_global_norm(grad_clip), base_opt)
+    return base_opt
 
 
 def _load_text(config: Config, data_path: str | None) -> str:
@@ -86,6 +93,12 @@ def _model_summary(model: Transformer, config: Config, optimizer: nnx.Optimizer)
     }
 
 
+def _save_weights(model: Transformer, path: str) -> None:
+    state_dict = nnx.state(model, nnx.Param).to_pure_dict()
+    with open(path, "wb") as f:
+        f.write(flax.serialization.msgpack_serialize(state_dict))
+
+
 # ── Trainer ───────────────────────────────────────────────────────────────────
 
 class Trainer:
@@ -115,6 +128,7 @@ class Trainer:
         *,
         run_dir: str | None = None,
         wandb_project: str | None = None,
+        resume: bool = False,
     ) -> str:
         """
         Train a model and save the checkpoint.
@@ -127,6 +141,9 @@ class Trainer:
             Directory to write the checkpoint and logs. Auto-generated if omitted.
         wandb_project : str, optional
             If provided, metrics are logged to Weights & Biases.
+        resume : bool
+            If ``True`` and a previous checkpoint exists in ``run_dir``, training
+            resumes from the saved step. Optimizer state is not preserved.
 
         Returns
         -------
@@ -150,11 +167,19 @@ class Trainer:
         log.info("Run directory: %s", run_dir)
 
         text = _format_text(_load_text(config, data_path))
-        tokenizer = get_tokenizer(config.tokenizer_type)
-        if config.tokenizer_type == "char":
-            tokenizer.train_from_text(text)
-        elif config.tokenizer_type == "bpe":
-            tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+
+        tok_path = os.path.join(run_dir, "tokenizer.json")
+        if resume and os.path.exists(tok_path):
+            tokenizer = load_tokenizer_from_file(tok_path)
+            log.info("Resumed tokenizer from %s", tok_path)
+        else:
+            tokenizer = get_tokenizer(config.tokenizer_type)
+            if config.tokenizer_type == "char":
+                tokenizer.train_from_text(text)
+            elif config.tokenizer_type == "bpe":
+                tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+            tokenizer.save(tok_path)
+            log.info("Tokenizer saved to %s", tok_path)
 
         config.vocab_size = tokenizer.vocab_size
         full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
@@ -169,6 +194,22 @@ class Trainer:
         rngs = nnx.Rngs(config.seed)
         model = Transformer(config, rngs=rngs)
         optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+
+        start_step = 0
+        cursor_path = os.path.join(run_dir, "training_cursor.json")
+        resume_weights = os.path.join(run_dir, "model_weights.msgpack")
+        if resume and os.path.exists(cursor_path) and os.path.exists(resume_weights):
+            with open(cursor_path) as cursor_f:
+                cursor = json.load(cursor_f)
+            start_step = int(cursor.get("step", 0)) + 1
+            import msgpack
+            from flax.serialization import _msgpack_ext_unpack
+            with open(resume_weights, "rb") as weights_f:
+                state_dict = msgpack.unpackb(
+                    weights_f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
+                )
+            nnx.update(model, state_dict)
+            log.info("Resumed training from step %d", start_step)
 
         summary = _model_summary(model, config, optimizer)
         with open(os.path.join(run_dir, "model_summary.json"), "w") as f:
@@ -236,10 +277,25 @@ class Trainer:
             return out, key
 
         log_path = os.path.join(run_dir, "training_log.csv")
+        weights_path = os.path.join(run_dir, "model_weights.msgpack")
+        best_weights_path = os.path.join(run_dir, "best_model_weights.msgpack")
+
         key = jax.random.PRNGKey(config.seed)
         metrics = nnx.MultiMetric(loss=nnx.metrics.Average("loss"))
-        pbar = tqdm(range(total_steps), desc="Training", unit="step", dynamic_ncols=True)
+        pbar = tqdm(
+            range(start_step, total_steps),
+            desc="Training",
+            unit="step",
+            dynamic_ncols=True,
+            initial=start_step,
+            total=total_steps,
+        )
         t0 = time.time()
+
+        patience = getattr(config, "patience", 0)
+        best_val_loss = float("inf")
+        no_improve = 0
+
         with open(log_path, "a", newline="") as log_f:
             log_w = csv.writer(log_f)
             if os.path.getsize(log_path) == 0:
@@ -259,39 +315,57 @@ class Trainer:
                         dt = (t1 - t0) * 1000 / 50
                         t0 = t1
                         losses, key = estimate_loss(key)
+                        val_loss = losses["val"]
                         pbar.set_postfix(
                             train=f"{losses['train']:.4f}",
-                            val=f"{losses['val']:.4f}",
+                            val=f"{val_loss:.4f}",
                         )
                         log.info(
                             "step %d/%d | train=%.4f val=%.4f bal=%.4f",
                             step, total_steps,
-                            losses["train"], losses["val"], losses["train_bal"],
+                            losses["train"], val_loss, losses["train_bal"],
                         )
                         log_w.writerow(
                             [
                                 step,
                                 float(losses["train"]),
-                                float(losses["val"]),
+                                float(val_loss),
                                 float(losses["train_bal"]),
                                 float(losses["val_bal"]),
                                 round(dt, 2),
                             ]
                         )
                         log_f.flush()
+
+                        # Periodic checkpoint for resume
+                        _save_weights(model, weights_path)
+                        with open(cursor_path, "w") as cf:
+                            json.dump({"step": step}, cf)
+
+                        # Best checkpoint tracking
+                        if val_loss < best_val_loss:
+                            best_val_loss = val_loss
+                            no_improve = 0
+                            _save_weights(model, best_weights_path)
+                            log.info("New best val loss %.4f — saved best checkpoint", best_val_loss)
+                        else:
+                            no_improve += 1
+                            if patience > 0 and no_improve >= patience:
+                                log.info(
+                                    "Early stopping at step %d (no improvement for %d evals)",
+                                    step, patience,
+                                )
+                                break
+
                         if wandb_project is not None:
                             import wandb
-                            wandb.log({"train_loss": losses["train"], "val_loss": losses["val"], "step": step})  # type: ignore[attr-defined]
+                            wandb.log({"train_loss": losses["train"], "val_loss": val_loss, "step": step})  # type: ignore[attr-defined]
             finally:
                 pbar.close()
                 if wandb_project is not None:
                     import wandb
                     wandb.finish()  # type: ignore[attr-defined]
 
-        weights_path = os.path.join(run_dir, "model_weights.msgpack")
-        state_dict = nnx.state(model, nnx.Param).to_pure_dict()
-        import flax.serialization
-        with open(weights_path, "wb") as weights_f:  # type: ignore[assignment]
-            weights_f.write(flax.serialization.msgpack_serialize(state_dict))  # type: ignore[arg-type]
+        _save_weights(model, weights_path)
         log.info("Checkpoint saved: %s", weights_path)
         return run_dir

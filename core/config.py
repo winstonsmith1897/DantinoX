@@ -61,6 +61,8 @@ class Config:
     optimizer: str = "adamw"
     epochs: int = 1000
     warmup_steps: int = 420
+    grad_clip: float = 1.0
+    patience: int = 0
 
     # ── Logging & Metrics ───────────────────────────────────────────────────
     eval_iters: int = 20

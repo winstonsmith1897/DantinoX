@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import logging
 import sys
 
 from core.config import Config
+from dantinox import __version__
 
 # ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
         args.data_path,
         run_dir=getattr(args, "run_dir", None),
         wandb_project=getattr(args, "wandb_project", None),
+        resume=getattr(args, "resume", False),
     )
     print(f"\nRun saved to: {run_dir}")
 
@@ -163,6 +166,9 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="dantinox",
         description="DantinoX — JAX/Flax Transformer library CLI",
     )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # ── train ──────────────────────────────────────────────────────────────
@@ -172,6 +178,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--data_path", help="Path to the training corpus")
     p_train.add_argument("--run_dir", help="Output run directory (auto-generated if omitted)")
     p_train.add_argument("--wandb_project", help="W&B project name for logging")
+    p_train.add_argument("--resume", action="store_true",
+                         help="Resume training from the last checkpoint in --run_dir")
     _add_config_overrides(p_train)
 
     # ── generate ───────────────────────────────────────────────────────────
@@ -219,6 +227,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+        datefmt="%H:%M:%S",
+    )
     parser = _build_parser()
     args = parser.parse_args(argv)
 

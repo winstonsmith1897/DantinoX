@@ -13,7 +13,7 @@ from core.config import Config
 from core.generation import generate as _generate
 from core.model import Transformer
 from dantinox.exceptions import CheckpointError
-from utils.tokenizer import Tokenizer, get_tokenizer
+from utils.tokenizer import Tokenizer, get_tokenizer, load_tokenizer_from_file
 
 log = logging.getLogger(__name__)
 
@@ -55,28 +55,39 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
     if config.mla:
         config.inference = True
 
-    if config.dataset_source == "huggingface":
-        from datasets import load_dataset
-        raw_dataset = load_dataset(config.dataset_name, split="train")
-        text = " ".join(raw_dataset["text"])
+    tok_path = os.path.join(run_dir, "tokenizer.json")
+    if os.path.exists(tok_path):
+        tokenizer = load_tokenizer_from_file(tok_path)
+        log.info("Loaded tokenizer from %s", tok_path)
     else:
-        if not os.path.exists(config.dataset_name):
-            raise CheckpointError(
-                f"Dataset file not found: {config.dataset_name!r}. "
-                "The tokenizer vocabulary cannot be rebuilt without the original corpus."
-            )
-        with open(config.dataset_name, encoding="utf-8") as f:
-            text = f.read()
-
-    lines = [line.rstrip() for line in text.split("\n") if line.strip()]
-    blocks = ["\n".join(lines[i : i + 3]) for i in range(0, len(lines), 3)]
-    text = "\n\n".join(blocks) + "\n"
-
-    tokenizer = get_tokenizer(config.tokenizer_type)
-    if config.tokenizer_type == "char":
-        tokenizer.train_from_text(text)
-    elif config.tokenizer_type == "bpe":
-        tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+        import warnings
+        warnings.warn(
+            f"tokenizer.json not found in {run_dir!r}. "
+            "Falling back to re-training the tokenizer from the original corpus. "
+            "Re-save your checkpoint with a newer version of DantinoX to avoid this.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if config.dataset_source == "huggingface":
+            from datasets import load_dataset
+            raw_dataset = load_dataset(config.dataset_name, split="train")
+            text = " ".join(raw_dataset["text"])
+        else:
+            if not os.path.exists(config.dataset_name):
+                raise CheckpointError(
+                    f"tokenizer.json not found and dataset file {config.dataset_name!r} "
+                    "is also missing. Cannot rebuild the tokenizer vocabulary."
+                )
+            with open(config.dataset_name, encoding="utf-8") as f:
+                text = f.read()
+        lines = [line.rstrip() for line in text.split("\n") if line.strip()]
+        blocks = ["\n".join(lines[i : i + 3]) for i in range(0, len(lines), 3)]
+        text = "\n\n".join(blocks) + "\n"
+        tokenizer = get_tokenizer(config.tokenizer_type)
+        if config.tokenizer_type == "char":
+            tokenizer.train_from_text(text)
+        elif config.tokenizer_type == "bpe":
+            tokenizer.train_from_text(text, vocab_size=config.vocab_size)
 
     config.vocab_size = tokenizer.vocab_size
 
