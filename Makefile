@@ -20,7 +20,8 @@ install:
 	pip install --user -e ".[all]"
 
 test:
-	JAX_PLATFORM_NAME=cpu $(PYTHON) -m pytest tests/ --ignore=tests/test_sweep_simulation.py -v --tb=short
+	JAX_PLATFORM_NAME=cpu $(PYTHON) -m pytest tests/ --ignore=tests/test_sweep_simulation.py -v --tb=short \
+		--cov=$(PACKAGE) --cov=core --cov-report=term-missing --cov-report=html:docs/coverage
 
 lint:
 	$(PYTHON) -m ruff check $(PACKAGE)/ core/ utils/

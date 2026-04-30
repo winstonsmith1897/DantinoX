@@ -48,6 +48,10 @@ data/
 # ── MkDocs generated site ────────────────────────────────────────────────────
 site/
 
+# ── Generated coverage report (rebuild with: make test) ──────────────────────
+docs/coverage/
+.coverage
+
 # ── Weights & Biases ─────────────────────────────────────────────────────────
 wandb/
 

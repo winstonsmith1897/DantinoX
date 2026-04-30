@@ -128,3 +128,4 @@ nav:
   - Ablation Studies: ablation_studies.md
   - Benchmarks: benchmarks.md
   - API Reference: api.md
+  - Coverage Report: coverage/index.html

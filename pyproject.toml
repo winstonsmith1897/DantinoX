@@ -32,6 +32,9 @@ dev       = [
     "types-PyYAML",
     "build",
     "twine",
+    "mkdocs-material",
+    "mkdocs-minify-plugin",
+    "mkdocstrings[python]",
 ]
 all = ["dantinox[data,benchmark,dev]"]
 
