@@ -1,9 +1,13 @@
-from dataclasses import dataclass, asdict
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict, field, fields
+from typing import Any, Optional
 import yaml
+
 
 @dataclass
 class Config:
-    # Model Architecture
+    # ── Model Architecture ───────────────────────────────────────────────────
     dim: int = 512
     n_heads: int = 16
     head_size: int = 32
@@ -16,40 +20,39 @@ class Config:
     gradient_checkpointing: bool = True
     dropout_rate: float = 0.15
     use_swiglu: bool = True
-    
-    # MoE
+
+    # ── MoE ─────────────────────────────────────────────────────────────────
     use_moe: bool = False
     n_experts: int = 4
     top_k_mlp: int = 2
     expansion: int = 4
     alpha_balance: float = 0.1
-    
-    # Attention & Positional Features
+
+    # ── Attention & Positional ───────────────────────────────────────────────
     use_rotary_pos: bool = True
-    trainable_pos: bool = False  
-    absolute_pos: bool = False    
+    trainable_pos: bool = False
+    absolute_pos: bool = False
     sliding_window: bool = False
     context_window: int = 4
     no_sink: bool = True
-    
-    # === NUOVI PARAMETRI PER MLA ===
+
+    # ── Multi-Head Latent Attention (MLA) ────────────────────────────────────
     mla: bool = False
     inference: bool = False
-    down_dim_q: int = 256  # Dimensione latente per Query
-    down_dim_kv: int = 256 # Dimensione latente per KV (e Cache)
-    rope_dim: int = 32     # Dimensione Decoupled RoPE
-    # ===============================
-    
-    # Tokenizer
+    down_dim_q: int = 256
+    down_dim_kv: int = 256
+    rope_dim: int = 32
+
+    # ── Tokenizer ───────────────────────────────────────────────────────────
     tokenizer_type: str = "char"
-    tokenizer_path: str = None  
-    
-    # Dataset Configuration
+    tokenizer_path: Optional[str] = None
+
+    # ── Dataset ─────────────────────────────────────────────────────────────
     dataset_source: str = "local"
     dataset_name: str = ""
     streaming: bool = False
-    
-    # Training & Optimization
+
+    # ── Training & Optimisation ──────────────────────────────────────────────
     lr: float = 0.005
     batch_size: int = 128
     grad_accum: int = 16
@@ -57,37 +60,67 @@ class Config:
     optimizer: str = "adamw"
     epochs: int = 1000
     warmup_steps: int = 420
-    
-    # Logging & Metrics
+
+    # ── Logging & Metrics ───────────────────────────────────────────────────
     eval_iters: int = 20
     log_file: str = "training_log.csv"
     summary_file: str = "model_summary.json"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.kv_heads is None:
             self.kv_heads = self.n_heads // 4
-            
-        assert self.dim == self.n_heads * self.head_size, "Dim should be n_heads * head_size"
-        assert self.n_heads % self.kv_heads == 0, "n_heads should be a multiple of kv_heads"
-        
-        if self.mla and self.use_rotary_pos:
-            assert self.rope_dim <= self.head_size, "rope_dim should not be higher than head_size to not have an exploding complexity"
+
+        if self.dim != self.n_heads * self.head_size:
+            raise ValueError(
+                f"dim ({self.dim}) must equal n_heads * head_size "
+                f"({self.n_heads} * {self.head_size} = {self.n_heads * self.head_size})"
+            )
+        if self.n_heads % self.kv_heads != 0:
+            raise ValueError(
+                f"n_heads ({self.n_heads}) must be divisible by kv_heads ({self.kv_heads})"
+            )
+        if self.mla and self.use_rotary_pos and self.rope_dim > self.head_size:
+            raise ValueError(
+                f"rope_dim ({self.rope_dim}) must be <= head_size ({self.head_size}) "
+                "when using MLA with rotary positional encoding"
+            )
+
+    def __repr__(self) -> str:
+        attn = "MLA" if self.mla else ("GQA" if self.kv_heads < self.n_heads else "MHA")
+        moe = "+MoE" if self.use_moe else ""
+        return (
+            f"Config(dim={self.dim}, heads={self.n_heads}, blocks={self.num_blocks}, "
+            f"ctx={self.max_context}, attn={attn}{moe})"
+        )
+
+    # ── Serialisation ────────────────────────────────────────────────────────
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a plain dict of all config fields."""
+        return asdict(self)
 
     @classmethod
-    def from_yaml(cls, path: str):
-        with open(path, 'r') as f:
-            raw_cfg = yaml.safe_load(f)
-        
-        flat_cfg = {}
-        for section in raw_cfg.values():
-            if isinstance(section, dict):
-                flat_cfg.update(section)
-                
-        valid_keys = {f for f in cls.__dataclass_fields__}
-        filtered_cfg = {k: v for k, v in flat_cfg.items() if k in valid_keys}
-            
-        return cls(**filtered_cfg)
+    def from_dict(cls, d: dict[str, Any]) -> "Config":
+        """Construct a Config from a plain dict, ignoring unknown keys."""
+        valid = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in valid})
 
-    def save_yaml(self, path: str):
-        with open(path, 'w') as f:
-            yaml.dump(asdict(self), f)
+    @classmethod
+    def from_yaml(cls, path: str) -> "Config":
+        """Load a Config from a YAML file (flat or sectioned)."""
+        with open(path, "r") as f:
+            raw = yaml.safe_load(f)
+
+        flat: dict[str, Any] = {}
+        for v in raw.values():
+            if isinstance(v, dict):
+                flat.update(v)
+        if not flat:
+            flat = raw
+
+        return cls.from_dict(flat)
+
+    def save_yaml(self, path: str) -> None:
+        """Write the config to a YAML file."""
+        with open(path, "w") as f:
+            yaml.dump(self.to_dict(), f)

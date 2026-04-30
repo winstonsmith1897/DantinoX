@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import datetime
 import json
+import logging
 import os
 import time
 from typing import Optional
@@ -11,14 +12,20 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import nnx
+from tqdm import tqdm
 
 from core.config import Config
 from core.model import Transformer
+from dantinox.exceptions import ConfigError
 from utils.helpers import compute_loss, get_batch
 from utils.tokenizer import get_tokenizer
 
+log = logging.getLogger(__name__)
 
-def _build_optimizer(config: Config, total_steps: int):
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransformation:
     warmup_steps = min(
         getattr(config, "warmup_steps", int(total_steps * 0.1)),
         int(total_steps * 0.3),
@@ -47,6 +54,13 @@ def _load_text(config: Config, data_path: Optional[str]) -> str:
         raw = load_dataset(config.dataset_name, split="train")
         return " ".join(raw["text"])
     path = data_path or config.dataset_name
+    if not path:
+        raise ConfigError(
+            "No data_path provided and config.dataset_name is empty. "
+            "Pass data_path to Trainer.fit() or set dataset_name in the config."
+        )
+    if not os.path.exists(path):
+        raise ConfigError(f"Data file not found: {path}")
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
@@ -57,14 +71,12 @@ def _format_text(text: str) -> str:
     return "\n\n".join(blocks) + "\n"
 
 
-def _model_summary(model, config: Config, optimizer) -> dict:
+def _model_summary(model: Transformer, config: Config, optimizer: nnx.Optimizer) -> dict:
     params = nnx.state(model, nnx.Param)
     total = sum(x.size for x in jax.tree_util.tree_leaves(params))
     opt_state = nnx.state(optimizer)
     opt_params = sum(
-        x.size
-        for x in jax.tree_util.tree_leaves(opt_state)
-        if isinstance(x, jax.Array)
+        x.size for x in jax.tree_util.tree_leaves(opt_state) if isinstance(x, jax.Array)
     )
     act = config.batch_size * config.max_context * config.dim * config.num_blocks * 8 * 4
     return {
@@ -74,6 +86,8 @@ def _model_summary(model, config: Config, optimizer) -> dict:
         "est_activations_MB": round(act / 1e6, 2),
     }
 
+
+# ── Trainer ───────────────────────────────────────────────────────────────────
 
 class Trainer:
     """
@@ -92,6 +106,9 @@ class Trainer:
 
     def __init__(self, config: Config) -> None:
         self.config = config
+
+    def __repr__(self) -> str:
+        return f"Trainer(config={self.config!r})"
 
     def fit(
         self,
@@ -115,7 +132,12 @@ class Trainer:
         Returns
         -------
         str
-            The path to the run directory containing the saved checkpoint.
+            Path to the run directory containing the saved checkpoint.
+
+        Raises
+        ------
+        ConfigError
+            If the data path is missing or the file cannot be found.
         """
         config = self.config
 
@@ -125,6 +147,8 @@ class Trainer:
             )
         os.makedirs(run_dir, exist_ok=True)
         config.save_yaml(os.path.join(run_dir, "config.yaml"))
+
+        log.info("Run directory: %s", run_dir)
 
         text = _format_text(_load_text(config, data_path))
         tokenizer = get_tokenizer(config.tokenizer_type)
@@ -150,11 +174,15 @@ class Trainer:
         summary = _model_summary(model, config, optimizer)
         with open(os.path.join(run_dir, "model_summary.json"), "w") as f:
             json.dump(summary, f, indent=4)
-        print(f"Params: {summary['total_params_M']}M")
+        log.info(
+            "Model: %sM params | Est. VRAM: %sMB",
+            summary["total_params_M"],
+            summary["weights_mem_MB"] + summary["optimizer_mem_MB"] + summary["est_activations_MB"],
+        )
 
         if wandb_project is not None:
             import wandb
-            wandb.init(project=wandb_project, config=vars(config))
+            wandb.init(project=wandb_project, config=config.to_dict())
 
         micro_bs = config.batch_size // config.grad_accum
 
@@ -195,7 +223,7 @@ class Trainer:
             return loss, bal
 
         def estimate_loss(key):
-            out = {}
+            out: dict[str, float] = {}
             for split, d in [("train", train_data), ("val", val_data)]:
                 losses, bals = [], []
                 for _ in range(config.eval_iters):
@@ -212,13 +240,16 @@ class Trainer:
         log_f = open(log_path, "a", newline="")
         log_w = csv.writer(log_f)
         if os.path.getsize(log_path) == 0:
-            log_w.writerow(["step", "train_loss", "val_loss", "train_bal", "val_bal", "ms_per_step"])
+            log_w.writerow(
+                ["step", "train_loss", "val_loss", "train_bal", "val_bal", "ms_per_step"]
+            )
 
         key = jax.random.PRNGKey(config.seed)
         metrics = nnx.MultiMetric(loss=nnx.metrics.Average("loss"))
+        pbar = tqdm(range(total_steps), desc="Training", unit="step", dynamic_ncols=True)
         t0 = time.time()
         try:
-            for step in range(total_steps):
+            for step in pbar:
                 key, sub = jax.random.split(key)
                 x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
                 graphdef, state = nnx.split((model, optimizer, metrics))
@@ -230,31 +261,31 @@ class Trainer:
                     dt = (t1 - t0) * 1000 / 50
                     t0 = t1
                     losses, key = estimate_loss(key)
-                    print(
-                        f"Step {step:5d}/{total_steps} | "
-                        f"Train: {losses['train']:.4f} (Bal: {losses['train_bal']:.4f}) | "
-                        f"Val: {losses['val']:.4f} (Bal: {losses['val_bal']:.4f})"
+                    pbar.set_postfix(
+                        train=f"{losses['train']:.4f}",
+                        val=f"{losses['val']:.4f}",
                     )
-                    row = [
-                        step,
-                        float(losses["train"]),
-                        float(losses["val"]),
-                        float(losses["train_bal"]),
-                        float(losses["val_bal"]),
-                        round(dt, 2),
-                    ]
-                    log_w.writerow(row)
+                    log.info(
+                        "step %d/%d | train=%.4f val=%.4f bal=%.4f",
+                        step, total_steps,
+                        losses["train"], losses["val"], losses["train_bal"],
+                    )
+                    log_w.writerow(
+                        [
+                            step,
+                            float(losses["train"]),
+                            float(losses["val"]),
+                            float(losses["train_bal"]),
+                            float(losses["val_bal"]),
+                            round(dt, 2),
+                        ]
+                    )
                     log_f.flush()
                     if wandb_project is not None:
                         import wandb
-                        wandb.log(
-                            {
-                                "train_loss": losses["train"],
-                                "val_loss": losses["val"],
-                                "step": step,
-                            }
-                        )
+                        wandb.log({"train_loss": losses["train"], "val_loss": losses["val"], "step": step})
         finally:
+            pbar.close()
             log_f.close()
             if wandb_project is not None:
                 import wandb
@@ -265,5 +296,5 @@ class Trainer:
         import flax.serialization
         with open(weights_path, "wb") as f:
             f.write(flax.serialization.msgpack_serialize(state_dict))
-        print(f"Model saved to: {run_dir}")
+        log.info("Checkpoint saved: %s", weights_path)
         return run_dir

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional
 
@@ -12,35 +13,59 @@ from flax.serialization import _msgpack_ext_unpack
 from core.config import Config
 from core.model import Transformer
 from core.generation import generate as _generate
+from dantinox.exceptions import CheckpointError
 from utils.tokenizer import get_tokenizer
 
+log = logging.getLogger(__name__)
 
-def _load_checkpoint(run_dir: str, seed: int):
+_BPE_REPLACEMENTS = [
+    (" ", ""),
+    ("Ġ", " "),
+    ("âĢĻ", "'"),
+    ("Ã¹", "ù"),
+    ("Ã¬", "ì"),
+    ("Ã©", "é"),
+    ("Ã¨", "è"),
+    ("Ã²", "ò"),
+    ("Ã", "à"),
+]
+
+
+def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, object]:
     """Return (config, model, tokenizer) loaded from a run directory."""
     config_path = os.path.join(run_dir, "config.yaml")
     weights_path = os.path.join(run_dir, "model_weights.msgpack")
 
+    if not os.path.isdir(run_dir):
+        raise CheckpointError(f"Run directory not found: {run_dir}")
+    if not os.path.exists(config_path):
+        raise CheckpointError(f"Config file not found: {config_path}")
+
     with open(config_path, "r") as f:
         raw = yaml.safe_load(f)
 
-    flat = {}
+    flat: dict = {}
     for section in raw.values():
         if isinstance(section, dict):
             flat.update(section)
     if not flat:
         flat = raw
 
-    config = Config(**{k: v for k, v in flat.items() if k in Config.__dataclass_fields__})
+    config = Config.from_dict(flat)
 
     if config.mla:
         config.inference = True
 
-    # Rebuild the tokenizer vocabulary from the original corpus
     if config.dataset_source == "huggingface":
         from datasets import load_dataset
         raw_dataset = load_dataset(config.dataset_name, split="train")
         text = " ".join(raw_dataset["text"])
     else:
+        if not os.path.exists(config.dataset_name):
+            raise CheckpointError(
+                f"Dataset file not found: {config.dataset_name!r}. "
+                "The tokenizer vocabulary cannot be rebuilt without the original corpus."
+            )
         with open(config.dataset_name, "r", encoding="utf-8") as f:
             text = f.read()
 
@@ -60,26 +85,16 @@ def _load_checkpoint(run_dir: str, seed: int):
     model = Transformer(config, rngs=rngs)
 
     if os.path.exists(weights_path):
+        log.info("Loading weights from %s", weights_path)
         with open(weights_path, "rb") as f:
             state_dict = msgpack.unpackb(
                 f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
             )
         nnx.update(model, state_dict)
+    else:
+        log.warning("No weights file found at %s — using random initialisation", weights_path)
 
     return config, model, tokenizer
-
-
-_BPE_REPLACEMENTS = [
-    (" ", ""),
-    ("Ġ", " "),
-    ("âĢĻ", "'"),
-    ("Ã¹", "ù"),
-    ("Ã¬", "ì"),
-    ("Ã©", "é"),
-    ("Ã¨", "è"),
-    ("Ã²", "ò"),
-    ("Ã", "à"),
-]
 
 
 class Generator:
@@ -94,6 +109,11 @@ class Generator:
     seed : int
         RNG seed used for sampling (default 42).
 
+    Raises
+    ------
+    CheckpointError
+        If the run directory, config, or dataset cannot be loaded.
+
     Examples
     --------
     >>> gen = Generator("runs/run_20260101_120000")
@@ -105,6 +125,10 @@ class Generator:
         self.run_dir = run_dir
         self.seed = seed
         self.config, self.model, self.tokenizer = _load_checkpoint(run_dir, seed)
+
+    def __repr__(self) -> str:
+        attn = "MLA" if self.config.mla else ("GQA" if self.config.kv_heads < self.config.n_heads else "MHA")
+        return f"Generator(run_dir={self.run_dir!r}, attn={attn}, seed={self.seed})"
 
     def generate(
         self,
@@ -144,6 +168,11 @@ class Generator:
         """
         tokens = self.tokenizer.encode(prompt)
         x = jnp.array([tokens], dtype=jnp.int32)
+
+        log.debug(
+            "Generating %d tokens from prompt of %d tokens (greedy=%s, cache=%s)",
+            max_new_tokens, len(tokens), greedy, use_cache,
+        )
 
         output = _generate(
             model=self.model,

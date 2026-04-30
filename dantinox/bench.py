@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import os
 import time
 from typing import Optional, Sequence
@@ -14,7 +15,9 @@ from flax.serialization import _msgpack_ext_unpack
 
 from core.config import Config
 from core.model import Transformer
+from dantinox.exceptions import BenchmarkError
 
+log = logging.getLogger(__name__)
 
 SEQ_LENS    = [64, 128, 256, 512]
 BATCH_SIZES = [1, 4, 16, 64, 128, 256]
@@ -24,30 +27,32 @@ N_MEASURE   = 20
 
 
 @nnx.jit
-def _decode_step(model, tok, cache, idx):
+def _decode_step(model: Transformer, tok: jnp.ndarray, cache, idx: int):
     return model(tok, use_cache=True, kv_caches=cache, cache_index=idx)
 
 
 @nnx.jit
-def _prefill_step(model, prompt):
+def _prefill_step(model: Transformer, prompt: jnp.ndarray):
     return model(prompt, use_cache=False, kv_caches=None, cache_index=0)
 
 
 def _load_config(run_path: str) -> Config:
     import yaml
-    with open(os.path.join(run_path, "config.yaml"), "r") as f:
+    cfg_path = os.path.join(run_path, "config.yaml")
+    if not os.path.exists(cfg_path):
+        raise BenchmarkError(f"Config not found: {cfg_path}")
+    with open(cfg_path, "r") as f:
         raw = yaml.safe_load(f)
-    flat = {}
+    flat: dict = {}
     for section in raw.values():
         if isinstance(section, dict):
             flat.update(section)
     if not flat:
         flat = raw
-    valid = {f.name for f in dataclasses.fields(Config)}
-    return Config(**{k: v for k, v in flat.items() if k in valid})
+    return Config.from_dict(flat)
 
 
-def _detect_vocab(state_dict, dim: int) -> Optional[int]:
+def _detect_vocab(state_dict: dict, dim: int) -> Optional[int]:
     def _get(d, key):
         if not isinstance(d, dict):
             return None
@@ -66,13 +71,19 @@ def _detect_vocab(state_dict, dim: int) -> Optional[int]:
     emb = _unwrap(_get(wte, "embedding"))
     if emb is None or not hasattr(emb, "shape") or emb.ndim != 2:
         return None
-    return int(emb.shape[0]) if emb.shape[1] == dim else (int(emb.shape[1]) if emb.shape[0] == dim else None)
+    return int(emb.shape[0]) if emb.shape[1] == dim else (
+        int(emb.shape[1]) if emb.shape[0] == dim else None
+    )
 
 
 def _load_model(run_path: str, config: Config) -> Transformer:
     weights_path = os.path.join(run_path, "model_weights.msgpack")
+    if not os.path.exists(weights_path):
+        raise BenchmarkError(f"Weights not found: {weights_path}")
     with open(weights_path, "rb") as f:
-        state_dict = msgpack.unpackb(f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
+        state_dict = msgpack.unpackb(
+            f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
+        )
     actual_vocab = _detect_vocab(state_dict, config.dim)
     if actual_vocab is not None and actual_vocab != config.vocab_size:
         config = dataclasses.replace(config, vocab_size=actual_vocab)
@@ -100,17 +111,17 @@ def _theoretical_cache_mb(config: Config) -> float:
 
 def _val_loss(run_path: str) -> Optional[float]:
     import pandas as pd
-    log = os.path.join(run_path, "training_log.csv")
-    if not os.path.exists(log):
+    log_csv = os.path.join(run_path, "training_log.csv")
+    if not os.path.exists(log_csv):
         return None
     try:
-        df = pd.read_csv(log)
+        df = pd.read_csv(log_csv)
         return float(df["val_loss"].dropna().iloc[-1])
     except Exception:
         return None
 
 
-def _xla_costs(fn, *args):
+def _xla_costs(fn, *args) -> tuple[float, float]:
     try:
         costs = fn.lower(*args).cost_analysis()
         if isinstance(costs, list):
@@ -154,7 +165,9 @@ def benchmark_run(run_path: str) -> dict:
                 _decode_step(model, tok, None, seq)
             jax.block_until_ready(_decode_step(model, tok, None, seq))
             tps_by_seqlen[seq] = N_MEASURE / (time.perf_counter() - t0)
-        except Exception:
+            log.debug("seq=%d: %.1f tok/s", seq, tps_by_seqlen[seq])
+        except Exception as exc:
+            log.warning("seq=%d failed: %s", seq, exc)
             tps_by_seqlen[seq] = float("nan")
 
     # Decode throughput — batch scaling @ FIXED_SEQ
@@ -175,26 +188,33 @@ def benchmark_run(run_path: str) -> dict:
             jax.block_until_ready(_decode_step(model, tok_b, None, FIXED_SEQ))
             tps_by_batch[bs] = N_MEASURE * bs / (time.perf_counter() - t0)
             max_batch = bs
-        except Exception:
+            log.debug("bs=%d: %.1f tok/s", bs, tps_by_batch[bs])
+        except Exception as exc:
+            log.warning("bs=%d OOM/failed: %s", bs, exc)
             tps_by_batch[bs] = float("nan")
             break
     for bs in BATCH_SIZES:
         tps_by_batch.setdefault(bs, float("nan"))
 
-    # FLOPs via XLA
+    # FLOPs via XLA cost analysis
     mid_idx = min(config.max_context // 2, config.max_context - 1)
     decode_flops, decode_bytes   = _xla_costs(_decode_step, model, tok, None, mid_idx)
     prefill_flops, prefill_bytes = _xla_costs(_prefill_step, model, prompt)
 
-    def _safe_div(a, b): return round(a / max(b, 1), 4) if not (np.isnan(a) or np.isnan(b)) else float("nan")
-    def _safe_round(v, n): return round(v / n, 4) if not np.isnan(v) else float("nan")
+    def _safe_div(a: float, b: float) -> float:
+        return round(a / max(b, 1), 4) if not (np.isnan(a) or np.isnan(b)) else float("nan")
+
+    def _safe_round(v: float, n: float) -> float:
+        return round(v / n, 4) if not np.isnan(v) else float("nan")
 
     best_tps = tps_by_seqlen.get(max(s for s in SEQ_LENS if s <= config.max_context), float("nan"))
-    decode_gflops = _safe_round(decode_flops, 1e9)
+    decode_gflops  = _safe_round(decode_flops, 1e9)
     prefill_gflops = _safe_round(prefill_flops, 1e9)
 
     _, model_state = nnx.split(model)
-    params_m = sum(x.size for x in jax.tree_util.tree_leaves(model_state) if hasattr(x, "size")) / 1e6
+    params_m = sum(
+        x.size for x in jax.tree_util.tree_leaves(model_state) if hasattr(x, "size")
+    ) / 1e6
 
     return {
         "run":                   os.path.basename(run_path),
@@ -214,7 +234,11 @@ def benchmark_run(run_path: str) -> dict:
         "prefill_gflops":        prefill_gflops,
         "decode_arith_int":      _safe_div(decode_flops, decode_bytes),
         "prefill_arith_int":     _safe_div(prefill_flops, prefill_bytes),
-        "decode_tflops_s":       round(decode_gflops * best_tps / 1e3, 4) if not np.isnan(decode_gflops) and not np.isnan(best_tps) else float("nan"),
+        "decode_tflops_s":       (
+            round(decode_gflops * best_tps / 1e3, 4)
+            if not (np.isnan(decode_gflops) or np.isnan(best_tps))
+            else float("nan")
+        ),
         "max_batch_survived":    max_batch,
         **{f"tps_{s}": tps_by_seqlen.get(s, float("nan")) for s in SEQ_LENS},
         **{f"tps_bs{b}": tps_by_batch.get(b, float("nan")) for b in BATCH_SIZES},
@@ -256,6 +280,9 @@ class BenchmarkRunner:
             global BATCH_SIZES
             BATCH_SIZES = list(batch_sizes)
 
+    def __repr__(self) -> str:
+        return f"BenchmarkRunner(runs_dir={self.runs_dir!r})"
+
     def run(
         self,
         run_names: Optional[Sequence[str]] = None,
@@ -275,8 +302,16 @@ class BenchmarkRunner:
         Returns
         -------
         pandas.DataFrame
+
+        Raises
+        ------
+        BenchmarkError
+            If the runs directory does not exist.
         """
         import pandas as pd
+
+        if not os.path.isdir(self.runs_dir):
+            raise BenchmarkError(f"Runs directory not found: {self.runs_dir}")
 
         if run_names is None:
             run_names = [
@@ -287,14 +322,16 @@ class BenchmarkRunner:
         results = []
         for name in run_names:
             path = os.path.join(self.runs_dir, name)
-            print(f"\nBenchmarking: {name}")
+            log.info("Benchmarking: %s", name)
             try:
                 results.append(benchmark_run(path))
+            except BenchmarkError as exc:
+                log.error("  Skipped %s: %s", name, exc)
             except Exception as exc:
-                print(f"  Failed: {exc}")
+                log.error("  Unexpected error for %s: %s", name, exc)
 
         df = pd.DataFrame(results)
         if out_csv:
             df.to_csv(out_csv, index=False)
-            print(f"\nSaved to {out_csv}")
+            log.info("Saved benchmark results to %s", out_csv)
         return df

@@ -1,100 +1,149 @@
-from core.model import Transformer
-import pytest
+"""Tests for core.model.Transformer using the real Config."""
+
 import jax
 import jax.numpy as jnp
+import pytest
 from flax import nnx
-from dataclasses import dataclass
-import os
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+from core.config import Config
+from core.model import Transformer
 
-@dataclass
-class Config:
-    dim: int = 128
-    n_heads: int = 4
-    head_size: int = 32
-    num_blocks: int = 2
-    vocab_size: int = 500
-    max_context: int = 64
-    kv_heads: int = 2
-    weight_tying: bool = True
-    activation: str = "gelu"
-    gradient_checkpointing: bool = False
-    dropout_rate: float = 0.0
-    use_swiglu: bool = True
-    use_moe: bool = False
-    n_experts: int = 4
-    top_k_mlp: int = 2
-    expansion: int = 4
-    alpha_balance: float = 0.1
-    use_rotary_pos: bool = True
-    trainable_pos: bool = False  
-    absolute_pos: bool = False    
-    sliding_window: bool = False
-    context_window: int = 4
-    no_sink: bool = False
-    mla: bool = False
-    inference: bool = False
-    down_dim_q: int = 32
-    down_dim_kv: int = 32
-    rope_dim: int = 16
 
-@pytest.fixture
-def setup_transformer():
-    config = Config()
-    rngs = nnx.Rngs(0)
-    x = jax.random.randint(rngs.dropout(), (2, 10), 0, config.vocab_size)
-    return config, rngs, x
+# ── Forward pass ─────────────────────────────────────────────────────────────
 
-def test_transformer_training_forward(setup_transformer):
-    config, rngs, x = setup_transformer
-    model = Transformer(config, rngs)
-    
-    logits, kv_caches, bal_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
-    
-    assert logits.shape == (2, 10, config.vocab_size)
-    assert len(kv_caches) == config.num_blocks
+def test_training_forward_shape(tiny_config, batch_input, rngs):
+    model = Transformer(tiny_config, rngs=rngs)
+    logits, kv_caches, bal_loss = model(
+        batch_input, use_cache=False, kv_caches=None, cache_index=0
+    )
+    assert logits.shape == (*batch_input.shape, tiny_config.vocab_size)
+    assert len(kv_caches) == tiny_config.num_blocks
     assert not jnp.isnan(logits).any()
 
-def test_transformer_inference_caching(setup_transformer):
-    config, rngs, _ = setup_transformer
-    model = Transformer(config, rngs)
-    
-    x_single = jnp.array([[42], [105]], dtype=jnp.int32) 
-    
-    logits_1, cache_1, _ = model(x_single, use_cache=True, kv_caches=None, cache_index=0)
-    assert logits_1.shape == (2, 1, config.vocab_size)
-    
-    logits_2, cache_2, _ = model(x_single, use_cache=True, kv_caches=cache_1, cache_index=1)
-    assert logits_2.shape == (2, 1, config.vocab_size)
 
-def test_transformer_moe_loss(setup_transformer):
-    config, rngs, x = setup_transformer
-    config.use_moe = True
-    model = Transformer(config, rngs)
-    
-    _, _, bal_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
-    
+def test_no_nan_in_output(tiny_config, batch_input, rngs):
+    model = Transformer(tiny_config, rngs=rngs)
+    logits, _, _ = model(batch_input, use_cache=False, kv_caches=None, cache_index=0)
+    assert not jnp.isnan(logits).any()
+    assert not jnp.isinf(logits).any()
+
+
+# ── KV cache ─────────────────────────────────────────────────────────────────
+
+def test_inference_kv_cache(tiny_config, rngs):
+    model = Transformer(tiny_config, rngs=rngs)
+    x = jnp.array([[42, 7]], dtype=jnp.int32)
+
+    logits_1, cache_1, _ = model(x, use_cache=True, kv_caches=None, cache_index=0)
+    assert logits_1.shape == (1, 2, tiny_config.vocab_size)
+
+    x_next = jnp.array([[15]], dtype=jnp.int32)
+    logits_2, cache_2, _ = model(x_next, use_cache=True, kv_caches=cache_1, cache_index=2)
+    assert logits_2.shape == (1, 1, tiny_config.vocab_size)
+
+
+# ── MoE ──────────────────────────────────────────────────────────────────────
+
+def test_moe_balancing_loss(tiny_moe_config, batch_input, rngs):
+    model = Transformer(tiny_moe_config, rngs=rngs)
+    _, _, bal_loss = model(batch_input, use_cache=False, kv_caches=None, cache_index=0)
     assert bal_loss is not None
     assert float(bal_loss) >= 0.0
 
-def test_transformer_jit_compilation(setup_transformer):
-    config, rngs, x = setup_transformer
-    model = Transformer(config, rngs)
-    
-    @nnx.jit
-    def forward_fn(m, input_x):
-        return m(input_x, use_cache=False, kv_caches=None, cache_index=0)
-    
-    try:
-        logits, _, _ = forward_fn(model, x)
-        assert logits is not None
-    except Exception as e:
-        pytest.fail(f"JIT fallita: {e}")
 
-def test_transformer_weight_tying(setup_transformer):
-    config, rngs, x = setup_transformer
-    config.weight_tying = True
-    model = Transformer(config, rngs)
-    
+# ── JIT compilation ───────────────────────────────────────────────────────────
+
+def test_jit_compilation(tiny_config, batch_input, rngs):
+    model = Transformer(tiny_config, rngs=rngs)
+
+    @nnx.jit
+    def forward(m, x):
+        return m(x, use_cache=False, kv_caches=None, cache_index=0)
+
+    logits, _, _ = forward(model, batch_input)
+    assert logits is not None
+    assert not jnp.isnan(logits).any()
+
+
+# ── Weight tying ──────────────────────────────────────────────────────────────
+
+def test_weight_tying(rngs):
+    config = Config(
+        dim=128, n_heads=4, head_size=32, num_blocks=2,
+        vocab_size=256, max_context=64, kv_heads=2,
+        weight_tying=True, gradient_checkpointing=False, dropout_rate=0.0,
+    )
+    model = Transformer(config, rngs=rngs)
     assert jnp.array_equal(model.lm_head.kernel, model.wte.embedding.T)
+
+
+def test_no_weight_tying(rngs):
+    config = Config(
+        dim=128, n_heads=4, head_size=32, num_blocks=2,
+        vocab_size=256, max_context=64, kv_heads=2,
+        weight_tying=False, gradient_checkpointing=False, dropout_rate=0.0,
+    )
+    model = Transformer(config, rngs=rngs)
+    assert model.lm_head.kernel.shape == (128, 256)
+
+
+# ── GQA ──────────────────────────────────────────────────────────────────────
+
+def test_gqa_forward(tiny_gqa_config, batch_input, rngs):
+    model = Transformer(tiny_gqa_config, rngs=rngs)
+    logits, _, _ = model(batch_input, use_cache=False, kv_caches=None, cache_index=0)
+    assert logits.shape == (*batch_input.shape, tiny_gqa_config.vocab_size)
+    assert not jnp.isnan(logits).any()
+
+
+# ── MLA ──────────────────────────────────────────────────────────────────────
+
+def test_mla_training_forward(tiny_mla_config, rngs):
+    model = Transformer(tiny_mla_config, rngs=rngs)
+    x = jnp.ones((2, 8), dtype=jnp.int32)
+    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
+    assert logits.shape == (2, 8, tiny_mla_config.vocab_size)
+    assert not jnp.isnan(logits).any()
+
+
+# ── Config validation ─────────────────────────────────────────────────────────
+
+def test_config_dim_mismatch():
+    with pytest.raises(ValueError, match="dim.*must equal"):
+        Config(dim=100, n_heads=4, head_size=32)  # 100 != 4*32
+
+
+def test_config_kv_heads_not_divisible():
+    with pytest.raises(ValueError, match="divisible"):
+        Config(dim=128, n_heads=4, head_size=32, kv_heads=3)  # 4 % 3 != 0
+
+
+def test_config_mla_rope_too_large():
+    with pytest.raises(ValueError, match="rope_dim"):
+        Config(
+            dim=128, n_heads=4, head_size=32, kv_heads=2,
+            mla=True, rope_dim=64,  # 64 > 32 (head_size)
+        )
+
+
+# ── Config serialisation ──────────────────────────────────────────────────────
+
+def test_config_to_dict_roundtrip(tiny_config):
+    d = tiny_config.to_dict()
+    restored = Config.from_dict(d)
+    assert restored.dim == tiny_config.dim
+    assert restored.n_heads == tiny_config.n_heads
+    assert restored.mla == tiny_config.mla
+
+
+def test_config_from_dict_ignores_unknown_keys(tiny_config):
+    d = tiny_config.to_dict()
+    d["totally_unknown_key"] = 999
+    restored = Config.from_dict(d)  # should not raise
+    assert not hasattr(restored, "totally_unknown_key")
+
+
+def test_config_repr(tiny_config):
+    r = repr(tiny_config)
+    assert "MHA" in r or "GQA" in r or "MLA" in r
+    assert "dim=" in r

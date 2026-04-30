@@ -3,16 +3,20 @@ Automated plot generation for DantinoX benchmark results.
 
 All plot functions are collected from the standalone scripts
 (plot_insights, plot_perf, plot_3d, plot_3d_dkv) and exposed through
-the ``Plotter`` class, which can run them all or a named subset.
+the :class:`Plotter` class, which can run them all or a named subset.
 """
 
 from __future__ import annotations
 
 import importlib
+import logging
 import os
 import sys
 from typing import Optional, Sequence
 
+from dantinox.exceptions import PlotError
+
+log = logging.getLogger(__name__)
 
 # Groups map a short name → (module_path, list_of_figure_functions)
 _PLOT_GROUPS: dict[str, tuple[str, list[str]]] = {
@@ -37,11 +41,10 @@ _PLOT_GROUPS: dict[str, tuple[str, list[str]]] = {
     ),
 }
 
-ALL_GROUPS = list(_PLOT_GROUPS.keys())
+ALL_GROUPS: list[str] = list(_PLOT_GROUPS.keys())
 
 
 def _import_plot_module(module_name: str, repo_root: str):
-    """Import a root-level plot_*.py script as a module."""
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
     return importlib.import_module(module_name)
@@ -54,11 +57,12 @@ def _run_group(
     repo_root: str,
     batch_csv: Optional[str] = None,
 ) -> list[str]:
-    """Run all figure functions in a group, return list of saved filenames."""
     module_name, fig_fns = _PLOT_GROUPS[group]
-    mod = _import_plot_module(module_name, repo_root)
+    try:
+        mod = _import_plot_module(module_name, repo_root)
+    except ImportError as exc:
+        raise PlotError(f"Cannot import {module_name}: {exc}") from exc
 
-    # Temporarily patch the module-level paths so _save() writes to out_dir
     orig_in  = getattr(mod, "IN_CSV",  None)
     orig_out = getattr(mod, "OUT_DIR", None)
     mod.IN_CSV  = in_csv
@@ -66,15 +70,15 @@ def _run_group(
     if hasattr(mod, "BATCH_CSV") and batch_csv:
         mod.BATCH_CSV = batch_csv
 
-    saved = []
+    saved: list[str] = []
     try:
         df = mod.load()
         for fn_name in fig_fns:
             fn = getattr(mod, fn_name, None)
             if fn is None:
+                log.warning("Function %s not found in %s — skipped", fn_name, module_name)
                 continue
             if fn_name == "fig4_batch_throughput" and group == "perf":
-                # This figure takes a batch DataFrame, not the main one
                 bdf = mod.load_batch() if hasattr(mod, "load_batch") else None
                 if bdf is not None and not bdf.empty:
                     fn(bdf)
@@ -83,6 +87,7 @@ def _run_group(
             else:
                 fn(df)
             saved.append(fn_name)
+            log.debug("  %s — done", fn_name)
     finally:
         if orig_in  is not None: mod.IN_CSV  = orig_in
         if orig_out is not None: mod.OUT_DIR = orig_out
@@ -98,11 +103,16 @@ class Plotter:
     ----------
     in_csv : str
         Path to the ``benchmark_results.csv`` produced by
-        ``BenchmarkRunner.run(out_csv=...)`` or ``benchmark.py``.
+        :meth:`BenchmarkRunner.run`.
     out_dir : str
         Directory where PNGs will be written (default ``"plots"``).
     batch_csv : str, optional
         Path to ``batch_sweep_results.csv`` for the batch throughput plot.
+
+    Raises
+    ------
+    PlotError
+        If the CSV is missing or a plot group fails to import.
 
     Examples
     --------
@@ -125,6 +135,9 @@ class Plotter:
         self.batch_csv = batch_csv
         self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+    def __repr__(self) -> str:
+        return f"Plotter(in_csv={self.in_csv!r}, out_dir={self.out_dir!r})"
+
     def run(
         self,
         groups: Optional[Sequence[str]] = None,
@@ -141,10 +154,15 @@ class Plotter:
         Returns
         -------
         dict[str, list[str]]
-            Mapping of group name → list of figure function names that ran.
+            Mapping of group name → list of figure functions that ran.
+
+        Raises
+        ------
+        PlotError
+            If the benchmark CSV is not found or a group cannot be imported.
         """
         if not os.path.exists(self.in_csv):
-            raise FileNotFoundError(
+            raise PlotError(
                 f"Benchmark CSV not found: {self.in_csv}\n"
                 "Run BenchmarkRunner.run(out_csv='benchmark_results.csv') first."
             )
@@ -153,20 +171,24 @@ class Plotter:
         selected = list(groups) if groups else ALL_GROUPS
         unknown  = [g for g in selected if g not in _PLOT_GROUPS]
         if unknown:
-            raise ValueError(f"Unknown plot group(s): {unknown}. Valid: {ALL_GROUPS}")
+            raise PlotError(
+                f"Unknown plot group(s): {unknown}. Valid groups: {ALL_GROUPS}"
+            )
 
         results: dict[str, list[str]] = {}
         for group in selected:
-            print(f"\n[{group}] generating plots…")
+            log.info("[%s] generating plots…", group)
             try:
                 done = _run_group(
                     group, self.in_csv, self.out_dir,
                     self._repo_root, self.batch_csv,
                 )
                 results[group] = done
-                print(f"  {len(done)} figures saved to {self.out_dir}/")
+                log.info("  %d figures written to %s/", len(done), self.out_dir)
+            except PlotError:
+                raise
             except Exception as exc:
-                print(f"  ERROR in group '{group}': {exc}")
+                log.error("  Group '%s' failed: %s", group, exc)
                 results[group] = []
 
         return results
