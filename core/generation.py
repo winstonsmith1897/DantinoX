@@ -110,7 +110,7 @@ def _generate_toks(
         x = x.at[:, i].set(tok[:, 0])
         return x, k, tok
 
-    init_kv_cache = tuple((None, None) for _ in range(model.num_blocks))
+    init_kv_cache = tuple((None, None) for _ in range(model.num_blocks))  # type: ignore[attr-defined]
     dummy_tok = jnp.zeros((x.shape[0], 1), dtype=jnp.int32)
 
     if use_cache is False:
@@ -140,14 +140,15 @@ def generate(
         temperature: float = 1.0) -> jnp.ndarray:
 
     B, T = x.shape
-    to_generate = min(model.max_context, T + max_generations) - T
+    to_generate = min(model.max_context, T + max_generations) - T  # type: ignore[attr-defined]
 
     if to_generate <= 0:
         return x
 
-    x_padded = jnp.zeros((B, model.max_context), dtype=x.dtype)
+    x_padded = jnp.zeros((B, model.max_context), dtype=x.dtype)  # type: ignore[attr-defined]
     x_padded = x_padded.at[:, :T].set(x)
 
+    decoding_func: DecodeFunc
     if greedy:
         key = None
         decoding_func = _greedy_decode

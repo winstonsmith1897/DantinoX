@@ -12,6 +12,7 @@ import importlib
 import logging
 import os
 import sys
+import types
 from collections.abc import Sequence
 
 from dantinox.exceptions import PlotError
@@ -44,7 +45,7 @@ _PLOT_GROUPS: dict[str, tuple[str, list[str]]] = {
 ALL_GROUPS: list[str] = list(_PLOT_GROUPS.keys())
 
 
-def _import_plot_module(module_name: str, repo_root: str):
+def _import_plot_module(module_name: str, repo_root: str) -> types.ModuleType:
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
     return importlib.import_module(module_name)
@@ -65,10 +66,10 @@ def _run_group(
 
     orig_in  = getattr(mod, "IN_CSV",  None)
     orig_out = getattr(mod, "OUT_DIR", None)
-    mod.IN_CSV  = in_csv
-    mod.OUT_DIR = out_dir
+    mod.IN_CSV  = in_csv   # type: ignore[attr-defined]
+    mod.OUT_DIR = out_dir  # type: ignore[attr-defined]
     if hasattr(mod, "BATCH_CSV") and batch_csv:
-        mod.BATCH_CSV = batch_csv
+        mod.BATCH_CSV = batch_csv  # type: ignore[attr-defined]
 
     saved: list[str] = []
     try:
@@ -90,9 +91,9 @@ def _run_group(
             log.debug("  %s — done", fn_name)
     finally:
         if orig_in is not None:
-            mod.IN_CSV = orig_in
+            mod.IN_CSV = orig_in   # type: ignore[attr-defined]
         if orig_out is not None:
-            mod.OUT_DIR = orig_out
+            mod.OUT_DIR = orig_out  # type: ignore[attr-defined]
 
     return saved
 

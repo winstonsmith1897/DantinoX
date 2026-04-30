@@ -14,14 +14,16 @@ def compute_loss(logits: jnp.ndarray, targets: jnp.ndarray) -> jnp.ndarray:
     ).squeeze(-1)
     return loss.mean()
 
-def get_batch(data: jnp.ndarray, batch_size: int, max_context: int, key: jax.Array):
+def get_batch(
+    data: jnp.ndarray, batch_size: int, max_context: int, key: jax.Array
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     ix = jax.random.randint(key, (batch_size,), 0, len(data) - max_context)
     x = jnp.stack([data[i:i+max_context] for i in ix])
     y = jnp.stack([data[i+1:i+max_context+1] for i in ix])
     return x, y
 
-def lr_schedule(step: int, base_lr: float, warmup_steps: int, total_steps: int):
-    def lr_fn(step):
+def lr_schedule(step: int, base_lr: float, warmup_steps: int, total_steps: int) -> jnp.ndarray:
+    def lr_fn(step: int) -> jnp.ndarray:
         is_warmup = step < warmup_steps
         warmup_lr = base_lr * (step / jnp.maximum(1, warmup_steps))
 

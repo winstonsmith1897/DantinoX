@@ -30,6 +30,8 @@ dev       = [
     "ruff",
     "mypy",
     "types-PyYAML",
+    "build",
+    "twine",
 ]
 all = ["dantinox[data,benchmark,dev]"]
 
@@ -43,6 +45,7 @@ include = ["dantinox*", "core*", "utils*"]
 [tool.pytest.ini_options]
 testpaths    = ["tests"]
 addopts      = "-v --tb=short"
+pythonpath   = ["."]
 markers      = [
     "slow: marks tests as slow (skip with -m 'not slow')",
     "gpu: marks tests that require a GPU",

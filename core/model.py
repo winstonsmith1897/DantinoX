@@ -38,7 +38,7 @@ class Transformer(nnx.Module, pytree=False):
 
                 return jnp.expand_dims(pos, axis=0)
 
-            self.wpe: jnp.ndarray  = _build_compute_absolute_pos(config.max_context, config.dim)  # type: ignore[assignment]
+            self.wpe: jnp.ndarray  = _build_compute_absolute_pos(config.max_context, config.dim)  # type: ignore[assignment, no-redef]
 
     def __call__(self,
                  x: jnp.ndarray,
@@ -64,8 +64,8 @@ class Transformer(nnx.Module, pytree=False):
 
         x = self.emb_dropout(x, deterministic=deterministic)
 
-        def block_fn(block_module, hidden_state, kv_c, det):
-            return block_module(
+        def block_fn(block_module: object, hidden_state: jnp.ndarray, kv_c: object, det: bool) -> tuple:
+            return block_module(  # type: ignore[call-arg, operator]
                 hidden_state,
                 use_cache=use_cache,
                 kv_cache=kv_c,
@@ -73,7 +73,7 @@ class Transformer(nnx.Module, pytree=False):
                 deterministic=det
             )
 
-        def _apply_block(bm, hs, kvc):
+        def _apply_block(bm: object, hs: jnp.ndarray, kvc: object) -> tuple:
             return block_fn(bm, hs, kvc, deterministic)
 
         if self.gradient_checkpointing and not use_cache:

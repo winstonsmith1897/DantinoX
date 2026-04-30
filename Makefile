@@ -20,13 +20,13 @@ install:
 	pip install --user -e ".[all]"
 
 test:
-	JAX_PLATFORM_NAME=cpu pytest tests/ --ignore=tests/test_sweep_simulation.py -v --tb=short
+	JAX_PLATFORM_NAME=cpu $(PYTHON) -m pytest tests/ --ignore=tests/test_sweep_simulation.py -v --tb=short
 
 lint:
-	ruff check $(PACKAGE)/ core/ utils/
+	$(PYTHON) -m ruff check $(PACKAGE)/ core/ utils/
 
 typecheck:
-	mypy $(PACKAGE)/ core/
+	$(PYTHON) -m mypy $(PACKAGE)/ core/
 
 check: lint typecheck test
 

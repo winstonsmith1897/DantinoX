@@ -13,7 +13,7 @@ from core.config import Config
 from core.generation import generate as _generate
 from core.model import Transformer
 from dantinox.exceptions import CheckpointError
-from utils.tokenizer import get_tokenizer
+from utils.tokenizer import Tokenizer, get_tokenizer
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ _BPE_REPLACEMENTS = [
 ]
 
 
-def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, object]:
+def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Tokenizer]:
     """Return (config, model, tokenizer) loaded from a run directory."""
     config_path = os.path.join(run_dir, "config.yaml")
     weights_path = os.path.join(run_dir, "model_weights.msgpack")

@@ -9,12 +9,12 @@ class Activation(nnx.Module):
     def __init__(self, activation_name: str):
         self.activation_name = activation_name
 
-    def __call__(self, x: jnp.ndarray):
+    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
         act_fn = getattr(jax.nn, self.activation_name.lower(), jax.nn.gelu)
         return act_fn(x)
 
 class Swiglu(nnx.Module):
-    def __call__(self, x: jnp.ndarray):
+    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
         gate, data = jnp.split(x, 2, axis=-1)
         return jax.nn.silu(gate) * data
 

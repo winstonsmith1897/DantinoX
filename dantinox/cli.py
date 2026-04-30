@@ -110,13 +110,13 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
         sweep_cfg = yaml.safe_load(f)
 
     project = getattr(args, "wandb_project", None) or "DantinoX"
-    sweep_id = wandb.sweep(sweep_cfg, project=project)
+    sweep_id = wandb.sweep(sweep_cfg, project=project)  # type: ignore[attr-defined]
     print(f"Sweep ID: {sweep_id}  (project: {project})")
 
-    def _agent_fn():
+    def _agent_fn() -> None:
         from dantinox.trainer import Trainer
 
-        run = wandb.init()
+        run = wandb.init()  # type: ignore[attr-defined]
         wc = dict(run.config)
 
         base = Config.from_yaml(args.config) if args.config else Config()
@@ -126,9 +126,9 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
 
         trainer = Trainer(base)
         trainer.fit(args.data_path, wandb_project=None)
-        wandb.finish()
+        wandb.finish()  # type: ignore[attr-defined]
 
-    wandb.agent(sweep_id, function=_agent_fn, count=getattr(args, "count", None))
+    wandb.agent(sweep_id, function=_agent_fn, count=getattr(args, "count", None))  # type: ignore[attr-defined]
 
 
 def _cmd_plot(args: argparse.Namespace) -> None:

@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from collections.abc import Sequence
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -27,12 +28,12 @@ N_MEASURE   = 20
 
 
 @nnx.jit
-def _decode_step(model: Transformer, tok: jnp.ndarray, cache, idx: int):
+def _decode_step(model: Transformer, tok: jnp.ndarray, cache: tuple | None, idx: int) -> tuple:
     return model(tok, use_cache=True, kv_caches=cache, cache_index=idx)
 
 
 @nnx.jit
-def _prefill_step(model: Transformer, prompt: jnp.ndarray):
+def _prefill_step(model: Transformer, prompt: jnp.ndarray) -> tuple:
     return model(prompt, use_cache=False, kv_caches=None, cache_index=0)
 
 
@@ -53,12 +54,12 @@ def _load_config(run_path: str) -> Config:
 
 
 def _detect_vocab(state_dict: dict, dim: int) -> int | None:
-    def _get(d, key):
+    def _get(d: object, key: str) -> object:
         if not isinstance(d, dict):
             return None
         return d.get(key) or d.get(key.encode() if isinstance(key, str) else key)
 
-    def _unwrap(obj):
+    def _unwrap(obj: object) -> Any:
         if isinstance(obj, dict):
             for k in ("value", "raw_value", b"value", b"raw_value"):
                 if k in obj:
@@ -121,7 +122,7 @@ def _val_loss(run_path: str) -> float | None:
         return None
 
 
-def _xla_costs(fn, *args) -> tuple[float, float]:
+def _xla_costs(fn: Any, *args: object) -> tuple[float, float]:
     try:
         costs = fn.lower(*args).cost_analysis()
         if isinstance(costs, list):
@@ -288,7 +289,7 @@ class BenchmarkRunner:
         run_names: Sequence[str] | None = None,
         *,
         out_csv: str | None = None,
-    ):
+    ) -> Any:
         """
         Run benchmarks and return a DataFrame.
 

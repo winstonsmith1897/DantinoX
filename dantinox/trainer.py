@@ -181,7 +181,7 @@ class Trainer:
 
         if wandb_project is not None:
             import wandb
-            wandb.init(project=wandb_project, config=config.to_dict())
+            wandb.init(project=wandb_project, config=config.to_dict())  # type: ignore[attr-defined]
 
         micro_bs = config.batch_size // config.grad_accum
 
@@ -281,17 +281,17 @@ class Trainer:
                         log_f.flush()
                         if wandb_project is not None:
                             import wandb
-                            wandb.log({"train_loss": losses["train"], "val_loss": losses["val"], "step": step})
+                            wandb.log({"train_loss": losses["train"], "val_loss": losses["val"], "step": step})  # type: ignore[attr-defined]
             finally:
                 pbar.close()
                 if wandb_project is not None:
                     import wandb
-                    wandb.finish()
+                    wandb.finish()  # type: ignore[attr-defined]
 
         weights_path = os.path.join(run_dir, "model_weights.msgpack")
         state_dict = nnx.state(model, nnx.Param).to_pure_dict()
         import flax.serialization
-        with open(weights_path, "wb") as f:
-            f.write(flax.serialization.msgpack_serialize(state_dict))
+        with open(weights_path, "wb") as weights_f:  # type: ignore[assignment]
+            weights_f.write(flax.serialization.msgpack_serialize(state_dict))  # type: ignore[arg-type]
         log.info("Checkpoint saved: %s", weights_path)
         return run_dir
