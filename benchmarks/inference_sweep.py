@@ -3,32 +3,38 @@
 benchmarks/inference_sweep.py
 
 Comprehensive no-training inference benchmark for DantinoX.
-Randomly-initialized models are benchmarked across 13 experiment groups:
+Randomly-initialized models are benchmarked across 13 experiment groups.
+Every group that does not already vary attention type is expanded into three
+parallel runs — MHA, GQA-1/4, and MLA — so every plot can split results
+by attention mechanism.
 
+Groups:
   1.  attention_type   — MHA vs GQA (1/2, 1/4, 1/8 heads) vs MLA (3 compression ratios)
-  2.  scale            — ~0.1 M → ~85 M parameters
-  3.  batch_size       — BS 1 → 128
-  4.  context_len      — max_context 64 → 1024
-  5.  dtype            — fp32 vs bfloat16
-  6.  sampling         — greedy / temperature / top-k / top-p
-  7.  kv_cache         — cache on vs off, at BS 1 and BS 8
-  8.  moe              — dense vs MoE (4/8 experts, top-1/2/4)
-  9.  activation       — SwiGLU vs GELU
-  10. pos_encoding      — RoPE / absolute / trainable / sliding window
-  11. gqa_vs_cache      — GQA KV-compression × context length interaction
-  12. scale_dtype       — bf16 speedup at small vs large scale
-  13. batch_attn        — batch size × attention type interaction
+  2.  scale            — ~0.1 M → ~85 M parameters  × {MHA, GQA, MLA}
+  3.  batch_size       — BS 1 → 128  × {MHA, GQA, MLA}
+  4.  context_len      — max_context 64 → 1024  × {MHA, GQA, MLA}
+  5.  dtype            — fp32 vs bfloat16  × {MHA, GQA, MLA}
+  6.  sampling         — greedy / temperature / top-k / top-p (forward pass is attn-agnostic)
+  7.  kv_cache         — cache on vs off  × {MHA, GQA, MLA}
+  8.  moe              — dense vs MoE variants  × {MHA, GQA, MLA}
+  9.  activation       — SwiGLU vs GELU  × {MHA, GQA, MLA}
+  10. pos_encoding      — RoPE / absolute / trainable / sliding  × {MHA, GQA, MLA}
+  11. gqa_vs_cache      — attention type × context length (already cross-cuts attention)
+  12. scale_dtype       — bf16 speedup at different scales (already cross-cuts attention)
+  13. batch_attn        — batch size × attention type (already cross-cuts attention)
 
-Metrics collected per experiment:
-  prefill_ms_p50/p95      — prompt forward-pass latency (percentile)
-  decode_step_ms_p50/p95  — single autoregressive decode step with KV cache
-  decode_tok_s            — effective batch decode throughput (tokens / second)
+CSV columns include `attn_variant` ("MHA" | "GQA" | "MLA") for easy grouping in plots.
+
+Metrics per experiment:
+  prefill_ms_p50/p95      — prompt forward-pass latency
+  decode_step_ms_p50/p95  — single decode step latency (with KV cache)
+  decode_tok_s            — batch decode throughput (tokens / second)
   kv_cache_mb             — theoretical KV cache memory (MB)
   params_m                — parameter count (millions)
 
 Usage:
     python benchmarks/inference_sweep.py --out results/inference_sweep.csv
-    python benchmarks/inference_sweep.py --groups attention_type scale --out results/attn.csv
+    python benchmarks/inference_sweep.py --groups scale batch_size --out results/ab.csv
     python benchmarks/inference_sweep.py --list-groups
     python benchmarks/inference_sweep.py --n-warmup 5 --n-trials 20 --out results/careful.csv
 """
@@ -36,13 +42,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 import time
 from pathlib import Path
 from typing import Any
-import os
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -57,16 +64,17 @@ from core.model import Transformer
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-# ─── Global constants ─────────────────────────────────────────────────────────
+# ─── Constants ────────────────────────────────────────────────────────────────
 
-VOCAB_SIZE = 256   # tiny fixed vocabulary — not a benchmark variable
-N_WARMUP   = 3     # JIT warm-up repetitions (overrideable via CLI)
-N_TRIALS   = 10    # timed repetitions (overrideable via CLI)
+VOCAB_SIZE = 256
+N_WARMUP   = 3
+N_TRIALS   = 10
+
+# GQA always uses 1/4 of n_heads as kv_heads (at least 1)
+_GQA_RATIO = 4
 
 
-# ─── JIT-compiled step functions ─────────────────────────────────────────────
-# These are module-level so JAX reuses compilations across experiments with
-# the same model shapes.
+# ─── JIT step functions ───────────────────────────────────────────────────────
 
 @nnx.jit
 def _prefill(model: nnx.Module, x: jnp.ndarray) -> jnp.ndarray:
@@ -137,6 +145,18 @@ def _pos_label(config: Config) -> str:
     return "rope"
 
 
+def _attn_variant(exp: dict, config: Config) -> str:
+    """Normalise attn_type to one of MHA / GQA / MLA for grouping in plots."""
+    if "attn_variant" in exp:
+        return exp["attn_variant"]
+    lbl = _attn_label(config)
+    if lbl == "MLA":
+        return "MLA"
+    if "GQA" in lbl:
+        return "GQA"
+    return "MHA"
+
+
 def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int) -> np.ndarray:
     for _ in range(n_warmup):
         jax.block_until_ready(fn(*args))
@@ -151,10 +171,10 @@ def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int) -> np.ndarray:
 # ─── Experiment runner ────────────────────────────────────────────────────────
 
 def run_one(exp: dict, n_warmup: int, n_trials: int) -> dict:
-    cfg_dict = exp["cfg"]
-    measure  = exp["measure"]
-    B        = measure["batch_size"]
-    use_bf16 = cfg_dict.get("use_bf16", False)
+    cfg_dict  = exp["cfg"]
+    measure   = exp["measure"]
+    B         = measure["batch_size"]
+    use_bf16  = cfg_dict.get("use_bf16", False)
     use_cache = measure.get("use_cache", True)
 
     try:
@@ -166,55 +186,46 @@ def run_one(exp: dict, n_warmup: int, n_trials: int) -> dict:
     if use_bf16:
         _cast_bf16(model)
 
-    T   = min(measure["prompt_len"], config.max_context - 1)
-    x   = jnp.ones((B, T), dtype=jnp.int32)
-    tok = jnp.ones((B, 1), dtype=jnp.int32)
-    pos = jnp.array(T)
+    T        = min(measure["prompt_len"], config.max_context - 1)
+    x        = jnp.ones((B, T), dtype=jnp.int32)
+    tok      = jnp.ones((B, 1), dtype=jnp.int32)
+    pos      = jnp.array(T)
     init_cache = tuple((None, None) for _ in range(config.num_blocks))
 
     try:
         prefill_times = _time_fn(_prefill, model, x, n_warmup=n_warmup, n_trials=n_trials)
 
         if use_cache:
-            # One real prefill to populate the cache, then time individual decode steps.
             _, kv_cache = _prefill_cached(model, x, init_cache)
             jax.block_until_ready(kv_cache)
             decode_times = _time_fn(_decode, model, tok, kv_cache, pos,
                                     n_warmup=n_warmup, n_trials=n_trials)
         else:
-            # Without cache: cost per generated token ≈ full forward pass.
-            decode_times = prefill_times
+            decode_times = prefill_times   # no-cache: full pass per token
 
         decode_tok_s = B * 1000.0 / float(np.median(decode_times))
 
     except Exception as exc:
-        log.warning("OOM/runtime error [%s/%s]: %s", exp["group"], exp["label"], exc)
+        log.warning("OOM/runtime [%s/%s]: %s", exp["group"], exp["label"], exc)
         return _oom_row(exp, {"config": config, "model": model}, B, use_bf16)
 
     return {
         **_meta_row(exp, config, model, B, T, use_bf16),
-        "prefill_ms_p50":      round(float(np.percentile(prefill_times, 50)), 3),
-        "prefill_ms_p95":      round(float(np.percentile(prefill_times, 95)), 3),
-        "decode_step_ms_p50":  round(float(np.percentile(decode_times, 50)), 3),
-        "decode_step_ms_p95":  round(float(np.percentile(decode_times, 95)), 3),
-        "decode_tok_s":        round(decode_tok_s, 2),
-        "kv_cache_mb":         _kv_cache_mb(config, B, use_bf16),
-        "oom":                 False,
+        "prefill_ms_p50":     round(float(np.percentile(prefill_times, 50)), 3),
+        "prefill_ms_p95":     round(float(np.percentile(prefill_times, 95)), 3),
+        "decode_step_ms_p50": round(float(np.percentile(decode_times, 50)), 3),
+        "decode_step_ms_p95": round(float(np.percentile(decode_times, 95)), 3),
+        "decode_tok_s":       round(decode_tok_s, 2),
+        "kv_cache_mb":        _kv_cache_mb(config, B, use_bf16),
+        "oom":                False,
     }
 
 
-def _meta_row(
-    exp: dict,
-    config: Config,
-    model: Transformer,
-    B: int,
-    T: int,
-    use_bf16: bool,
-) -> dict:
-    cfg = exp["cfg"]
+def _meta_row(exp: dict, config: Config, model: Transformer, B: int, T: int, use_bf16: bool) -> dict:
     return {
         "group":        exp["group"],
         "label":        exp["label"],
+        "attn_variant": _attn_variant(exp, config),
         "attn_type":    _attn_label(config),
         "params_m":     round(_count_params_m(model), 3),
         "dim":          config.dim,
@@ -237,12 +248,13 @@ def _meta_row(
 
 
 def _oom_row(exp: dict, ctx: dict, B: int, use_bf16: bool) -> dict:
-    nan = float("nan")
+    nan    = float("nan")
     config = ctx.get("config")
     model  = ctx.get("model")
-    base = {
+    base   = {
         "group":        exp["group"],
         "label":        exp["label"],
+        "attn_variant": exp.get("attn_variant", "?"),
         "attn_type":    _attn_label(config) if config else "?",
         "params_m":     round(_count_params_m(model), 3) if model else nan,
         "dim":          config.dim if config else nan,
@@ -262,18 +274,16 @@ def _oom_row(exp: dict, ctx: dict, B: int, use_bf16: bool) -> dict:
         "mla_down_kv":  None,
         "mla_rope_dim": None,
     }
-    return {
-        **base,
-        "prefill_ms_p50": nan, "prefill_ms_p95": nan,
-        "decode_step_ms_p50": nan, "decode_step_ms_p95": nan,
-        "decode_tok_s": nan, "kv_cache_mb": nan, "oom": True,
-    }
+    return {**base,
+            "prefill_ms_p50": nan, "prefill_ms_p95": nan,
+            "decode_step_ms_p50": nan, "decode_step_ms_p95": nan,
+            "decode_tok_s": nan, "kv_cache_mb": nan, "oom": True}
 
 
-# ─── Experiment definitions ───────────────────────────────────────────────────
+# ─── Experiment factory ───────────────────────────────────────────────────────
 
 def _c(**kw: Any) -> dict:
-    """Build a config dict by merging overrides onto the shared base."""
+    """Config dict merged onto the shared base."""
     base: dict[str, Any] = dict(
         dim=256, n_heads=8, head_size=32, num_blocks=6,
         kv_heads=8, max_context=256,
@@ -290,114 +300,113 @@ def _c(**kw: Any) -> dict:
 
 
 def _m(**kw: Any) -> dict:
-    """Build a measurement dict by merging overrides onto the shared base."""
+    """Measurement dict merged onto the shared base."""
     base: dict[str, Any] = dict(batch_size=1, prompt_len=64, use_cache=True)
     base.update(kw)
     return base
 
 
+def _by_attn(group: str, label: str, cfg: dict, measure: dict) -> list[dict]:
+    """
+    Expand one logical experiment into three parallel runs:
+    MHA, GQA-1/4, and MLA — each tagged with attn_variant.
+
+    GQA uses n_heads // 4 kv_heads (minimum 1).
+    MLA uses rope_dim = min(16, head_size), down_dim_kv = min(64, head_size*2).
+    """
+    n_heads   = cfg.get("n_heads", 8)
+    head_size = cfg.get("head_size", 32)
+    gqa_kv    = max(1, n_heads // _GQA_RATIO)
+    rope_dim  = min(16, head_size)
+    mla_dkv   = min(64, head_size * 2)
+    mla_dq    = min(64, head_size * 2)
+
+    return [
+        {"group": group, "label": label, "attn_variant": "MHA",
+         "cfg": {**cfg, "kv_heads": n_heads, "mla": False, "inference": False},
+         "measure": measure},
+
+        {"group": group, "label": label, "attn_variant": "GQA",
+         "cfg": {**cfg, "kv_heads": gqa_kv, "mla": False, "inference": False},
+         "measure": measure},
+
+        {"group": group, "label": label, "attn_variant": "MLA",
+         "cfg": {**cfg, "kv_heads": n_heads, "mla": True, "inference": True,
+                 "down_dim_kv": mla_dkv, "down_dim_q": mla_dq, "rope_dim": rope_dim},
+         "measure": measure},
+    ]
+
+
+# ─── Experiment definitions ───────────────────────────────────────────────────
+
 EXPERIMENTS: list[dict] = [
 
     # ── 1. Attention type ─────────────────────────────────────────────────────
-    # What: vary the attention mechanism at fixed model scale (medium, 6 blocks).
-    # Insight: decode throughput & KV cache size vs compression ratio.
+    # Sweeps the attention mechanism directly — no _by_attn expansion.
 
     {"group": "attention_type", "label": "MHA",
      "cfg": _c(kv_heads=8, mla=False), "measure": _m()},
-
     {"group": "attention_type", "label": "GQA-1/2",
      "cfg": _c(kv_heads=4, mla=False), "measure": _m()},
-
     {"group": "attention_type", "label": "GQA-1/4",
      "cfg": _c(kv_heads=2, mla=False), "measure": _m()},
-
     {"group": "attention_type", "label": "GQA-1/8",
      "cfg": _c(kv_heads=1, mla=False), "measure": _m()},
-
     {"group": "attention_type", "label": "MLA-down64",
      "cfg": _c(mla=True, inference=True, down_dim_kv=64, rope_dim=16, kv_heads=8), "measure": _m()},
-
     {"group": "attention_type", "label": "MLA-down32",
      "cfg": _c(mla=True, inference=True, down_dim_kv=32, rope_dim=16, kv_heads=8), "measure": _m()},
-
     {"group": "attention_type", "label": "MLA-down128",
      "cfg": _c(mla=True, inference=True, down_dim_kv=128, rope_dim=16, kv_heads=8), "measure": _m()},
 
-    # ── 2. Model scale ────────────────────────────────────────────────────────
-    # What: sweep parameter count from ~0.1 M to ~85 M (MHA, BS=1, ctx=256).
-    # Insight: how prefill and decode latency grow with model size.
+    # ── 2. Model scale  ×  {MHA, GQA, MLA} ───────────────────────────────────
+    # Insight: latency/throughput growth with parameter count per attention type.
 
-    {"group": "scale", "label": "tiny-~0.1M",
-     "cfg": _c(dim=64, n_heads=4, head_size=16, num_blocks=2, kv_heads=4), "measure": _m()},
+    *_by_attn("scale", "tiny-~0.1M",
+               _c(dim=64,  n_heads=4,  head_size=16, num_blocks=2,  kv_heads=4),  _m()),
+    *_by_attn("scale", "small-~0.5M",
+               _c(dim=128, n_heads=4,  head_size=32, num_blocks=3,  kv_heads=4),  _m()),
+    *_by_attn("scale", "medium-~3M",   _c(),                                        _m()),
+    *_by_attn("scale", "large-~25M",
+               _c(dim=512, n_heads=16, head_size=32, num_blocks=8,  kv_heads=16), _m()),
+    *_by_attn("scale", "xlarge-~50M",
+               _c(dim=512, n_heads=16, head_size=32, num_blocks=16, kv_heads=16), _m()),
+    *_by_attn("scale", "xxlarge-~85M",
+               _c(dim=768, n_heads=12, head_size=64, num_blocks=12, kv_heads=12), _m()),
 
-    {"group": "scale", "label": "small-~0.5M",
-     "cfg": _c(dim=128, n_heads=4, head_size=32, num_blocks=3, kv_heads=4), "measure": _m()},
+    # ── 3. Batch size  ×  {MHA, GQA, MLA} ────────────────────────────────────
+    # Insight: how decode throughput scales with batch for each attention type.
 
-    {"group": "scale", "label": "medium-~3M",
-     "cfg": _c(), "measure": _m()},
+    *_by_attn("batch_size", "bs=1",   _c(), _m(batch_size=1)),
+    *_by_attn("batch_size", "bs=4",   _c(), _m(batch_size=4)),
+    *_by_attn("batch_size", "bs=8",   _c(), _m(batch_size=8)),
+    *_by_attn("batch_size", "bs=16",  _c(), _m(batch_size=16)),
+    *_by_attn("batch_size", "bs=32",  _c(), _m(batch_size=32)),
+    *_by_attn("batch_size", "bs=64",  _c(), _m(batch_size=64)),
+    *_by_attn("batch_size", "bs=128", _c(), _m(batch_size=128)),
 
-    {"group": "scale", "label": "large-~25M",
-     "cfg": _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16), "measure": _m()},
+    # ── 4. Context length  ×  {MHA, GQA, MLA} ────────────────────────────────
+    # Insight: O(T²) prefill and linear KV cache growth per attention type.
 
-    {"group": "scale", "label": "xlarge-~50M",
-     "cfg": _c(dim=512, n_heads=16, head_size=32, num_blocks=16, kv_heads=16), "measure": _m()},
+    *_by_attn("context_len", "ctx=64",   _c(max_context=64),   _m(prompt_len=32)),
+    *_by_attn("context_len", "ctx=128",  _c(max_context=128),  _m(prompt_len=64)),
+    *_by_attn("context_len", "ctx=256",  _c(max_context=256),  _m(prompt_len=128)),
+    *_by_attn("context_len", "ctx=512",  _c(max_context=512),  _m(prompt_len=256)),
+    *_by_attn("context_len", "ctx=1024", _c(max_context=1024), _m(prompt_len=512)),
 
-    {"group": "scale", "label": "xxlarge-~85M",
-     "cfg": _c(dim=768, n_heads=12, head_size=64, num_blocks=12, kv_heads=12), "measure": _m()},
+    # ── 5. Dtype  ×  {MHA, GQA, MLA} ─────────────────────────────────────────
+    # Insight: bf16 speedup and memory saving per attention type and model size.
 
-    # ── 3. Batch size ─────────────────────────────────────────────────────────
-    # What: sweep BS 1–128 at fixed model (medium, MHA, ctx=256, fp32).
-    # Insight: how decode throughput scales with batch (GPU parallelism).
+    *_by_attn("dtype", "medium-fp32", _c(use_bf16=False), _m()),
+    *_by_attn("dtype", "medium-bf16", _c(use_bf16=True),  _m()),
+    *_by_attn("dtype", "large-fp32",
+               _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16, use_bf16=False), _m()),
+    *_by_attn("dtype", "large-bf16",
+               _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16, use_bf16=True),  _m()),
 
-    {"group": "batch_size", "label": "bs=1",   "cfg": _c(), "measure": _m(batch_size=1)},
-    {"group": "batch_size", "label": "bs=4",   "cfg": _c(), "measure": _m(batch_size=4)},
-    {"group": "batch_size", "label": "bs=8",   "cfg": _c(), "measure": _m(batch_size=8)},
-    {"group": "batch_size", "label": "bs=16",  "cfg": _c(), "measure": _m(batch_size=16)},
-    {"group": "batch_size", "label": "bs=32",  "cfg": _c(), "measure": _m(batch_size=32)},
-    {"group": "batch_size", "label": "bs=64",  "cfg": _c(), "measure": _m(batch_size=64)},
-    {"group": "batch_size", "label": "bs=128", "cfg": _c(), "measure": _m(batch_size=128)},
-
-    # ── 4. Context length ─────────────────────────────────────────────────────
-    # What: sweep max_context 64–1024 (prompt_len = max_context/2).
-    # Insight: O(T²) prefill growth; KV cache memory vs context size.
-
-    {"group": "context_len", "label": "ctx=64",
-     "cfg": _c(max_context=64),   "measure": _m(prompt_len=32)},
-
-    {"group": "context_len", "label": "ctx=128",
-     "cfg": _c(max_context=128),  "measure": _m(prompt_len=64)},
-
-    {"group": "context_len", "label": "ctx=256",
-     "cfg": _c(max_context=256),  "measure": _m(prompt_len=128)},
-
-    {"group": "context_len", "label": "ctx=512",
-     "cfg": _c(max_context=512),  "measure": _m(prompt_len=256)},
-
-    {"group": "context_len", "label": "ctx=1024",
-     "cfg": _c(max_context=1024), "measure": _m(prompt_len=512)},
-
-    # ── 5. Dtype ──────────────────────────────────────────────────────────────
-    # What: fp32 vs bfloat16 at medium and large scale.
-    # Insight: bf16 speedup and memory halving.
-
-    {"group": "dtype", "label": "medium-fp32",
-     "cfg": _c(use_bf16=False), "measure": _m()},
-
-    {"group": "dtype", "label": "medium-bf16",
-     "cfg": _c(use_bf16=True), "measure": _m()},
-
-    {"group": "dtype", "label": "large-fp32",
-     "cfg": _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16, use_bf16=False),
-     "measure": _m()},
-
-    {"group": "dtype", "label": "large-bf16",
-     "cfg": _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16, use_bf16=True),
-     "measure": _m()},
-
-    # ── 6. Sampling strategy ──────────────────────────────────────────────────
-    # What: greedy vs temperature vs top-k vs top-p.
-    # Insight: model forward pass dominates; post-processing differences are in the noise.
-    # (All experiments share the same JIT-compiled forward pass — only Python sampling differs.)
+    # ── 6. Sampling strategy (forward pass is attention-agnostic) ─────────────
+    # Insight: model forward pass dominates; post-processing cost is negligible.
+    # Not expanded by attention type since the JIT-compiled forward pass is identical.
 
     {"group": "sampling", "label": "greedy",        "cfg": _c(), "measure": _m()},
     {"group": "sampling", "label": "temp=0.5",      "cfg": _c(), "measure": _m()},
@@ -409,181 +418,104 @@ EXPERIMENTS: list[dict] = [
     {"group": "sampling", "label": "top_p=0.95",    "cfg": _c(), "measure": _m()},
     {"group": "sampling", "label": "top_k50+top_p", "cfg": _c(), "measure": _m()},
 
-    # ── 7. KV cache ───────────────────────────────────────────────────────────
-    # What: cache on vs off at BS=1 and BS=8.
-    # Insight: decode-step speedup from the O(1)-per-step KV cache vs O(T) re-computation.
+    # ── 7. KV cache  ×  {MHA, GQA, MLA} ─────────────────────────────────────
+    # Insight: decode speedup from cache differs by attention — GQA/MLA write less.
 
-    {"group": "kv_cache", "label": "bs1-cache=on",
-     "cfg": _c(), "measure": _m(batch_size=1, use_cache=True)},
+    *_by_attn("kv_cache", "bs1-cache=on",  _c(), _m(batch_size=1,  use_cache=True)),
+    *_by_attn("kv_cache", "bs1-cache=off", _c(), _m(batch_size=1,  use_cache=False)),
+    *_by_attn("kv_cache", "bs8-cache=on",  _c(), _m(batch_size=8,  use_cache=True)),
+    *_by_attn("kv_cache", "bs8-cache=off", _c(), _m(batch_size=8,  use_cache=False)),
+    *_by_attn("kv_cache", "bs32-cache=on", _c(), _m(batch_size=32, use_cache=True)),
+    *_by_attn("kv_cache", "bs32-cache=off",_c(), _m(batch_size=32, use_cache=False)),
 
-    {"group": "kv_cache", "label": "bs1-cache=off",
-     "cfg": _c(), "measure": _m(batch_size=1, use_cache=False)},
+    # ── 8. MoE vs dense  ×  {MHA, GQA, MLA} ─────────────────────────────────
+    # Insight: MoE adds parameters while top-k routing keeps active FLOPs low.
 
-    {"group": "kv_cache", "label": "bs8-cache=on",
-     "cfg": _c(), "measure": _m(batch_size=8, use_cache=True)},
+    *_by_attn("moe", "dense",       _c(use_moe=False),                           _m()),
+    *_by_attn("moe", "4exp-top1",   _c(use_moe=True, n_experts=4,  top_k_mlp=1), _m()),
+    *_by_attn("moe", "4exp-top2",   _c(use_moe=True, n_experts=4,  top_k_mlp=2), _m()),
+    *_by_attn("moe", "8exp-top2",   _c(use_moe=True, n_experts=8,  top_k_mlp=2), _m()),
+    *_by_attn("moe", "8exp-top4",   _c(use_moe=True, n_experts=8,  top_k_mlp=4), _m()),
+    *_by_attn("moe", "16exp-top4",  _c(use_moe=True, n_experts=16, top_k_mlp=4), _m()),
 
-    {"group": "kv_cache", "label": "bs8-cache=off",
-     "cfg": _c(), "measure": _m(batch_size=8, use_cache=False)},
+    # ── 9. Activation  ×  {MHA, GQA, MLA} ────────────────────────────────────
+    # Insight: SwiGLU has ~1.5× FFN params for the same expansion factor.
 
-    {"group": "kv_cache", "label": "bs32-cache=on",
-     "cfg": _c(), "measure": _m(batch_size=32, use_cache=True)},
+    *_by_attn("activation", "SwiGLU", _c(use_swiglu=True),  _m()),
+    *_by_attn("activation", "GELU",   _c(use_swiglu=False), _m()),
 
-    {"group": "kv_cache", "label": "bs32-cache=off",
-     "cfg": _c(), "measure": _m(batch_size=32, use_cache=False)},
+    # ── 10. Positional encoding  ×  {MHA, GQA, MLA} ──────────────────────────
+    # Insight: pos encoding rarely bottlenecks inference — confirms attn type dominates.
 
-    # ── 8. MoE vs dense ───────────────────────────────────────────────────────
-    # What: dense MLP vs various MoE configs (experts=4/8, top-k=1/2/4).
-    # Insight: MoE adds parameters but top-k routing keeps active FLOPs low.
+    *_by_attn("pos_encoding", "RoPE",
+               _c(use_rotary_pos=True,  trainable_pos=False, absolute_pos=False, sliding_window=False), _m()),
+    *_by_attn("pos_encoding", "sinusoidal",
+               _c(use_rotary_pos=False, trainable_pos=False, absolute_pos=True,  sliding_window=False), _m()),
+    *_by_attn("pos_encoding", "trainable",
+               _c(use_rotary_pos=False, trainable_pos=True,  absolute_pos=False, sliding_window=False), _m()),
+    *_by_attn("pos_encoding", "sliding_win",
+               _c(use_rotary_pos=True,  trainable_pos=False, absolute_pos=False,
+                  sliding_window=True, context_window=32), _m()),
 
-    {"group": "moe", "label": "dense",
-     "cfg": _c(use_moe=False), "measure": _m()},
-
-    {"group": "moe", "label": "4exp-top1",
-     "cfg": _c(use_moe=True, n_experts=4, top_k_mlp=1), "measure": _m()},
-
-    {"group": "moe", "label": "4exp-top2",
-     "cfg": _c(use_moe=True, n_experts=4, top_k_mlp=2), "measure": _m()},
-
-    {"group": "moe", "label": "8exp-top2",
-     "cfg": _c(use_moe=True, n_experts=8, top_k_mlp=2), "measure": _m()},
-
-    {"group": "moe", "label": "8exp-top4",
-     "cfg": _c(use_moe=True, n_experts=8, top_k_mlp=4), "measure": _m()},
-
-    {"group": "moe", "label": "16exp-top4",
-     "cfg": _c(use_moe=True, n_experts=16, top_k_mlp=4), "measure": _m()},
-
-    # ── 9. Activation ─────────────────────────────────────────────────────────
-    # What: SwiGLU (gated, 3 matmuls) vs GELU (2 matmuls) per FFN block.
-    # Insight: SwiGLU has ~1.5× more FFN parameters for the same expansion factor.
-
-    {"group": "activation", "label": "SwiGLU",
-     "cfg": _c(use_swiglu=True), "measure": _m()},
-
-    {"group": "activation", "label": "GELU",
-     "cfg": _c(use_swiglu=False), "measure": _m()},
-
-    # ── 10. Positional encoding ───────────────────────────────────────────────
-    # What: RoPE vs learned absolute vs sinusoidal absolute vs sliding window.
-    # Insight: positional encoding rarely bottlenecks inference but affects memory.
-
-    {"group": "pos_encoding", "label": "RoPE",
-     "cfg": _c(use_rotary_pos=True,  trainable_pos=False, absolute_pos=False, sliding_window=False),
-     "measure": _m()},
-
-    {"group": "pos_encoding", "label": "sinusoidal",
-     "cfg": _c(use_rotary_pos=False, trainable_pos=False, absolute_pos=True,  sliding_window=False),
-     "measure": _m()},
-
-    {"group": "pos_encoding", "label": "trainable",
-     "cfg": _c(use_rotary_pos=False, trainable_pos=True,  absolute_pos=False, sliding_window=False),
-     "measure": _m()},
-
-    {"group": "pos_encoding", "label": "sliding_win",
-     "cfg": _c(use_rotary_pos=True,  trainable_pos=False, absolute_pos=False, sliding_window=True,
-               context_window=32),
-     "measure": _m()},
-
-    # ── 11. GQA compression × context length interaction ──────────────────────
-    # What: cross-tab attention type vs context length — shows where KV compression pays off.
-    # Insight: GQA advantage in kv_cache_mb grows quadratically with context.
-
+    # ── 11. GQA compression × context length (already cross-cuts attention) ───
     {"group": "gqa_vs_cache", "label": "MHA-ctx128",
      "cfg": _c(kv_heads=8, max_context=128),  "measure": _m(prompt_len=64)},
-
     {"group": "gqa_vs_cache", "label": "GQA4-ctx128",
      "cfg": _c(kv_heads=2, max_context=128),  "measure": _m(prompt_len=64)},
-
     {"group": "gqa_vs_cache", "label": "MHA-ctx256",
      "cfg": _c(kv_heads=8, max_context=256),  "measure": _m(prompt_len=128)},
-
     {"group": "gqa_vs_cache", "label": "GQA4-ctx256",
      "cfg": _c(kv_heads=2, max_context=256),  "measure": _m(prompt_len=128)},
-
     {"group": "gqa_vs_cache", "label": "MHA-ctx512",
      "cfg": _c(kv_heads=8, max_context=512),  "measure": _m(prompt_len=256)},
-
     {"group": "gqa_vs_cache", "label": "GQA4-ctx512",
      "cfg": _c(kv_heads=2, max_context=512),  "measure": _m(prompt_len=256)},
-
     {"group": "gqa_vs_cache", "label": "MHA-ctx1024",
      "cfg": _c(kv_heads=8, max_context=1024), "measure": _m(prompt_len=512)},
-
     {"group": "gqa_vs_cache", "label": "GQA4-ctx1024",
      "cfg": _c(kv_heads=2, max_context=1024), "measure": _m(prompt_len=512)},
-
     {"group": "gqa_vs_cache", "label": "MLA-ctx512",
      "cfg": _c(mla=True, inference=True, down_dim_kv=64, rope_dim=16, kv_heads=8, max_context=512),
      "measure": _m(prompt_len=256)},
-
     {"group": "gqa_vs_cache", "label": "MLA-ctx1024",
      "cfg": _c(mla=True, inference=True, down_dim_kv=64, rope_dim=16, kv_heads=8, max_context=1024),
      "measure": _m(prompt_len=512)},
 
-    # ── 12. Scale × dtype interaction ─────────────────────────────────────────
-    # What: bf16 speedup measured at four model sizes.
-    # Insight: bf16 benefit is larger for compute-bound (large) models.
+    # ── 12. Scale × dtype (already cross-cuts attention via _by_attn) ─────────
+    *_by_attn("scale_dtype", "tiny-fp32",
+               _c(dim=64,  n_heads=4,  head_size=16, num_blocks=2,  kv_heads=4,  use_bf16=False), _m()),
+    *_by_attn("scale_dtype", "tiny-bf16",
+               _c(dim=64,  n_heads=4,  head_size=16, num_blocks=2,  kv_heads=4,  use_bf16=True),  _m()),
+    *_by_attn("scale_dtype", "small-fp32",
+               _c(dim=128, n_heads=4,  head_size=32, num_blocks=3,  kv_heads=4,  use_bf16=False), _m()),
+    *_by_attn("scale_dtype", "small-bf16",
+               _c(dim=128, n_heads=4,  head_size=32, num_blocks=3,  kv_heads=4,  use_bf16=True),  _m()),
+    *_by_attn("scale_dtype", "medium-fp32", _c(use_bf16=False), _m()),
+    *_by_attn("scale_dtype", "medium-bf16", _c(use_bf16=True),  _m()),
+    *_by_attn("scale_dtype", "large-fp32",
+               _c(dim=512, n_heads=16, head_size=32, num_blocks=8,  kv_heads=16, use_bf16=False), _m()),
+    *_by_attn("scale_dtype", "large-bf16",
+               _c(dim=512, n_heads=16, head_size=32, num_blocks=8,  kv_heads=16, use_bf16=True),  _m()),
 
-    {"group": "scale_dtype", "label": "tiny-fp32",
-     "cfg": _c(dim=64, n_heads=4, head_size=16, num_blocks=2, kv_heads=4, use_bf16=False),
-     "measure": _m()},
-
-    {"group": "scale_dtype", "label": "tiny-bf16",
-     "cfg": _c(dim=64, n_heads=4, head_size=16, num_blocks=2, kv_heads=4, use_bf16=True),
-     "measure": _m()},
-
-    {"group": "scale_dtype", "label": "small-fp32",
-     "cfg": _c(dim=128, n_heads=4, head_size=32, num_blocks=3, kv_heads=4, use_bf16=False),
-     "measure": _m()},
-
-    {"group": "scale_dtype", "label": "small-bf16",
-     "cfg": _c(dim=128, n_heads=4, head_size=32, num_blocks=3, kv_heads=4, use_bf16=True),
-     "measure": _m()},
-
-    {"group": "scale_dtype", "label": "medium-fp32",
-     "cfg": _c(use_bf16=False), "measure": _m()},
-
-    {"group": "scale_dtype", "label": "medium-bf16",
-     "cfg": _c(use_bf16=True), "measure": _m()},
-
-    {"group": "scale_dtype", "label": "large-fp32",
-     "cfg": _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16, use_bf16=False),
-     "measure": _m()},
-
-    {"group": "scale_dtype", "label": "large-bf16",
-     "cfg": _c(dim=512, n_heads=16, head_size=32, num_blocks=8, kv_heads=16, use_bf16=True),
-     "measure": _m()},
-
-    # ── 13. Batch size × attention type interaction ───────────────────────────
-    # What: MHA vs GQA vs MLA at BS=1, 8, 32.
-    # Insight: GQA/MLA cache advantage scales with batch; compute bound shifts earlier.
-
+    # ── 13. Batch size × attention type (explicit cross-group) ────────────────
     {"group": "batch_attn", "label": "MHA-bs1",
      "cfg": _c(kv_heads=8, mla=False), "measure": _m(batch_size=1)},
-
     {"group": "batch_attn", "label": "MHA-bs8",
      "cfg": _c(kv_heads=8, mla=False), "measure": _m(batch_size=8)},
-
     {"group": "batch_attn", "label": "MHA-bs32",
      "cfg": _c(kv_heads=8, mla=False), "measure": _m(batch_size=32)},
-
     {"group": "batch_attn", "label": "GQA-bs1",
      "cfg": _c(kv_heads=2, mla=False), "measure": _m(batch_size=1)},
-
     {"group": "batch_attn", "label": "GQA-bs8",
      "cfg": _c(kv_heads=2, mla=False), "measure": _m(batch_size=8)},
-
     {"group": "batch_attn", "label": "GQA-bs32",
      "cfg": _c(kv_heads=2, mla=False), "measure": _m(batch_size=32)},
-
     {"group": "batch_attn", "label": "MLA-bs1",
      "cfg": _c(mla=True, inference=True, down_dim_kv=64, rope_dim=16, kv_heads=8),
      "measure": _m(batch_size=1)},
-
     {"group": "batch_attn", "label": "MLA-bs8",
      "cfg": _c(mla=True, inference=True, down_dim_kv=64, rope_dim=16, kv_heads=8),
      "measure": _m(batch_size=8)},
-
     {"group": "batch_attn", "label": "MLA-bs32",
      "cfg": _c(mla=True, inference=True, down_dim_kv=64, rope_dim=16, kv_heads=8),
      "measure": _m(batch_size=32)},
@@ -603,22 +535,20 @@ def main() -> None:
     parser.add_argument("--out", default="results/inference_sweep.csv",
                         help="Output CSV path (default: results/inference_sweep.csv)")
     parser.add_argument("--groups", nargs="+", metavar="GROUP",
-                        help="Subset of groups to run (default: all). Use --list-groups to see options.")
+                        help="Run only these groups (default: all).")
     parser.add_argument("--list-groups", action="store_true",
                         help="Print available group names and exit.")
-    parser.add_argument("--n-warmup", type=int, default=N_WARMUP,
-                        help=f"JIT warm-up repetitions per experiment (default: {N_WARMUP})")
-    parser.add_argument("--n-trials", type=int, default=N_TRIALS,
-                        help=f"Timed repetitions per experiment (default: {N_TRIALS})")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Show per-experiment latency values.")
+    parser.add_argument("--n-warmup", type=int, default=N_WARMUP)
+    parser.add_argument("--n-trials", type=int, default=N_TRIALS)
+    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     if args.list_groups:
         print("Available groups:")
+        from collections import Counter
+        counts = Counter(e["group"] for e in EXPERIMENTS)
         for g in ALL_GROUPS:
-            count = sum(1 for e in EXPERIMENTS if e["group"] == g)
-            print(f"  {g:<22} ({count} experiments)")
+            print(f"  {g:<22} ({counts[g]} experiments)")
         return
 
     if args.verbose:
@@ -635,9 +565,9 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"DantinoX inference sweep — {len(selected)} experiments")
-    print(f"  device : {jax.default_backend()}")
-    print(f"  warmup : {args.n_warmup}  trials: {args.n_trials}")
-    print(f"  output : {out_path}")
+    print(f"  device  : {jax.default_backend()}")
+    print(f"  warmup  : {args.n_warmup}   trials: {args.n_trials}")
+    print(f"  output  : {out_path}")
     print()
 
     rows: list[dict] = []
@@ -646,7 +576,7 @@ def main() -> None:
         rows.append(row)
         if args.verbose:
             tqdm.write(
-                f"  [{row['group']:>14}] {row['label']:<22}  "
+                f"  [{row['group']:>14}] {row['label']:<22} [{row['attn_variant']:<3}]  "
                 f"prefill={row['prefill_ms_p50']:>7.2f}ms  "
                 f"decode={row['decode_tok_s']:>8.1f} tok/s  "
                 f"cache={row['kv_cache_mb']:>6.2f} MB  "
@@ -671,13 +601,14 @@ def main() -> None:
 
 
 def _print_summary(df: Any) -> None:
-    print("\n── Group summary (median decode_tok_s) ─────────────────────────────")
+    print("\n── Group summary (best decode_tok_s per attention variant) ────────────")
     for grp in df["group"].unique():
-        sub = df[df["group"] == grp]
+        sub = df[df["group"] == grp].dropna(subset=["decode_tok_s"])
+        if sub.empty:
+            continue
         best = sub.loc[sub["decode_tok_s"].idxmax()]
-        print(f"  {grp:<22}  best: {best['label']:<24} "
-              f"{best['decode_tok_s']:>8.1f} tok/s   "
-              f"prefill={best['prefill_ms_p50']:>6.2f}ms")
+        print(f"  {grp:<22}  {best['attn_variant']:<4}  {best['label']:<24}  "
+              f"{best['decode_tok_s']:>8.1f} tok/s")
 
 
 if __name__ == "__main__":
