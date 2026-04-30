@@ -34,6 +34,7 @@ dev       = [
     "twine",
     "mkdocs-material",
     "mkdocs-minify-plugin",
+    "mkdocs-glightbox",
     "mkdocstrings[python]",
 ]
 all = ["dantinox[data,benchmark,dev]"]
