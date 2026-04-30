@@ -12,7 +12,7 @@ import importlib
 import logging
 import os
 import sys
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from dantinox.exceptions import PlotError
 
@@ -55,7 +55,7 @@ def _run_group(
     in_csv: str,
     out_dir: str,
     repo_root: str,
-    batch_csv: Optional[str] = None,
+    batch_csv: str | None = None,
 ) -> list[str]:
     module_name, fig_fns = _PLOT_GROUPS[group]
     try:
@@ -89,8 +89,10 @@ def _run_group(
             saved.append(fn_name)
             log.debug("  %s — done", fn_name)
     finally:
-        if orig_in  is not None: mod.IN_CSV  = orig_in
-        if orig_out is not None: mod.OUT_DIR = orig_out
+        if orig_in is not None:
+            mod.IN_CSV = orig_in
+        if orig_out is not None:
+            mod.OUT_DIR = orig_out
 
     return saved
 
@@ -128,7 +130,7 @@ class Plotter:
         in_csv: str = "benchmark_results.csv",
         out_dir: str = "plots",
         *,
-        batch_csv: Optional[str] = None,
+        batch_csv: str | None = None,
     ) -> None:
         self.in_csv    = in_csv
         self.out_dir   = out_dir
@@ -140,7 +142,7 @@ class Plotter:
 
     def run(
         self,
-        groups: Optional[Sequence[str]] = None,
+        groups: Sequence[str] | None = None,
     ) -> dict[str, list[str]]:
         """
         Generate plots.

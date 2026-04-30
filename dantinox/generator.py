@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
 
 import jax.numpy as jnp
 import msgpack
@@ -11,8 +10,8 @@ from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
 
 from core.config import Config
-from core.model import Transformer
 from core.generation import generate as _generate
+from core.model import Transformer
 from dantinox.exceptions import CheckpointError
 from utils.tokenizer import get_tokenizer
 
@@ -41,7 +40,7 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, obje
     if not os.path.exists(config_path):
         raise CheckpointError(f"Config file not found: {config_path}")
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         raw = yaml.safe_load(f)
 
     flat: dict = {}
@@ -66,10 +65,10 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, obje
                 f"Dataset file not found: {config.dataset_name!r}. "
                 "The tokenizer vocabulary cannot be rebuilt without the original corpus."
             )
-        with open(config.dataset_name, "r", encoding="utf-8") as f:
+        with open(config.dataset_name, encoding="utf-8") as f:
             text = f.read()
 
-    lines = [l.rstrip() for l in text.split("\n") if l.strip()]
+    lines = [line.rstrip() for line in text.split("\n") if line.strip()]
     blocks = ["\n".join(lines[i : i + 3]) for i in range(0, len(lines), 3)]
     text = "\n\n".join(blocks) + "\n"
 
@@ -136,8 +135,8 @@ class Generator:
         *,
         max_new_tokens: int = 150,
         greedy: bool = False,
-        top_k: Optional[int] = None,
-        top_p: Optional[float] = None,
+        top_k: int | None = None,
+        top_p: float | None = None,
         temperature: float = 1.0,
         use_cache: bool = True,
     ) -> str:

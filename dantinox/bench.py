@@ -4,7 +4,7 @@ import dataclasses
 import logging
 import os
 import time
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import jax
 import jax.numpy as jnp
@@ -41,7 +41,7 @@ def _load_config(run_path: str) -> Config:
     cfg_path = os.path.join(run_path, "config.yaml")
     if not os.path.exists(cfg_path):
         raise BenchmarkError(f"Config not found: {cfg_path}")
-    with open(cfg_path, "r") as f:
+    with open(cfg_path) as f:
         raw = yaml.safe_load(f)
     flat: dict = {}
     for section in raw.values():
@@ -52,7 +52,7 @@ def _load_config(run_path: str) -> Config:
     return Config.from_dict(flat)
 
 
-def _detect_vocab(state_dict: dict, dim: int) -> Optional[int]:
+def _detect_vocab(state_dict: dict, dim: int) -> int | None:
     def _get(d, key):
         if not isinstance(d, dict):
             return None
@@ -109,7 +109,7 @@ def _theoretical_cache_mb(config: Config) -> float:
     return per_layer * config.num_blocks / 1e6
 
 
-def _val_loss(run_path: str) -> Optional[float]:
+def _val_loss(run_path: str) -> float | None:
     import pandas as pd
     log_csv = os.path.join(run_path, "training_log.csv")
     if not os.path.exists(log_csv):
@@ -174,7 +174,7 @@ def benchmark_run(run_path: str) -> dict:
     tps_by_batch: dict[int, float] = {}
     max_batch = 0
     for bs in BATCH_SIZES:
-        if FIXED_SEQ > config.max_context:
+        if config.max_context < FIXED_SEQ:
             tps_by_batch[bs] = float("nan")
             continue
         tok_b = jnp.ones((bs, 1), dtype=jnp.int32)
@@ -269,8 +269,8 @@ class BenchmarkRunner:
         self,
         runs_dir: str = "runs",
         *,
-        seq_lens: Optional[Sequence[int]] = None,
-        batch_sizes: Optional[Sequence[int]] = None,
+        seq_lens: Sequence[int] | None = None,
+        batch_sizes: Sequence[int] | None = None,
     ) -> None:
         self.runs_dir = runs_dir
         if seq_lens is not None:
@@ -285,9 +285,9 @@ class BenchmarkRunner:
 
     def run(
         self,
-        run_names: Optional[Sequence[str]] = None,
+        run_names: Sequence[str] | None = None,
         *,
-        out_csv: Optional[str] = None,
+        out_csv: str | None = None,
     ):
         """
         Run benchmarks and return a DataFrame.

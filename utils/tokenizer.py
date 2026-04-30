@@ -1,4 +1,3 @@
-import jax.numpy as jnp
 
 class CharTokenizer:
     def __init__(self):
@@ -15,8 +14,8 @@ class CharTokenizer:
     def encode(self, s):
         return [self.stoi[c] for c in s]
 
-    def decode(self, l):
-        return ''.join([self.itos[i] for i in l])
+    def decode(self, tokens):
+        return ''.join([self.itos[i] for i in tokens])
 
 class BPETokenizer:
     def __init__(self):
@@ -28,7 +27,7 @@ class BPETokenizer:
     def train_from_text(self, text, vocab_size=1000):
         from tokenizers import trainers
         trainer = trainers.BpeTrainer(
-            vocab_size=vocab_size, 
+            vocab_size=vocab_size,
             special_tokens=["[PAD]", "[UNK]", "[BOS]", "[EOS]"]
         )
         self.tokenizer.train_from_iterator([text], trainer=trainer)
@@ -37,8 +36,8 @@ class BPETokenizer:
     def encode(self, s):
         return self.tokenizer.encode(s).ids
 
-    def decode(self, l):
-        return self.tokenizer.decode(l)
+    def decode(self, tokens):
+        return self.tokenizer.decode(tokens)
 
 def get_tokenizer(tokenizer_type):
     if tokenizer_type == "char":

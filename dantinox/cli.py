@@ -26,7 +26,6 @@ import sys
 
 from core.config import Config
 
-
 # ─── helpers ────────────────────────────────────────────────────────────────
 
 def _add_config_overrides(parser: argparse.ArgumentParser) -> None:
@@ -64,6 +63,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
 
 def _cmd_generate(args: argparse.Namespace) -> None:
     import time
+
     from dantinox.generator import Generator
 
     gen = Generator(args.run_dir, seed=args.seed)
@@ -106,7 +106,7 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     import yaml
-    with open(args.sweep_config, "r") as f:
+    with open(args.sweep_config) as f:
         sweep_cfg = yaml.safe_load(f)
 
     project = getattr(args, "wandb_project", None) or "DantinoX"
@@ -114,13 +114,7 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
     print(f"Sweep ID: {sweep_id}  (project: {project})")
 
     def _agent_fn():
-        import datetime, os, csv, json
-        import jax, jax.numpy as jnp, optax
-        from flax import nnx
-        from core.model import Transformer
-        from utils.tokenizer import get_tokenizer
-        from utils.helpers import compute_loss, get_batch
-        from dantinox.trainer import Trainer, _load_text, _format_text, _build_optimizer
+        from dantinox.trainer import Trainer
 
         run = wandb.init()
         wc = dict(run.config)
@@ -138,7 +132,7 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
 
 
 def _cmd_plot(args: argparse.Namespace) -> None:
-    from dantinox.plotting import Plotter, ALL_GROUPS
+    from dantinox.plotting import Plotter
     groups = args.groups if args.groups else None
     plotter = Plotter(
         in_csv=args.in_csv,

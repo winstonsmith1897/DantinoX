@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import time
-from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -48,7 +47,7 @@ def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransfor
     return optax.adam(learning_rate=schedule)
 
 
-def _load_text(config: Config, data_path: Optional[str]) -> str:
+def _load_text(config: Config, data_path: str | None) -> str:
     if config.dataset_source == "huggingface":
         from datasets import load_dataset
         raw = load_dataset(config.dataset_name, split="train")
@@ -61,12 +60,12 @@ def _load_text(config: Config, data_path: Optional[str]) -> str:
         )
     if not os.path.exists(path):
         raise ConfigError(f"Data file not found: {path}")
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return f.read()
 
 
 def _format_text(text: str) -> str:
-    lines = [l.rstrip() for l in text.split("\n") if l.strip()]
+    lines = [line.rstrip() for line in text.split("\n") if line.strip()]
     blocks = ["\n".join(lines[i : i + 3]) for i in range(0, len(lines), 3)]
     return "\n\n".join(blocks) + "\n"
 
@@ -112,10 +111,10 @@ class Trainer:
 
     def fit(
         self,
-        data_path: Optional[str] = None,
+        data_path: str | None = None,
         *,
-        run_dir: Optional[str] = None,
-        wandb_project: Optional[str] = None,
+        run_dir: str | None = None,
+        wandb_project: str | None = None,
     ) -> str:
         """
         Train a model and save the checkpoint.
@@ -229,67 +228,65 @@ class Trainer:
                 for _ in range(config.eval_iters):
                     key, sub = jax.random.split(key)
                     x, y = get_batch(d, 1, config.max_context, sub)
-                    l, b = eval_step(model, x, y)
-                    losses.append(float(l))
+                    loss_val, b = eval_step(model, x, y)
+                    losses.append(float(loss_val))
                     bals.append(float(b))
                 out[split] = sum(losses) / len(losses)
                 out[f"{split}_bal"] = sum(bals) / len(bals)
             return out, key
 
         log_path = os.path.join(run_dir, "training_log.csv")
-        log_f = open(log_path, "a", newline="")
-        log_w = csv.writer(log_f)
-        if os.path.getsize(log_path) == 0:
-            log_w.writerow(
-                ["step", "train_loss", "val_loss", "train_bal", "val_bal", "ms_per_step"]
-            )
-
         key = jax.random.PRNGKey(config.seed)
         metrics = nnx.MultiMetric(loss=nnx.metrics.Average("loss"))
         pbar = tqdm(range(total_steps), desc="Training", unit="step", dynamic_ncols=True)
         t0 = time.time()
-        try:
-            for step in pbar:
-                key, sub = jax.random.split(key)
-                x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
-                graphdef, state = nnx.split((model, optimizer, metrics))
-                _, _, new_state = train_step(graphdef, state, x, y)
-                nnx.update((model, optimizer, metrics), new_state)
+        with open(log_path, "a", newline="") as log_f:
+            log_w = csv.writer(log_f)
+            if os.path.getsize(log_path) == 0:
+                log_w.writerow(
+                    ["step", "train_loss", "val_loss", "train_bal", "val_bal", "ms_per_step"]
+                )
+            try:
+                for step in pbar:
+                    key, sub = jax.random.split(key)
+                    x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
+                    graphdef, state = nnx.split((model, optimizer, metrics))
+                    _, _, new_state = train_step(graphdef, state, x, y)
+                    nnx.update((model, optimizer, metrics), new_state)
 
-                if step % 50 == 0:
-                    t1 = time.time()
-                    dt = (t1 - t0) * 1000 / 50
-                    t0 = t1
-                    losses, key = estimate_loss(key)
-                    pbar.set_postfix(
-                        train=f"{losses['train']:.4f}",
-                        val=f"{losses['val']:.4f}",
-                    )
-                    log.info(
-                        "step %d/%d | train=%.4f val=%.4f bal=%.4f",
-                        step, total_steps,
-                        losses["train"], losses["val"], losses["train_bal"],
-                    )
-                    log_w.writerow(
-                        [
-                            step,
-                            float(losses["train"]),
-                            float(losses["val"]),
-                            float(losses["train_bal"]),
-                            float(losses["val_bal"]),
-                            round(dt, 2),
-                        ]
-                    )
-                    log_f.flush()
-                    if wandb_project is not None:
-                        import wandb
-                        wandb.log({"train_loss": losses["train"], "val_loss": losses["val"], "step": step})
-        finally:
-            pbar.close()
-            log_f.close()
-            if wandb_project is not None:
-                import wandb
-                wandb.finish()
+                    if step % 50 == 0:
+                        t1 = time.time()
+                        dt = (t1 - t0) * 1000 / 50
+                        t0 = t1
+                        losses, key = estimate_loss(key)
+                        pbar.set_postfix(
+                            train=f"{losses['train']:.4f}",
+                            val=f"{losses['val']:.4f}",
+                        )
+                        log.info(
+                            "step %d/%d | train=%.4f val=%.4f bal=%.4f",
+                            step, total_steps,
+                            losses["train"], losses["val"], losses["train_bal"],
+                        )
+                        log_w.writerow(
+                            [
+                                step,
+                                float(losses["train"]),
+                                float(losses["val"]),
+                                float(losses["train_bal"]),
+                                float(losses["val_bal"]),
+                                round(dt, 2),
+                            ]
+                        )
+                        log_f.flush()
+                        if wandb_project is not None:
+                            import wandb
+                            wandb.log({"train_loss": losses["train"], "val_loss": losses["val"], "step": step})
+            finally:
+                pbar.close()
+                if wandb_project is not None:
+                    import wandb
+                    wandb.finish()
 
         weights_path = os.path.join(run_dir, "model_weights.msgpack")
         state_dict = nnx.state(model, nnx.Param).to_pure_dict()

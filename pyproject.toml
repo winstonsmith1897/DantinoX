@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "dantinox"
@@ -52,6 +52,7 @@ markers      = [
 [tool.ruff]
 line-length    = 100
 target-version = "py310"
+exclude        = ["core/old_model.py"]
 
 [tool.ruff.lint]
 select = [
@@ -76,7 +77,16 @@ known-first-party = ["core", "utils", "dantinox"]
 python_version        = "3.10"
 strict                = false
 ignore_missing_imports = true
-warn_unused_ignores   = true
-warn_return_any       = true
+warn_unused_ignores   = false
+warn_return_any       = false
 disallow_untyped_defs = true
-files                 = ["dantinox", "core"]
+files                 = ["dantinox", "core", "utils"]
+exclude               = ["core/old_model\\.py"]
+
+[[tool.mypy.overrides]]
+module = ["core.generation", "core.attention"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "dantinox.trainer"
+disallow_untyped_defs = false

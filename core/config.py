@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, field, fields
-from typing import Any, Optional
+from dataclasses import asdict, dataclass, fields
+from typing import Any
+
 import yaml
 
 
@@ -45,7 +46,7 @@ class Config:
 
     # ── Tokenizer ───────────────────────────────────────────────────────────
     tokenizer_type: str = "char"
-    tokenizer_path: Optional[str] = None
+    tokenizer_path: str | None = None
 
     # ── Dataset ─────────────────────────────────────────────────────────────
     dataset_source: str = "local"
@@ -100,15 +101,15 @@ class Config:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "Config":
+    def from_dict(cls, d: dict[str, Any]) -> Config:
         """Construct a Config from a plain dict, ignoring unknown keys."""
         valid = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in valid})
 
     @classmethod
-    def from_yaml(cls, path: str) -> "Config":
+    def from_yaml(cls, path: str) -> Config:
         """Load a Config from a YAML file (flat or sectioned)."""
-        with open(path, "r") as f:
+        with open(path) as f:
             raw = yaml.safe_load(f)
 
         flat: dict[str, Any] = {}

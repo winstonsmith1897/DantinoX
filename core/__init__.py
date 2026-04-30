@@ -1,11 +1,11 @@
-from .model import Transformer
-from .generation import generate, decode
 from .config import Config
+from .generation import decode, generate
+from .model import Transformer
 
 __all__ = [
-    "Transformer", 
+    "Transformer",
     "Config",
-    "generate", 
+    "generate",
     "decode",
     "build_compute_absolute_pos"
 ]

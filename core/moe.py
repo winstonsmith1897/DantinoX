@@ -1,9 +1,10 @@
 
+import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
-import flax.nnx as nnx
+
 from .config import Config
-from .mlp import MLP 
+from .mlp import MLP
 
 
 class MoE(nnx.Module):
@@ -30,5 +31,4 @@ class MoE(nnx.Module):
             expert_weight = jnp.sum(jnp.where(mask, values, 0), axis=-1, keepdims=True)
             expert_out, _ = self.experts[i](x, deterministic=deterministic)
             y = y + (expert_weight * expert_out)
-        return y, moe_loss 
-            
+        return y, moe_loss
