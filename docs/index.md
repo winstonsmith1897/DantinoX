@@ -9,7 +9,7 @@ hide:
 # DantinoX
 
 <p class="hero-tagline">"E quindi uscimmo a riveder le stelle."</p>
-<p class="hero-sub">A decoder-only Transformer library — built from scratch in JAX and Flax NNX.</p>
+<p class="hero-sub">A decoder-only Transformer library built from scratch in JAX and Flax NNX — MHA, GQA, MLA, MoE, Flash Attention, and more, all from a single config.</p>
 
 [Get Started](architecture.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
@@ -36,13 +36,32 @@ hide:
 
 </div>
 
+<div class="metrics-strip">
+  <div class="metric">
+    <span class="metric-num">3</span>
+    <span class="metric-label">Attention families</span>
+  </div>
+  <div class="metric">
+    <span class="metric-num">62</span>
+    <span class="metric-label">Tests passing</span>
+  </div>
+  <div class="metric">
+    <span class="metric-num">4</span>
+    <span class="metric-label">LR schedules</span>
+  </div>
+  <div class="metric">
+    <span class="metric-num">90+</span>
+    <span class="metric-label">W&B sweep runs</span>
+  </div>
+</div>
+
 <div class="grid cards" markdown>
 
 -   :material-layers-triple-outline: &nbsp;**Three Attention Families**
 
     ---
 
-    MHA, GQA, and **Multi-Head Latent Attention (MLA)** with decoupled RoPE and full weight absorption — all switchable via a single config flag.
+    MHA, GQA, and **Multi-Head Latent Attention (MLA)** with decoupled RoPE and full weight absorption — all switchable via a single config flag. No code edits required.
 
     [:octicons-arrow-right-24: Core Architecture](architecture.md)
 
@@ -50,25 +69,41 @@ hide:
 
     ---
 
-    Static KV cache via `dynamic_update_slice`, `@jax.jit` training loop, and `jax.lax.fori_loop` decode — zero dynamic shapes, zero recompilation.
+    Static KV cache via `dynamic_update_slice`, `@jax.jit` training loop, and optional Flash Attention via `jax.nn.dot_product_attention` — zero dynamic shapes, zero recompilation.
 
     [:octicons-arrow-right-24: Inference & Generation](generation.md)
 
--   :material-chart-bar: &nbsp;**90+ Runs, Fully Benchmarked**
+-   :material-chart-bar: &nbsp;**Fully Benchmarked**
 
     ---
 
-    Bayesian sweeps over 20+ hyperparameters logged to W&B. Results visualised in 2D and 3D across throughput, FLOPs, and KV cache size.
+    Bayesian sweeps over 20+ hyperparameters logged to W&B. Results visualised in 2D and 3D across throughput, FLOPs, KV cache size, and latency.
 
     [:octicons-arrow-right-24: Benchmarks](benchmarks.md)
 
--   :material-package-variant-closed: &nbsp;**Production-Ready Library**
+-   :material-package-variant-closed: &nbsp;**Production-Ready**
 
     ---
 
-    `Trainer`, `Generator`, `BenchmarkRunner`, and `Plotter` with bfloat16, gradient clipping, early stopping, checkpoint resume, `from_pretrained`, 4 LR schedules, batch & streaming generation, and HuggingFace Hub push/pull.
+    `Trainer`, `Generator`, `BenchmarkRunner` — bfloat16, gradient clipping, early stopping, `from_pretrained`, 4 LR schedules, streaming generation, and HuggingFace Hub.
 
     [:octicons-arrow-right-24: API Reference](api.md)
+
+-   :material-math-compass: &nbsp;**Research-Grade Math**
+
+    ---
+
+    MLA weight absorption, NTK-aware RoPE scaling, MoE load-balancing loss, and decoupled positional encoding — all implemented from first principles.
+
+    [:octicons-arrow-right-24: Architecture deep-dive](architecture.md#multi-head-latent-attention-mla)
+
+-   :material-tune: &nbsp;**Zero-Code Configuration**
+
+    ---
+
+    Every component — attention type, normalisation, positional encoding, FFN — is a YAML field in a single `Config` dataclass. Toggle RMSNorm, Flash Attention, or MoE without touching source.
+
+    [:octicons-arrow-right-24: Configuration reference](architecture.md#configuration-reference)
 
 </div>
 
@@ -167,6 +202,17 @@ hide:
     dantinox push --run_dir runs/run_20260101_120000 --repo my-org/dantinox-dante
     dantinox pull --repo my-org/dantinox-dante --local_dir runs/pulled
     ```
+
+---
+
+## Why DantinoX?
+
+Most "from-scratch" Transformer implementations stop at the forward pass. DantinoX goes further:
+
+- **Correct XLA semantics** — static KV cache, no dynamic shapes, no recompilation at decode time.
+- **Real research features** — MLA weight absorption, NTK-aware RoPE scaling, MoE load balancing, Flash Attention — not demos, fully tested.
+- **A library, not a script** — `Trainer`, `Generator`, `BenchmarkRunner`, and a CLI. `pip install` and go.
+- **Auditable** — 62 tests, mypy clean, ruff clean, coverage report in the docs.
 
 ---
 

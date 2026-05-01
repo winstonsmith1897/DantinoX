@@ -1,6 +1,6 @@
 # Core Architecture
 
-DantinoX implements a decoder-only Transformer with a modular design: every major component — attention type, feed-forward network, positional encoding — is toggled via configuration without changing any source code.
+Every major component — attention type, normalisation, feed-forward network, positional encoding — is selected by a single field in `Config`. No subclassing, no source edits.
 
 ---
 
