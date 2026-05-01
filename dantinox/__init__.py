@@ -32,7 +32,7 @@ from dantinox.exceptions import (
     PlotError,
 )
 from dantinox.generator import Generator
-from dantinox.hub import pull, push
+from dantinox.hub import pull, push, resolve_checkpoint
 from dantinox.plotting import Plotter
 from dantinox.trainer import Trainer
 
@@ -51,6 +51,7 @@ __all__ = [
     "Plotter",
     "push",
     "pull",
+    "resolve_checkpoint",
     # exceptions
     "DantinoXError",
     "ConfigError",

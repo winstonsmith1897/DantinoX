@@ -90,7 +90,7 @@ def _sample_logit(
 # ── Checkpoint loader ─────────────────────────────────────────────────────────
 
 def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Tokenizer]:
-    """Return (config, model, tokenizer) loaded from a run directory."""
+    """Return (config, model, tokenizer) loaded from a local run directory."""
     config_path = os.path.join(run_dir, "config.yaml")
     weights_path = os.path.join(run_dir, "model_weights.msgpack")
 
@@ -172,30 +172,50 @@ class Generator:
     """
     Loads a trained DantinoX checkpoint and generates text.
 
+    Accepts either a **local run directory** or a **HuggingFace Hub repo ID**
+    — the checkpoint is downloaded automatically when needed.
+
     Parameters
     ----------
     run_dir : str
-        Path to a training run directory containing ``config.yaml`` and
-        ``model_weights.msgpack``.
+        Local path produced by ``Trainer.fit()`` **or** a Hub repo ID such
+        as ``"my-org/dantinox-dante"``.
     seed : int
         RNG seed used for sampling (default 42).
+    token : str, optional
+        HuggingFace access token for private repositories.
+    revision : str, optional
+        Branch, tag, or commit SHA to download from the Hub.
 
     Raises
     ------
     CheckpointError
-        If the run directory or config cannot be loaded.
+        If the checkpoint cannot be found locally or downloaded from the Hub.
 
     Examples
     --------
-    >>> gen = Generator("runs/run_20260101_120000")
+    >>> gen = Generator("runs/run_20260101_120000")          # local
+    >>> gen = Generator("my-org/dantinox-dante")             # HF Hub
+    >>> gen = Generator("my-org/private-model", token="hf_…")  # private Hub
     >>> text = gen.generate("Nel mezzo del cammin ")
     >>> print(text)
     """
 
-    def __init__(self, run_dir: str, *, seed: int = 42) -> None:
-        self.run_dir = run_dir
+    def __init__(
+        self,
+        run_dir: str,
+        *,
+        seed: int = 42,
+        token: str | None = None,
+        revision: str | None = None,
+    ) -> None:
+        from dantinox.hub import resolve_checkpoint
+
         self.seed = seed
-        self.config, self.model, self.tokenizer = _load_checkpoint(run_dir, seed)
+        # Resolve once: download from Hub if needed, then use the local path
+        local_dir = resolve_checkpoint(run_dir, token=token, revision=revision)
+        self.run_dir = local_dir
+        self.config, self.model, self.tokenizer = _load_checkpoint(local_dir, seed)
 
     def __repr__(self) -> str:
         attn = "MLA" if self.config.mla else ("GQA" if self.config.kv_heads < self.config.n_heads else "MHA")

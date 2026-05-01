@@ -100,28 +100,40 @@ class Transformer(nnx.Module, pytree=False):
     @classmethod
     def from_pretrained(
         cls,
-        run_dir: str,
+        path_or_repo: str,
         rngs: nnx.Rngs | None = None,
         *,
         best: bool = True,
+        token: str | None = None,
+        revision: str | None = None,
     ) -> Transformer:
-        """Load a trained Transformer from a run directory.
+        """Load a trained Transformer from a local directory or HuggingFace Hub.
 
         Parameters
         ----------
-        run_dir:
-            Path produced by ``Trainer.fit()`` — must contain ``config.yaml``
-            and either ``best_model_weights.msgpack`` or ``model_weights.msgpack``.
+        path_or_repo:
+            Local path produced by ``Trainer.fit()`` **or** a Hub repo ID such
+            as ``"my-org/dantinox-dante"``.  The checkpoint is downloaded
+            automatically when a Hub ID is given.
         rngs:
             PRNG state for initialisation. Defaults to ``nnx.Rngs(0)``.
         best:
             When ``True`` (default), loads ``best_model_weights.msgpack``
             if it exists, otherwise falls back to ``model_weights.msgpack``.
+        token:
+            HuggingFace access token for private repositories.
+        revision:
+            Branch, tag, or commit SHA to download from the Hub.
         """
         import contextlib
         import os
 
         import msgpack
+
+        # Lazy import to avoid circular dependency (core ← dantinox)
+        from dantinox.hub import resolve_checkpoint  # type: ignore[import]
+
+        run_dir = resolve_checkpoint(path_or_repo, token=token, revision=revision)
 
         if rngs is None:
             rngs = nnx.Rngs(0)

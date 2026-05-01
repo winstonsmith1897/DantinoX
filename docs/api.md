@@ -57,10 +57,23 @@ The `dantinox` package exposes five classes and two functions that cover the ful
 
 ### Hub
 
-Push and pull checkpoints to/from HuggingFace Hub.
+Push, pull, and directly load checkpoints from HuggingFace Hub.
 
 !!! tip "Optional dependency"
     Install with `pip install "dantinox[hub]"` or `pip install huggingface-hub`.
+
+!!! example "Direct loading — no pull step needed"
+    ```python
+    from dantinox import Generator
+    from core import Transformer
+
+    gen   = Generator("my-org/dantinox-dante")                    # downloads + loads
+    model = Transformer.from_pretrained("my-org/dantinox-dante")  # same, no tokenizer
+    ```
+
+::: dantinox.hub.resolve_checkpoint
+
+---
 
 ::: dantinox.hub.push
 

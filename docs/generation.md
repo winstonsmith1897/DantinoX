@@ -16,19 +16,22 @@ All modes use the static pre-allocated KV cache — zero dynamic shapes, zero re
 
 ## Loading a Checkpoint
 
+`Generator` accepts either a **local run directory** or a **HuggingFace Hub repo ID**:
+
 ```python
 from dantinox import Generator
 
-gen = Generator("runs/run_20260101_120000")
+gen = Generator("runs/run_20260101_120000")          # local
+gen = Generator("my-org/dantinox-dante")             # Hub — downloads automatically
+gen = Generator("my-org/private-model", token="hf_…")  # private Hub repo
 ```
 
-`Generator` loads `config.yaml`, `tokenizer.json`, and `model_weights.msgpack` from the run directory. The tokenizer vocabulary is read from the saved JSON — the original corpus is **not required**.
+`Generator` loads `config.yaml`, `tokenizer.json`, and `model_weights.msgpack`. The tokenizer vocabulary is read from the saved JSON — the original corpus is **not required**.
 
 ```bash
-# CLI equivalent
-dantinox generate \
-  --run_dir runs/run_20260101_120000 \
-  --prompt "Nel mezzo del cammin "
+# CLI (local only — pull from Hub first if needed)
+dantinox pull --repo my-org/dantinox-dante --local_dir runs/pulled
+dantinox generate --run_dir runs/pulled --prompt "Nel mezzo del cammin "
 ```
 
 !!! note "MLA checkpoints"
@@ -144,24 +147,56 @@ for pos in range(T, T + max_new_tokens - 1):
 
 ## HuggingFace Hub
 
-Share a trained checkpoint on the Hub and load it anywhere:
+### Direct loading (recommended)
 
-```bash
-# Upload
-dantinox push --run_dir runs/run_20260101_120000 --repo my-org/dantinox-dante
-
-# Download on another machine
-dantinox pull --repo my-org/dantinox-dante --local_dir runs/pulled
-```
+Pass a Hub repo ID anywhere you would pass a run directory — `Generator` and `Transformer.from_pretrained` download the checkpoint automatically:
 
 ```python
-from dantinox import push, pull, Generator
+from dantinox import Generator
+from core import Transformer
 
-push("runs/run_20260101_120000", "my-org/dantinox-dante", private=False)
-
-run_dir = pull("my-org/dantinox-dante")
-gen = Generator(run_dir)
+# Generator — download + load in one call
+gen = Generator("my-org/dantinox-dante")
 print(gen.generate("Nel mezzo del cammin "))
+
+# Private repo — pass a token
+gen = Generator("my-org/private-model", token="hf_…")
+
+# Specific branch/tag/commit
+gen = Generator("my-org/dantinox-dante", revision="v1.0")
+
+# Raw model for custom inference or fine-tuning
+model = Transformer.from_pretrained("my-org/dantinox-dante")
+model = Transformer.from_pretrained("my-org/dantinox-dante", token="hf_…", revision="v1.0")
+```
+
+```bash
+# CLI — pull first, then generate
+dantinox pull --repo my-org/dantinox-dante --local_dir runs/pulled
+dantinox generate --run_dir runs/pulled --prompt "Nel mezzo del cammin "
+```
+
+### Sharing a checkpoint
+
+```bash
+# Upload from CLI
+dantinox push --run_dir runs/run_20260101_120000 --repo my-org/dantinox-dante
+
+# Or from Python
+from dantinox import push
+push("runs/run_20260101_120000", "my-org/dantinox-dante", private=False)
+```
+
+### Low-level resolver
+
+`resolve_checkpoint` is exposed for custom pipelines — it returns a local path for either a local directory or a Hub repo ID:
+
+```python
+from dantinox import resolve_checkpoint
+
+local_path = resolve_checkpoint("my-org/dantinox-dante")          # downloads if needed
+local_path = resolve_checkpoint("runs/run_20260101_120000")        # returns unchanged
+local_path = resolve_checkpoint("my-org/model", token="hf_…", revision="v1.0")
 ```
 
 ---

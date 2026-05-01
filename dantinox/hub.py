@@ -20,10 +20,44 @@ Python API:
 from __future__ import annotations
 
 import logging
+import os
 
 log = logging.getLogger(__name__)
 
 _UPLOAD_IGNORE = ["*.log", "__pycache__/", "*.pyc"]
+
+
+def resolve_checkpoint(
+    path_or_repo: str,
+    *,
+    token: str | None = None,
+    revision: str | None = None,
+) -> str:
+    """Return a local directory path for *path_or_repo*.
+
+    If *path_or_repo* is an existing local directory it is returned unchanged.
+    Otherwise it is treated as a HuggingFace Hub repo ID (e.g.
+    ``"my-org/dantinox-dante"``) and the checkpoint is downloaded via
+    :func:`pull` before returning the local cache path.
+
+    Parameters
+    ----------
+    path_or_repo:
+        Local run directory **or** HuggingFace Hub repo ID.
+    token:
+        HuggingFace access token for private repositories.
+    revision:
+        Branch, tag, or commit SHA to download.
+
+    Returns
+    -------
+    str
+        Absolute path to a local directory suitable for passing to
+        ``Generator()``, ``Transformer.from_pretrained()``, etc.
+    """
+    if os.path.isdir(path_or_repo):
+        return path_or_repo
+    return pull(path_or_repo, token=token, revision=revision)
 
 
 def push(

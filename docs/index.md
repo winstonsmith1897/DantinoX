@@ -87,7 +87,7 @@ hide:
 
     ---
 
-    `Trainer`, `Generator`, `BenchmarkRunner` — bfloat16, gradient clipping, early stopping, `from_pretrained`, 4 LR schedules, streaming generation, and HuggingFace Hub.
+    `Trainer`, `Generator`, `BenchmarkRunner` — bfloat16, gradient clipping, early stopping, `from_pretrained`, 4 LR schedules, streaming generation, and HuggingFace Hub direct loading (`Generator("owner/repo")`).
 
     [:octicons-arrow-right-24: API Reference](api.md)
 
@@ -175,22 +175,27 @@ hide:
 
     # 6. Load model directly for custom inference / fine-tuning
     from core import Transformer
-    model = Transformer.from_pretrained(run_dir)   # loads config + best weights
+    model = Transformer.from_pretrained(run_dir)   # local
+    model = Transformer.from_pretrained("my-org/dantinox-dante")  # HF Hub — downloads automatically
 
-    # 7. LoRA fine-tuning — only adapter params are trained (~0.2% of total)
+    # 7. Load directly from the Hub — no pull step needed
+    gen_hub = Generator("my-org/dantinox-dante")           # public repo
+    gen_prv = Generator("my-org/private", token="hf_…")    # private repo
+    print(gen_hub.generate("Nel mezzo del cammin "))
+
+    # 8. LoRA fine-tuning — only adapter params are trained (~0.2% of total)
     ft_config = Config.from_yaml(f"{run_dir}/config.yaml")
     ft_config.use_lora = True; ft_config.lora_rank = 8; ft_config.lora_targets = "attention"
     ft_run = Trainer(ft_config).fit("data/finetune.txt")
 
-    # 8. Multi-GPU data-parallel — set n_devices, everything else is automatic
+    # 9. Multi-GPU data-parallel — set n_devices, everything else is automatic
     config_4gpu = Config(dim=512, n_heads=16, head_size=32, num_blocks=8,
                          batch_size=256, n_devices=4)
     Trainer(config_4gpu).fit("data/corpus.txt")
 
-    # 9. Push to HuggingFace Hub / pull on another machine
-    from dantinox import push, pull
+    # 10. Push to HuggingFace Hub
+    from dantinox import push
     push(run_dir, "my-org/dantinox-dante", private=False)
-    run_dir = pull("my-org/dantinox-dante")
     ```
 
 === "CLI"
