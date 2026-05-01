@@ -299,7 +299,7 @@ class Attention(nnx.Module):
                 y       = y * jax.nn.sigmoid(self.W(x))
                 out     = self.o_proj(y)
             else:
-                W_o  = self.o_proj.kernel.reshape(
+                W_o  = self.o_proj.kernel.reshape(  # type: ignore[union-attr]
                     self.kv_heads, self.n_heads // self.kv_heads, self.head_size, self.dim
                 )
                 W_vo = jnp.einsum("dnh, nghc -> dngc", W_v, W_o)

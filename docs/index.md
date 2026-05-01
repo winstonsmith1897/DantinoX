@@ -177,7 +177,17 @@ hide:
     from core import Transformer
     model = Transformer.from_pretrained(run_dir)   # loads config + best weights
 
-    # 7. Push to HuggingFace Hub / pull on another machine
+    # 7. LoRA fine-tuning — only adapter params are trained (~0.2% of total)
+    ft_config = Config.from_yaml(f"{run_dir}/config.yaml")
+    ft_config.use_lora = True; ft_config.lora_rank = 8; ft_config.lora_targets = "attention"
+    ft_run = Trainer(ft_config).fit("data/finetune.txt")
+
+    # 8. Multi-GPU data-parallel — set n_devices, everything else is automatic
+    config_4gpu = Config(dim=512, n_heads=16, head_size=32, num_blocks=8,
+                         batch_size=256, n_devices=4)
+    Trainer(config_4gpu).fit("data/corpus.txt")
+
+    # 9. Push to HuggingFace Hub / pull on another machine
     from dantinox import push, pull
     push(run_dir, "my-org/dantinox-dante", private=False)
     run_dir = pull("my-org/dantinox-dante")
@@ -240,12 +250,12 @@ Most "from-scratch" Transformer implementations stop at the forward pass. Dantin
 
 | | Page | What you'll find |
 | :--- | :--- | :--- |
-| :material-layers-outline: | [Core Architecture](architecture.md) | Attention types, math, full configuration reference, implementation deep-dives |
-| :material-school-outline: | [Training & Sweeps](training.md) | bfloat16, grad clipping, early stopping, resume, LR finder, W&B sweeps |
+| :material-layers-outline: | [Core Architecture](architecture.md) | Attention types, math, LoRA, multi-GPU, full config reference |
+| :material-school-outline: | [Training & Sweeps](training.md) | bfloat16, grad clipping, early stopping, resume, LR finder, LoRA fine-tuning, multi-GPU |
 | :material-play-box-outline: | [Inference & Generation](generation.md) | Single, batch & streaming generation, KV-cache pipeline, sampling strategies |
 | :material-chart-scatter-plot: | [Benchmarks](benchmarks.md) | MHA vs GQA vs MLA — throughput, cache size, FLOPs, 3D surfaces |
 | :material-microscope: | [Ablation Studies](ablation_studies.md) | Optimizer, MoE, positional encoding, regularization |
-| :material-book-open-outline: | [API Reference](api.md) | `Trainer`, `Generator`, `BenchmarkRunner`, `Plotter`, Hub, and core modules |
+| :material-book-open-outline: | [API Reference](api.md) | `Trainer`, `Generator`, `LoRALinear`, sharding utils, `BenchmarkRunner`, Hub |
 
 ---
 

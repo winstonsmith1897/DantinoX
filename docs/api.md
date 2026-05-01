@@ -105,6 +105,39 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 ---
 
+### LoRA Adapters
+
+`LoRAParam` is a distinct NNX variable type that freezes base weights at the type level. `LoRALinear` is a drop-in replacement for `nnx.Linear` with a trainable low-rank delta.
+
+::: core.lora.LoRAParam
+    options:
+      show_source: true
+
+::: core.lora.LoRALinear
+    options:
+      show_source: true
+      members:
+        - __init__
+        - __call__
+        - merge_weights
+
+---
+
+### Sharding Utilities
+
+SPMD data-parallel helpers built on `jax.sharding`. Pass `n_devices` in `Config` to activate automatically, or call these directly for custom sharding strategies.
+
+::: core.sharding
+    options:
+      show_source: true
+      members:
+        - make_mesh
+        - replicate
+        - shard_batch
+        - num_devices
+
+---
+
 ### Configuration
 
 The `Config` dataclass is the single source of truth for all architectural and training hyperparameters.

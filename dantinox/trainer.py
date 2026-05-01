@@ -380,9 +380,10 @@ class Trainer:
                     x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
                     graphdef, state = nnx.split((model, optimizer, metrics))
                     if use_multi_gpu:
-                        state = replicate(state, mesh)  # type: ignore[arg-type]
-                        x = shard_batch(x, mesh)        # type: ignore[arg-type]
-                        y = shard_batch(y, mesh)        # type: ignore[arg-type]
+                        assert mesh is not None
+                        state = replicate(state, mesh)
+                        x = shard_batch(x, mesh)
+                        y = shard_batch(y, mesh)
                     _, _, new_state = train_step(graphdef, state, x, y)
                     nnx.update((model, optimizer, metrics), new_state)
 

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TypeVar
+
 import jax
 import numpy as np
 from jax.sharding import Mesh, NamedSharding
 from jax.sharding import PartitionSpec as P
+
+_T = TypeVar("_T")
 
 
 def make_mesh(n_devices: int = 0) -> Mesh:
@@ -20,13 +24,13 @@ def make_mesh(n_devices: int = 0) -> Mesh:
     return Mesh(np.array(devices), axis_names=("data",))
 
 
-def replicate(pytree: object, mesh: Mesh) -> object:
+def replicate(pytree: _T, mesh: Mesh) -> _T:
     """Copy *pytree* to every device in *mesh* (no sharding on any axis)."""
     sharding = NamedSharding(mesh, P())
     return jax.device_put(pytree, sharding)
 
 
-def shard_batch(pytree: object, mesh: Mesh) -> object:
+def shard_batch(pytree: _T, mesh: Mesh) -> _T:
     """Shard *pytree* along its leading (batch) axis across all devices in *mesh*."""
     sharding = NamedSharding(mesh, P("data"))
     return jax.device_put(pytree, sharding)

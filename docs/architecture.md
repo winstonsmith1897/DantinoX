@@ -284,13 +284,26 @@ All parameters live in a single `Config` dataclass and are loaded from YAML. CLI
 
     training:
       lr: 0.0015                    # Peak learning rate (cosine decay)
-      batch_size: 64                # Per-device batch size
+      batch_size: 64                # Total batch size (must be divisible by n_devices)
       grad_accum: 4                 # Gradient accumulation steps
       seed: 42
       optimizer: "adamw"            # "adamw", "adafactor", or "lion"
       epochs: 100
       warmup_steps: 0               # Linear LR warmup steps
       lr_schedule: "cosine"         # LR schedule after warmup: "cosine" | "linear" | "constant" | "wsd"
+      grad_clip: 1.0                # Gradient clipping max norm (0 = disabled)
+      patience: 0                   # Early stopping patience (0 = disabled)
+      use_bf16: false               # Cast parameters to bfloat16
+
+    lora:
+      use_lora: false               # Enable LoRA adapters (freezes base nnx.Param weights)
+      lora_rank: 8                  # Adapter rank r (smaller = fewer params)
+      lora_alpha: 16.0              # Scaling constant α (effective scale = α / r)
+      lora_dropout: 0.0             # Dropout on the LoRA δ path
+      lora_targets: "attention"     # Which layers to adapt: "attention" | "mlp" | "all"
+
+    multi_gpu:
+      n_devices: 0                  # GPUs to use: 0 = all available, 1 = single-device
 
     generation:
       use_cache: true               # Static KV cache for autoregressive decode
@@ -331,6 +344,104 @@ logits, kv_caches, aux_loss = model(x, ...)
 | `logits` | `jnp.ndarray [B, T, V]` | Token logits |
 | `kv_caches` | `tuple` | Per-layer KV/latent caches |
 | `aux_loss` | `float` | MoE load-balancing loss (0.0 for dense models) |
+
+---
+
+## LoRA Fine-Tuning
+
+LoRA (Hu et al. 2022) inserts a trainable low-rank delta alongside each frozen linear projection. The effective weight is:
+
+\[
+W_{\text{eff}} = \underbrace{W_{\text{base}}}_{\text{frozen}} + \underbrace{\frac{\alpha}{r} \cdot A B}_{\text{trainable}}
+\]
+
+where \(A \in \mathbb{R}^{d \times r}\) is initialised with scaled Gaussian noise and \(B \in \mathbb{R}^{r \times k}\) is zero-initialised, so the adapter contributes nothing at the start of fine-tuning.
+
+### Type-Level Freezing
+
+DantinoX uses a custom `LoRAParam(nnx.Variable)` subclass — distinct from `nnx.Param` — to freeze base weights **at the type level**, not by masking or filtering:
+
+```python
+optimizer = nnx.Optimizer(model, tx, wrt=LoRAParam)          # only LoRAParam updated
+grad_fn   = nnx.value_and_grad(loss, argnums=DiffState(0, LoRAParam))  # only LoRA grads
+```
+
+No `stop_gradient`, no manual filtering — the type system enforces the freeze.
+
+### LoRALinear
+
+`LoRALinear` is a drop-in replacement for `nnx.Linear`:
+
+```python
+from core.lora import LoRALinear, LoRAParam
+
+layer = LoRALinear(in_features=512, out_features=512, rank=8, alpha=16.0, rngs=rngs)
+
+# Forward: W_base(x) + (alpha/r) * dropout(x @ A) @ B
+y = layer(x)
+
+# Merge delta into base weight for deployment (zero inference overhead)
+merged_kernel = layer.merge_weights()   # shape (in, out)
+```
+
+### Targets
+
+| `lora_targets` | Adapted layers |
+|---|---|
+| `"attention"` | `qkv`, `o_proj` in every `Attention` block |
+| `"mlp"` | `up_proj`, `down_proj` in every `MLP` block |
+| `"all"` | All of the above |
+
+### Trainable parameter count
+
+With `lora_rank=8`, a 512-dim model adapting only attention projections trains ≈ 0.2 % of total parameters — practical fine-tuning on a single GPU.
+
+---
+
+## Multi-GPU Data-Parallel Sharding
+
+DantinoX uses JAX's SPMD sharding (`jax.sharding.Mesh`) for data-parallel training. There is no `pmap`, no manual `jax.lax.pmean` — XLA infers and fuses the AllReduce automatically.
+
+### Sharding strategy
+
+| What | Sharding | Why |
+|---|---|---|
+| Model weights | `NamedSharding(mesh, P())` — replicated | Every device needs the full model for the forward pass |
+| Input batch | `NamedSharding(mesh, P("data"))` — split on axis 0 | Each device processes a different slice |
+| Gradients | Automatically AllReduced by XLA | `@jax.jit` compiles a single SPMD program |
+
+```
+Device 0 │ batch slice 0 → forward → ∂L/∂W ──┐
+Device 1 │ batch slice 1 → forward → ∂L/∂W ──┤ AllReduce → W_new (replicated)
+Device 2 │ batch slice 2 → forward → ∂L/∂W ──┤
+Device 3 │ batch slice 3 → forward → ∂L/∂W ──┘
+```
+
+### Usage
+
+Set `n_devices` in config — everything else is automatic:
+
+```python
+config = Config(
+    dim=512, n_heads=16, head_size=32, num_blocks=8,
+    batch_size=256,   # total; split to 64 per GPU across 4 devices
+    n_devices=4,
+)
+Trainer(config).fit("data/corpus.txt")
+```
+
+**Constraint:** `batch_size % n_devices == 0`. Checked at startup.
+
+### Low-level API
+
+```python
+from core.sharding import make_mesh, replicate, shard_batch, num_devices
+
+mesh = make_mesh(n_devices=4)                # jax.sharding.Mesh over 4 GPUs
+state_replicated = replicate(model_state, mesh)
+x_sharded        = shard_batch(x, mesh)     # x.shape = (batch, seq_len)
+print(num_devices(mesh))                    # 4
+```
 
 ---
 
