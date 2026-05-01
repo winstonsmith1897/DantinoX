@@ -23,19 +23,26 @@ env/
 .ipynb_checkpoints/
 *.ipynb
 
+# ── Tool caches ──────────────────────────────────────────────────────────────
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
 # ── JAX / XLA cache ──────────────────────────────────────────────────────────
 jax_cache/
 
 # ── Model checkpoints & training artefacts ───────────────────────────────────
 runs/
+runs_test_simulation/
 *.msgpack
 *.bin
 *.safetensors
 
-# ── Benchmark results & generated plots ──────────────────────────────────────
+# ── Benchmark / run results (generated; committed copies live in docs/assets/) ──
+results/
 benchmark_results.csv
 batch_sweep_results.csv
-plots/
+/plots/
 
 # ── Logs & metrics ───────────────────────────────────────────────────────────
 training_log.csv
@@ -63,13 +70,22 @@ wandb/
 *~
 
 # ── Scratchpad / one-off scripts not part of the library ─────────────────────
+# (benchmark_analysis.py and benchmark_batch_sweep.py are tracked thin stubs)
 analyze_dataset.py
 analyze_runs.py
-benchmark_analysis.py
+benchmark.py
+generate.py
+train.py
 plot.py
+plot_3d.py
+plot_3d_dkv.py
 plot_compression.py
+plot_insights.py
 plot_linkedin.py
+plot_perf.py
 plot_results.py
 plot_sweeps.py
+train_sweep.py
+train_sweep_attention_comparison.py
 core/old_model.py
 test.py

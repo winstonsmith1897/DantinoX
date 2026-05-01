@@ -214,6 +214,52 @@ def _cmd_benchmark(args: argparse.Namespace) -> None:
         print("\n" + df[cols].to_string(index=False))
 
 
+def _cmd_infbench(args: argparse.Namespace) -> None:
+    """Delegate to benchmarks/run_all.py (subprocess keeps JAX state isolated)."""
+    import subprocess
+    from pathlib import Path
+
+    run_all = Path(__file__).resolve().parent.parent / "benchmarks" / "run_all.py"
+    if not run_all.exists():
+        print(f"Error: {run_all} not found — is the repo intact?", file=sys.stderr)
+        sys.exit(1)
+
+    cmd = [sys.executable, str(run_all),
+           "--out-csv", args.out_csv,
+           "--out-dir", args.out_dir,
+           "--n-warmup", str(args.n_warmup),
+           "--n-trials", str(args.n_trials)]
+    if args.groups:
+        cmd += ["--groups"] + args.groups
+    if getattr(args, "device", None):
+        cmd += ["--device", args.device]
+    if args.sweep_only:
+        cmd += ["--sweep-only"]
+    if args.plot_only:
+        cmd += ["--plot-only"]
+    if args.verbose:
+        cmd += ["--verbose"]
+    if getattr(args, "trained", False):
+        cmd += ["--trained"]
+    if getattr(args, "inference_off", False):
+        cmd += ["--inference-off"]
+    if getattr(args, "runs_dir", None):
+        cmd += ["--runs-dir", args.runs_dir]
+    if getattr(args, "trained_csv", None):
+        cmd += ["--trained-csv", args.trained_csv]
+    if getattr(args, "trained_plot", None):
+        cmd += ["--trained-plot", args.trained_plot]
+    if getattr(args, "batch_csv", None):
+        cmd += ["--batch-csv", args.batch_csv]
+    if getattr(args, "batch_sizes", None):
+        cmd += ["--batch-sizes"] + [str(b) for b in args.batch_sizes]
+    if getattr(args, "batch_seq_len", None):
+        cmd += ["--batch-seq-len", str(args.batch_seq_len)]
+
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
 # ─── argument parser ────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -293,6 +339,62 @@ def _build_parser() -> argparse.ArgumentParser:
     p_pull.add_argument("--token", default=None, help="HuggingFace access token")
     p_pull.add_argument("--revision", default=None, help="Branch, tag, or commit SHA")
 
+    # ── infbench ───────────────────────────────────────────────────────────────
+    p_ib = sub.add_parser(
+        "infbench",
+        help="Run the full benchmark suite: inference sweep + optional trained-model pipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Benchmark pipeline:\n"
+            "  Stage 1  benchmarks/inference_sweep.py   →  CSV          (random-model sweep)\n"
+            "  Stage 2  benchmarks/plot_inference.py    →  21 PNG plots\n"
+            "  Stage 3  benchmarks/trained_analysis.py  →  CSV          (real trained runs)\n"
+            "  Stage 4  benchmarks/trained_batch_sweep.py→  CSV         (tps vs batch size)\n\n"
+            "Stages 3-4 only run when --trained is passed.\n\n"
+            "Examples:\n"
+            "  dantinox infbench\n"
+            "  dantinox infbench --trained\n"
+            "  dantinox infbench --trained --inference-off\n"
+            "  dantinox infbench --groups attention_type scale --n-trials 5\n"
+            "  dantinox infbench --plot-only --out-csv results/inference_sweep.csv\n"
+            "  dantinox infbench --device 1"
+        ),
+    )
+    p_ib.add_argument("--out-csv", default="results/inference_sweep.csv", metavar="PATH",
+                      help="CSV output path (default: results/inference_sweep.csv)")
+    p_ib.add_argument("--out-dir", default="results/plots/", metavar="DIR",
+                      help="Directory for plot PNGs (default: results/plots/)")
+    p_ib.add_argument("--groups", nargs="+", metavar="GROUP",
+                      help="Restrict sweep to these groups (default: all 13)")
+    p_ib.add_argument("--n-warmup", type=int, default=3, metavar="N",
+                      help="Warm-up reps per experiment (default: 3)")
+    p_ib.add_argument("--n-trials", type=int, default=10, metavar="N",
+                      help="Measured reps per experiment (default: 10)")
+    p_ib.add_argument("--device", default=None, metavar="N",
+                      help="CUDA device index for CUDA_VISIBLE_DEVICES (default: env)")
+    p_ib.add_argument("--sweep-only", action="store_true",
+                      help="Run sweep only, skip plotting")
+    p_ib.add_argument("--plot-only", action="store_true",
+                      help="Skip sweep, re-plot existing --out-csv")
+    p_ib.add_argument("--verbose", action="store_true",
+                      help="Print per-experiment metrics during the sweep")
+    p_ib.add_argument("--trained", action="store_true",
+                      help="Also run the trained-model pipeline (stages 3 and 4)")
+    p_ib.add_argument("--inference-off", action="store_true",
+                      help="Skip inference pipeline; requires --trained")
+    p_ib.add_argument("--runs-dir", default="runs", metavar="DIR",
+                      help="Directory of trained run subdirs (default: runs)")
+    p_ib.add_argument("--trained-csv", default="results/benchmark_results.csv", metavar="PATH",
+                      help="Output CSV for trained-model analysis (default: results/benchmark_results.csv)")
+    p_ib.add_argument("--trained-plot", default="results/plots/trained_analysis.png", metavar="PATH",
+                      help="Output PNG for trained-model analysis")
+    p_ib.add_argument("--batch-csv", default="results/batch_sweep_results.csv", metavar="PATH",
+                      help="Output CSV for batch sweep (default: results/batch_sweep_results.csv)")
+    p_ib.add_argument("--batch-sizes", nargs="+", type=int, metavar="N",
+                      help="Batch sizes for the batch sweep (default: 1 2 4 8 16 32 64)")
+    p_ib.add_argument("--batch-seq-len", type=int, default=512, metavar="N",
+                      help="Fixed sequence length for the batch sweep (default: 512)")
+
     # ── plot ────────────────────────────────────────────────────────────────
     p_plot = sub.add_parser("plot", help="Generate benchmark plots from a results CSV")
     p_plot.add_argument("--in_csv", default="benchmark_results.csv",
@@ -322,6 +424,7 @@ def main(argv: list[str] | None = None) -> None:
         "generate":  _cmd_generate,
         "sweep":     _cmd_sweep,
         "benchmark": _cmd_benchmark,
+        "infbench":  _cmd_infbench,
         "plot":      _cmd_plot,
         "find-lr":   _cmd_find_lr,
         "push":      _cmd_push,

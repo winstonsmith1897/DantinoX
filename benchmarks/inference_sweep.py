@@ -48,7 +48,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # override with --device or env
 
 import jax
 import jax.numpy as jnp
@@ -526,7 +526,7 @@ ALL_GROUPS: list[str] = sorted({e["group"] for e in EXPERIMENTS})
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="DantinoX comprehensive inference benchmark sweep.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -541,7 +541,7 @@ def main() -> None:
     parser.add_argument("--n-warmup", type=int, default=N_WARMUP)
     parser.add_argument("--n-trials", type=int, default=N_TRIALS)
     parser.add_argument("--verbose", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.list_groups:
         print("Available groups:")

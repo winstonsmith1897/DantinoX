@@ -1,4 +1,4 @@
-.PHONY: help install test lint typecheck check build publish clean
+.PHONY: help install test lint typecheck check build publish clean infbench trained-bench
 
 PYTHON  ?= python
 PACKAGE  = dantinox
@@ -11,6 +11,8 @@ help:
 	@echo "  make lint       Lint with ruff"
 	@echo "  make typecheck  Type-check with mypy"
 	@echo "  make check      lint + typecheck + test (run before every push)"
+	@echo "  make infbench       Run full inference benchmark suite (sweep + 21 plots)"
+	@echo "  make trained-bench  Run trained-model benchmark pipeline (analysis + batch sweep)"
 	@echo "  make build      Build sdist + wheel into dist/"
 	@echo "  make publish    Publish dist/ to PyPI (requires twine + credentials)"
 	@echo "  make clean      Remove build artefacts"
@@ -37,6 +39,12 @@ build:
 publish: build
 	twine check dist/*
 	twine upload dist/*
+
+infbench:
+	$(PYTHON) benchmarks/run_all.py
+
+trained-bench:
+	$(PYTHON) benchmarks/run_all.py --trained --inference-off
 
 clean:
 	rm -rf dist/ build/ *.egg-info
