@@ -75,6 +75,16 @@ class Config:
     # ── LR schedule ──────────────────────────────────────────────────────────
     lr_schedule: str = "cosine"      # "cosine" | "linear" | "constant" | "wsd"
 
+    # ── LoRA fine-tuning ──────────────────────────────────────────────────────
+    use_lora: bool = False
+    lora_rank: int = 8
+    lora_alpha: float = 16.0
+    lora_dropout: float = 0.0
+    lora_targets: str = "attention"  # "attention" | "mlp" | "all"
+
+    # ── Multi-GPU data-parallel ───────────────────────────────────────────────
+    n_devices: int = 0               # 0 = use all available local devices
+
     # ── Logging & Metrics ───────────────────────────────────────────────────
     eval_iters: int = 20
     log_file: str = "training_log.csv"
@@ -111,6 +121,14 @@ class Config:
             raise ValueError(
                 f"rope_scale_factor must be > 0, got {self.rope_scale_factor}"
             )
+        if self.lora_targets not in ("attention", "mlp", "all"):
+            raise ValueError(
+                f"lora_targets must be 'attention', 'mlp', or 'all', got {self.lora_targets!r}"
+            )
+        if self.lora_rank < 1:
+            raise ValueError(f"lora_rank must be >= 1, got {self.lora_rank}")
+        if self.n_devices < 0:
+            raise ValueError(f"n_devices must be >= 0, got {self.n_devices}")
 
     def __repr__(self) -> str:
         attn = "MLA" if self.mla else ("GQA" if self.kv_heads < self.n_heads else "MHA")

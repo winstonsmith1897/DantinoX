@@ -12,10 +12,13 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import nnx
+from flax.nnx.transforms.autodiff import DiffState
 from tqdm import tqdm
 
 from core.config import Config
+from core.lora import LoRAParam
 from core.model import Transformer
+from core.sharding import make_mesh, num_devices, replicate, shard_batch
 from dantinox.exceptions import ConfigError
 from utils.helpers import compute_loss, get_batch
 from utils.tokenizer import get_tokenizer, load_tokenizer_from_file
@@ -243,7 +246,25 @@ class Trainer:
         if getattr(config, "use_bf16", False):
             _cast_params(model, jnp.bfloat16)
             log.info("Model cast to bfloat16")
-        optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+
+        # LoRA: only train adapter params; base weights are frozen nnx.Param
+        wrt_type = LoRAParam if getattr(config, "use_lora", False) else nnx.Param
+        optimizer = nnx.Optimizer(model, tx, wrt=wrt_type)
+
+        # Multi-GPU: build a data-parallel mesh when more than one device is requested
+        n_dev_cfg = getattr(config, "n_devices", 0)
+        import jax as _jax
+        n_local = len(_jax.local_devices())
+        use_multi_gpu = (n_dev_cfg != 1) and n_local > 1
+        mesh = make_mesh(n_dev_cfg) if use_multi_gpu else None
+        if use_multi_gpu:
+            n_dev = num_devices(mesh)  # type: ignore[arg-type]
+            if config.batch_size % n_dev != 0:
+                raise ConfigError(
+                    f"batch_size ({config.batch_size}) must be divisible by "
+                    f"n_devices ({n_dev}) for data-parallel training."
+                )
+            log.info("Data-parallel training on %d devices", n_dev)
 
         start_step = 0
         cursor_path = os.path.join(run_dir, "training_cursor.json")
@@ -275,6 +296,7 @@ class Trainer:
             wandb.init(project=wandb_project, config=config.to_dict())  # type: ignore[attr-defined]
 
         micro_bs = config.batch_size // config.grad_accum
+        _wrt = wrt_type  # captured in closure for JIT
 
         @jax.jit
         def train_step(graphdef, state, full_x, full_y):
@@ -289,8 +311,8 @@ class Trainer:
                     loss = loss + model.alpha_balance * bal
                 return loss, bal
 
-            grad_fn = nnx.value_and_grad(_loss, has_aux=True)
-            acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, nnx.Param))
+            grad_fn = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
+            acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, _wrt))
             total_loss = jnp.array(0.0)
             total_bal = jnp.array(0.0)
             for i in range(config.grad_accum):
@@ -357,6 +379,10 @@ class Trainer:
                     key, sub = jax.random.split(key)
                     x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
                     graphdef, state = nnx.split((model, optimizer, metrics))
+                    if use_multi_gpu:
+                        state = replicate(state, mesh)  # type: ignore[arg-type]
+                        x = shard_batch(x, mesh)        # type: ignore[arg-type]
+                        y = shard_batch(y, mesh)        # type: ignore[arg-type]
                     _, _, new_state = train_step(graphdef, state, x, y)
                     nnx.update((model, optimizer, metrics), new_state)
 

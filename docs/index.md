@@ -9,7 +9,7 @@ hide:
 # DantinoX
 
 <p class="hero-tagline">"E quindi uscimmo a riveder le stelle."</p>
-<p class="hero-sub">A decoder-only Transformer library built from scratch in JAX and Flax NNX — MHA, GQA, MLA, MoE, Flash Attention, and more, all from a single config.</p>
+<p class="hero-sub">A decoder-only Transformer library built from scratch in JAX and Flax NNX — MHA, GQA, MLA, MoE, Flash Attention, LoRA fine-tuning, multi-GPU sharding, and more, all from a single config.</p>
 
 [Get Started](architecture.md){ .md-button .md-button--primary }
 [View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
@@ -21,6 +21,8 @@ hide:
 <span class="stat-chip">:material-flash: Flash Attention</span>
 <span class="stat-chip">:material-chip: bfloat16</span>
 <span class="stat-chip">:material-format-list-bulleted-type: RMSNorm · LayerNorm</span>
+<span class="stat-chip">:material-tune: LoRA Fine-Tuning</span>
+<span class="stat-chip">:material-gpu: Multi-GPU SPMD</span>
 <span class="stat-chip">:material-hub: HF Hub</span>
 <span class="stat-chip">:material-package-variant: pip install</span>
 <span class="stat-chip">:material-license: MIT</span>
@@ -42,7 +44,7 @@ hide:
     <span class="metric-label">Attention families</span>
   </div>
   <div class="metric">
-    <span class="metric-num">62</span>
+    <span class="metric-num">86</span>
     <span class="metric-label">Tests passing</span>
   </div>
   <div class="metric">
@@ -104,6 +106,22 @@ hide:
     Every component — attention type, normalisation, positional encoding, FFN — is a YAML field in a single `Config` dataclass. Toggle RMSNorm, Flash Attention, or MoE without touching source.
 
     [:octicons-arrow-right-24: Configuration reference](architecture.md#configuration-reference)
+
+-   :material-transfer: &nbsp;**LoRA Fine-Tuning**
+
+    ---
+
+    Adapt any pre-trained checkpoint with `use_lora=True`. A custom `LoRAParam` variable type keeps base weights frozen; only rank-decomposed adapters are trained — ~0.1–0.5 % of parameters.
+
+    [:octicons-arrow-right-24: LoRA Fine-Tuning](training.md#lora-fine-tuning)
+
+-   :material-server-network: &nbsp;**Multi-GPU SPMD**
+
+    ---
+
+    Data-parallel training across any number of GPUs via JAX's SPMD sharding. Model weights are replicated, batches are sharded; XLA fuses the AllReduce automatically. Set `n_devices=4` and go.
+
+    [:octicons-arrow-right-24: Multi-GPU Training](training.md#multi-gpu-data-parallel-training)
 
 </div>
 
@@ -212,7 +230,9 @@ Most "from-scratch" Transformer implementations stop at the forward pass. Dantin
 - **Correct XLA semantics** — static KV cache, no dynamic shapes, no recompilation at decode time.
 - **Real research features** — MLA weight absorption, NTK-aware RoPE scaling, MoE load balancing, Flash Attention — not demos, fully tested.
 - **A library, not a script** — `Trainer`, `Generator`, `BenchmarkRunner`, and a CLI. `pip install` and go.
-- **Auditable** — 62 tests, mypy clean, ruff clean, coverage report in the docs.
+- **Production-ready fine-tuning** — LoRA adapters with a custom `LoRAParam` variable type: base weights frozen at the type level, not by manual filtering. Merge and export with one call.
+- **Multi-GPU out of the box** — JAX SPMD sharding with `n_devices=N` in config. No pmap, no manual AllReduce — XLA handles it.
+- **Auditable** — 86 tests, mypy clean, ruff clean, coverage report in the docs.
 
 ---
 

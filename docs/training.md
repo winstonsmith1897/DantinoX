@@ -315,3 +315,130 @@ for i in range(config.grad_accum):
 ```
 
 The accumulated gradient `acc` is applied in a single optimizer update step.
+
+---
+
+## LoRA Fine-Tuning
+
+LoRA (Low-Rank Adaptation) lets you fine-tune a pre-trained model on new data by training only a small fraction of the parameters — the base weights stay completely frozen.
+
+### How it works
+
+For each adapted linear layer, the effective weight is:
+
+\[
+W_{\text{eff}} = W_{\text{base}} + \frac{\alpha}{r} \cdot A B
+\]
+
+where \(W_{\text{base}} \in \mathbb{R}^{d \times k}\) is frozen, \(A \in \mathbb{R}^{d \times r}\) and \(B \in \mathbb{R}^{r \times k}\) are trainable (rank \(r \ll \min(d,k)\)), and \(\alpha\) is a scaling constant. \(B\) is initialised to zero so the adapter contributes nothing at the start of fine-tuning.
+
+### Configuration
+
+| Field | Default | Description |
+|---|---|---|
+| `use_lora` | `False` | Enable LoRA adapters |
+| `lora_rank` | `8` | Adapter rank \(r\) |
+| `lora_alpha` | `16.0` | Scaling constant \(\alpha\) (effective scale = \(\alpha/r\)) |
+| `lora_dropout` | `0.0` | Dropout on the LoRA path |
+| `lora_targets` | `"attention"` | Which layers to adapt: `"attention"`, `"mlp"`, or `"all"` |
+
+### Usage
+
+```python
+from dantinox import Config, Trainer
+from core import Transformer
+
+# 1. Load a pre-trained model
+model = Transformer.from_pretrained("runs/run_20260101_120000")
+
+# 2. Create a fine-tuning config — only LoRA fields differ
+ft_config = Config.from_yaml("runs/run_20260101_120000/config.yaml")
+ft_config.use_lora     = True
+ft_config.lora_rank    = 8
+ft_config.lora_alpha   = 16.0
+ft_config.lora_targets = "attention"   # only Q/K/V/O projections
+
+# 3. Fine-tune — only LoRAParam variables are trained
+run_dir = Trainer(ft_config).fit("data/finetune_corpus.txt")
+```
+
+```bash
+# CLI equivalent
+dantinox train \
+  --config runs/run_20260101_120000/config.yaml \
+  --data_path data/finetune_corpus.txt \
+  --use_lora True --lora_rank 8 --lora_targets attention
+```
+
+### Trainable parameter count
+
+With `lora_rank=8` and `lora_targets="attention"`, only ~0.1–0.5 % of parameters are trained — making fine-tuning on a single GPU practical even for large models.
+
+### Merge and export
+
+After fine-tuning, merge the LoRA delta back into the base weight for deployment (no runtime overhead):
+
+```python
+from core.lora import LoRALinear
+
+for module in model.modules():
+    if isinstance(module, LoRALinear):
+        merged_kernel = module.merge_weights()   # W_base + (α/r) * A @ B
+```
+
+---
+
+## Multi-GPU Data-Parallel Training
+
+DantinoX supports data-parallel training across multiple GPUs using JAX's SPMD sharding. The implementation uses `jax.sharding.Mesh` — no `pmap`, no manual AllReduce. XLA handles gradient synchronisation automatically.
+
+### How it works
+
+| What | How |
+|---|---|
+| Model weights | Replicated on every device (`NamedSharding(mesh, P())`) |
+| Input batch | Sharded along axis 0 (`NamedSharding(mesh, P("data"))`) |
+| Gradients | AllReduced automatically by XLA |
+
+Each device computes its share of the forward+backward pass; XLA fuses the AllReduce into the compiled program.
+
+### Configuration
+
+| Field | Default | Description |
+|---|---|---|
+| `n_devices` | `0` | Number of GPUs to use. `0` = all available, `1` = single-device |
+
+**Constraint:** `batch_size` must be divisible by `n_devices`.
+
+### Usage
+
+```python
+config = Config(
+    dim=512, n_heads=16, head_size=32, num_blocks=8,
+    batch_size=256,   # split evenly across 4 GPUs → 64 per device
+    n_devices=4,
+)
+run_dir = Trainer(config).fit("data/corpus.txt")
+```
+
+```bash
+dantinox train \
+  --config configs/default_config.yaml \
+  --data_path data/corpus.txt \
+  --n_devices 4 --batch_size 256
+```
+
+### Sharding utilities (low-level API)
+
+```python
+from core.sharding import make_mesh, replicate, shard_batch, num_devices
+
+mesh = make_mesh(n_devices=4)
+print(f"Training on {num_devices(mesh)} GPUs")
+
+# Replicate any pytree across all devices
+model_state_replicated = replicate(model_state, mesh)
+
+# Shard a batch along axis 0
+x_sharded = shard_batch(x, mesh)   # x.shape = (batch_size, seq_len)
+```

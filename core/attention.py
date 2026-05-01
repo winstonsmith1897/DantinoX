@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from .config import Config
+from .lora import LoRALinear
 
 
 class Attention(nnx.Module):
@@ -13,15 +14,25 @@ class Attention(nnx.Module):
         self.head_size: int   = config.head_size
         self.n_heads: int     = config.n_heads
         self.dim: int         = config.dim
-        self.kv_heads: int    = config.kv_heads if config.kv_heads is not None else self.n_heads
-        self.qkv: nnx.Linear  = nnx.Linear(self.dim,
-                                            self.dim + 2 * self.kv_heads * self.head_size,
-                                            use_bias=False,
-                                            rngs=rngs)
+        self.kv_heads: int = config.kv_heads if config.kv_heads is not None else self.n_heads
+
+        _use_lora_attn = getattr(config, "use_lora", False) and getattr(config, "lora_targets", "attention") in ("attention", "all")
+        _lora_kw: dict = dict(rank=getattr(config, "lora_rank", 8), alpha=getattr(config, "lora_alpha", 16.0), dropout_rate=getattr(config, "lora_dropout", 0.0), rngs=rngs)
+
+        qkv_out = self.dim + 2 * self.kv_heads * self.head_size
+        self.qkv: nnx.Linear | LoRALinear = (
+            LoRALinear(self.dim, qkv_out, use_bias=False, **_lora_kw)
+            if _use_lora_attn
+            else nnx.Linear(self.dim, qkv_out, use_bias=False, rngs=rngs)
+        )
         self.tril: jnp.ndarray = jnp.tril(
             jnp.ones((self.max_context, self.max_context), dtype=bool)
         )
-        self.o_proj: nnx.Linear = nnx.Linear(self.dim, self.dim, rngs=rngs)
+        self.o_proj: nnx.Linear | LoRALinear = (
+            LoRALinear(self.dim, self.dim, **_lora_kw)
+            if _use_lora_attn
+            else nnx.Linear(self.dim, self.dim, rngs=rngs)
+        )
         self.no_sink: bool      = config.no_sink
         self.W: nnx.Linear      = nnx.Linear(self.dim, self.dim, rngs=rngs)
 
