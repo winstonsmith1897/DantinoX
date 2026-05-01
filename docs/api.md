@@ -85,6 +85,26 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 ---
 
+### Normalisation
+
+`RMSNorm` is the alternative to `nnx.LayerNorm` selected when `norm_type = "rmsnorm"`.
+
+::: core.block.RMSNorm
+    options:
+      show_source: true
+
+---
+
+### Model Output
+
+`Transformer.__call__` returns a `ModelOutput` NamedTuple — supports both attribute access and positional unpacking.
+
+::: core.output.ModelOutput
+    options:
+      show_source: true
+
+---
+
 ### Configuration
 
 The `Config` dataclass is the single source of truth for all architectural and training hyperparameters.

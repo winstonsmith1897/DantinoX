@@ -18,7 +18,9 @@ hide:
 <span class="stat-chip">:material-language-python: Python 3.12+</span>
 <span class="stat-chip">:material-memory: MLA · GQA · MHA</span>
 <span class="stat-chip">:material-lightning-bolt: XLA-Native</span>
+<span class="stat-chip">:material-flash: Flash Attention</span>
 <span class="stat-chip">:material-chip: bfloat16</span>
+<span class="stat-chip">:material-format-list-bulleted-type: RMSNorm · LayerNorm</span>
 <span class="stat-chip">:material-hub: HF Hub</span>
 <span class="stat-chip">:material-package-variant: pip install</span>
 <span class="stat-chip">:material-license: MIT</span>
@@ -64,7 +66,7 @@ hide:
 
     ---
 
-    `Trainer`, `Generator`, `BenchmarkRunner`, and `Plotter` with bfloat16, gradient clipping, early stopping, checkpoint resume, batch & streaming generation, and HuggingFace Hub push/pull.
+    `Trainer`, `Generator`, `BenchmarkRunner`, and `Plotter` with bfloat16, gradient clipping, early stopping, checkpoint resume, `from_pretrained`, 4 LR schedules, batch & streaming generation, and HuggingFace Hub push/pull.
 
     [:octicons-arrow-right-24: API Reference](api.md)
 
@@ -88,11 +90,15 @@ hide:
     ```python
     from dantinox import Config, Trainer, Generator
 
-    # 1. Train — bfloat16, gradient clipping, early stopping
+    # 1. Train — bfloat16, RMSNorm, Flash Attention, WSD schedule
     config = Config(
         dim=512, n_heads=16, head_size=32, num_blocks=8,
         lr=3e-4, grad_clip=1.0, use_bf16=True,
-        patience=5,          # stop if val loss stalls for 5 evals
+        norm_type="rmsnorm",         # RMSNorm instead of LayerNorm
+        use_flash_attention=True,    # fused scaled-dot-product (JAX ≥ 0.4.25)
+        lr_schedule="wsd",           # warmup → stable → cosine decay
+        rope_scale_factor=2.0,       # NTK-aware: ~2× effective context window
+        patience=5,                  # stop if val loss stalls for 5 evals
     )
     run_dir = Trainer(config).fit("data/corpus.txt")
 
@@ -114,7 +120,11 @@ hide:
     lr, lrs, losses = Trainer(config).find_lr("data/corpus.txt", num_steps=100)
     print(f"Suggested LR: {lr:.2e}")
 
-    # 6. Push to HuggingFace Hub / pull on another machine
+    # 6. Load model directly for custom inference / fine-tuning
+    from core import Transformer
+    model = Transformer.from_pretrained(run_dir)   # loads config + best weights
+
+    # 7. Push to HuggingFace Hub / pull on another machine
     from dantinox import push, pull
     push(run_dir, "my-org/dantinox-dante", private=False)
     run_dir = pull("my-org/dantinox-dante")
@@ -189,8 +199,9 @@ DantinoX/
 │
 ├── core/                   # Internal implementation
 │   ├── config.py           # Config dataclass — single source of truth
-│   ├── model.py            # Transformer, Attention (MHA/GQA/MLA), MoE, Block
-│   ├── attention.py        # Attention kernels and KV-cache logic
+│   ├── model.py            # Transformer (+ from_pretrained), Block, RMSNorm
+│   ├── attention.py        # Attention kernels, Flash Attention, KV-cache logic
+│   ├── output.py           # ModelOutput NamedTuple
 │   └── generation.py       # Autoregressive inference engine
 │
 ├── utils/

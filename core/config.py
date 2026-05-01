@@ -36,6 +36,7 @@ class Config:
     sliding_window: bool = False
     context_window: int = 4
     no_sink: bool = True
+    use_flash_attention: bool = False
 
     # ── Multi-Head Latent Attention (MLA) ────────────────────────────────────
     mla: bool = False
@@ -65,6 +66,15 @@ class Config:
     patience: int = 0
     use_bf16: bool = False
 
+    # ── Normalisation ────────────────────────────────────────────────────────
+    norm_type: str = "layernorm"     # "layernorm" | "rmsnorm"
+
+    # ── RoPE scaling ─────────────────────────────────────────────────────────
+    rope_scale_factor: float = 1.0   # >1 compresses frequencies for long-ctx (NTK-aware)
+
+    # ── LR schedule ──────────────────────────────────────────────────────────
+    lr_schedule: str = "cosine"      # "cosine" | "linear" | "constant" | "wsd"
+
     # ── Logging & Metrics ───────────────────────────────────────────────────
     eval_iters: int = 20
     log_file: str = "training_log.csv"
@@ -87,6 +97,19 @@ class Config:
             raise ValueError(
                 f"rope_dim ({self.rope_dim}) must be <= head_size ({self.head_size}) "
                 "when using MLA with rotary positional encoding"
+            )
+        if self.norm_type not in ("layernorm", "rmsnorm"):
+            raise ValueError(
+                f"norm_type must be 'layernorm' or 'rmsnorm', got {self.norm_type!r}"
+            )
+        if self.lr_schedule not in ("cosine", "linear", "constant", "wsd"):
+            raise ValueError(
+                f"lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd', "
+                f"got {self.lr_schedule!r}"
+            )
+        if self.rope_scale_factor <= 0:
+            raise ValueError(
+                f"rope_scale_factor must be > 0, got {self.rope_scale_factor}"
             )
 
     def __repr__(self) -> str:

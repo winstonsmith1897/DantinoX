@@ -25,19 +25,53 @@ log = logging.getLogger(__name__)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransformation:
+def _build_schedule(config: Config, total_steps: int) -> optax.Schedule:
+    """Return an optax schedule for the requested ``config.lr_schedule``."""
     warmup_steps = min(
         getattr(config, "warmup_steps", int(total_steps * 0.1)),
         int(total_steps * 0.3),
     )
     safe_total = max(total_steps, warmup_steps + 1)
-    schedule = optax.warmup_cosine_decay_schedule(
-        init_value=0.0,
-        peak_value=config.lr,
-        warmup_steps=warmup_steps,
-        decay_steps=safe_total,
-        end_value=config.lr * 0.01,
+    peak = config.lr
+    end  = peak * 0.01
+
+    kind = getattr(config, "lr_schedule", "cosine")
+
+    if kind == "cosine":
+        return optax.warmup_cosine_decay_schedule(
+            init_value=0.0,
+            peak_value=peak,
+            warmup_steps=warmup_steps,
+            decay_steps=safe_total,
+            end_value=end,
+        )
+
+    if kind == "linear":
+        warmup = optax.linear_schedule(init_value=0.0, end_value=peak, transition_steps=warmup_steps)
+        decay  = optax.linear_schedule(init_value=peak, end_value=end,
+                                        transition_steps=safe_total - warmup_steps)
+        return optax.join_schedules([warmup, decay], boundaries=[warmup_steps])
+
+    if kind == "constant":
+        warmup   = optax.linear_schedule(init_value=0.0, end_value=peak, transition_steps=warmup_steps)
+        constant = optax.constant_schedule(peak)
+        return optax.join_schedules([warmup, constant], boundaries=[warmup_steps])
+
+    # wsd: warmup → stable (40 % of budget) → cosine decay to end
+    stable_steps = int(safe_total * 0.4)
+    decay_steps  = safe_total - warmup_steps - stable_steps
+    warmup   = optax.linear_schedule(init_value=0.0, end_value=peak, transition_steps=warmup_steps)
+    stable   = optax.constant_schedule(peak)
+    decay    = optax.cosine_decay_schedule(init_value=peak, decay_steps=max(decay_steps, 1), alpha=end / peak)
+    return optax.join_schedules(
+        [warmup, stable, decay],
+        boundaries=[warmup_steps, warmup_steps + stable_steps],
     )
+
+
+def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransformation:
+    schedule = _build_schedule(config, total_steps)
+
     name = config.optimizer.lower()
     if name == "adamw":
         base_opt: optax.GradientTransformation = optax.adamw(learning_rate=schedule)

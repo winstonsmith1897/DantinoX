@@ -39,6 +39,35 @@ self.qkv = nnx.Linear(
 
 Set `kv_heads = n_heads` for MHA or `kv_heads < n_heads` for GQA.
 
+#### Flash Attention (opt-in)
+
+Set `use_flash_attention: true` to use JAX's fused scaled-dot-product kernel (`jax.nn.dot_product_attention`, JAX ≥ 0.4.25) during training. This is off by default so existing configs require no changes.
+
+The Flash Attention path activates when all of the following hold:
+- `use_flash_attention: true`
+- `mla: false` (MHA/GQA only)
+- `use_cache: false` (training pass — cache path uses the manual kernel)
+- `sliding_window: false`
+
+```python
+# core/attention.py — Flash Attention fast path
+if self.use_flash_attention and not self.mla and not use_cache and not self.sliding_window:
+    q_fa = q.reshape(B, T, self.n_heads,  self.head_size)   # [B, T, H, D]
+    k_fa = k.reshape(B, T, self.kv_heads, self.head_size)
+    v_fa = v.reshape(B, T, self.kv_heads, self.head_size)
+    if self.use_rotary:
+        q_fa, k_fa = self._apply_rope_thd(q_fa, 0), self._apply_rope_thd(k_fa, 0)
+    # GQA: broadcast K/V to full head count for JAX < 0.4.31 compat
+    if self.kv_heads < self.n_heads:
+        g    = self.n_heads // self.kv_heads
+        k_fa = jnp.repeat(k_fa, g, axis=2)
+        v_fa = jnp.repeat(v_fa, g, axis=2)
+    y = jax.nn.dot_product_attention(q_fa, k_fa, v_fa, is_causal=True)
+```
+
+!!! tip "When to enable"
+    Enable Flash Attention for medium-to-large models training with long sequences on GPU. The fused kernel avoids materialising the full $[B, H, T, T]$ attention matrix, reducing memory from $O(T^2)$ to $O(T)$.
+
 ---
 
 ### Multi-Head Latent Attention (MLA)
@@ -141,6 +170,27 @@ The FFN is selected per `use_moe`:
 
 ---
 
+## Normalisation
+
+The normalisation applied before attention and the feed-forward block is controlled by `norm_type`:
+
+| `norm_type` | Formula | Notes |
+| :--- | :--- | :--- |
+| `layernorm` (default) | $\frac{x - \mu}{\sigma} \cdot \gamma + \beta$ | Standard LayerNorm — mean-centred, learned bias |
+| `rmsnorm` | $\frac{x}{\text{RMS}(x)} \cdot \gamma$ | Faster — no mean subtraction, no bias; used in LLaMA, Mistral, Gemma |
+
+```python
+# core/block.py — RMSNorm
+class RMSNorm(nnx.Module):
+    def __call__(self, x):
+        rms = jnp.sqrt(jnp.mean(x * x, axis=-1, keepdims=True) + 1e-6)
+        return (x / rms) * self.scale[...]
+```
+
+Both `Block.ln1`, `Block.ln2` (pre-attention and pre-FFN), and `Transformer.ln_f` (final output norm) respect `norm_type` via a `_build_norm` factory. Switching is a one-line config change with no code edits.
+
+---
+
 ## Positional Encoding
 
 | Mode | Config | Notes |
@@ -155,6 +205,23 @@ RoPE frequencies are pre-computed at init and cached as a static array. At each 
 # core/attention.py — dynamic RoPE slice (XLA-safe)
 angle = jax.lax.dynamic_slice_in_dim(self.angle, start_index=cache_index, slice_size=T, axis=3)
 ```
+
+#### NTK-Aware RoPE Scaling
+
+Setting `rope_scale_factor > 1` compresses the RoPE base frequency, allowing the model to generalise to contexts longer than `max_context` without fine-tuning (Neural Tangent Kernel-aware interpolation):
+
+$$\theta_i = \frac{1}{(10000 \cdot \lambda)^{2i/C}}$$
+
+where $\lambda$ = `rope_scale_factor`. A value of 2 approximately doubles the effective context window.
+
+```python
+# core/attention.py — NTK-aware frequency compression
+base     = 10000.0 * self._rope_scale   # compressed if rope_scale_factor > 1
+inv_freq = 1.0 / (base ** (jnp.arange(0, C, 2) / C))
+```
+
+!!! note
+    `rope_scale_factor = 1.0` (default) gives the standard RoPE behaviour. The angle table is computed once at init, so inference speed is unaffected.
 
 ---
 
@@ -185,6 +252,9 @@ All parameters live in a single `Config` dataclass and are loaded from YAML. CLI
       down_dim_kv: 64               # KV latent dimension d_c^KV (= cache size per token)
       rope_dim: 32                  # Decoupled RoPE dimension d_r (≤ head_size)
 
+    normalization:
+      norm_type: "layernorm"        # Normalisation type: "layernorm" or "rmsnorm"
+
     moe:
       use_moe: false                # Replace Dense FFN with Sparse MoE
       n_experts: 4                  # Total number of expert MLPs N
@@ -199,6 +269,8 @@ All parameters live in a single `Config` dataclass and are loaded from YAML. CLI
       sliding_window: false         # Restrict attention to a local causal window
       context_window: 64            # Window size (tokens) when sliding_window: true
       no_sink: true                 # Sigmoid gate on attention output (prevents attention sink)
+      use_flash_attention: false    # Fused scaled-dot-product (jax.nn.dot_product_attention, JAX ≥ 0.4.25)
+      rope_scale_factor: 1.0        # NTK-aware RoPE scaling: >1 compresses base frequency for long-context extrapolation
 
     tokenizer:
       tokenizer_type: "char"        # "char" for character-level, "bpe" for Byte-Pair Encoding
@@ -218,6 +290,7 @@ All parameters live in a single `Config` dataclass and are loaded from YAML. CLI
       optimizer: "adamw"            # "adamw", "adafactor", or "lion"
       epochs: 100
       warmup_steps: 0               # Linear LR warmup steps
+      lr_schedule: "cosine"         # LR schedule after warmup: "cosine" | "linear" | "constant" | "wsd"
 
     generation:
       use_cache: true               # Static KV cache for autoregressive decode
@@ -233,6 +306,31 @@ All parameters live in a single `Config` dataclass and are loaded from YAML. CLI
       log_file: "training_log.csv"
       summary_file: "model_summary.json"
     ```
+
+---
+
+## Typed Model Outputs
+
+`Transformer.__call__` returns a `ModelOutput` NamedTuple instead of a plain tuple. This is fully backward-compatible — existing code that unpacks the tuple continues to work unchanged:
+
+```python
+from core import ModelOutput
+
+# Named access (preferred)
+out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+loss = cross_entropy(out.logits, targets) + config.alpha_balance * out.aux_loss
+
+# Positional unpacking (backward-compatible)
+logits, kv_caches, aux_loss = model(x, ...)
+```
+
+`ModelOutput` is a native JAX pytree (NamedTuples are handled by `jax.tree_util` without registration), so it passes through `jax.jit`, `jax.grad`, and `nnx.value_and_grad` transparently.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `logits` | `jnp.ndarray [B, T, V]` | Token logits |
+| `kv_caches` | `tuple` | Per-layer KV/latent caches |
+| `aux_loss` | `float` | MoE load-balancing loss (0.0 for dense models) |
 
 ---
 

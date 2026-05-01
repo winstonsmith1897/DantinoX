@@ -161,6 +161,33 @@ The `--plot` flag saves `lr_finder.png` with the smoothed loss curve and a verti
 
 ---
 
+## LR Schedules
+
+Set `lr_schedule` in the config to choose how the learning rate decays after the warmup phase:
+
+| Schedule | Config value | Behaviour |
+| :--- | :--- | :--- |
+| **Cosine** (default) | `"cosine"` | Smooth cosine decay from peak to `lr × 0.01` |
+| **Linear** | `"linear"` | Linear ramp down to `lr × 0.01` |
+| **Constant** | `"constant"` | Flat at peak LR after warmup |
+| **WSD** | `"wsd"` | Warmup → stable (40 %) → cosine decay |
+
+```yaml
+# configs/default_config.yaml
+lr_schedule: "cosine"    # default
+warmup_steps: 420        # linear warmup before the schedule kicks in
+```
+
+```python
+config = Config(lr_schedule="wsd", warmup_steps=500)
+run_dir = Trainer(config).fit("data/corpus.txt")
+```
+
+!!! tip "Which schedule to pick"
+    **Cosine** is the safe default for most runs. **WSD** (Warmup-Stable-Decay) is a good choice for longer runs where you want a sustained high-LR phase before decay. **Constant** is useful when you want full manual control over the LR after warmup.
+
+---
+
 ## Monitored Metrics
 
 Every 50 steps, training evaluates `eval_iters` random batches on both splits and logs:
@@ -237,6 +264,31 @@ Train with `inference: false`. At generation time, `Generator` automatically set
 
 !!! note
     The `inference` flag only affects the computation graph, not the saved weights. Switching modes does not require re-saving the checkpoint.
+
+---
+
+## Loading a Trained Model
+
+Use `Transformer.from_pretrained` to load a trained checkpoint in one line — no need to reconstruct the config or tokenizer manually:
+
+```python
+from core import Transformer
+
+# Loads config.yaml + best_model_weights.msgpack from the run directory
+model = Transformer.from_pretrained("runs/run_20260101_120000")
+
+# Or load the latest checkpoint instead of the best one
+model = Transformer.from_pretrained("runs/run_20260101_120000", best=False)
+```
+
+`from_pretrained` automatically:
+
+1. Reads `config.yaml` from the run directory.
+2. Constructs the `Transformer` with those settings.
+3. Deserialises `best_model_weights.msgpack` (or `model_weights.msgpack` when `best=False`).
+
+!!! note "For text generation use `Generator`"
+    `Transformer.from_pretrained` gives you the raw model for custom inference loops, fine-tuning, or probing. For simple text generation, `Generator(run_dir)` is easier — it handles tokenisation and decoding automatically.
 
 ---
 
