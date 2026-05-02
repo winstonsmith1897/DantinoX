@@ -118,7 +118,7 @@ class Attention(nnx.Module):
 
     def _compute_cache(self, kv_cache, cache_index, B, T, k=None, v=None, c_kv=None, k_rope=None):
         if self.mla is False:
-            if kv_cache == (None, None):
+            if kv_cache[0] is None:
                 k_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
                 v_cache = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=v.dtype)
                 k_cache = k_cache.at[:, :, :, :T, :].set(k)
@@ -132,7 +132,7 @@ class Attention(nnx.Module):
             k, v         = k_cache, v_cache
             k_rope_cache = None
         else:
-            if kv_cache == (None, None):
+            if kv_cache[0] is None:
                 c_cache      = jnp.zeros((B, self.max_context, self.down_dim_kv), dtype=c_kv.dtype)
                 c_cache      = c_cache.at[:, :T, :].set(c_kv)
                 k_rope_cache = jnp.zeros((B, 1, 1, self.max_context, self.rope_dim), dtype=c_kv.dtype)
