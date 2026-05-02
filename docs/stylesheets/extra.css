@@ -100,12 +100,13 @@
   border-radius: var(--dnx-r);
   box-shadow: var(--dnx-e2);
   border: 1px solid var(--md-default-fg-color--lightest);
-  overflow: hidden;
+  overflow: visible;   /* let the inner pre handle its own scrollbars */
 }
 
-/* Cap height so no single block dominates the page */
+/* Scroll tall / wide blocks instead of clipping them */
 .md-typeset .highlight pre {
   max-height: 520px;
+  overflow: auto;
 }
 
 /* Filename / title bar */
