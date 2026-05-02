@@ -22,21 +22,21 @@ log = logging.getLogger(__name__)
 # Groups map a short name → (module_path, list_of_figure_functions)
 _PLOT_GROUPS: dict[str, tuple[str, list[str]]] = {
     "insights": (
-        "plot_insights",
+        "dantinox.plots.plot_insights",
         ["fig1_pareto", "fig2_serving", "fig3_mla_dial"],
     ),
     "perf": (
-        "plot_perf",
+        "dantinox.plots.plot_perf",
         ["fig1_cache_breakdown", "fig2_seqlen_throughput",
          "fig3_flops_vs_cache", "fig4_batch_throughput", "fig5_prefill"],
     ),
     "3d": (
-        "plot_3d",
+        "dantinox.plots.plot_3d",
         ["fig1_cache_surface", "fig2_quality_cube",
          "fig3_efficiency_cube", "fig4_serving_surface"],
     ),
     "3d_dkv": (
-        "plot_3d_dkv",
+        "dantinox.plots.plot_3d_dkv",
         ["fig5_dkv_cache_seqlen", "fig6_kv_decoupling",
          "fig7_mla_quality", "fig8_dkv_numblocks"],
     ),
@@ -46,9 +46,14 @@ ALL_GROUPS: list[str] = list(_PLOT_GROUPS.keys())
 
 
 def _import_plot_module(module_name: str, repo_root: str) -> types.ModuleType:
-    if repo_root not in sys.path:
-        sys.path.insert(0, repo_root)
-    return importlib.import_module(module_name)
+    try:
+        return importlib.import_module(module_name)
+    except ImportError:
+        # Fallback: bare module name on repo root (editable / dev installs)
+        bare = module_name.split(".")[-1]
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        return importlib.import_module(bare)
 
 
 def _run_group(
