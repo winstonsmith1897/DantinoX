@@ -1,133 +1,55 @@
 """
-Automated plot generation for DantinoX benchmark results.
+Plot generation for DantinoX benchmark results.
 
-All plot functions are collected from the standalone scripts
-(plot_insights, plot_perf, plot_3d, plot_3d_dkv) and exposed through
-the :class:`Plotter` class, which can run them all or a named subset.
+All chart logic lives directly in :class:`Plotter` — no external scripts
+are needed. Works from both the installed wheel and an editable checkout.
+
+Usage::
+
+    from dantinox import Plotter
+
+    Plotter("benchmark_results.csv").run()
+    Plotter("benchmark_results.csv").run(groups=["perf"])
 """
 
 from __future__ import annotations
 
-import importlib
 import logging
 import os
-import sys
-import types
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from dantinox.exceptions import PlotError
 
+if TYPE_CHECKING:
+    import pandas as pd
+
 log = logging.getLogger(__name__)
 
-# Groups map a short name → (module_path, list_of_figure_functions)
-_PLOT_GROUPS: dict[str, tuple[str, list[str]]] = {
-    "insights": (
-        "dantinox.plots.plot_insights",
-        ["fig1_pareto", "fig2_serving", "fig3_mla_dial"],
-    ),
-    "perf": (
-        "dantinox.plots.plot_perf",
-        ["fig1_cache_breakdown", "fig2_seqlen_throughput",
-         "fig3_flops_vs_cache", "fig4_batch_throughput", "fig5_prefill"],
-    ),
-    "3d": (
-        "dantinox.plots.plot_3d",
-        ["fig1_cache_surface", "fig2_quality_cube",
-         "fig3_efficiency_cube", "fig4_serving_surface"],
-    ),
-    "3d_dkv": (
-        "dantinox.plots.plot_3d_dkv",
-        ["fig5_dkv_cache_seqlen", "fig6_kv_decoupling",
-         "fig7_mla_quality", "fig8_dkv_numblocks"],
-    ),
-}
-
-ALL_GROUPS: list[str] = list(_PLOT_GROUPS.keys())
-
-
-def _import_plot_module(module_name: str, repo_root: str) -> types.ModuleType:
-    try:
-        return importlib.import_module(module_name)
-    except ImportError:
-        # Fallback: bare module name on repo root (editable / dev installs)
-        bare = module_name.split(".")[-1]
-        if repo_root not in sys.path:
-            sys.path.insert(0, repo_root)
-        return importlib.import_module(bare)
-
-
-def _run_group(
-    group: str,
-    in_csv: str,
-    out_dir: str,
-    repo_root: str,
-    batch_csv: str | None = None,
-) -> list[str]:
-    module_name, fig_fns = _PLOT_GROUPS[group]
-    try:
-        mod = _import_plot_module(module_name, repo_root)
-    except ImportError as exc:
-        raise PlotError(f"Cannot import {module_name}: {exc}") from exc
-
-    orig_in  = getattr(mod, "IN_CSV",  None)
-    orig_out = getattr(mod, "OUT_DIR", None)
-    mod.IN_CSV  = in_csv   # type: ignore[attr-defined]
-    mod.OUT_DIR = out_dir  # type: ignore[attr-defined]
-    if hasattr(mod, "BATCH_CSV") and batch_csv:
-        mod.BATCH_CSV = batch_csv  # type: ignore[attr-defined]
-
-    saved: list[str] = []
-    try:
-        df = mod.load()
-        for fn_name in fig_fns:
-            fn = getattr(mod, fn_name, None)
-            if fn is None:
-                log.warning("Function %s not found in %s — skipped", fn_name, module_name)
-                continue
-            if fn_name == "fig4_batch_throughput" and group == "perf":
-                bdf = mod.load_batch() if hasattr(mod, "load_batch") else None
-                if bdf is not None and not bdf.empty:
-                    fn(bdf)
-                else:
-                    getattr(mod, "fig4_missing", lambda: None)()
-            else:
-                fn(df)
-            saved.append(fn_name)
-            log.debug("  %s — done", fn_name)
-    finally:
-        if orig_in is not None:
-            mod.IN_CSV = orig_in   # type: ignore[attr-defined]
-        if orig_out is not None:
-            mod.OUT_DIR = orig_out  # type: ignore[attr-defined]
-
-    return saved
+GROUPS: list[str] = ["perf", "3d", "insights"]
 
 
 class Plotter:
     """
-    Generates all DantinoX benchmark plots from a CSV of benchmark results.
+    Generates DantinoX benchmark plots from a CSV produced by
+    :meth:`~dantinox.BenchmarkRunner.run`.
 
     Parameters
     ----------
     in_csv : str
-        Path to the ``benchmark_results.csv`` produced by
-        :meth:`BenchmarkRunner.run`.
+        Path to ``benchmark_results.csv``.
     out_dir : str
-        Directory where PNGs will be written (default ``"plots"``).
-    batch_csv : str, optional
-        Path to ``batch_sweep_results.csv`` for the batch throughput plot.
+        Directory where PNGs are written (created if absent).
 
     Raises
     ------
     PlotError
-        If the CSV is missing or a plot group fails to import.
+        If the CSV is missing, a group name is invalid, or matplotlib
+        is not installed.
 
     Examples
     --------
-    >>> from dantinox import BenchmarkRunner
-    >>> from dantinox.plotting import Plotter
-    >>>
-    >>> df = BenchmarkRunner("runs").run(out_csv="benchmark_results.csv")
+    >>> from dantinox import BenchmarkRunner, Plotter
+    >>> BenchmarkRunner("runs").run(out_csv="benchmark_results.csv")
     >>> Plotter("benchmark_results.csv").run()
     """
 
@@ -135,39 +57,29 @@ class Plotter:
         self,
         in_csv: str = "benchmark_results.csv",
         out_dir: str = "plots",
-        *,
-        batch_csv: str | None = None,
     ) -> None:
-        self.in_csv    = in_csv
-        self.out_dir   = out_dir
-        self.batch_csv = batch_csv
-        self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.in_csv  = in_csv
+        self.out_dir = out_dir
 
     def __repr__(self) -> str:
         return f"Plotter(in_csv={self.in_csv!r}, out_dir={self.out_dir!r})"
 
-    def run(
-        self,
-        groups: Sequence[str] | None = None,
-    ) -> dict[str, list[str]]:
+    # ── public ──────────────────────────────────────────────────────────────
+
+    def run(self, groups: list[str] | None = None) -> dict[str, str]:
         """
-        Generate plots.
+        Generate plots and save them as PNGs.
 
         Parameters
         ----------
         groups : list[str], optional
-            Subset of groups to generate. Available: ``insights``, ``perf``,
-            ``3d``, ``3d_dkv``. Generates all if omitted.
+            Subset of ``["perf", "3d", "insights"]``.  Generates all
+            if omitted.
 
         Returns
         -------
-        dict[str, list[str]]
-            Mapping of group name → list of figure functions that ran.
-
-        Raises
-        ------
-        PlotError
-            If the benchmark CSV is not found or a group cannot be imported.
+        dict[str, str]
+            Mapping of group name → absolute path of the saved PNG.
         """
         if not os.path.exists(self.in_csv):
             raise PlotError(
@@ -175,28 +87,165 @@ class Plotter:
                 "Run BenchmarkRunner.run(out_csv='benchmark_results.csv') first."
             )
 
-        os.makedirs(self.out_dir, exist_ok=True)
-        selected = list(groups) if groups else ALL_GROUPS
-        unknown  = [g for g in selected if g not in _PLOT_GROUPS]
-        if unknown:
+        try:
+            import pandas as pd
+        except ImportError as exc:
             raise PlotError(
-                f"Unknown plot group(s): {unknown}. Valid groups: {ALL_GROUPS}"
-            )
+                "pandas is required for plotting. "
+                "Install it with: pip install 'dantinox[benchmark]'"
+            ) from exc
 
-        results: dict[str, list[str]] = {}
+        try:
+            import matplotlib
+            matplotlib.use("Agg")  # non-interactive backend; safe in notebooks too
+            import matplotlib.pyplot as plt
+        except ImportError as exc:
+            raise PlotError(
+                "matplotlib is required for plotting. "
+                "Install it with: pip install 'dantinox[benchmark]'"
+            ) from exc
+
+        df = pd.read_csv(self.in_csv)
+        os.makedirs(self.out_dir, exist_ok=True)
+
+        selected = list(groups) if groups else GROUPS
+        unknown  = [g for g in selected if g not in GROUPS]
+        if unknown:
+            raise PlotError(f"Unknown group(s): {unknown}. Valid groups: {GROUPS}")
+
+        saved: dict[str, str] = {}
         for group in selected:
-            log.info("[%s] generating plots…", group)
             try:
-                done = _run_group(
-                    group, self.in_csv, self.out_dir,
-                    self._repo_root, self.batch_csv,
-                )
-                results[group] = done
-                log.info("  %d figures written to %s/", len(done), self.out_dir)
-            except PlotError:
-                raise
+                path = getattr(self, f"_plot_{group}")(df, plt)
+                if path:
+                    saved[group] = path
+                    log.info("[%s] saved → %s", group, path)
             except Exception as exc:
-                log.error("  Group '%s' failed: %s", group, exc)
-                results[group] = []
+                log.warning("[%s] skipped: %s", group, exc)
 
-        return results
+        return saved
+
+    # ── private: one method per group ───────────────────────────────────────
+
+    def _plot_perf(self, df: "pd.DataFrame", plt) -> str:
+        """3-panel overview: throughput vs seq-len, throughput vs batch, prefill latency."""
+        seq_cols   = [c for c in df.columns if c.startswith("tps_") and not c.startswith("tps_bs")]
+        batch_cols = [c for c in df.columns if c.startswith("tps_bs")]
+        seq_lens   = [int(c.replace("tps_", ""))   for c in seq_cols]
+        batch_sizes = [int(c.replace("tps_bs", "")) for c in batch_cols]
+
+        fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+
+        ax = axes[0]
+        for _, row in df.iterrows():
+            ax.plot(seq_lens, [row[c] for c in seq_cols], marker="o", label=row["run"])
+        ax.set_xlabel("Sequence length")
+        ax.set_ylabel("Tokens / s")
+        ax.set_title("Decode throughput vs seq-len (BS=1)")
+        ax.legend(fontsize=7)
+        ax.grid(True, alpha=0.3)
+
+        ax = axes[1]
+        for _, row in df.iterrows():
+            ax.plot(batch_sizes, [row[c] for c in batch_cols], marker="s", label=row["run"])
+        ax.set_xlabel("Batch size")
+        ax.set_ylabel("Tokens / s")
+        ax.set_title("Batch throughput vs batch size")
+        ax.legend(fontsize=7)
+        ax.grid(True, alpha=0.3)
+
+        ax = axes[2]
+        ax.barh(df["run"], df["prefill_ms"], color="steelblue")
+        ax.set_xlabel("Prefill latency (ms)")
+        ax.set_title("Prefill latency")
+        ax.grid(True, axis="x", alpha=0.3)
+
+        plt.tight_layout()
+        path = os.path.join(self.out_dir, "benchmark_overview.png")
+        fig.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        return os.path.abspath(path)
+
+    def _plot_3d(self, df: "pd.DataFrame", plt) -> str:
+        """3-D surface: tokens/s × sequence-length × batch-size."""
+        import numpy as np
+
+        try:
+            from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+        except ImportError as exc:
+            raise PlotError("mpl_toolkits.mplot3d not available") from exc
+
+        seq_cols   = [c for c in df.columns if c.startswith("tps_") and not c.startswith("tps_bs")]
+        batch_cols = [c for c in df.columns if c.startswith("tps_bs")]
+        if not seq_cols or not batch_cols:
+            raise PlotError("No tps_* columns found — run the benchmark first.")
+
+        xs = [int(c.replace("tps_", ""))   for c in seq_cols]
+        ys = [int(c.replace("tps_bs", "")) for c in batch_cols]
+        X, Y = np.meshgrid(xs, ys)
+
+        fig = plt.figure(figsize=(10, 6))
+        ax  = fig.add_subplot(111, projection="3d")
+        for _, row in df.iterrows():
+            Z = np.array([[row.get(f"tps_{x}", np.nan) for x in xs] for _ in ys])
+            ax.plot_surface(X, Y, Z, alpha=0.75, label=str(row["run"]))
+        ax.set_xlabel("Seq-len")
+        ax.set_ylabel("Batch size")
+        ax.set_zlabel("Tokens / s")
+        ax.set_title("Throughput surface")
+
+        path = os.path.join(self.out_dir, "throughput_surface.png")
+        fig.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        return os.path.abspath(path)
+
+    def _plot_insights(self, df: "pd.DataFrame", plt) -> str | None:
+        """Scatter: params vs val_loss, cache vs throughput (needs ≥2 runs)."""
+        import numpy as np
+
+        has_loss  = "val_loss" in df.columns and df["val_loss"].notna().any()
+        has_cache = "theoretical_cache_mb" in df.columns
+        seq_cols  = [c for c in df.columns if c.startswith("tps_") and not c.startswith("tps_bs")]
+        has_tps   = bool(seq_cols)
+
+        n_panels = sum([has_loss, has_cache and has_tps])
+        if n_panels == 0:
+            log.warning("[insights] not enough columns — skipped")
+            return None
+
+        fig, axes = plt.subplots(1, n_panels, figsize=(6 * n_panels, 4))
+        if n_panels == 1:
+            axes = [axes]
+
+        idx = 0
+        if has_loss:
+            ax = axes[idx]; idx += 1
+            best_tps = df[seq_cols].max(axis=1)
+            ax.scatter(df["val_loss"], best_tps, s=80, zorder=3)
+            for _, row in df.iterrows():
+                ax.annotate(
+                    row["run"], (row["val_loss"], df.loc[_, seq_cols].max()),
+                    fontsize=6, ha="right",
+                )
+            ax.set_xlabel("Val loss"); ax.set_ylabel("Peak tokens / s")
+            ax.set_title("Quality vs throughput (lower-left is better)")
+            ax.grid(True, alpha=0.3)
+
+        if has_cache and has_tps:
+            ax = axes[idx]
+            best_tps = df[seq_cols].max(axis=1)
+            ax.scatter(df["theoretical_cache_mb"], best_tps, s=80, color="darkorange", zorder=3)
+            for _, row in df.iterrows():
+                ax.annotate(
+                    row["run"], (row["theoretical_cache_mb"], df.loc[_, seq_cols].max()),
+                    fontsize=6, ha="right",
+                )
+            ax.set_xlabel("KV-cache size (MB)"); ax.set_ylabel("Peak tokens / s")
+            ax.set_title("Cache size vs throughput")
+            ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        path = os.path.join(self.out_dir, "benchmark_insights.png")
+        fig.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        return os.path.abspath(path)
