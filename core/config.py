@@ -52,6 +52,9 @@ class Config:
     # ── Dataset ─────────────────────────────────────────────────────────────
     dataset_source: str = "local"
     dataset_name: str = ""
+    dataset_config: str = ""        # HF subset/config name (e.g. "en" for allenai/c4)
+    dataset_text_field: str = "text"  # column that contains the raw text
+    dataset_split: str = "train"    # HF split to load
     streaming: bool = False
 
     # ── Training & Optimisation ──────────────────────────────────────────────

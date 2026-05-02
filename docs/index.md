@@ -12,6 +12,7 @@ hide:
 <p class="hero-sub">A decoder-only Transformer library built from scratch in JAX and Flax NNX — MHA, GQA, MLA, MoE, Flash Attention, LoRA fine-tuning, multi-GPU sharding, and more, all from a single config.</p>
 
 [Get Started](architecture.md){ .md-button .md-button--primary }
+[Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/examples/DantinoX_Colab.ipynb){ .md-button }
 [View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
 <div class="stat-chips" markdown>
@@ -295,7 +296,8 @@ DantinoX/
 │
 ├── tests/                  # pytest integration + unit tests
 ├── examples/
-│   └── quickstart.py       # Train → generate end-to-end demo
+│   ├── quickstart.py           # Train → generate end-to-end demo
+│   └── DantinoX_Colab.ipynb   # Colab notebook (GPU, HF dataset, Hub, LoRA)
 │
 └── pyproject.toml          # pip install -e ".[all]"
 ```

@@ -93,9 +93,32 @@ def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransfor
 
 def _load_text(config: Config, data_path: str | None) -> str:
     if config.dataset_source == "huggingface":
-        from datasets import load_dataset
-        raw = load_dataset(config.dataset_name, split="train")
-        return " ".join(raw["text"])
+        from datasets import load_dataset  # type: ignore[import]
+
+        name = config.dataset_name
+        subset = getattr(config, "dataset_config", "") or None
+        split  = getattr(config, "dataset_split", "train") or "train"
+        field  = getattr(config, "dataset_text_field", "text") or "text"
+
+        load_kw: dict = {"split": split, "streaming": config.streaming}
+        if subset:
+            load_kw["name"] = subset
+
+        raw = load_dataset(name, **load_kw)
+
+        if config.streaming:
+            # IterableDataset — materialise to a single string
+            parts = [ex[field] for ex in raw if field in ex and ex[field]]
+        else:
+            parts = [t for t in raw[field] if t]
+
+        if not parts:
+            raise ConfigError(
+                f"No text found in column '{field}' of '{name}'. "
+                f"Set dataset_text_field to the correct column name."
+            )
+        return " ".join(parts)
+
     path = data_path or config.dataset_name
     if not path:
         raise ConfigError(

@@ -37,9 +37,12 @@ tokenizer:
   tokenizer_path: "configs/vocab.json"
 
 data:
-  dataset_source: "huggingface" 
-  dataset_name: "Daniele/dante-corpus" 
-  streaming: true              
+  dataset_source: "huggingface"        # "huggingface" | "local"
+  dataset_name: "Daniele/dante-corpus" # HF repo id or local file path
+  dataset_config: ""                   # HF subset name, e.g. "en" for allenai/c4
+  dataset_split: "train"               # HF split to load
+  dataset_text_field: "text"           # column that contains raw text
+  streaming: true                      # stream from Hub (avoids downloading full dataset)
 
 training:
   lr: 0.0015
