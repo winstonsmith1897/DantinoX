@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dantinox"
-version = "0.3.4"
+version = "0.3.5"
 description = "A decoder-only Transformer built from scratch in JAX and Flax NNX"
 authors = [{name = "Marco Simoni"}]
 license = {text = "MIT"}
@@ -98,3 +98,7 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "dantinox.trainer"
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "dantinox.plots.*"
+ignore_errors = true

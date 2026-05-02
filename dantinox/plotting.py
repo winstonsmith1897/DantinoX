@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import types
 from typing import TYPE_CHECKING
 
 from dantinox.exceptions import PlotError
@@ -127,7 +128,7 @@ class Plotter:
 
     # ── private: one method per group ───────────────────────────────────────
 
-    def _plot_perf(self, df: "pd.DataFrame", plt) -> str:
+    def _plot_perf(self, df: pd.DataFrame, plt: types.ModuleType) -> str:
         """3-panel overview: throughput vs seq-len, throughput vs batch, prefill latency."""
         seq_cols   = [c for c in df.columns if c.startswith("tps_") and not c.startswith("tps_bs")]
         batch_cols = [c for c in df.columns if c.startswith("tps_bs")]
@@ -166,7 +167,7 @@ class Plotter:
         plt.close(fig)
         return os.path.abspath(path)
 
-    def _plot_3d(self, df: "pd.DataFrame", plt) -> str:
+    def _plot_3d(self, df: pd.DataFrame, plt: types.ModuleType) -> str:
         """3-D surface: tokens/s × sequence-length × batch-size."""
         import numpy as np
 
@@ -199,10 +200,8 @@ class Plotter:
         plt.close(fig)
         return os.path.abspath(path)
 
-    def _plot_insights(self, df: "pd.DataFrame", plt) -> str | None:
+    def _plot_insights(self, df: pd.DataFrame, plt: types.ModuleType) -> str | None:
         """Scatter: params vs val_loss, cache vs throughput (needs ≥2 runs)."""
-        import numpy as np
-
         has_loss  = "val_loss" in df.columns and df["val_loss"].notna().any()
         has_cache = "theoretical_cache_mb" in df.columns
         seq_cols  = [c for c in df.columns if c.startswith("tps_") and not c.startswith("tps_bs")]
@@ -219,7 +218,8 @@ class Plotter:
 
         idx = 0
         if has_loss:
-            ax = axes[idx]; idx += 1
+            ax = axes[idx]
+            idx += 1
             best_tps = df[seq_cols].max(axis=1)
             ax.scatter(df["val_loss"], best_tps, s=80, zorder=3)
             for _, row in df.iterrows():
@@ -227,7 +227,8 @@ class Plotter:
                     row["run"], (row["val_loss"], df.loc[_, seq_cols].max()),
                     fontsize=6, ha="right",
                 )
-            ax.set_xlabel("Val loss"); ax.set_ylabel("Peak tokens / s")
+            ax.set_xlabel("Val loss")
+            ax.set_ylabel("Peak tokens / s")
             ax.set_title("Quality vs throughput (lower-left is better)")
             ax.grid(True, alpha=0.3)
 
@@ -240,7 +241,8 @@ class Plotter:
                     row["run"], (row["theoretical_cache_mb"], df.loc[_, seq_cols].max()),
                     fontsize=6, ha="right",
                 )
-            ax.set_xlabel("KV-cache size (MB)"); ax.set_ylabel("Peak tokens / s")
+            ax.set_xlabel("KV-cache size (MB)")
+            ax.set_ylabel("Peak tokens / s")
             ax.set_title("Cache size vs throughput")
             ax.grid(True, alpha=0.3)
 

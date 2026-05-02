@@ -195,7 +195,6 @@ def _cmd_plot(args: argparse.Namespace) -> None:
     plotter = Plotter(
         in_csv=args.in_csv,
         out_dir=args.out_dir,
-        batch_csv=args.batch_csv,
     )
     results = plotter.run(groups=groups)
     total = sum(len(v) for v in results.values())

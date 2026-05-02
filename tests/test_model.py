@@ -1,13 +1,11 @@
 """Tests for core.model.Transformer using the real Config."""
 
-import jax
 import jax.numpy as jnp
 import pytest
 from flax import nnx
 
 from core.config import Config
 from core.model import Transformer
-
 
 # ── Forward pass ─────────────────────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ import pytest
 from core.config import Config
 from dantinox.generator import Generator
 from dantinox.trainer import Trainer
-from utils.tokenizer import CharTokenizer, BPETokenizer, load_tokenizer_from_file
+from utils.tokenizer import BPETokenizer, CharTokenizer, load_tokenizer_from_file
 
 DUMMY_CORPUS = pathlib.Path(__file__).parent / "dummy_data.txt"
 

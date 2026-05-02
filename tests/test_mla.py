@@ -8,7 +8,6 @@ from flax import nnx
 from core.attention import Attention
 from core.config import Config
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")

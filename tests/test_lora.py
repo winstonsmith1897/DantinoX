@@ -14,7 +14,6 @@ from core.lora import LoRALinear, LoRAParam
 from core.model import Transformer
 from core.sharding import make_mesh, num_devices, replicate, shard_batch
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _tiny_cfg(**kw) -> Config:

@@ -274,7 +274,7 @@ def main(argv: list[str] | None = None) -> None:
     ) + (2 if run_trained else 0)
 
     t_total = time.perf_counter()
-    print(f"\nDantinoX benchmark suite")
+    print("\nDantinoX benchmark suite")
     if run_inference:
         print(f"  inference CSV  : {args.out_csv}")
         print(f"  inference plots: {args.out_dir}")

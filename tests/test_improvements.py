@@ -1,11 +1,9 @@
 """Tests for the library improvements: RMSNorm, ModelOutput, schedulers, RoPE scaling, Flash Attention."""
 
 import os
-import tempfile
 
 import jax
 import jax.numpy as jnp
-import optax
 import pytest
 from flax import nnx
 
@@ -17,7 +15,6 @@ from core.config import Config
 from core.model import Transformer
 from core.output import ModelOutput
 from dantinox.trainer import _build_schedule
-
 
 # ── RMSNorm ───────────────────────────────────────────────────────────────────
 

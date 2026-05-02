@@ -49,9 +49,9 @@ import pandas as pd
 from flax import nnx
 
 from benchmarks.trained_analysis import (
+    _attn_type,
     _load_config,
     _load_model,
-    _attn_type,
     _theoretical_kv_cache_mb,
 )
 

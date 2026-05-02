@@ -40,6 +40,7 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 import jax
 import jax.numpy as jnp
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
