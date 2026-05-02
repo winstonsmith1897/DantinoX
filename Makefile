@@ -1,4 +1,4 @@
-.PHONY: help install test lint typecheck check build publish clean infbench trained-bench
+.PHONY: help install test lint typecheck check build publish bump-patch bump-minor bump-major clean infbench trained-bench
 
 PYTHON  ?= python
 PACKAGE  = dantinox
@@ -13,6 +13,9 @@ help:
 	@echo "  make check      lint + typecheck + test (run before every push)"
 	@echo "  make infbench       Run full inference benchmark suite (sweep + 21 plots)"
 	@echo "  make trained-bench  Run trained-model benchmark pipeline (analysis + batch sweep)"
+	@echo "  make bump-patch Bump version x.y.Z → x.y.(Z+1)"
+	@echo "  make bump-minor Bump version x.Y.z → x.(Y+1).0"
+	@echo "  make bump-major Bump version X.y.z → (X+1).0.0"
 	@echo "  make build      Build sdist + wheel into dist/"
 	@echo "  make publish    Publish dist/ to PyPI (requires twine + credentials)"
 	@echo "  make clean      Remove build artefacts"
@@ -32,6 +35,15 @@ typecheck:
 	$(PYTHON) -m mypy $(PACKAGE)/ core/
 
 check: lint typecheck test
+
+bump-patch:
+	$(PYTHON) -c "import re,pathlib; p=pathlib.Path('pyproject.toml'); t=p.read_text(); v=re.search(r'version = \"(\d+)\.(\d+)\.(\d+)\"',t); a,b,c=int(v.group(1)),int(v.group(2)),int(v.group(3)); nv=f'{a}.{b}.{c+1}'; p.write_text(t.replace(v.group(0),f'version = \"{nv}\"')); print('Bumped to',nv)"
+
+bump-minor:
+	$(PYTHON) -c "import re,pathlib; p=pathlib.Path('pyproject.toml'); t=p.read_text(); v=re.search(r'version = \"(\d+)\.(\d+)\.(\d+)\"',t); a,b,c=int(v.group(1)),int(v.group(2)),int(v.group(3)); nv=f'{a}.{b+1}.0'; p.write_text(t.replace(v.group(0),f'version = \"{nv}\"')); print('Bumped to',nv)"
+
+bump-major:
+	$(PYTHON) -c "import re,pathlib; p=pathlib.Path('pyproject.toml'); t=p.read_text(); v=re.search(r'version = \"(\d+)\.(\d+)\.(\d+)\"',t); a,b,c=int(v.group(1)),int(v.group(2)),int(v.group(3)); nv=f'{a+1}.0.0'; p.write_text(t.replace(v.group(0),f'version = \"{nv}\"')); print('Bumped to',nv)"
 
 build:
 	$(PYTHON) -m build
