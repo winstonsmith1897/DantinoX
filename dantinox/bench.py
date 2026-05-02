@@ -4,6 +4,7 @@ import dataclasses
 import logging
 import os
 import time
+import traceback
 from collections.abc import Sequence
 from typing import Any
 
@@ -57,7 +58,10 @@ def _detect_vocab(state_dict: dict, dim: int) -> int | None:
     def _get(d: object, key: str) -> object:
         if not isinstance(d, dict):
             return None
-        return d.get(key) or d.get(key.encode() if isinstance(key, str) else key)
+        v = d.get(key)
+        if v is None:
+            v = d.get(key.encode() if isinstance(key, str) else key)
+        return v
 
     def _unwrap(obj: object) -> Any:
         if isinstance(obj, dict):
@@ -329,7 +333,7 @@ class BenchmarkRunner:
             except BenchmarkError as exc:
                 log.error("  Skipped %s: %s", name, exc)
             except Exception as exc:
-                log.error("  Unexpected error for %s: %s", name, exc)
+                log.error("  Unexpected error for %s: %s\n%s", name, exc, traceback.format_exc())
 
         df = pd.DataFrame(results)
         if out_csv:
