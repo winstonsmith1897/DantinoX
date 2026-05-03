@@ -110,18 +110,30 @@ def _generate_toks(
         x = x.at[:, i].set(tok[:, 0])
         return x, k, tok
 
-    init_kv_cache = tuple((None, None) for _ in range(model.num_blocks))  # type: ignore[attr-defined]
+    num_blocks: int = model.num_blocks  # type: ignore[attr-defined]
+    init_kv_cache = tuple((None, None) for _ in range(num_blocks))
     dummy_tok = jnp.zeros((x.shape[0], 1), dtype=jnp.int32)
 
     if use_cache is False:
-        x, _, _, _   = jax.lax.fori_loop(lower=start_pos,
-                                        upper=start_pos + max_generations,
-                                        body_fun=prefill_or_no_cache,
-                                        init_val=(x, init_kv_cache, dummy_tok, key))
+        # kv_cache is never updated in this path, so keep it out of the carry
+        # to avoid passing Python None values through jax.lax.fori_loop.
+        def prefill_no_cache(i, val):
+            _x, _k = val
+            _cache = tuple((None, None) for _ in range(num_blocks))
+            logits, _, _ = model(_x, False, _cache, 0, deterministic=True)
+            _x, _k, _ = _get_tok_id(i, _x, _k, logits[:, i - 1, :])
+            return _x, _k
+
+        x, _ = jax.lax.fori_loop(
+            lower=start_pos,
+            upper=start_pos + max_generations,
+            body_fun=prefill_no_cache,
+            init_val=(x, key),
+        )
     else:
         x, kv_cache, tok, key = prefill_or_no_cache(start_pos,
                                                     (x, init_kv_cache, dummy_tok, key))
-        x, _, _ , _ = jax.lax.fori_loop(lower=start_pos + 1,
+        x, _, _, _ = jax.lax.fori_loop(lower=start_pos + 1,
                                         upper=start_pos + max_generations,
                                         body_fun=generate_with_kv_cache,
                                         init_val=(x, tok, kv_cache, key))
