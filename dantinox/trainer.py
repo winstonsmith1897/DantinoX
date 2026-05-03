@@ -321,9 +321,8 @@ class Trainer:
         micro_bs = config.batch_size // config.grad_accum
         _wrt = wrt_type  # captured in closure for JIT
 
-        @jax.jit
-        def train_step(graphdef, state, full_x, full_y):
-            model, opt, metrics = nnx.merge(graphdef, state)
+        @nnx.jit
+        def train_step(model, opt, metrics, full_x, full_y):
             xs = full_x.reshape(config.grad_accum, micro_bs, -1)
             ys = full_y.reshape(config.grad_accum, micro_bs, -1)
 
@@ -347,7 +346,7 @@ class Trainer:
                 total_bal += bal / config.grad_accum
             opt.update(model, acc)
             metrics.update(loss=total_loss)
-            return total_loss, total_bal, nnx.state((model, opt, metrics))
+            return total_loss, total_bal
 
         @nnx.jit
         def eval_step(model, x, y):
@@ -377,6 +376,13 @@ class Trainer:
 
         key = jax.random.PRNGKey(config.seed)
         metrics = nnx.MultiMetric(loss=nnx.metrics.Average("loss"))
+
+        # Multi-GPU: replicate model/optimizer/metrics to all devices once
+        if use_multi_gpu:
+            assert mesh is not None
+            state = replicate(nnx.state((model, optimizer, metrics)), mesh)
+            nnx.update((model, optimizer, metrics), state)
+
         pbar = tqdm(
             range(start_step, total_steps),
             desc="Training",
@@ -401,14 +407,11 @@ class Trainer:
                 for step in pbar:
                     key, sub = jax.random.split(key)
                     x, y = get_batch(train_data, config.batch_size, config.max_context, sub)
-                    graphdef, state = nnx.split((model, optimizer, metrics))
                     if use_multi_gpu:
                         assert mesh is not None
-                        state = replicate(state, mesh)
                         x = shard_batch(x, mesh)
                         y = shard_batch(y, mesh)
-                    _, _, new_state = train_step(graphdef, state, x, y)
-                    nnx.update((model, optimizer, metrics), new_state)
+                    train_step(model, optimizer, metrics, x, y)
 
                     if step % 50 == 0:
                         t1 = time.time()
