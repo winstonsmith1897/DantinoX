@@ -86,29 +86,41 @@ def _cmd_generate(args: argparse.Namespace) -> None:
     print(f"Prompt: {args.prompt}")
     print("-" * 40)
 
-    # Warmup / compile pass
-    gen.generate(args.prompt, max_new_tokens=1)
-
-    t0 = time.time()
-    text = gen.generate(
-        args.prompt,
-        max_new_tokens=args.max_new_tokens,
+    sampling = dict(
         greedy=args.greedy,
         top_k=args.top_k,
         top_p=args.top_p,
         temperature=args.temperature,
-        use_cache=not args.no_cache,
     )
-    elapsed = time.time() - t0
 
-    prompt_tokens = len(gen.tokenizer.encode(args.prompt))
-    total_tokens  = len(gen.tokenizer.encode(text))
-    new_tokens    = total_tokens - prompt_tokens
-
-    print(text)
-    print("-" * 40)
-    print(f"Generated {new_tokens} tokens in {elapsed:.2f}s "
-          f"({new_tokens / elapsed:.1f} tok/s)")
+    if args.stream:
+        # Streaming: print the prompt first, then yield tokens as they arrive.
+        print(args.prompt, end="", flush=True)
+        t0 = time.time()
+        n = 0
+        for chunk in gen.stream(args.prompt, max_new_tokens=args.max_new_tokens, **sampling):
+            print(chunk, end="", flush=True)
+            n += 1
+        elapsed = time.time() - t0
+        print(f"\n{'-' * 40}")
+        print(f"Generated {n} tokens in {elapsed:.2f}s ({n / elapsed:.1f} tok/s)")
+    else:
+        # Batch mode: warmup then timed generate.
+        gen.generate(args.prompt, max_new_tokens=1)
+        t0 = time.time()
+        text = gen.generate(
+            args.prompt,
+            max_new_tokens=args.max_new_tokens,
+            use_cache=not args.no_cache,
+            **sampling,
+        )
+        elapsed = time.time() - t0
+        prompt_tokens = len(gen.tokenizer.encode(args.prompt))
+        new_tokens    = len(gen.tokenizer.encode(text)) - prompt_tokens
+        print(text)
+        print("-" * 40)
+        print(f"Generated {new_tokens} tokens in {elapsed:.2f}s "
+              f"({new_tokens / elapsed:.1f} tok/s)")
 
 
 def _cmd_sweep(args: argparse.Namespace) -> None:
@@ -303,6 +315,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--top_p", type=float, default=None)
     p_gen.add_argument("--temperature", type=float, default=1.0)
     p_gen.add_argument("--no_cache", action="store_true", help="Disable KV cache")
+    p_gen.add_argument("--stream", action="store_true",
+                       help="Stream tokens to stdout as they are produced")
     p_gen.add_argument("--seed", type=int, default=42)
 
     # ── sweep ──────────────────────────────────────────────────────────────
