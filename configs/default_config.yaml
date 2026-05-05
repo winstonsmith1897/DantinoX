@@ -50,7 +50,7 @@ training:
   grad_accum: 4
   seed: 42
   optimizer: "adamw"           
-  epochs: 100 #1000
+  epochs: 1 #1000
   warmup_steps: 0 #100
 
 

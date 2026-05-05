@@ -168,11 +168,17 @@ def generate(
         key = jax.random.key(seed)
         decoding_func = _sampling_decode
 
+    # Pass start_pos and max_generations as JAX arrays (not Python ints) so
+    # @nnx.jit treats them as dynamic traced values.  A Python int is static
+    # from JAX's perspective, which would trigger a separate compilation for
+    # every distinct (start_pos, max_generations) pair — e.g. the warmup call
+    # with max_new_tokens=1 would compile a different kernel than the real call
+    # with max_new_tokens=200, blowing up the apparent tok/s.
     x = _generate_toks(model,
                        x_padded,
                        key=key,
-                       start_pos=T,
-                       max_generations=to_generate,
+                       start_pos=jnp.array(T, dtype=jnp.int32),
+                       max_generations=jnp.array(to_generate, dtype=jnp.int32),
                        decoding_func=decoding_func,
                        use_cache=use_cache,
                        top_p=top_p,

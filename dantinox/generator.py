@@ -119,15 +119,16 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
         tokenizer = load_tokenizer_from_file(tok_path)
         log.info("Loaded tokenizer from %s", tok_path)
     else:
-        import warnings
-        warnings.warn(
-            f"tokenizer.json not found in {run_dir!r}. "
-            "Falling back to re-training the tokenizer from the original corpus. "
-            "Re-save your checkpoint with a newer version of DantinoX to avoid this.",
-            DeprecationWarning,
-            stacklevel=2,
+        log.warning(
+            "tokenizer.json not found in %r — rebuilding from original corpus "
+            "(this only happens once; the file will be saved for future calls).",
+            run_dir,
         )
         if config.dataset_source == "huggingface":
+            import logging as _logging
+            # Silence the noisy httpx / datasets HTTP logs during the one-time download.
+            for _noisy in ("httpx", "datasets", "huggingface_hub"):
+                _logging.getLogger(_noisy).setLevel(_logging.WARNING)
             from datasets import load_dataset
             raw_dataset = load_dataset(config.dataset_name, split="train")
             text = " ".join(raw_dataset["text"])
@@ -147,6 +148,9 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
             tokenizer.train_from_text(text)
         elif config.tokenizer_type == "bpe":
             tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+        # Persist so the next call loads instantly without touching the corpus.
+        tokenizer.save(tok_path)
+        log.warning("Saved tokenizer to %s — subsequent calls will skip the download.", tok_path)
 
     config.vocab_size = tokenizer.vocab_size
 

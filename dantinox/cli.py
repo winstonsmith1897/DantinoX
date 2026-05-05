@@ -24,9 +24,19 @@ import argparse
 import dataclasses
 import logging
 import sys
+from pathlib import Path
 
 from core.config import Config
 from dantinox import __version__
+
+# Persistent XLA compilation cache — compiled GPU kernels are saved to disk so
+# subsequent calls with the same model architecture skip recompilation entirely.
+# Must be set before any JAX operation (lazy import keeps this safe).
+def _init_jax_cache() -> None:
+    import jax
+    _cache = Path.home() / ".cache" / "jax_xla" / "dantinox"
+    _cache.mkdir(parents=True, exist_ok=True)
+    jax.config.update("jax_compilation_cache_dir", str(_cache))
 
 # ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -65,6 +75,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
 
 
 def _cmd_generate(args: argparse.Namespace) -> None:
+    _init_jax_cache()
     import time
 
     from dantinox.generator import Generator

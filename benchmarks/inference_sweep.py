@@ -48,7 +48,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # override with --device or env
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # override with --device or env var
 
 import jax
 import jax.numpy as jnp
@@ -63,6 +63,13 @@ from core.model import Transformer
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
+
+# ─── Persistent XLA compilation cache ────────────────────────────────────────
+# Saves compiled GPU kernels to disk. The first run per unique model config
+# still compiles (seconds); subsequent runs load from cache in <100 ms.
+_XLA_CACHE = Path.home() / ".cache" / "jax_xla" / "dantinox_bench"
+_XLA_CACHE.mkdir(parents=True, exist_ok=True)
+jax.config.update("jax_compilation_cache_dir", str(_XLA_CACHE))
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -157,9 +164,17 @@ def _attn_variant(exp: dict, config: Config) -> str:
     return "MHA"
 
 
-def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int) -> np.ndarray:
-    for _ in range(n_warmup):
+def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int, desc: str = "") -> np.ndarray:
+    # First call triggers JIT compilation — measure and report it separately.
+    t0 = time.perf_counter()
+    jax.block_until_ready(fn(*args))
+    compile_s = time.perf_counter() - t0
+    if compile_s > 1.0:
+        tqdm.write(f"    compile  {desc:<45} {compile_s:5.1f}s")
+    # Remaining warm-up (kernels already compiled, this is steady-state warm-up)
+    for _ in range(max(0, n_warmup - 1)):
         jax.block_until_ready(fn(*args))
+    # Timed trials
     ts: list[float] = []
     for _ in range(n_trials):
         t0 = time.perf_counter()
@@ -192,14 +207,19 @@ def run_one(exp: dict, n_warmup: int, n_trials: int) -> dict:
     pos      = jnp.array(T)
     init_cache = tuple((None, None) for _ in range(config.num_blocks))
 
+    tag = f"{exp['group']}/{exp['label']}[{exp.get('attn_variant', '?')}]"
+
     try:
-        prefill_times = _time_fn(_prefill, model, x, n_warmup=n_warmup, n_trials=n_trials)
+        prefill_times = _time_fn(_prefill, model, x,
+                                 n_warmup=n_warmup, n_trials=n_trials,
+                                 desc=f"prefill  {tag}")
 
         if use_cache:
             _, kv_cache = _prefill_cached(model, x, init_cache)
             jax.block_until_ready(kv_cache)
             decode_times = _time_fn(_decode, model, tok, kv_cache, pos,
-                                    n_warmup=n_warmup, n_trials=n_trials)
+                                    n_warmup=n_warmup, n_trials=n_trials,
+                                    desc=f"decode   {tag}")
         else:
             decode_times = prefill_times   # no-cache: full pass per token
 
@@ -540,8 +560,16 @@ def main(argv: list[str] | None = None) -> None:
                         help="Print available group names and exit.")
     parser.add_argument("--n-warmup", type=int, default=N_WARMUP)
     parser.add_argument("--n-trials", type=int, default=N_TRIALS)
+    parser.add_argument("--no-mla", action="store_true",
+                        help="Skip all MLA experiments (faster runs for MHA/GQA-only iteration).")
+    parser.add_argument("--device", type=str, default=None,
+                        help="CUDA device index or comma-separated list (e.g. '0', '0,1'). "
+                             "Overrides CUDA_VISIBLE_DEVICES.")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.device is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     if args.list_groups:
         print("Available groups:")
@@ -560,14 +588,19 @@ def main(argv: list[str] | None = None) -> None:
         if unknown:
             parser.error(f"Unknown groups: {sorted(unknown)}. Valid: {ALL_GROUPS}")
         selected = [e for e in EXPERIMENTS if e["group"] in args.groups]
+    if args.no_mla:
+        selected = [e for e in selected if e.get("attn_variant") != "MLA"
+                    and not e["cfg"].get("mla", False)]
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"DantinoX inference sweep — {len(selected)} experiments")
-    print(f"  device  : {jax.default_backend()}")
-    print(f"  warmup  : {args.n_warmup}   trials: {args.n_trials}")
-    print(f"  output  : {out_path}")
+    print(f"  device   : {jax.default_backend()}")
+    print(f"  warmup   : {args.n_warmup}   trials: {args.n_trials}")
+    print(f"  xla cache: {_XLA_CACHE}")
+    print(f"  no-mla   : {args.no_mla}")
+    print(f"  output   : {out_path}")
     print()
 
     rows: list[dict] = []
