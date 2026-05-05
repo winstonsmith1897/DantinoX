@@ -13,8 +13,8 @@ class Transformer(nnx.Module, pytree=False):
     def __init__(self, config: Config, rngs: nnx.Rngs):
         self.num_blocks: int     = config.num_blocks
         self.blocks: list        = [Block(config, rngs=rngs) for _ in range(self.num_blocks)]
-        self.lm_head: nnx.Linear = nnx.Linear(config.dim, config.vocab_size, rngs=rngs)
         self.wte: nnx.Embed      = nnx.Embed(config.vocab_size, config.dim, rngs=rngs)
+        self.weight_tying: bool  = config.weight_tying
         self.trainable_pos: bool = config.trainable_pos
         self.absolute_pos: bool  = config.absolute_pos
         self.max_context: int    = config.max_context
@@ -25,7 +25,12 @@ class Transformer(nnx.Module, pytree=False):
         self.alpha_balance: float = config.alpha_balance
 
         if config.weight_tying:
-            self.lm_head.kernel  = self.wte.embedding.T
+            # Share the embedding Param so lm_head.kernel stays a tracked nnx.Variable.
+            # Assigning embedding.T (a raw array) would silently drop it from NNX's
+            # state graph and cause DynamicJaxprTracer errors inside @nnx.jit.
+            self.lm_head: nnx.Linear | None = None
+        else:
+            self.lm_head = nnx.Linear(config.dim, config.vocab_size, rngs=rngs)
         if self.trainable_pos:
             self.wpe: nnx.Embed  = nnx.Embed(config.max_context, config.dim, rngs=rngs)
         elif self.absolute_pos:
@@ -91,8 +96,11 @@ class Transformer(nnx.Module, pytree=False):
 
         x = self.ln_f(x)
 
+        logits = x @ self.wte.embedding[...].T if self.weight_tying else self.lm_head(x)  # type: ignore[union-attr, misc]
+
+
         return ModelOutput(
-            logits=self.lm_head(x),
+            logits=logits,
             kv_caches=tuple(new_kv_caches),
             aux_loss=balancing_loss_total,
         )

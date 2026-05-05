@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dantinox"
-version = "0.3.12"
+version = "0.3.14"
 description = "A decoder-only Transformer built from scratch in JAX and Flax NNX"
 authors = [{name = "Marco Simoni"}]
 license = {text = "MIT"}

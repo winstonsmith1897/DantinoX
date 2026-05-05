@@ -72,7 +72,13 @@ def test_weight_tying(rngs):
         weight_tying=True, gradient_checkpointing=False, dropout_rate=0.0,
     )
     model = Transformer(config, rngs=rngs)
-    assert jnp.array_equal(model.lm_head.kernel, model.wte.embedding.T)
+    # With weight tying, lm_head is None and wte.embedding is used directly.
+    assert model.lm_head is None
+    assert model.weight_tying is True
+    # Forward pass must still produce correct output shape.
+    x = jnp.array([[1, 2, 3]], dtype=jnp.int32)
+    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
+    assert logits.shape == (1, 3, 256)
 
 
 def test_no_weight_tying(rngs):
@@ -82,7 +88,8 @@ def test_no_weight_tying(rngs):
         weight_tying=False, gradient_checkpointing=False, dropout_rate=0.0,
     )
     model = Transformer(config, rngs=rngs)
-    assert model.lm_head.kernel.shape == (128, 256)
+    assert model.lm_head is not None
+    assert model.lm_head.kernel[...].shape == (128, 256)
 
 
 # ── GQA ──────────────────────────────────────────────────────────────────────
