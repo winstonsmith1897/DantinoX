@@ -9,17 +9,18 @@ hide:
 # DantinoX
 
 <p class="hero-tagline">"E quindi uscimmo a riveder le stelle."</p>
-<p class="hero-sub">A decoder-only Transformer library built from scratch in JAX and Flax NNX — MHA, GQA, MLA, MoE, Flash Attention, LoRA fine-tuning, multi-GPU sharding, and more, all from a single config.</p>
+<p class="hero-sub">A research-grade Transformer library built from scratch in JAX and Flax NNX. Supports two generation paradigms — <strong>Autoregressive</strong> and <strong>Masked Diffusion</strong> — across three attention families (MHA · GQA · MLA), with Fast-dLLM DualCache, MoE, LoRA fine-tuning, multi-GPU sharding, and more, all from a single config.</p>
 
 [Get Started](architecture.md){ .md-button .md-button--primary }
-[Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/examples/DantinoX_Colab.ipynb){ .md-button }
+[Generation Paradigms](paradigms/index.md){ .md-button }
 [View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
 <div class="stat-chips" markdown>
 <span class="stat-chip">:material-language-python: Python 3.12+</span>
 <span class="stat-chip">:material-memory: MLA · GQA · MHA</span>
-<span class="stat-chip">:material-lightning-bolt: XLA-Native</span>
-<span class="stat-chip">:material-flash: Flash Attention</span>
+<span class="stat-chip">:material-wave: Masked Diffusion</span>
+<span class="stat-chip">:material-arrow-right-circle: Autoregressive</span>
+<span class="stat-chip">:material-lightning-bolt: Fast-dLLM DualCache</span>
 <span class="stat-chip">:material-chip: bfloat16</span>
 <span class="stat-chip">:material-format-list-bulleted-type: RMSNorm · LayerNorm</span>
 <span class="stat-chip">:material-tune: LoRA Fine-Tuning</span>
@@ -41,20 +42,20 @@ hide:
 
 <div class="metrics-strip">
   <div class="metric">
+    <span class="metric-num">2</span>
+    <span class="metric-label">Generation paradigms</span>
+  </div>
+  <div class="metric">
     <span class="metric-num">3</span>
     <span class="metric-label">Attention families</span>
   </div>
   <div class="metric">
-    <span class="metric-num">86</span>
-    <span class="metric-label">Tests passing</span>
+    <span class="metric-num">180+</span>
+    <span class="metric-label">Trained checkpoints</span>
   </div>
   <div class="metric">
-    <span class="metric-num">4</span>
-    <span class="metric-label">LR schedules</span>
-  </div>
-  <div class="metric">
-    <span class="metric-num">90+</span>
-    <span class="metric-label">W&B sweep runs</span>
+    <span class="metric-num">2.1×</span>
+    <span class="metric-label">DualCache speedup</span>
   </div>
 </div>
 

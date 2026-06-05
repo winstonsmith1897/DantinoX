@@ -122,11 +122,35 @@ extra_javascript:
 
 nav:
   - Home: index.md
-  - Core Architecture: architecture.md
-  - Training & Sweeps: training.md
-  - Inference & Generation: generation.md
-  - Ablation Studies: ablation_studies.md
-  - Benchmarks: benchmarks.md
+
+  - Architecture:
+    - Overview: architecture.md
+
+  - Generation Paradigms:
+    - Overview: paradigms/index.md
+    - Autoregressive: paradigms/autoregressive.md
+    - Masked Diffusion: paradigms/diffusion.md
+    - Fast-dLLM DualCache: paradigms/fast-dllm.md
+    - Confidence-Aware Decoding: paradigms/confidence.md
+    - AR vs Diffusion: paradigms/comparison.md
+
+  - Training:
+    - Overview: training/index.md
+    - Autoregressive: training/autoregressive.md
+    - Diffusion: training/diffusion.md
+    - Hyperparameter Sweeps: training/sweeps.md
+    - Multi-GPU: training/multi-gpu.md
+
+  - Inference:
+    - Overview: inference/index.md
+    - AR Generation: inference/autoregressive.md
+    - Diffusion Generation: inference/diffusion.md
+    - KV-Cache: inference/kv-cache.md
+
+  - Benchmarks:
+    - Overview: benchmarks.md
+    - Ablation Studies: ablation_studies.md
+
   - API Reference: api.md
   - Coverage Report: coverage/index.html
 
