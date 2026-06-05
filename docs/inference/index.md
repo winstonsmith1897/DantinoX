@@ -25,18 +25,8 @@ The high-level `Generator` class handles AR checkpoints;
 
 ## Pages in this Section
 
-<div class="grid cards" markdown>
-
--   :material-arrow-right-circle: **[AR Generation](autoregressive.md)**
-
-    KV-cache, streaming, sampling strategies (top-p, top-k, temperature).
-
--   :material-wave: **[Diffusion Generation](diffusion.md)**
-
-    Simple MDLM sampler, Fast-dLLM DualCache, infilling.
-
--   :material-memory: **[KV-Cache](kv-cache.md)**
-
-    Static pre-allocation, MHA vs GQA vs MLA memory profiles.
-
-</div>
+| Page | Description |
+| :--- | :--- |
+| [AR Generation](autoregressive.md) | KV-cache, streaming, sampling strategies (top-p, top-k, temperature) |
+| [Diffusion Generation](diffusion.md) | Simple MDLM sampler, Fast-dLLM DualCache, infilling |
+| [KV-Cache](kv-cache.md) | Static pre-allocation, MHA vs. GQA vs. MLA memory profiles |

@@ -50,26 +50,10 @@ diff_model = DiffusionTransformer(diff_config, rngs=nnx.Rngs(0))
 
 ## Pages in this Section
 
-<div class="grid cards" markdown>
-
--   :material-arrow-right-circle: **[Autoregressive](autoregressive.md)**
-
-    Causal transformer with KV-cache and streaming generation.
-
--   :material-wave: **[Masked Diffusion](diffusion.md)**
-
-    MDLM-style forward/reverse process, noise schedules, ELBO loss.
-
--   :material-lightning-bolt: **[Fast-dLLM DualCache](fast-dllm.md)**
-
-    Block-wise inference with prefix + suffix KV caching for diffusion.
-
--   :material-tune: **[Confidence-Aware Decoding](confidence.md)**
-
-    Threshold and factor strategies for parallel token unmasking.
-
--   :material-scale-balance: **[AR vs Diffusion Comparison](comparison.md)**
-
-    Side-by-side quality, efficiency, and use-case analysis.
-
-</div>
+| Page | Description |
+| :--- | :--- |
+| [Autoregressive](autoregressive.md) | Causal transformer with KV-cache and streaming generation |
+| [Masked Diffusion](diffusion.md) | MDLM-style forward/reverse process, noise schedules, ELBO loss |
+| [Fast-dLLM DualCache](fast-dllm.md) | Block-wise inference with prefix + suffix KV caching for diffusion |
+| [Confidence-Aware Decoding](confidence.md) | Threshold and factor strategies for parallel token unmasking |
+| [AR vs. Diffusion](comparison.md) | Side-by-side quality, efficiency, and use-case analysis |

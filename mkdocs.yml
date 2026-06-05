@@ -110,6 +110,13 @@ extra_javascript:
 nav:
   - Home: index.md
 
+  - Tutorials:
+    - Overview: tutorials/index.md
+    - Training Your First Model: tutorials/first-model.md
+    - LoRA Fine-Tuning: tutorials/lora-fine-tuning.md
+    - Masked Diffusion LM: tutorials/diffusion-lm.md
+    - Pushing to HuggingFace Hub: tutorials/hub.md
+
   - Architecture:
     - Overview: architecture.md
 

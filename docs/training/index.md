@@ -42,25 +42,12 @@ The paradigm is selected via `model_type` in the config; everything else
 
 ## Pages in this Section
 
-<div class="grid cards" markdown>
-
--   :material-arrow-right-circle: **[Autoregressive Training](autoregressive.md)**
-
-    Cross-entropy loss, KV-cache, LR finder, LoRA fine-tuning.
-
--   :material-wave: **[Diffusion Training](diffusion.md)**
-
-    ELBO loss, noise schedules, AdaLayerNorm, time embeddings.
-
--   :material-tune: **[Hyperparameter Sweeps](sweeps.md)**
-
-    Bayesian W&B sweeps, attention-type comparison sweep.
-
--   :material-gpu: **[Multi-GPU](multi-gpu.md)**
-
-    SPMD data parallelism with JAX mesh sharding.
-
-</div>
+| Page | Description |
+| :--- | :--- |
+| [Autoregressive Training](autoregressive.md) | Cross-entropy loss, KV-cache, LR finder, LoRA fine-tuning |
+| [Diffusion Training](diffusion.md) | ELBO loss, noise schedules, AdaLayerNorm, time embeddings |
+| [Hyperparameter Sweeps](sweeps.md) | Bayesian W&B sweeps, attention-type comparison sweep |
+| [Multi-GPU](multi-gpu.md) | SPMD data parallelism with JAX mesh sharding |
 
 ---
 
