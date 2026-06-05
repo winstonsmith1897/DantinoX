@@ -105,7 +105,7 @@ dantinox train \
 ```
 
 Only ~0.1–0.5 % of parameters are trained.
-See [LoRA Fine-Tuning](../training.md#lora-fine-tuning) for full details.
+See the [LoRA Fine-Tuning tutorial](../tutorials/lora-fine-tuning.md) and the [Architecture reference](../architecture.md#lora-fine-tuning) for full details.
 
 ---
 

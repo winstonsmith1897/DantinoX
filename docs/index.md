@@ -85,6 +85,8 @@ For batched generation, streaming, LoRA fine-tuning, multi-GPU usage, and the fu
 | [Benchmarks](benchmarks.md) | MHA vs. GQA vs. MLA — throughput, KV cache size, FLOPs, latency comparison |
 | [Ablation Studies](ablation_studies.md) | Optimizer comparison, MoE routing, positional encoding variants, regularisation |
 | [API Reference](api.md) | `Trainer`, `Generator`, `LoRALinear`, sharding utilities, `BenchmarkRunner`, Hub |
+| [FAQ & Troubleshooting](faq.md) | Common setup issues, OOM errors, JAX compilation, Hub authentication |
+| [Changelog](changelog.md) | Release history, new features, and breaking changes |
 
 ## Project Structure
 

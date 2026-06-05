@@ -12,7 +12,7 @@ This section analyzes how fundamental model scaling laws (depth vs. width) and c
 
 ### Depth, Width, and Batch Scaling
 
-| 🏗️ Average Loss Heatmap | 📦 Effective Batch Size |
+| Average Loss Heatmap | Effective Batch Size |
 | :---: | :---: |
 | ![Capacity Loss Heatmap](assets/wandb_insights/insight_capacity_heatmap.png){ width="100%" } | ![Effective Batch Size](assets/wandb_insights/insight_effective_batch_size.png){ width="100%" } |
 | **Average Loss by Architecture:** A contour map illustrating the sweet spot between model depth (`num_blocks`) and width (`dim`). It answers the critical scaling question: is it better to add layers or increase the hidden dimension? | **Validation Loss vs Batch Size:** Boxplot distribution demonstrating the variance and stabilization of the validation loss as the global effective batch size increases. |

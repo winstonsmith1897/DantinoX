@@ -38,9 +38,9 @@ AR uses standard CE, Diffusion uses ELBO at a uniform timestep grid.
 | GQA 256d 12b Dense | — | — |
 | MLA 256d 12b Dense | — | — |
 
-!!! info "Live results"
-    Populate this table by running `python benchmarks/perplexity_eval.py`
-    after training completes.  Results will appear in `results/perplexity.csv`.
+!!! note "Populating this table"
+    Run `python benchmarks/perplexity_eval.py` after training to populate these results.
+    Output is written to `results/perplexity.csv`. See [Benchmarks](../benchmarks.md) for the full pipeline.
 
 ### Long-Range Coherence (LAMBADA accuracy)
 
@@ -63,8 +63,8 @@ count, with the gap widening for longer contexts.
 | GQA 256d 12b | — | — | — |
 | MLA 256d 12b | — | — | — |
 
-!!! info "Live results"
-    Run `python benchmarks/trained_analysis.py --runs-dir runs --run-prefix ar_ diff_`.
+!!! note "Populating this table"
+    Run `python benchmarks/trained_analysis.py --runs-dir runs --run-prefix ar_ diff_` to populate throughput results.
 
 ### KV-Cache Memory
 

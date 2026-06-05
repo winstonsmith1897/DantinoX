@@ -303,7 +303,59 @@
   text-decoration: none;
 }
 
-/* ── 12. Responsive ── */
+/* ── 12. Horizontal rule ── */
+.md-typeset hr {
+  border: none;
+  border-top: 1px solid var(--dnx-border);
+  margin: 2.2rem 0;
+}
+
+/* ── 13. Keyboard shortcuts ── */
+.md-typeset kbd {
+  background: var(--dnx-code-bg);
+  border: 1px solid var(--dnx-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: .1em .42em;
+  font-family: var(--md-code-font);
+  font-size: .8em;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+/* ── 14. Lists ── */
+.md-typeset ul li,
+.md-typeset ol li { margin-bottom: .22rem; line-height: 1.7; }
+
+.md-typeset ul li:last-child,
+.md-typeset ol li:last-child { margin-bottom: 0; }
+
+/* ── 15. Collapsible details ── */
+.md-typeset details > summary { cursor: pointer; }
+.md-typeset details[open] > summary { margin-bottom: .75rem; }
+
+/* ── 16. MathJax equations ── */
+.md-typeset .MathJax { font-size: 1.02em !important; }
+.md-typeset .MathJax_Display {
+  margin: 1.4rem 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ── 17. Search input ── */
+.md-search__input {
+  border-radius: 4px;
+  font-size: .88rem;
+}
+
+/* ── 18. Footer ── */
+.md-footer-meta { border-top: 1px solid var(--dnx-border); }
+
+/* ── 19. Paragraph spacing ── */
+.md-typeset p { margin-bottom: .85rem; }
+.md-typeset p:last-child { margin-bottom: 0; }
+
+/* ── 20. Responsive ── */
 @media screen and (max-width: 44.9375em) {
   .dnx-hero { padding: 2.2rem 1.5rem 1.8rem; }
   .dnx-hero h1 { font-size: 1.65rem !important; }

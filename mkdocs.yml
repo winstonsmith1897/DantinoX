@@ -146,6 +146,8 @@ nav:
     - Ablation Studies: ablation_studies.md
 
   - API Reference: api.md
+  - FAQ & Troubleshooting: faq.md
+  - Changelog: changelog.md
   - Coverage Report: coverage/index.html
 
 extra:
