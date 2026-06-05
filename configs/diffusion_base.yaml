@@ -1,0 +1,68 @@
+# configs/diffusion_base.yaml
+# Base config shared by all diffusion training runs.
+# Override individual fields per run via CLI: --dim 512 --num_blocks 16 etc.
+
+model:
+  model_type: "diffusion"
+  dim: 256
+  n_heads: 8
+  head_size: 32
+  num_blocks: 12
+  max_context: 512
+  weight_tying: true
+  activation: "gelu"
+  use_swiglu: true
+  gradient_checkpointing: true
+  dropout_rate: 0.15
+  kv_heads: 2               # GQA default (n_heads//4); set to n_heads for MHA, mla:true for MLA
+
+attention:
+  use_rotary_pos: true
+  sliding_window: false
+  context_window: 64
+  no_sink: false
+  mla: false
+  inference: false
+  down_dim_q: 128
+  down_dim_kv: 96
+  rope_dim: 16
+
+diffusion:
+  diffusion_steps: 1000
+  noise_schedule: "cosine"
+  mask_token_id: 0
+  num_sampling_steps: 50
+  time_emb_dim: 256
+
+moe:
+  use_moe: false
+  n_experts: 6
+  top_k_mlp: 2
+  expansion: 4
+  alpha_balance: 0.1
+
+tokenizer:
+  tokenizer_type: "char"
+  tokenizer_path: null         # re-trained from corpus each run
+
+data:
+  dataset_source: "huggingface"
+  dataset_name: "wikitext"
+  dataset_config: "wikitext-103-raw-v1"
+  dataset_text_field: "text"
+  dataset_split: "train"
+  streaming: false           # WikiText-103 is small enough to download fully
+
+training:
+  lr: 0.001
+  batch_size: 64
+  grad_accum: 4
+  optimizer: "adamw"
+  epochs: 3           # 3 epochs × 3052 steps = ~9k steps on WikiText-103 (sufficient for EMNLP demo comparisons)
+  warmup_steps: 420
+  grad_clip: 1.0
+  patience: 0
+  use_bf16: true          # bf16 halves weight file size (~50% disk saving per run)
+  lr_schedule: "cosine"
+  seed: 42
+  n_devices: 2            # use 2 GPUs for data-parallel training

@@ -16,8 +16,9 @@ from flax.nnx.transforms.autodiff import DiffState
 from tqdm import tqdm
 
 from core.config import Config
+from core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
 from core.lora import LoRAParam
-from core.model import Transformer
+from core.model import DiffusionTransformer, Transformer
 from core.sharding import make_mesh, num_devices, replicate, shard_batch
 from dantinox.exceptions import ConfigError
 from utils.helpers import compute_loss, get_batch
@@ -137,7 +138,16 @@ def _format_text(text: str) -> str:
     return "\n\n".join(blocks) + "\n"
 
 
-def _model_summary(model: Transformer, config: Config, optimizer: nnx.Optimizer) -> dict:
+def _create_model(
+    config: Config, rngs: nnx.Rngs
+) -> Transformer | DiffusionTransformer:
+    """Instantiate the right model class from config.model_type."""
+    if config.model_type == "diffusion":
+        return DiffusionTransformer(config, rngs=rngs)
+    return Transformer(config, rngs=rngs)
+
+
+def _model_summary(model: Transformer | DiffusionTransformer, config: Config, optimizer: nnx.Optimizer) -> dict:
     params = nnx.state(model, nnx.Param)
     total = sum(x.size for x in jax.tree_util.tree_leaves(params))
     opt_state = nnx.state(optimizer)
@@ -166,7 +176,7 @@ def _cast_params(model: Transformer, dtype: jnp.dtype) -> None:
     )
 
 
-def _save_weights(model: Transformer, path: str) -> None:
+def _save_weights(model: Transformer | DiffusionTransformer, path: str) -> None:
     state_dict = nnx.state(model, nnx.Param).to_pure_dict()
     with open(path, "wb") as f:
         f.write(flax.serialization.msgpack_serialize(state_dict))
@@ -239,23 +249,65 @@ class Trainer:
 
         log.info("Run directory: %s", run_dir)
 
-        text = _format_text(_load_text(config, data_path))
+        # ── Dataset loading with tokenised-array cache ────────────────────────
+        # The first run for a given (dataset, tokenizer_type) downloads and
+        # tokenises the text, then saves:
+        #   data/<dataset_slug>_<tok_type>.npy    ← token ID array (int32)
+        #   data/<dataset_slug>_<tok_type>.json   ← shared tokenizer
+        # Subsequent runs load directly from these files — no HF download,
+        # no re-tokenisation. Reduces per-run overhead from ~60s to ~2s.
+        import hashlib, numpy as _np
+
+        _data_dir = os.path.join(os.path.dirname(run_dir) if run_dir else ".", "..", "data")
+        _data_dir = os.path.normpath(_data_dir)
+        os.makedirs(_data_dir, exist_ok=True)
+
+        # Cache key: dataset name + tokenizer type
+        _ds_key  = f"{config.dataset_name.replace('/', '_')}_{config.dataset_config or 'default'}_{config.tokenizer_type}"
+        _arr_cache = os.path.join(_data_dir, f"{_ds_key}.npy")
+        _tok_cache = os.path.join(_data_dir, f"{_ds_key}.json")
 
         tok_path = os.path.join(run_dir, "tokenizer.json")
-        if resume and os.path.exists(tok_path):
-            tokenizer = load_tokenizer_from_file(tok_path)
-            log.info("Resumed tokenizer from %s", tok_path)
-        else:
-            tokenizer = get_tokenizer(config.tokenizer_type)
-            if config.tokenizer_type == "char":
-                tokenizer.train_from_text(text)
-            elif config.tokenizer_type == "bpe":
-                tokenizer.train_from_text(text, vocab_size=config.vocab_size)
-            tokenizer.save(tok_path)
-            log.info("Tokenizer saved to %s", tok_path)
 
-        config.vocab_size = tokenizer.vocab_size
-        full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
+        if os.path.exists(_arr_cache) and os.path.exists(_tok_cache):
+            # Fast path: load pre-tokenised array and shared tokenizer
+            log.info("Loading tokenised data from cache: %s", _arr_cache)
+            tokenizer   = load_tokenizer_from_file(_tok_cache)
+            full_data   = jnp.array(_np.load(_arr_cache))
+            config.vocab_size = tokenizer.vocab_size
+            # Copy shared tokenizer to run dir for inference
+            import shutil as _shutil
+            _shutil.copy2(_tok_cache, tok_path)
+        else:
+            # Slow path: download, tokenise, save cache
+            text = _format_text(_load_text(config, data_path))
+            if resume and os.path.exists(tok_path):
+                tokenizer = load_tokenizer_from_file(tok_path)
+                log.info("Resumed tokenizer from %s", tok_path)
+            else:
+                tokenizer = get_tokenizer(config.tokenizer_type)
+                if config.tokenizer_type == "char":
+                    tokenizer.train_from_text(text)
+                elif config.tokenizer_type == "bpe":
+                    tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+                tokenizer.save(tok_path)
+                log.info("Tokenizer saved to %s", tok_path)
+            config.vocab_size = tokenizer.vocab_size
+            ids = tokenizer.encode(text)
+            full_data = jnp.array(ids, dtype=jnp.int32)
+            # Persist cache for all subsequent runs
+            _np.save(_arr_cache, _np.array(ids, dtype=_np.int32))
+            tokenizer.save(_tok_cache)
+            log.info("Tokenised data cached → %s  (%d tokens)", _arr_cache, len(ids))
+
+        # Optional cap: use only the first max_train_tokens tokens.
+        # Keeps each run to a fixed compute budget regardless of corpus size.
+        # Default 10_000_000 → ~822 steps per run on WikiText-103 (≈7 min on 2×A100).
+        _max_tok = getattr(config, "max_train_tokens", 10_000_000)
+        if _max_tok > 0 and len(full_data) > _max_tok:
+            log.info("Capping dataset to %d tokens (full: %d)", _max_tok, len(full_data))
+            full_data = full_data[:_max_tok]
+
         n = int(0.9 * len(full_data))
         train_data, val_data = full_data[:n], full_data[n:]
 
@@ -265,10 +317,13 @@ class Trainer:
 
         tx = _build_optimizer(config, total_steps)
         rngs = nnx.Rngs(config.seed)
-        model = Transformer(config, rngs=rngs)
+        model = _create_model(config, rngs)
         if getattr(config, "use_bf16", False):
             _cast_params(model, jnp.bfloat16)
             log.info("Model cast to bfloat16")
+
+        is_diffusion = config.model_type == "diffusion"
+        schedule: NoiseSchedule | None = make_noise_schedule(config) if is_diffusion else None
 
         # LoRA: only train adapter params; base weights are frozen nnx.Param
         wrt_type = LoRAParam if getattr(config, "use_lora", False) else nnx.Param
@@ -321,54 +376,122 @@ class Trainer:
         micro_bs = config.batch_size // config.grad_accum
         _wrt = wrt_type  # captured in closure for JIT
 
-        @nnx.jit
-        def train_step(model, opt, metrics, full_x, full_y):
-            xs = full_x.reshape(config.grad_accum, micro_bs, -1)
-            ys = full_y.reshape(config.grad_accum, micro_bs, -1)
+        if is_diffusion:
+            # ── Diffusion training step ───────────────────────────────────────
+            # Inputs: full_x = token sequence x_0, key = PRNG for corruption.
+            # For each gradient-accumulation micro-batch we sample a random
+            # timestep t, corrupt x_0 → x_t, and compute the masked CE ELBO.
+            _sched = schedule  # captured in closure
 
-            def _loss(model, x, y):
+            @nnx.jit
+            def train_step(model, opt, metrics, full_x, _unused_y, key):  # type: ignore[misc]
+                xs  = full_x.reshape(config.grad_accum, micro_bs, -1)
+
+                def _loss(model, x, key):
+                    B = x.shape[0]
+                    key, sub_t, sub_c = jax.random.split(key, 3)
+                    t   = jax.random.randint(sub_t, (B,), 1, config.diffusion_steps + 1)
+                    x_t = corrupt(x, t, sub_c, _sched, config.mask_token_id)  # type: ignore[arg-type]
+                    out = model(x_t, t, deterministic=False)  # type: ignore[call-arg]
+                    loss = masked_cross_entropy(
+                        out.logits, x, x_t, config.mask_token_id,
+                        out.aux_loss, model.alpha_balance,
+                    )
+                    return loss, out.aux_loss
+
+                grad_fn = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
+                acc        = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, _wrt))
+                total_loss = jnp.array(0.0)
+                total_bal  = jnp.array(0.0)
+                for i in range(config.grad_accum):
+                    key, sub = jax.random.split(key)
+                    (loss, bal), grads = grad_fn(model, xs[i], sub)
+                    acc = jax.tree_util.tree_map(
+                        lambda a, g: a + g / config.grad_accum, acc, grads
+                    )
+                    total_loss += loss / config.grad_accum
+                    total_bal  += bal  / config.grad_accum
+                opt.update(model, acc)
+                metrics.update(loss=total_loss)
+                return total_loss, total_bal, key
+
+            @nnx.jit
+            def eval_step(model, x, _unused_y, key):  # type: ignore[misc]
+                B = x.shape[0]
+                key, sub_t, sub_c = jax.random.split(key, 3)
+                t   = jax.random.randint(sub_t, (B,), 1, config.diffusion_steps + 1)
+                x_t = corrupt(x, t, sub_c, _sched, config.mask_token_id)  # type: ignore[arg-type]
+                out = model(x_t, t, deterministic=True)  # type: ignore[call-arg]
+                loss = masked_cross_entropy(
+                    out.logits, x, x_t, config.mask_token_id,
+                )
+                return loss, out.aux_loss, key
+
+            def estimate_loss(key: jax.Array) -> tuple[dict[str, float], jax.Array]:
+                out: dict[str, float] = {}
+                for split, d in [("train", train_data), ("val", val_data)]:
+                    losses, bals = [], []
+                    for _ in range(config.eval_iters):
+                        key, sub = jax.random.split(key)
+                        x, _ = get_batch(d, 1, config.max_context, sub)
+                        loss_val, b, key = eval_step(model, x, None, key)
+                        losses.append(float(loss_val))
+                        bals.append(float(b))
+                    out[split] = sum(losses) / len(losses)
+                    out[f"{split}_bal"] = sum(bals) / len(bals)
+                return out, key
+
+        else:
+            # ── Autoregressive training step (original) ───────────────────────
+
+            @nnx.jit
+            def train_step(model, opt, metrics, full_x, full_y, _unused_key=None):  # type: ignore[misc]
+                xs = full_x.reshape(config.grad_accum, micro_bs, -1)
+                ys = full_y.reshape(config.grad_accum, micro_bs, -1)
+
+                def _loss(model, x, y):
+                    logits, _, bal = model(x, use_cache=False, kv_caches=None, cache_index=0)
+                    loss = compute_loss(logits, y)
+                    if getattr(model, "use_moe", False):
+                        loss = loss + model.alpha_balance * bal
+                    return loss, bal
+
+                grad_fn = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
+                acc        = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, _wrt))
+                total_loss = jnp.array(0.0)
+                total_bal  = jnp.array(0.0)
+                for i in range(config.grad_accum):
+                    (loss, bal), grads = grad_fn(model, xs[i], ys[i])
+                    acc = jax.tree_util.tree_map(
+                        lambda a, g: a + g / config.grad_accum, acc, grads
+                    )
+                    total_loss += loss / config.grad_accum
+                    total_bal  += bal  / config.grad_accum
+                opt.update(model, acc)
+                metrics.update(loss=total_loss)
+                return total_loss, total_bal, _unused_key  # pass key through unchanged
+
+            @nnx.jit
+            def eval_step(model, x, y, _unused_key=None):  # type: ignore[misc]
                 logits, _, bal = model(x, use_cache=False, kv_caches=None, cache_index=0)
                 loss = compute_loss(logits, y)
                 if getattr(model, "use_moe", False):
                     loss = loss + model.alpha_balance * bal
-                return loss, bal
+                return loss, bal, None
 
-            grad_fn = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
-            acc = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, _wrt))
-            total_loss = jnp.array(0.0)
-            total_bal = jnp.array(0.0)
-            for i in range(config.grad_accum):
-                (loss, bal), grads = grad_fn(model, xs[i], ys[i])
-                acc = jax.tree_util.tree_map(
-                    lambda a, g: a + g / config.grad_accum, acc, grads
-                )
-                total_loss += loss / config.grad_accum
-                total_bal += bal / config.grad_accum
-            opt.update(model, acc)
-            metrics.update(loss=total_loss)
-            return total_loss, total_bal
-
-        @nnx.jit
-        def eval_step(model, x, y):
-            logits, _, bal = model(x, use_cache=False, kv_caches=None, cache_index=0)
-            loss = compute_loss(logits, y)
-            if getattr(model, "use_moe", False):
-                loss = loss + model.alpha_balance * bal
-            return loss, bal
-
-        def estimate_loss(key):
-            out: dict[str, float] = {}
-            for split, d in [("train", train_data), ("val", val_data)]:
-                losses, bals = [], []
-                for _ in range(config.eval_iters):
-                    key, sub = jax.random.split(key)
-                    x, y = get_batch(d, 1, config.max_context, sub)
-                    loss_val, b = eval_step(model, x, y)
-                    losses.append(float(loss_val))
-                    bals.append(float(b))
-                out[split] = sum(losses) / len(losses)
-                out[f"{split}_bal"] = sum(bals) / len(bals)
-            return out, key
+            def estimate_loss(key: jax.Array) -> tuple[dict[str, float], jax.Array]:
+                out: dict[str, float] = {}
+                for split, d in [("train", train_data), ("val", val_data)]:
+                    losses, bals = [], []
+                    for _ in range(config.eval_iters):
+                        key, sub = jax.random.split(key)
+                        x, y = get_batch(d, 1, config.max_context, sub)
+                        loss_val, b, _ = eval_step(model, x, y)
+                        losses.append(float(loss_val))
+                        bals.append(float(b))
+                    out[split] = sum(losses) / len(losses)
+                    out[f"{split}_bal"] = sum(bals) / len(bals)
+                return out, key
 
         log_path = os.path.join(run_dir, "training_log.csv")
         weights_path = os.path.join(run_dir, "model_weights.msgpack")
@@ -411,7 +534,7 @@ class Trainer:
                         assert mesh is not None
                         x = shard_batch(x, mesh)
                         y = shard_batch(y, mesh)
-                    train_step(model, optimizer, metrics, x, y)
+                    _, _, key = train_step(model, optimizer, metrics, x, y, key)
 
                     if step % 50 == 0:
                         t1 = time.time()

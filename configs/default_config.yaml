@@ -50,7 +50,7 @@ training:
   grad_accum: 4
   seed: 42
   optimizer: "adamw"           
-  epochs: 1 #1000
+  epochs: 3  # 3 epochs on WikiText-103 ~ 9k steps
   warmup_steps: 0 #100
 
 

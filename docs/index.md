@@ -15,21 +15,6 @@ hide:
 [Generation Paradigms](paradigms/index.md){ .md-button }
 [View on GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
-<div class="stat-chips" markdown>
-<span class="stat-chip">:material-language-python: Python 3.12+</span>
-<span class="stat-chip">:material-memory: MLA · GQA · MHA</span>
-<span class="stat-chip">:material-wave: Masked Diffusion</span>
-<span class="stat-chip">:material-arrow-right-circle: Autoregressive</span>
-<span class="stat-chip">:material-lightning-bolt: Fast-dLLM DualCache</span>
-<span class="stat-chip">:material-chip: bfloat16</span>
-<span class="stat-chip">:material-format-list-bulleted-type: RMSNorm · LayerNorm</span>
-<span class="stat-chip">:material-tune: LoRA Fine-Tuning</span>
-<span class="stat-chip">:material-gpu: Multi-GPU SPMD</span>
-<span class="stat-chip">:material-hub: HF Hub</span>
-<span class="stat-chip">:material-package-variant: pip install</span>
-<span class="stat-chip">:material-license: MIT</span>
-</div>
-
 <div class="hero-badges" markdown>
 [![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=JAX&logoColor=white)](https://github.com/google/jax)
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-5E17EB?style=flat-square&logoColor=white)](https://github.com/google/flax)

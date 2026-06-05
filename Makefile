@@ -1,4 +1,4 @@
-.PHONY: help install test lint typecheck check build publish bump-patch bump-minor bump-major clean infbench trained-bench
+.PHONY: help install test lint typecheck check build publish bump-patch bump-minor bump-major clean infbench trained-bench diffbench diffusion-train diffusion-train-dry benchmark-full
 
 PYTHON  ?= python
 PACKAGE  = dantinox
@@ -11,7 +11,8 @@ help:
 	@echo "  make lint       Lint with ruff"
 	@echo "  make typecheck  Type-check with mypy"
 	@echo "  make check      lint + typecheck + test (run before every push)"
-	@echo "  make infbench       Run full inference benchmark suite (sweep + 21 plots)"
+	@echo "  make infbench       Run full AR inference benchmark suite (sweep + 21 plots)
+  make diffbench      Run AR vs Diffusion + Fast-dLLM benchmark suite (sweep + 23 plots)"
 	@echo "  make trained-bench  Run trained-model benchmark pipeline (analysis + batch sweep)"
 	@echo "  make bump-patch Bump version x.y.Z → x.y.(Z+1)"
 	@echo "  make bump-minor Bump version x.Y.z → x.(Y+1).0"
@@ -55,6 +56,18 @@ publish: build
 infbench:
 	$(PYTHON) benchmarks/run_all.py
 
+# ── AR vs Diffusion + Fast-dLLM benchmark ─────────────────────────────────────
+DIFF_OUT    ?= results/diffusion_ar_sweep.csv
+DIFF_PLOTS  ?= plots/diffusion_ar
+
+diffbench: $(DIFF_OUT)
+	$(PYTHON) benchmarks/plot_diffusion_ar.py --csv $(DIFF_OUT) --out $(DIFF_PLOTS)
+	@echo "Plots saved → $(DIFF_PLOTS)/"
+
+$(DIFF_OUT):
+	mkdir -p results
+	$(PYTHON) benchmarks/diffusion_ar_sweep.py --out $(DIFF_OUT)
+
 trained-bench:
 	$(PYTHON) benchmarks/run_all.py --trained --inference-off
 
@@ -62,3 +75,37 @@ clean:
 	rm -rf dist/ build/ *.egg-info
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete
+
+# ── Diffusion training ────────────────────────────────────────────────────────
+diffusion-train:
+	bash scripts/train_diffusion_suite.sh
+
+diffusion-train-dry:
+	bash scripts/train_diffusion_suite.sh --dry-run
+
+ar-train:
+	bash scripts/train_ar_suite.sh
+
+ar-train-dry:
+	bash scripts/train_ar_suite.sh --dry-run
+
+# ── Full EMNLP pipeline (training + benchmarks + figures) ─────────────────────
+emnlp-full:
+	bash scripts/run_full_emnlp.sh
+
+emnlp-benchmarks-only:
+	bash scripts/run_full_emnlp.sh --skip-training
+
+emnlp-plots-only:
+	bash scripts/run_full_emnlp.sh --only-plots
+
+# ── cleanup duplicate runs to free disk space ─────────────────────────────────
+cleanup-runs-dry:
+	$(PYTHON) scripts/cleanup_runs.py --runs-dir runs
+
+cleanup-runs:
+	$(PYTHON) scripts/cleanup_runs.py --runs-dir runs --execute
+
+# ── Full EMNLP benchmark pipeline (run_all.py wrapper) ───────────────────────
+benchmark-full:
+	$(PYTHON) benchmarks/run_all.py --diff-ar --eval --pdf --verbose

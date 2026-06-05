@@ -41,12 +41,33 @@ def _init_jax_cache() -> None:
 
 # ─── helpers ────────────────────────────────────────────────────────────────
 
+def _str2bool(v: str) -> bool:
+    """Convert 'true'/'false'/'1'/'0'/'yes'/'no' to bool (argparse type helper)."""
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("true", "1", "yes", "on"):
+        return True
+    if v.lower() in ("false", "0", "no", "off"):
+        return False
+    raise argparse.ArgumentTypeError(f"Boolean value expected, got {v!r}")
+
+
 def _add_config_overrides(parser: argparse.ArgumentParser) -> None:
-    """Add one --<field> flag for every Config field."""
+    """Add one --<field> flag for every Config field.
+
+    Bool fields use _str2bool so that --flag true/false/1/0 all work correctly.
+    (argparse's default type=bool treats any non-empty string as True.)
+    """
     for field in dataclasses.fields(Config):
         flag = f"--{field.name}"
-        if flag not in parser._option_string_actions:
-            parser.add_argument(flag, type=type(field.default) if field.default is not dataclasses.MISSING else str, default=None)
+        if flag in parser._option_string_actions:
+            continue
+        if field.default is dataclasses.MISSING:
+            parser.add_argument(flag, type=str, default=None)
+        elif isinstance(field.default, bool):
+            parser.add_argument(flag, type=_str2bool, default=None, metavar="BOOL")
+        else:
+            parser.add_argument(flag, type=type(field.default), default=None)
 
 
 def _apply_overrides(config: Config, args: argparse.Namespace) -> Config:
@@ -61,6 +82,7 @@ def _apply_overrides(config: Config, args: argparse.Namespace) -> Config:
 # ─── subcommand handlers ────────────────────────────────────────────────────
 
 def _cmd_train(args: argparse.Namespace) -> None:
+    _init_jax_cache()   # persist XLA-compiled kernels across runs
     config = Config.from_yaml(args.config)
     config = _apply_overrides(config, args)
 
@@ -264,8 +286,16 @@ def _cmd_infbench(args: argparse.Namespace) -> None:
         cmd += ["--verbose"]
     if getattr(args, "trained", False):
         cmd += ["--trained"]
+    if getattr(args, "diff_ar", False):
+        cmd += ["--diff-ar"]
+    if getattr(args, "eval", False):
+        cmd += ["--eval"]
     if getattr(args, "inference_off", False):
         cmd += ["--inference-off"]
+    if getattr(args, "no_mla", False):
+        cmd += ["--no-mla"]
+    if getattr(args, "pdf", False):
+        cmd += ["--pdf"]
     if getattr(args, "runs_dir", None):
         cmd += ["--runs-dir", args.runs_dir]
     if getattr(args, "trained_csv", None):
@@ -404,9 +434,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ib.add_argument("--verbose", action="store_true",
                       help="Print per-experiment metrics during the sweep")
     p_ib.add_argument("--trained", action="store_true",
-                      help="Also run the trained-model pipeline (stages 3 and 4)")
+                      help="Run trained-model analysis (stages 5–6)")
+    p_ib.add_argument("--diff-ar", action="store_true",
+                      help="Run the AR vs Diffusion sweep (stages 3–4)")
+    p_ib.add_argument("--eval", action="store_true",
+                      help="Run quality evaluation pipeline: PPL + confidence + gen-quality + paper figures (implies --trained)")
     p_ib.add_argument("--inference-off", action="store_true",
-                      help="Skip inference pipeline; requires --trained")
+                      help="Skip inference pipeline; requires at least one of --trained/--diff-ar/--eval")
+    p_ib.add_argument("--no-mla", action="store_true",
+                      help="Skip MLA experiments in diffusion_ar and confidence sweeps")
+    p_ib.add_argument("--pdf", action="store_true",
+                      help="Save EMNLP paper figures as PDF in addition to PNG")
     p_ib.add_argument("--runs-dir", default="runs", metavar="DIR",
                       help="Directory of trained run subdirs (default: runs)")
     p_ib.add_argument("--trained-csv", default="results/benchmark_results.csv", metavar="PATH",

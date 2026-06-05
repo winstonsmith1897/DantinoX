@@ -207,6 +207,11 @@ def main(argv: list[str] | None = None) -> None:
         help="Specific run names to sweep (default: built-in list or auto-selected)",
     )
     parser.add_argument(
+        "--run-prefix", nargs="+", default=["ar_", "diff_"], metavar="PREFIX",
+        help="When auto-selecting from CSV, only include runs with these prefixes "
+             "(default: ar_ diff_). Prevents mixing runs trained on different datasets.",
+    )
+    parser.add_argument(
         "--analysis-csv", default=None, metavar="PATH",
         help="If --runs is not given, auto-select one run per attention type "
              "from this analysis CSV (produced by trained_analysis.py)",
@@ -235,6 +240,7 @@ def main(argv: list[str] | None = None) -> None:
         os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     # Resolve which runs to sweep
+    _prefixes = tuple(p for p in (args.run_prefix or []) if p)
     if args.runs:
         sweep_runs = args.runs
     elif args.analysis_csv:
@@ -245,6 +251,10 @@ def main(argv: list[str] | None = None) -> None:
             sweep_runs = _DEFAULT_RUNS
     else:
         sweep_runs = _DEFAULT_RUNS
+
+    # Apply prefix filter
+    if _prefixes and not args.runs:
+        sweep_runs = [r for r in sweep_runs if any(r.startswith(p) for p in _prefixes)]
 
     runs_dir = args.runs_dir
     runs_present = [

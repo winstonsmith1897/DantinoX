@@ -22,6 +22,17 @@ class Config:
     dropout_rate: float = 0.15
     use_swiglu: bool = True
 
+    # ── Model type & attention variant ───────────────────────────────────────
+    model_type: str = "autoregressive"  # "autoregressive" | "diffusion"
+    attention_type: str = "auto"        # "mha" | "gqa" | "mla" | "auto" (derived)
+
+    # ── Diffusion ────────────────────────────────────────────────────────────
+    diffusion_steps: int = 1000         # total forward-diffusion steps T
+    noise_schedule: str = "cosine"      # "cosine" | "linear" | "sqrt"
+    mask_token_id: int = 0              # vocabulary ID of the [MASK] token
+    num_sampling_steps: int = 50        # fast reverse-diffusion steps (DDIM-style)
+    time_emb_dim: int = 256             # output dimension of the time-embedding MLP
+
     # ── MoE ─────────────────────────────────────────────────────────────────
     use_moe: bool = False
     n_experts: int = 4
@@ -50,6 +61,7 @@ class Config:
     tokenizer_path: str | None = None
 
     # ── Dataset ─────────────────────────────────────────────────────────────
+    max_train_tokens: int = 10_000_000  # cap token count per run (0 = unlimited)
     dataset_source: str = "local"
     dataset_name: str = ""
     dataset_config: str = ""        # HF subset/config name (e.g. "en" for allenai/c4)
@@ -97,6 +109,18 @@ class Config:
         if self.kv_heads is None:
             self.kv_heads = self.n_heads // 4
 
+        # ── Resolve attention_type from legacy flags ──────────────────────────
+        if self.attention_type == "auto":
+            if self.mla:
+                self.attention_type = "mla"
+            elif self.kv_heads < self.n_heads:
+                self.attention_type = "gqa"
+            else:
+                self.attention_type = "mha"
+
+        # Keep the legacy mla flag consistent with attention_type
+        self.mla = (self.attention_type == "mla")
+
         if self.dim != self.n_heads * self.head_size:
             raise ValueError(
                 f"dim ({self.dim}) must equal n_heads * head_size "
@@ -110,6 +134,25 @@ class Config:
             raise ValueError(
                 f"rope_dim ({self.rope_dim}) must be <= head_size ({self.head_size}) "
                 "when using MLA with rotary positional encoding"
+            )
+        if self.model_type not in ("autoregressive", "diffusion"):
+            raise ValueError(
+                f"model_type must be 'autoregressive' or 'diffusion', got {self.model_type!r}"
+            )
+        if self.attention_type not in ("mha", "gqa", "mla"):
+            raise ValueError(
+                f"attention_type must be 'mha', 'gqa', or 'mla', got {self.attention_type!r}"
+            )
+        if self.noise_schedule not in ("cosine", "linear", "sqrt"):
+            raise ValueError(
+                f"noise_schedule must be 'cosine', 'linear', or 'sqrt', "
+                f"got {self.noise_schedule!r}"
+            )
+        if self.diffusion_steps < 1:
+            raise ValueError(f"diffusion_steps must be >= 1, got {self.diffusion_steps}")
+        if self.num_sampling_steps < 1:
+            raise ValueError(
+                f"num_sampling_steps must be >= 1, got {self.num_sampling_steps}"
             )
         if self.norm_type not in ("layernorm", "rmsnorm"):
             raise ValueError(
@@ -134,11 +177,12 @@ class Config:
             raise ValueError(f"n_devices must be >= 0, got {self.n_devices}")
 
     def __repr__(self) -> str:
-        attn = "MLA" if self.mla else ("GQA" if self.kv_heads < self.n_heads else "MHA")
-        moe = "+MoE" if self.use_moe else ""
+        attn = self.attention_type.upper()
+        mode = "Diffusion" if self.model_type == "diffusion" else "AR"
+        moe  = "+MoE" if self.use_moe else ""
         return (
             f"Config(dim={self.dim}, heads={self.n_heads}, blocks={self.num_blocks}, "
-            f"ctx={self.max_context}, attn={attn}{moe})"
+            f"ctx={self.max_context}, mode={mode}, attn={attn}{moe})"
         )
 
     # ── Serialisation ────────────────────────────────────────────────────────
