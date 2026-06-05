@@ -22,41 +22,28 @@ theme:
       info:    octicons/info-16
   features:
     - navigation.instant
-    - navigation.instant.prefetch
-    - navigation.tabs
-    - navigation.tabs.sticky
-    - navigation.path
-    - navigation.sections
-    - navigation.expand
     - navigation.top
-    - navigation.footer
-    - navigation.tracking
     - navigation.indexes
+    - navigation.tracking
     - search.suggest
     - search.highlight
-    - search.share
     - content.code.copy
     - content.code.annotate
-    - content.code.select
     - content.tabs.link
-    - content.tooltips
     - toc.follow
-    - header.autohide
   palette:
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: black
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: black
+    - scheme: default
+      primary: indigo
       accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 plugins:
   - search
