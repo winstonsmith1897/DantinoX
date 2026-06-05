@@ -1,66 +1,310 @@
-/* DantinoX — minimal style overrides for MkDocs Material */
+/* ══════════════════════════════════════════════════════════════════
+   DantinoX Documentation — Professional Design System
+   MkDocs Material · light + dark
+   ══════════════════════════════════════════════════════════════════ */
 
-/* ── Typography ── */
+/* ── 1. Design tokens ── */
+:root {
+  --dnx-navy-950: #080e1a;
+  --dnx-navy-900: #0d1b2e;
+  --dnx-navy-800: #152238;
+  --dnx-navy-700: #1d3252;
+  --dnx-navy-600: #243b68;
+  --dnx-blue:     #2563eb;
+  --dnx-blue-lt:  #3b82f6;
+  --dnx-border:   #d8dde6;
+  --dnx-code-bg:  #f6f8fa;
+  --dnx-r:        6px;
+  --dnx-t:        .18s ease;
+}
+
+[data-md-color-scheme="slate"] {
+  --dnx-border:  rgba(255, 255, 255, .09);
+  --dnx-code-bg: rgba(255, 255, 255, .04);
+}
+
+/* ── 2. Material theme color overrides ── */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:             #1d3252;
+  --md-primary-fg-color--light:      #243b68;
+  --md-primary-fg-color--dark:       #0d1b2e;
+  --md-primary-bg-color:             #ffffff;
+  --md-primary-bg-color--light:      rgba(255, 255, 255, .7);
+  --md-accent-fg-color:              #2563eb;
+  --md-accent-fg-color--transparent: rgba(37, 99, 235, .08);
+  --md-accent-bg-color:              #ffffff;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:             #1d3252;
+  --md-primary-fg-color--light:      #243b68;
+  --md-primary-fg-color--dark:       #080e1a;
+  --md-primary-bg-color:             #ffffff;
+  --md-primary-bg-color--light:      rgba(255, 255, 255, .7);
+  --md-accent-fg-color:              #60a5fa;
+  --md-accent-fg-color--transparent: rgba(96, 165, 250, .10);
+}
+
+/* ── 3. Typography ── */
+.md-typeset {
+  font-size: .9rem;
+  line-height: 1.75;
+}
+
 .md-typeset h1 {
   font-weight: 700;
-  letter-spacing: -.02em;
+  font-size: 1.85rem;
+  letter-spacing: -.03em;
+  line-height: 1.2;
+  margin-bottom: .9rem;
 }
 
 .md-typeset h2 {
   font-weight: 600;
-  padding-bottom: .35rem;
-  border-bottom: 1px solid var(--md-default-fg-color--lightest);
-  margin-top: 2.5rem;
+  font-size: 1.25rem;
+  letter-spacing: -.015em;
+  margin-top: 2.6rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid var(--dnx-border);
 }
 
-/* ── Code blocks ── */
+.md-typeset h3 {
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -.01em;
+  margin-top: 1.8rem;
+}
+
+.md-typeset h4 {
+  font-weight: 600;
+  font-size: .75rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  margin-top: 1.5rem;
+  margin-bottom: .35rem;
+}
+
+/* Permalink — hover only */
+.md-typeset .headerlink { opacity: 0; transition: opacity var(--dnx-t); }
+.md-typeset :is(h1,h2,h3,h4):hover .headerlink { opacity: .3; }
+
+/* Links */
+.md-typeset a { color: var(--dnx-blue); text-decoration: none; }
+.md-typeset a:hover { text-decoration: underline; text-underline-offset: 2px; }
+[data-md-color-scheme="slate"] .md-typeset a { color: var(--dnx-blue-lt); }
+
+/* ── 4. Code blocks ── */
 .md-typeset .highlight {
-  border-radius: 4px;
-  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--dnx-code-bg);
+  border: 1px solid var(--dnx-border);
+  border-radius: var(--dnx-r);
 }
 
 .md-typeset .highlight pre {
+  background: transparent;
   max-height: 500px;
   overflow: auto;
+  padding: 1rem 1.1rem;
 }
 
-/* ── Inline code ── */
+/* Filename bar */
+.md-typeset .highlight > .filename {
+  font-family: var(--md-code-font);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  padding: .45rem 1rem;
+  border-bottom: 1px solid var(--dnx-border);
+  background: transparent;
+  border-radius: var(--dnx-r) var(--dnx-r) 0 0;
+}
+
+/* Inline code */
 .md-typeset code:not(.highlight code) {
-  border-radius: 3px;
-  padding: .1em .35em;
+  background: var(--dnx-code-bg);
+  border: 1px solid var(--dnx-border);
+  border-radius: 4px;
+  padding: .1em .38em;
   font-size: .84em;
-  background: var(--md-code-bg-color);
-  border: 1px solid var(--md-default-fg-color--lightest);
 }
 
-/* ── Tables ── */
+/* ── 5. Tables ── */
 .md-typeset table:not([class]) {
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 4px;
+  border: 1px solid var(--dnx-border);
+  border-radius: var(--dnx-r);
+  border-collapse: separate;
+  border-spacing: 0;
   overflow: hidden;
-  font-size: .875rem;
   width: 100%;
+  font-size: .875rem;
 }
 
 .md-typeset table:not([class]) th {
   background: var(--md-primary-fg-color);
   color: var(--md-primary-bg-color);
   font-weight: 600;
-  font-size: .75rem;
-  letter-spacing: .06em;
+  font-size: .7rem;
+  letter-spacing: .08em;
   text-transform: uppercase;
   padding: .65rem 1rem;
+  border: none;
 }
 
 .md-typeset table:not([class]) td {
-  border-top: 1px solid var(--md-default-fg-color--lightest);
-  padding: .6rem 1rem;
+  border: none;
+  border-top: 1px solid var(--dnx-border);
+  padding: .65rem 1rem;
   vertical-align: top;
+  line-height: 1.65;
 }
 
-/* ── Admonitions ── */
+.md-typeset table:not([class]) tbody tr:hover td {
+  background: rgba(37, 99, 235, .03);
+}
+
+/* ── 6. Admonitions ── */
 .md-typeset .admonition,
 .md-typeset details {
+  border-radius: var(--dnx-r);
+  border-width: 0 0 0 3px;
+  font-size: .88rem;
+  box-shadow: none;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  font-weight: 600;
+  font-size: .7rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+/* ── 7. Content tabs ── */
+.md-typeset .tabbed-set {
+  border: 1px solid var(--dnx-border);
+  border-radius: var(--dnx-r);
+  overflow: hidden;
+}
+
+.md-typeset .tabbed-labels > label {
+  font-weight: 600;
+  font-size: .82rem;
+  letter-spacing: .02em;
+  padding: .55rem 1rem;
+}
+
+/* ── 8. Blockquotes ── */
+.md-typeset blockquote {
+  border-left: 3px solid var(--dnx-border);
+  margin: 1.2rem 0;
+  padding: .65rem 1.2rem;
+  color: var(--md-default-fg-color--light);
+  font-style: italic;
+  background: none;
+}
+
+.md-typeset blockquote p { margin: 0; font-size: .92em; }
+
+/* ── 9. Navigation ── */
+.md-nav__link--active {
+  font-weight: 600;
+  color: var(--md-accent-fg-color) !important;
+}
+
+.md-nav__title { font-weight: 700; font-size: .75rem; letter-spacing: .06em; }
+
+/* ── 10. Header ── */
+.md-header {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .10);
+  backdrop-filter: none;
+}
+
+/* ── 11. Homepage hero panel ── */
+.dnx-hero {
+  background: var(--dnx-navy-900);
+  border: 1px solid var(--dnx-navy-700);
+  border-radius: var(--dnx-r);
+  padding: 3rem 2.8rem 2.4rem;
+  margin: 0 0 2.5rem;
+}
+
+.dnx-hero h1 {
+  font-size: 2.1rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -.04em !important;
+  color: #f1f5f9 !important;
+  line-height: 1.15 !important;
+  margin-bottom: .8rem !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+}
+
+.dnx-hero p {
+  color: #94a3b8;
+  font-size: .95rem;
+  line-height: 1.65;
+  max-width: 640px;
+  margin-bottom: 0;
+}
+
+.dnx-hero strong { color: #cbd5e1; }
+
+.dnx-hero .hero-meta {
+  margin-top: .55rem;
+  font-size: .78rem;
+  color: #475569;
+  letter-spacing: .03em;
+}
+
+/* Badge row */
+.dnx-hero .hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: 1.5rem;
+  align-items: center;
+}
+.dnx-hero .hero-badges img { height: 20px; opacity: .80; transition: opacity var(--dnx-t); }
+.dnx-hero .hero-badges img:hover { opacity: 1; }
+
+/* CTA buttons */
+.dnx-hero .md-button {
+  display: inline-block;
+  margin: 1.4rem .3rem 0 0;
   border-radius: 4px;
-  font-size: .9rem;
+  font-weight: 600;
+  font-size: .85rem;
+  letter-spacing: .01em;
+  padding: .5rem 1.35rem;
+  transition: background var(--dnx-t), border-color var(--dnx-t), color var(--dnx-t);
+}
+
+.dnx-hero .md-button--primary {
+  background: var(--dnx-blue) !important;
+  border-color: var(--dnx-blue) !important;
+  color: #fff !important;
+}
+.dnx-hero .md-button--primary:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  text-decoration: none;
+}
+
+.dnx-hero .md-button:not(.md-button--primary) {
+  background: transparent !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+.dnx-hero .md-button:not(.md-button--primary):hover {
+  border-color: #64748b !important;
+  color: #e2e8f0 !important;
+  text-decoration: none;
+}
+
+/* ── 12. Responsive ── */
+@media screen and (max-width: 44.9375em) {
+  .dnx-hero { padding: 2.2rem 1.5rem 1.8rem; }
+  .dnx-hero h1 { font-size: 1.65rem !important; }
 }

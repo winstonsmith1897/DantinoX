@@ -1,42 +1,58 @@
+---
+hide:
+  - toc
+---
+
+<div class="dnx-hero" markdown>
+
 # DantinoX
 
+**A research-grade language model library natively built in JAX and Flax NNX.**
+
+Supports Autoregressive and Masked Diffusion generation across three attention families — MHA, GQA, and MLA — with Fast-dLLM DualCache, Mixture-of-Experts, LoRA fine-tuning, and multi-GPU SPMD sharding, all controlled from a single YAML configuration.
+
+<div class="hero-badges" markdown>
 [![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=JAX&logoColor=white)](https://github.com/google/jax)
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-5E17EB?style=flat-square&logoColor=white)](https://github.com/google/flax)
-[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](https://opensource.org/licenses/MIT)
-[![ReadTheDocs](https://readthedocs.org/projects/dantinox/badge/?version=latest&style=flat-square)](https://dantinox.readthedocs.io)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![License MIT](https://img.shields.io/badge/License-MIT-16a34a?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Docs](https://readthedocs.org/projects/dantinox/badge/?version=latest&style=flat-square)](https://dantinox.readthedocs.io)
+[![W&B](https://img.shields.io/badge/Tracked%20with-W%26B-FFBE00?style=flat-square&logo=weightsandbiases&logoColor=black)](https://wandb.ai)
+</div>
 
-DantinoX is a research-grade Transformer library built from scratch in **JAX** and **Flax NNX**. It supports two generation paradigms — Autoregressive and Masked Diffusion — across three attention families (MHA, GQA, MLA), with Fast-dLLM DualCache, Mixture-of-Experts, LoRA fine-tuning, multi-GPU SPMD sharding, and more, all controlled from a single YAML config.
+[Get Started](architecture.md){ .md-button .md-button--primary }
+[API Reference](api.md){ .md-button }
+[GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
----
+</div>
 
-## Key Features
+## Overview
 
-- **Two generation paradigms** — Autoregressive and Masked Diffusion Language Models, switchable from config.
-- **Three attention families** — Multi-Head Attention (MHA), Grouped-Query Attention (GQA), and Multi-Head Latent Attention (MLA) with decoupled RoPE and weight absorption.
-- **Fast-dLLM DualCache** — 2.1× decode speedup for diffusion models via dual KV-cache strategy.
-- **JAX-native inference** — static KV cache via `dynamic_update_slice`, `@jax.jit` training loop, optional Flash Attention (`jax.nn.dot_product_attention`).
-- **LoRA fine-tuning** — type-level weight freezing via a custom `LoRAParam` variable; only adapter weights are trained (~0.2% of parameters).
-- **Multi-GPU SPMD** — data-parallel training via JAX `jax.sharding.Mesh`; set `n_devices=N` in config, XLA handles the rest.
-- **Production-ready API** — `Trainer`, `Generator`, `BenchmarkRunner`, CLI, bfloat16, gradient clipping, early stopping, LR finder, HuggingFace Hub integration.
-- **Fully tested** — 86 tests, mypy clean, ruff clean, coverage report included.
+DantinoX is a from-scratch Transformer implementation designed for research reproducibility and production-grade performance. Every architectural choice — attention mechanism, normalisation, positional encoding, feed-forward network — is expressed as a single field in a typed `Config` dataclass. No subclassing, no source edits required.
 
----
+The library is structured as a proper Python package (`pip install -e ".[all]"`), not a standalone script, with a `Trainer`, `Generator`, `BenchmarkRunner`, and a full CLI — built on top of JAX's XLA compiler for zero-overhead inference and training.
+
+## Capabilities
+
+| Component | Details |
+| :--- | :--- |
+| **Attention** | MHA, GQA, MLA with decoupled RoPE and weight absorption; optional Flash Attention |
+| **Generation** | Autoregressive (KV-cache) and Masked Diffusion with Fast-dLLM DualCache |
+| **Training** | bfloat16, gradient accumulation, gradient clipping, early stopping, LR finder |
+| **Fine-tuning** | LoRA with type-level weight freezing via `LoRAParam`; ~0.2 % of parameters trained |
+| **Scale** | Multi-GPU data-parallel via JAX SPMD; set `n_devices=N`, XLA handles the rest |
+| **Integration** | HuggingFace Hub push/pull, W&B sweep logging, CLI (`dantinox train / generate / ...`) |
+| **Quality** | 86 tests, mypy clean, ruff clean, coverage report |
 
 ## Installation
 
 ```bash
 git clone https://github.com/winstonsmith1897/DantinoX.git
 cd DantinoX
-
-conda create -n dantinox python=3.12 -y
-conda activate dantinox
-
+conda create -n dantinox python=3.12 -y && conda activate dantinox
 pip install -U "jax[cuda12]"
 pip install -e ".[all]"
 ```
-
----
 
 ## Quick Start
 
@@ -50,52 +66,44 @@ config = Config(
     use_flash_attention=True,
     lr_schedule="wsd",
 )
-run_dir = Trainer(config).fit("data/corpus.txt")
 
-gen = Generator(run_dir)
+run_dir = Trainer(config).fit("data/corpus.txt")
+gen     = Generator(run_dir)
 print(gen.generate("In the beginning ", max_new_tokens=200))
 ```
 
-For the full CLI reference, batched generation, streaming, LoRA fine-tuning, and multi-GPU usage see the [Training](training/index.md) and [Inference](inference/index.md) sections.
-
----
+For batched generation, streaming, LoRA fine-tuning, multi-GPU usage, and the full CLI reference, see the sections below.
 
 ## Documentation
 
 | Section | Description |
 | :--- | :--- |
-| [Architecture](architecture.md) | Attention mechanisms, MLA math, LoRA, multi-GPU, full config reference |
+| [Architecture](architecture.md) | Attention mechanisms, MLA math, LoRA implementation, multi-GPU sharding, full config reference |
 | [Generation Paradigms](paradigms/index.md) | Autoregressive vs. Masked Diffusion, Fast-dLLM DualCache, confidence-aware decoding |
-| [Training](training/index.md) | bfloat16, gradient accumulation, LR schedules, early stopping, sweeps, multi-GPU |
+| [Training](training/index.md) | bfloat16, gradient accumulation, LR schedules, early stopping, W&B sweeps, multi-GPU |
 | [Inference](inference/index.md) | Single, batch, and streaming generation; KV-cache pipeline; sampling strategies |
-| [Benchmarks](benchmarks.md) | MHA vs. GQA vs. MLA — throughput, KV cache size, FLOPs, latency |
-| [Ablation Studies](ablation_studies.md) | Optimizer comparison, MoE, positional encoding, regularization |
+| [Benchmarks](benchmarks.md) | MHA vs. GQA vs. MLA — throughput, KV cache size, FLOPs, latency comparison |
+| [Ablation Studies](ablation_studies.md) | Optimizer comparison, MoE routing, positional encoding variants, regularisation |
 | [API Reference](api.md) | `Trainer`, `Generator`, `LoRALinear`, sharding utilities, `BenchmarkRunner`, Hub |
-
----
 
 ## Project Structure
 
 ```text
 DantinoX/
-├── dantinox/           # Public library API (Trainer, Generator, CLI, Hub)
-├── core/               # Internal implementation (model, attention, generation)
-├── utils/              # Tokenizer (char / BPE), data helpers
-├── configs/            # Default YAML configs and W&B sweep definitions
+├── dantinox/           # Public API — Trainer, Generator, CLI, BenchmarkRunner, Hub
+├── core/               # Internal implementation — model, attention, generation, sharding
+├── utils/              # Tokenizer (char / BPE), data utilities
+├── configs/            # Default YAML configs, W&B sweep definitions
 ├── tests/              # 86 pytest unit and integration tests
-└── examples/           # Quickstart script and Colab notebook
+└── examples/           # Quickstart script, Colab notebook
 ```
 
----
-
 ## Citation
-
-If you use DantinoX in your research, please cite:
 
 ```bibtex
 @software{dantinox2026,
   author  = {Simoni, Marco},
-  title   = {DantinoX: A Research-Grade Transformer Library in JAX},
+  title   = {DantinoX: A Research-Grade Transformer Library in {JAX}},
   year    = {2026},
   url     = {https://github.com/winstonsmith1897/DantinoX},
 }
