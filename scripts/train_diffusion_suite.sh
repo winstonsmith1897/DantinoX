@@ -109,7 +109,7 @@ train_one() {
         --run_dir "${run_dir}"
         --use_bf16 true
         --use_flash_attention true
-        --gradient_checkpointing false
+        --gradient_checkpointing true
         "${extra_args[@]}")
 
     echo ""

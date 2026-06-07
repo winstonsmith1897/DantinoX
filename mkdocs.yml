@@ -1,4 +1,5 @@
 site_name: DantinoX
+site_url: https://dantinox.readthedocs.io/en/latest/
 site_description: A high-performance, from-scratch LLM natively built in JAX and Flax NNX.
 site_author: Marco Simoni
 repo_url: https://github.com/winstonsmith1897/DantinoX

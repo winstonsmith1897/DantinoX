@@ -73,7 +73,7 @@ train_one() {
         --n_devices 2
         --use_bf16 true
         --use_flash_attention true
-        --gradient_checkpointing false
+        --gradient_checkpointing true
         --dataset_source huggingface
         --dataset_name "wikitext"
         --dataset_config "wikitext-103-raw-v1"

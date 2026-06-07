@@ -155,7 +155,13 @@ def _model_summary(model: Transformer | DiffusionTransformer, config: Config, op
         x.size for x in jax.tree_util.tree_leaves(opt_state) if isinstance(x, jax.Array)
     )
     bpp = 2 if getattr(config, "use_bf16", False) else 4
-    act = config.batch_size * config.max_context * config.dim * config.num_blocks * 8 * bpp
+    grad_accum = getattr(config, "grad_accum", 1)
+    micro_bs = max(1, config.batch_size // grad_accum)
+    # activations × grad_accum because the Python for loop inside @nnx.jit is
+    # fully unrolled by XLA, so all micro-batch activation graphs coexist in
+    # the compiled program simultaneously. gradient_checkpointing=True mitigates
+    # this by recomputing block internals on the backward pass.
+    act = micro_bs * config.max_context * config.dim * config.num_blocks * 8 * bpp * grad_accum
     return {
         "total_params_M": round(total / 1e6, 2),
         "dtype": "bfloat16" if bpp == 2 else "float32",

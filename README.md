@@ -15,9 +15,9 @@ A decoder-only Transformer built from scratch in **JAX** and **Flax NNX** — co
 [![Ruff](https://img.shields.io/badge/linter-ruff-orange?style=flat-square)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue?style=flat-square)](http://mypy-lang.org/)
 [![Tests](https://img.shields.io/badge/tests-22%20passed-brightgreen?style=flat-square)](https://github.com/winstonsmith1897/DantinoX/actions)
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue?style=flat-square&logo=github)](https://winstonsmith1897.github.io/DantinoX/)
+[![Documentation](https://readthedocs.org/projects/dantinox/badge/?version=latest&style=flat-square)](https://dantinox.readthedocs.io/en/latest/)
 
-**[Documentation](https://winstonsmith1897.github.io/DantinoX/) · [Coverage Report](https://winstonsmith1897.github.io/DantinoX/coverage/) · [API Reference](https://winstonsmith1897.github.io/DantinoX/api/)**
+**[Documentation](https://dantinox.readthedocs.io/en/latest/) · [Coverage Report](https://dantinox.readthedocs.io/en/latest/coverage/) · [API Reference](https://dantinox.readthedocs.io/en/latest/api/)**
 
 </div>
 
@@ -400,7 +400,7 @@ Ablation studies were conducted via W&B Bayesian sweeps over 100+ configurations
 - **Attention Gating (`no_sink`):** Stabilizes training when combined with RoPE at high learning rates.
 - **MoE (Top-2/4):** Matches dense perplexity at 60% of the active-parameter count.
 
-Full charts and analysis: [Ablation Studies](https://winstonsmith1897.github.io/DantinoX/ablation_studies/)
+Full charts and analysis: [Ablation Studies](https://dantinox.readthedocs.io/en/latest/ablation_studies/)
 
 ---
 
@@ -415,12 +415,12 @@ mkdocs gh-deploy --force
 
 Sections:
 
-- [Architecture](https://winstonsmith1897.github.io/DantinoX/architecture/) — attention variants, MoE, positional encodings
-- [Training & Sweeps](https://winstonsmith1897.github.io/DantinoX/training/) — training loop internals, W&B integration
-- [Inference & Generation](https://winstonsmith1897.github.io/DantinoX/generation/) — KV-cache, decoding strategies
-- [Benchmarks](https://winstonsmith1897.github.io/DantinoX/benchmarks/) — throughput and FLOPs analysis
-- [API Reference](https://winstonsmith1897.github.io/DantinoX/api/) — auto-generated from docstrings
-- [Coverage Report](https://winstonsmith1897.github.io/DantinoX/coverage/) — line-level test coverage
+- [Architecture](https://dantinox.readthedocs.io/en/latest/architecture/) — attention variants, MoE, positional encodings
+- [Training & Sweeps](https://dantinox.readthedocs.io/en/latest/training/) — training loop internals, W&B integration
+- [Inference & Generation](https://dantinox.readthedocs.io/en/latest/generation/) — KV-cache, decoding strategies
+- [Benchmarks](https://dantinox.readthedocs.io/en/latest/benchmarks/) — throughput and FLOPs analysis
+- [API Reference](https://dantinox.readthedocs.io/en/latest/api/) — auto-generated from docstrings
+- [Coverage Report](https://dantinox.readthedocs.io/en/latest/coverage/) — line-level test coverage
 
 ---
 
