@@ -110,6 +110,7 @@ extra_javascript:
 
 nav:
   - Home: index.md
+  - EMNLP 2026 Paper: paper.md
 
   - Tutorials:
     - Overview: tutorials/index.md
@@ -135,6 +136,7 @@ nav:
     - Diffusion: training/diffusion.md
     - Hyperparameter Sweeps: training/sweeps.md
     - Multi-GPU: training/multi-gpu.md
+    - EMNLP Training Suite: training/emnlp-suite.md
 
   - Inference:
     - Overview: inference/index.md

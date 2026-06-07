@@ -12,6 +12,7 @@ hide:
 Supports Autoregressive and Masked Diffusion generation across three attention families — MHA, GQA, and MLA — with Fast-dLLM DualCache, Mixture-of-Experts, LoRA fine-tuning, and multi-GPU SPMD sharding, all controlled from a single YAML configuration.
 
 <div class="hero-badges" markdown>
+[![EMNLP 2026](https://img.shields.io/badge/EMNLP-2026%20System%20Demo-blue?style=flat-square)](paper.md)
 [![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=JAX&logoColor=white)](https://github.com/google/jax)
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-5E17EB?style=flat-square&logoColor=white)](https://github.com/google/flax)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -22,11 +23,21 @@ Supports Autoregressive and Masked Diffusion generation across three attention f
 
 [Get Started](architecture.md){ .md-button .md-button--primary }
 [API Reference](api.md){ .md-button }
+[EMNLP 2026 Paper](paper.md){ .md-button }
 [GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
 </div>
 
 ## Overview
+
+!!! abstract "EMNLP 2026 System Demonstration"
+    DantinoX is the official companion codebase for the paper *"DantinoX: A Unified JAX/Flax Framework for Autoregressive and Masked Diffusion Language Models across MHA, GQA, and MLA Attention Variants"*, accepted to the EMNLP 2026 System Demonstrations track.
+
+    The paper presents a systematic experimental comparison of Autoregressive (AR) and Masked Diffusion language models trained under strictly identical conditions. The study spans **180 trained checkpoints** across three attention families (MHA, GQA, MLA), ten model sizes, Dense and Mixture-of-Experts feed-forward networks, and twelve architectural ablations. Evaluation covers perplexity on WikiText-103, Penn Treebank, LAMBADA, and C4; inference throughput; and open-ended generation quality (Distinct-1/2, Self-BLEU, Rep-4, MAUVE).
+
+    To reproduce all results and paper figures from scratch: `bash scripts/run_full_emnlp.sh`
+
+    See the [EMNLP Paper](paper.md) and [EMNLP Training Suite](training/emnlp-suite.md) pages for full documentation.
 
 DantinoX is a from-scratch Transformer implementation designed for research reproducibility and production-grade performance. Every architectural choice — attention mechanism, normalisation, positional encoding, feed-forward network — is expressed as a single field in a typed `Config` dataclass. No subclassing, no source edits required.
 
@@ -78,6 +89,8 @@ For batched generation, streaming, LoRA fine-tuning, multi-GPU usage, and the fu
 
 | Section | Description |
 | :--- | :--- |
+| [EMNLP Paper](paper.md) | EMNLP 2026 System Demo companion page — abstract, research questions, experimental design, evaluation pipeline, and citation |
+| [EMNLP Training Suite](training/emnlp-suite.md) | Full documentation of the 180-checkpoint training matrix, run naming conventions, partial filters, and hardware requirements |
 | [Architecture](architecture.md) | Attention mechanisms, MLA math, LoRA implementation, multi-GPU sharding, full config reference |
 | [Generation Paradigms](paradigms/index.md) | Autoregressive vs. Masked Diffusion, Fast-dLLM DualCache, confidence-aware decoding |
 | [Training](training/index.md) | bfloat16, gradient accumulation, LR schedules, early stopping, W&B sweeps, multi-GPU |

@@ -8,6 +8,23 @@ Both paradigms are trained on the same corpus with the same architecture.
 This page summarises the expected tradeoffs based on DantinoX's systematic
 benchmark suite across three attention types (MHA · GQA · MLA).
 
+The quantitative results reported here are produced by the EMNLP 2026 System Demonstration training pipeline. For full experimental details — including the training matrix, ablation design, and evaluation methodology — see the [EMNLP Paper](../paper.md) companion page. All numerical entries marked with "—" are populated by running `bash scripts/run_full_emnlp.sh`; the resulting CSVs are written to `results/perplexity.csv`, `results/generation_quality.csv`, and `results/benchmark_results.csv`.
+
+---
+
+## Research Design
+
+The comparison between AR and Masked Diffusion in DantinoX is structured as a controlled experiment: **the only variable between any pair of compared checkpoints is `model_type`**. All other configuration axes are held constant:
+
+- **Corpus:** WikiText-103 raw (v1), character-level tokenisation, pre-tokenised and cached identically for all runs.
+- **Architecture base:** identical `dim`, `n_heads`, `head_size`, `num_blocks`, `kv_heads`, MLA parameters, MoE configuration, normalisation type, and positional encoding.
+- **Training regime:** same optimiser, learning rate, schedule, batch size, gradient accumulation, bfloat16 precision, flash attention, and gradient checkpointing.
+- **Hardware:** 2× NVIDIA A100 40 GB with JAX SPMD data parallelism across both GPUs.
+
+This design ensures that any measured difference in perplexity, throughput, or generation quality is attributable to the generation paradigm rather than to confounding factors. The 12-ablation Part B suite further isolates the effect of individual hyperparameter choices (normalisation, dropout, activation, attention span, LR schedule, optimiser, batch size, context length) for each attention type independently.
+
+The primary controlled variable at inference time is the decoding procedure: AR generates tokens left-to-right with a static KV cache, while Masked Diffusion generates all positions in parallel over K denoising steps with Fast-dLLM DualCache (prefix KV + suffix KV for remaining MASK positions). The confidence threshold τ and block size f are additional inference-time hyperparameters for diffusion that have no AR counterpart.
+
 ---
 
 ## Architecture Differences
@@ -29,27 +46,50 @@ benchmark suite across three attention types (MHA · GQA · MLA).
 
 ### Language Modelling (bpb on WikiText-103)
 
-Evaluated with sliding-window evaluation;
-AR uses standard CE, Diffusion uses ELBO at a uniform timestep grid.
+Evaluated with sliding-window perplexity; AR uses standard cross-entropy loss, Diffusion uses ELBO at a uniform timestep grid across 1000 (or 500, in the `T500` ablation) noise levels. Results are reported in bits-per-byte (bpb = log₂(e) × NLL / sequence_length), which is tokeniser-agnostic and directly comparable across character-level models.
 
-| Model | AR bpb ↓ | Diffusion ELBO-bpb ↓ |
-|---|---|---|
-| MHA 256d 12b Dense | — | — |
-| GQA 256d 12b Dense | — | — |
-| MLA 256d 12b Dense | — | — |
+| Model | AR bpb ↓ | Diffusion ELBO-bpb ↓ | AR − Diff |
+|:------|:--------:|:--------------------:|:---------:|
+| MHA 256d 12b Dense | — | — | — |
+| GQA 256d 12b Dense | — | — | — |
+| MLA 256d 12b Dense | — | — | — |
+| MHA 512d 12b Dense | — | — | — |
+| GQA 512d 12b Dense | — | — | — |
+| MLA 512d 12b Dense | — | — | — |
 
 !!! note "Populating this table"
-    Run `python benchmarks/perplexity_eval.py` after training to populate these results.
-    Output is written to `results/perplexity.csv`. See [Benchmarks](../benchmarks.md) for the full pipeline.
+    Run the full pipeline to populate perplexity results:
 
-### Long-Range Coherence (LAMBADA accuracy)
+    ```bash
+    bash scripts/run_full_emnlp.sh --skip-benchmarks
+    # or for evaluation only (requires trained checkpoints):
+    python benchmarks/perplexity_eval.py \
+        --runs-dir runs --run-prefix ar_ diff_ \
+        --datasets wikitext-103 ptb lambada c4 \
+        --out results/perplexity.csv
+    ```
 
-LAMBADA tests last-word prediction given a long paragraph. The bidirectional
-Diffusion model sees the *full context* including right-of-target tokens,
-giving it a structural advantage over causal AR.
+    Results are written to `results/perplexity.csv`. See the [EMNLP Paper](../paper.md) evaluation pipeline for stage E3 documentation.
 
-Expected finding: Diffusion bpb on LAMBADA ≤ AR bpb at the same parameter
-count, with the gap widening for longer contexts.
+### Cross-Dataset Generalisation (bpb)
+
+The same trained checkpoints are also evaluated on Penn Treebank (PTB), LAMBADA, and C4 to assess out-of-domain generalisation. All models are trained on WikiText-103 only.
+
+| Dataset | Domain | AR (MHA 256d) | Diff (MHA 256d) | AR (MLA 256d) | Diff (MLA 256d) |
+|:--------|:-------|:-------------:|:---------------:|:-------------:|:---------------:|
+| WikiText-103 | Wikipedia (in-domain) | — | — | — | — |
+| Penn Treebank | Wall Street Journal | — | — | — | — |
+| LAMBADA | Long-range coherence | — | — | — | — |
+| C4 | Web crawl (coarse) | — | — | — | — |
+
+!!! note "Populating this table"
+    Generated by stage E3 of `bash scripts/run_full_emnlp.sh`. Source: `results/perplexity.csv`.
+
+### Long-Range Coherence (LAMBADA)
+
+LAMBADA tests last-word prediction accuracy given a long paragraph of context. The bidirectional attention of masked diffusion models allows the decoder to condition on tokens to the right of the target position, giving it a structural advantage over strictly causal AR models, which cannot attend to future tokens.
+
+From theory (Austin et al., 2021; Nie et al., 2023), masked diffusion is expected to achieve lower bpb on LAMBADA than AR at matched parameter counts, with the advantage increasing as context length grows. The `Ctx1024` ablation is specifically designed to test whether this gap widens with longer sequences.
 
 ---
 
@@ -57,14 +97,38 @@ count, with the gap widening for longer contexts.
 
 ### Throughput (tok/s, BS=1, 256-token generation)
 
-| | AR | Diffusion (simple) | Diffusion (DualCache) |
-|---|---|---|---|
-| MHA 256d 12b | — | — | — |
-| GQA 256d 12b | — | — | — |
-| MLA 256d 12b | — | — | — |
+Throughput is measured on the trained checkpoints (not randomly initialised models) to reflect realistic deployment conditions. AR throughput uses the static KV cache; Diffusion throughput is measured both with naive full-forward per denoising step and with Fast-dLLM DualCache (prefix KV + suffix KV). All measurements use bfloat16 precision on a single A100 40 GB.
+
+| Model | AR (tok/s) | Diff simple (tok/s) | Diff DualCache (tok/s) | DualCache speedup |
+|:------|:----------:|:-------------------:|:----------------------:|:-----------------:|
+| MHA 256d 12b | — | — | — | — |
+| GQA 256d 12b | — | — | — | — |
+| MLA 256d 12b | — | — | — | — |
+| MHA 512d 12b | — | — | — | — |
+| GQA 512d 12b | — | — | — | — |
+| MLA 512d 12b | — | — | — | — |
 
 !!! note "Populating this table"
-    Run `python benchmarks/trained_analysis.py --runs-dir runs --run-prefix ar_ diff_` to populate throughput results.
+    Run stages E1 and E2 of the pipeline to populate throughput results:
+
+    ```bash
+    bash scripts/run_full_emnlp.sh --skip-training --only-plots
+    # or individually:
+    python benchmarks/trained_analysis.py \
+        --runs-dir runs --run-prefix ar_ diff_ \
+        --out-csv results/benchmark_results.csv \
+        --n-warmup 3 --n-trials 20
+    ```
+
+    Source: `results/benchmark_results.csv`.
+
+### Throughput vs. Batch Size
+
+At larger batch sizes the parallel decode advantage of masked diffusion — which decodes all positions simultaneously per denoising step — is expected to compound relative to the strictly sequential AR decode. Stage E2 sweeps batch sizes from 1 to 128 at sequence length 512 for all trained checkpoints.
+
+!!! note "Populating this table"
+    Generated by stage E2: `results/batch_sweep_results.csv`, plotted as part of figure set F3.
+    See `results/paper_figures/` after running `bash scripts/run_full_emnlp.sh`.
 
 ### KV-Cache Memory
 
@@ -83,22 +147,62 @@ adds ~20–40% to the peak cache size.
 
 ---
 
+## Generation Quality
+
+### Open-Ended Generation Metrics
+
+Beyond perplexity, which measures the model's confidence over held-out reference text, open-ended generation quality is evaluated using metrics that assess diversity, repetition, and distributional similarity to human-written text. All metrics are computed over 100 unconditional generations of 128 tokens per checkpoint.
+
+| Metric | Description | Direction |
+|:-------|:------------|:---------:|
+| Distinct-1 | Fraction of unique unigrams in the output | ↑ |
+| Distinct-2 | Fraction of unique bigrams in the output | ↑ |
+| Self-BLEU | Average BLEU of each generation against the rest of the sample | ↓ |
+| Rep-4 | Fraction of 4-gram repetitions within a single generation | ↓ |
+| MAUVE | KL-based distributional distance to human text (higher = closer) | ↑ |
+
+| Model | Distinct-2 ↑ | Self-BLEU ↓ | Rep-4 ↓ | MAUVE ↑ |
+|:------|:-----------:|:-----------:|:-------:|:-------:|
+| AR MHA 256d 12b | — | — | — | — |
+| Diff MHA 256d 12b | — | — | — | — |
+| AR GQA 256d 12b | — | — | — | — |
+| Diff GQA 256d 12b | — | — | — | — |
+| AR MLA 256d 12b | — | — | — | — |
+| Diff MLA 256d 12b | — | — | — | — |
+
+!!! note "Populating this table"
+    Run stage E4 of the pipeline to compute generation quality metrics:
+
+    ```bash
+    python benchmarks/generation_quality.py \
+        --runs-dir runs --run-prefix ar_ diff_ \
+        --n-samples 100 --gen-len 128 \
+        --out results/generation_quality.csv
+    ```
+
+    Source: `results/generation_quality.csv`. Paper-ready figures are produced by stage F3.
+
+From theory, masked diffusion models with bidirectional context are expected to exhibit higher Distinct-2 and MAUVE scores at matched parameter counts, at the cost of requiring multiple denoising steps. The confidence sweep (stage B3) explores the Pareto frontier between generation quality and throughput by varying the per-token confidence threshold τ.
+
+---
+
 ## When to Use Which
+
+The following guidance is grounded in the theoretical properties of each paradigm and is intended to be refined by the empirical findings of the EMNLP 2026 paper once the full pipeline has been run.
 
 ### Use Autoregressive when:
 
-- Latency-critical **streaming** generation (token-by-token output).
-- Tasks where **left-to-right** coherence matters (story generation, code completion).
-- Simple deployment: no diffusion steps, no noise schedule.
-- Integrating with existing AR pipelines and sampling libraries.
+- **Latency-critical streaming** generation is required (token-by-token output, first-token latency matters): AR produces tokens incrementally, while diffusion must complete at least one full denoising pass before any output is available.
+- Tasks where **strict left-to-right causal structure** is essential (code completion with execution-time feedback, prefix-constrained generation): the causal mask provides a principled inductive bias for sequential generation.
+- **Deployment simplicity**: AR inference requires only the forward pass and a KV cache; diffusion inference requires a noise schedule, a mask token, a denoising loop, and (optionally) a confidence estimator.
+- **Integration with existing AR ecosystems**: sampling libraries (nucleus sampling, beam search, speculative decoding) and evaluation harnesses (lm-eval-harness) are designed for AR models.
 
 ### Use Masked Diffusion when:
 
-- **Infilling / editing**: native `[MASK]` tokens make targeted completion trivial.
-- **Long-range coherence**: bidirectional context helps with LAMBADA-style tasks.
-- **Parallel generation**: all positions decode simultaneously — higher throughput
-  at large batch sizes.
-- Research into non-autoregressive discrete generation.
+- **Infilling and constrained editing**: native `[MASK]` tokens provide a direct mechanism for targeted completion of arbitrary spans, without the approximations required by AR-based infilling (e.g., fill-in-the-middle reordering).
+- **Long-range coherence on bidirectional tasks**: by design, diffusion models attend to both left and right context at every denoising step, which theory predicts should yield lower bpb on LAMBADA-style last-word prediction tasks.
+- **Throughput-optimised batch serving**: when all positions are decoded in parallel, the decode cost is $O(K \cdot B \cdot N_{\text{steps}})$ (where $K$ is block size and $N_{\text{steps}}$ is the number of denoising steps), which can be amortised over large batches more efficiently than the $O(T_{\text{gen}}^2)$ cost of AR decoding.
+- **Research into discrete non-autoregressive generation**: the masked diffusion framework provides a principled probabilistic foundation (Austin et al., 2021) for studying discrete-space generative models beyond the autoregressive factorisation.
 
 ---
 

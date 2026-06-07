@@ -10,6 +10,23 @@ DantinoX uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0] — 2026-06-07
+
+### Added
+
+- **EMNLP 2026 System Demo documentation** — `docs/paper.md` companion page with research questions, experimental design (180-checkpoint training matrix), full evaluation pipeline (B1–B3, E1–E4, F1–F3), and reproducibility instructions
+- **EMNLP Training Suite docs** — `docs/training/emnlp-suite.md` documenting the Part A size × attention × FFN matrix and Part B ablation suite with all flag derivations and progress-monitoring commands
+- **`docs/paradigms/comparison.md` improvements** — Research Design section explaining the controlled experimental conditions; expanded placeholder tables for quality (WikiText-103/PTB/LAMBADA/C4 bpb), throughput (AR vs Diffusion simple vs DualCache), and generation quality (Distinct-1/2, Self-BLEU, Rep-4, MAUVE); academically precise "When to Use" section
+- **ReadTheDocs migration** — documentation now served from `dantinox.readthedocs.io`; GitHub Pages workflow replaced with a CI-only `mkdocs build --strict` validation step; `site_url` added to `mkdocs.yml`
+
+### Fixed
+
+- `train_ar_suite.sh` and `train_diffusion_suite.sh` now pass `--gradient_checkpointing true` (was `false`). Without checkpointing, JAX's `@nnx.jit` fully unrolls the `grad_accum=4` loop, causing a ~29 GiB peak XLA allocation that OOMs the A100 40 GB on 512d/16-block models
+- VRAM estimator in `dantinox/trainer.py` now correctly accounts for `grad_accum` loop unrolling and uses `micro_bs` (not `batch_size`) for the activation estimate
+- FAQ updated with accurate OOM diagnostics and gradient checkpointing guidance
+
+---
+
 ## [0.2.0] — 2026-06-05
 
 ### Added
