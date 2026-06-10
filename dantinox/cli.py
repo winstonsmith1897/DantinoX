@@ -236,22 +236,86 @@ def _cmd_pull(args: argparse.Namespace) -> None:
 
 
 def _cmd_plot(args: argparse.Namespace) -> None:
-    from dantinox.plotting import Plotter
-    groups = args.groups if args.groups else None
-    plotter = Plotter(
-        in_csv=args.in_csv,
-        out_dir=args.out_dir,
-    )
-    results = plotter.run(groups=groups)
-    total = sum(len(v) for v in results.values())
-    print(f"\nDone — {total} figures written to {args.out_dir}/")
+    import os
+    import pandas as pd
+    from dantinox.visualization import Visualizer
+
+    _GROUP_TO_CHARTS = {
+        "perf":     ["throughput", "throughput_batch", "latency"],
+        "insights": ["pareto"],
+        "3d":       ["pareto"],
+        "3d_dkv":   ["throughput"],
+    }
+    all_groups = list(_GROUP_TO_CHARTS)
+
+    if not os.path.exists(args.in_csv):
+        print(f"Error: benchmark CSV not found: {args.in_csv}", file=sys.stderr)
+        print("Run 'dantinox benchmark --out_csv ...' first.", file=sys.stderr)
+        sys.exit(1)
+
+    selected = list(args.groups) if args.groups else all_groups
+    unknown  = [g for g in selected if g not in _GROUP_TO_CHARTS]
+    if unknown:
+        print(f"Error: unknown plot group(s): {unknown}. Valid: {all_groups}", file=sys.stderr)
+        sys.exit(1)
+
+    chart_names: list[str] = []
+    for g in selected:
+        chart_names.extend(_GROUP_TO_CHARTS[g])
+    chart_names = list(dict.fromkeys(chart_names))
+
+    df    = pd.read_csv(args.in_csv)
+    paths = Visualizer().render(df, charts=chart_names, out_dir=args.out_dir)
+    print(f"\nDone — {len(paths)} figures written to {args.out_dir}/")
 
 
 def _cmd_benchmark(args: argparse.Namespace) -> None:
-    from dantinox.bench import BenchmarkRunner
-    runner = BenchmarkRunner(args.runs_dir)
-    run_names = args.runs if args.runs else None
-    df = runner.run(run_names, out_csv=args.out_csv)
+    import os
+    import traceback
+    import pandas as pd
+    from core.config import Config
+    from core.model import Transformer
+    from flax import nnx
+    from dantinox.paradigms.ar import ARParadigm
+    from dantinox.benchmarking import BenchmarkConfig, BenchmarkSuite, ThroughputTask, LatencyTask
+    from dantinox.exceptions import BenchmarkError
+
+    runs_dir = args.runs_dir
+    if not os.path.isdir(runs_dir):
+        print(f"Error: runs directory not found: {runs_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    run_names = args.runs or [
+        d for d in os.listdir(runs_dir)
+        if os.path.isdir(os.path.join(runs_dir, d))
+    ]
+
+    bench_cfg = BenchmarkConfig()
+    rows: list[dict] = []
+    for name in run_names:
+        path = os.path.join(runs_dir, name)
+        logging.getLogger(__name__).info("Benchmarking run: %s", name)
+        try:
+            model    = Transformer.from_pretrained(path, rngs=nnx.Rngs(42))
+            cfg      = getattr(model, "config", None)
+            if cfg is None:
+                raise BenchmarkError(f"Cannot read config from {name}")
+            paradigm = ARParadigm(cfg.to_model_config() if hasattr(cfg, "to_model_config") else cfg)
+            suite    = BenchmarkSuite(tasks=[ThroughputTask(), LatencyTask()], config=bench_cfg)
+            report   = suite.run(paradigm, model)
+            row      = {"run": name, **report.to_dataframe().to_dict("records")[0]}
+            rows.append(row)
+        except BenchmarkError as exc:
+            logging.getLogger(__name__).error("  Skipped %s: %s", name, exc)
+        except Exception as exc:
+            logging.getLogger(__name__).error(
+                "  Unexpected error for %s: %s\n%s", name, exc, traceback.format_exc()
+            )
+
+    df = pd.DataFrame(rows)
+    if args.out_csv:
+        df.to_csv(args.out_csv, index=False)
+        print(f"Results saved to {args.out_csv}")
 
     if not df.empty:
         cols = ["run", "type", "params_m", "theoretical_cache_mb", "prefill_ms"]

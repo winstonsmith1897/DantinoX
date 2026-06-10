@@ -75,7 +75,7 @@ _N_MEASURE = 20
 
 @nnx.jit
 def _decode_step(model, tok, cache, idx):
-    return model(tok, use_cache=True, kv_caches=cache, cache_index=idx)
+    return model(tok, caches=cache, cache_index=idx)
 
 
 def _bench_one(

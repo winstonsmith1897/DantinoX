@@ -11,12 +11,13 @@ from .diffusion import (
     NoiseSchedule,
     confidence_unmask_factor,
     confidence_unmask_threshold,
+    logit_normal_schedule,
 )
 
 DecodeFunc = Callable[[jnp.ndarray, jax.Array | None], jnp.ndarray]
 
 
-def _greedy_decode(v, key=None):
+def _greedy_decode(v, _key=None):
     return jnp.argmax(v, axis=-1, keepdims=True)
 
 def _sampling_decode(v, key):
@@ -85,16 +86,16 @@ def _generate_toks(
         return toks, new_key
 
     def generate_with_kv_cache(i, val):
-        x, tok, kv_cache, k  = val
-        last_logits, new_kv_cache, _ = model(tok, use_cache, kv_cache, i-1, deterministic=True)
-        x, k, next_tok_id = _get_tok_id(i, x, k, last_logits[:, -1, :])
-        return x, next_tok_id, new_kv_cache, k
+        x, tok, kv_cache, k = val
+        out = model(tok, caches=kv_cache, cache_index=i - 1, deterministic=True)
+        x, k, next_tok_id = _get_tok_id(i, x, k, out.logits[:, -1, :])
+        return x, next_tok_id, out.kv_caches, k
 
     def prefill_or_no_cache(i, val):
         x, kv_cache, _, k = val
-        logits, new_kv_cache, _ = model(x, use_cache, kv_cache, 0, deterministic=True)
-        x, k, tok = _get_tok_id(i, x, k, logits[:, i-1, :])
-        return x, new_kv_cache, tok, k
+        out = model(x, caches=kv_cache, cache_index=0, deterministic=True)
+        x, k, tok = _get_tok_id(i, x, k, out.logits[:, i - 1, :])
+        return x, out.kv_caches, tok, k
 
     def _get_tok_id(i, x, k, last_logits):
         last_logits = last_logits / temperature
@@ -128,9 +129,8 @@ def _generate_toks(
         # to avoid passing Python None values through jax.lax.fori_loop.
         def prefill_no_cache(i, val):
             _x, _k = val
-            _cache = tuple((None, None) for _ in range(num_blocks))
-            logits, _, _ = model(_x, False, _cache, 0, deterministic=True)
-            _x, _k, _ = _get_tok_id(i, _x, _k, logits[:, i - 1, :])
+            out = model(_x, deterministic=True)
+            _x, _k, _ = _get_tok_id(i, _x, _k, out.logits[:, i - 1, :])
             return _x, _k
 
         x, _ = jax.lax.fori_loop(
@@ -177,12 +177,6 @@ def generate(
         key = jax.random.key(seed)
         decoding_func = _sampling_decode
 
-    # Pass start_pos and max_generations as JAX arrays (not Python ints) so
-    # @nnx.jit treats them as dynamic traced values.  A Python int is static
-    # from JAX's perspective, which would trigger a separate compilation for
-    # every distinct (start_pos, max_generations) pair — e.g. the warmup call
-    # with max_new_tokens=1 would compile a different kernel than the real call
-    # with max_new_tokens=200, blowing up the apparent tok/s.
     x = _generate_toks(model,
                        x_padded,
                        key=key,
@@ -226,8 +220,7 @@ def diffusion_generate(
     step_size = max(1, T // max(num_sampling_steps, 1))
 
     for t_val in range(T, 0, -step_size):
-        t      = jnp.full((B,), t_val, dtype=jnp.int32)
-        output = model(x_t, t, dual_cache=dual_cache, deterministic=True)   # type: ignore[call-arg]
+        output = model(x_t, dual_cache=dual_cache, deterministic=True)
         logits = output.logits / max(temperature, 1e-6)
         probs  = jax.nn.softmax(logits, axis=-1)
 
@@ -247,9 +240,8 @@ def diffusion_generate(
         do_unmask    = jax.random.bernoulli(subkey2, float(jnp.clip(unmask_prob, 0, 1)), x_t.shape)
         x_t          = jnp.where((x_t == mask_token_id) & do_unmask, x0_pred, x_t)
 
-    t_zero  = jnp.zeros((B,), dtype=jnp.int32)
-    output  = model(x_t, t_zero, dual_cache=dual_cache, deterministic=True)  # type: ignore[call-arg]
-    x_t     = jnp.where(x_t == mask_token_id, jnp.argmax(output.logits, axis=-1), x_t)
+    output = model(x_t, dual_cache=dual_cache, deterministic=True)
+    x_t    = jnp.where(x_t == mask_token_id, jnp.argmax(output.logits, axis=-1), x_t)
     return x_t
 
 
@@ -266,76 +258,26 @@ def fast_dllm_generate(
     factor: float = 1.5,
     use_dual_cache: bool = True,
     refresh_interval: int | None = None,
-    seed: int = 42,
+    seed: int = 42,  # reserved for future stochastic unmasking variants
 ) -> jnp.ndarray:
     """Block-wise masked-diffusion generation with Fast-dLLM DualCache.
 
-    Implements Algorithm 1 from *Fast-dLLM* (Wu et al., arXiv:2505.22618):
-
-    .. code-block:: text
-
-        x ← [prefix ; MASK * gen_len]
-        Compute DualCache for x (prefix KV + suffix KV)
-
-        for each block k in [0, K):
-            s ← T_prefix + k * block_size
-            e ← min(s + block_size, T_prefix + gen_len)
-
-            for each step t in [T, 0):
-                logits ← decode_block(x[s:e], t, dual_cache)    # fresh block KV only
-                x[s:e] ← confidence_unmask(logits, x[s:e])       # reveal high-conf tokens
-                # (suffix KV reused unchanged within this inner loop)
-
-            # After block k: refresh DualCache for block k+1
-            dual_cache ← compute_block_dual_cache(x, t=0, s=e, e=e+block_size)
-
-    Why DualCache is faster than PrefixCache
-    -----------------------------------------
-    PrefixCache re-runs the model on ``x[s:]`` (block + all suffix blocks) every
-    inner step — the suffix KV is recomputed each time.  DualCache instead caches
-    the suffix KV (which barely changes within a block, see Fig. 3) and only
-    processes ``x[s:e]`` (current block) per step, giving ~1.4–2.1× additional
-    speedup over PrefixCache.
-
-    Confidence-aware parallel decoding (§3.3)
-    ------------------------------------------
-    Two strategies are supported:
-
-    ``"threshold"``
-        Unmask all masked tokens whose ``max_softmax(logits[i]) >= τ``.
-        Always unmask at least one token to guarantee forward progress.
-        Simple and effective; use τ = 0.9 as default.
-
-    ``"factor"``
-        Find the largest n such that ``(n+1)(1 - c_(n)) < f`` where c_(n) is
-        the n-th highest confidence.  Theoretically grounded by Theorem 1 —
-        this bound ensures greedy parallel decoding equals greedy sequential
-        decoding.  Achieves ~1.4–1.5× higher throughput than threshold at
-        minor accuracy cost.
+    Implements Algorithm 1 from *Fast-dLLM* (Wu et al., arXiv:2505.22618).
 
     Args:
         model:               Trained ``DiffusionTransformer``.
-        prefix:              Prompt token IDs ``[B, T_prefix]``.  Pass
-                             ``jnp.zeros((B, 0), jnp.int32)`` for unconditional
-                             generation.
+        prefix:              Prompt token IDs ``[B, T_prefix]``.
         gen_len:             Number of tokens to generate.
         schedule:            Precomputed ``NoiseSchedule``.
         mask_token_id:       Vocabulary ID of ``[MASK]``.
-        block_size:          Tokens decoded per block (B in the paper).
-                             Paper default: 32.  Larger = faster but more
-                             approximation error; smaller = slower but more
-                             accurate (optimal at 32 per Fig. 4).
-        steps_per_block:     Denoising steps per block (T in the paper).
+        block_size:          Tokens decoded per block (default: 32).
+        steps_per_block:     Denoising steps per block.
         confidence_threshold: τ for the threshold strategy.
         decoding_strategy:   ``"threshold"`` or ``"factor"``.
         factor:              f for the factor strategy.
-        use_dual_cache:      If ``False``, falls back to prefix-only caching
-                             (``model.__call__`` on the full suffix).
+        use_dual_cache:      If ``False``, falls back to prefix-only caching.
         refresh_interval:    Recompute the suffix cache every r inner steps.
-                             ``None`` = refresh only at block boundaries
-                             (fastest, slightly less accurate).
-                             Smaller values trade speed for accuracy.
-        seed:                PRNG seed (used only with sampling).
+        seed:                PRNG seed.
 
     Returns:
         Generated token IDs ``[B, gen_len]``.
@@ -352,7 +294,7 @@ def fast_dllm_generate(
     ], axis=1)
 
     # Timestep ladder for the inner loop: T → 0 in steps_per_block steps
-    step_size = max(1, T_diff // max(steps_per_block, 1))
+    step_size  = max(1, T_diff // max(steps_per_block, 1))
     inner_steps = list(range(T_diff, 0, -step_size))
 
     n_blocks = (gen_len + block_size - 1) // block_size
@@ -364,14 +306,12 @@ def fast_dllm_generate(
 
         # ── Initialise / refresh dual cache ───────────────────────────────
         if use_dual_cache:
-            t_init     = jnp.full((B,), T_diff, dtype=jnp.int32)
             dual_cache = model.compute_block_dual_cache(  # type: ignore[attr-defined]
-                x, t_init, block_start, block_end
+                x, block_start, block_end
             )
 
         # ── Inner denoising loop ───────────────────────────────────────────
-        for step_idx, t_val in enumerate(inner_steps):
-            t       = jnp.full((B,), t_val, dtype=jnp.int32)
+        for step_idx, _t_val in enumerate(inner_steps):
             x_block = x[:, block_start:block_end]
 
             # Periodic suffix refresh (optional, for better accuracy)
@@ -382,17 +322,17 @@ def fast_dllm_generate(
                 and step_idx % refresh_interval == 0
             ):
                 dual_cache = model.compute_block_dual_cache(  # type: ignore[attr-defined]
-                    x, t, block_start, block_end
+                    x, block_start, block_end
                 )
 
             if use_dual_cache:
                 logits = model.decode_block(  # type: ignore[attr-defined]
-                    x_block, t, dual_cache, block_start
+                    x_block, dual_cache, block_start
                 )
             else:
                 # PrefixCache fallback: run model on x[block_start:]
                 x_from = x[:, block_start:]
-                out    = model(x_from, t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
+                out    = model(x_from, deterministic=True)
                 logits = out.logits[:, :actual_bs, :]
 
             # ── Confidence-aware unmasking ─────────────────────────────────
@@ -412,8 +352,82 @@ def fast_dllm_generate(
                 break
 
     # Final greedy cleanup: fill any positions still masked after all blocks
-    t_zero  = jnp.zeros((B,), dtype=jnp.int32)
-    out     = model(x, t_zero, dual_cache=None, deterministic=True)          # type: ignore[call-arg]
-    x       = jnp.where(x == mask_token_id, jnp.argmax(out.logits, axis=-1), x)
+    out = model(x, deterministic=True)
+    x   = jnp.where(x == mask_token_id, jnp.argmax(out.logits, axis=-1), x)
 
     return x[:, T_prefix:]
+
+
+# ── ELF generation (continuous flow-matching) ─────────────────────────────────
+
+def elf_generate(
+    model,
+    gen_len:    int,
+    batch_size: int   = 1,
+    n_steps:    int   = 64,
+    cfg_scale:  float = 1.0,
+    gamma:      float = 0.0,
+    seed:       int   = 42,
+) -> jnp.ndarray:
+    """Generate token sequences with ELF continuous diffusion (ELF Algorithm 5/6).
+
+    Denoises from pure Gaussian noise to clean embeddings using an Euler ODE
+    sampler (``gamma=0``) or an SDE-inspired stochastic sampler (``gamma>0``),
+    then decodes via the shared unembedding head.
+
+    Parameters
+    ----------
+    model:      Trained ``ELFTransformer``.
+    gen_len:    Number of tokens to generate.
+    batch_size: Number of sequences to generate in parallel.
+    n_steps:    Denoising steps before the final decode step.
+    cfg_scale:  CFG guidance scale w (≥ 1.0).
+    gamma:      SDE noise re-injection scale; ``0.0`` = deterministic ODE.
+    seed:       PRNG seed.
+
+    Returns
+    -------
+    Token IDs ``[batch_size, gen_len]`` int32.
+    """
+    rng = jax.random.PRNGKey(seed)
+    B, L  = batch_size, gen_len
+    E     = model.config.embed_dim
+
+    rng_z, *rng_steps = jax.random.split(rng, n_steps + 1)
+
+    z      = jax.random.normal(rng_z, (B, L, E))
+    x_prev = jnp.zeros_like(z)
+    # Linear schedule for inference: uniform coverage of [0, 1].
+    # The logit-normal schedule used during training concentrates near t≈0.18
+    # and is unsuitable for generation (62/65 values would be < 0.5).
+    ts = jnp.linspace(0.0, 1.0, n_steps + 1)
+
+    for i in range(n_steps):
+        t_val  = float(ts[i])
+        dt_val = float(ts[i + 1] - ts[i])
+        w_arr  = jnp.full((B,), cfg_scale)
+        is_den = jnp.zeros(B, dtype=bool)
+
+        if gamma > 0.0:
+            # SDE: re-inject noise and shift t slightly toward the noisy regime
+            alpha  = 1.0 - gamma * dt_val
+            z_back = alpha * z + (1.0 - alpha) * jax.random.normal(rng_steps[i], z.shape)
+            t_arr  = jnp.full((B,), alpha * t_val)
+            x_hat  = model(z_back, x_prev, t_arr, w_arr, is_den).x_pred
+        else:
+            t_arr = jnp.full((B,), t_val)
+            x_hat = model(z, x_prev, t_arr, w_arr, is_den).x_pred
+
+        v      = (x_hat - z) / jnp.clip(1.0 - t_val, 1e-6)
+        z      = z + dt_val * v
+        x_prev = x_hat
+
+    # Final decode step at t=1: switch to decode mode and return token logits
+    out = model(
+        z,
+        jnp.zeros_like(z),
+        jnp.ones(B),
+        jnp.full((B,), cfg_scale),
+        jnp.ones(B, dtype=bool),
+    )
+    return jnp.argmax(out.logits, axis=-1).astype(jnp.int32)

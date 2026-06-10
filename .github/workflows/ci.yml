@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Lint · Typecheck · Doccheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install (CPU JAX + all extras)
+        run: |
+          pip install -U "jax[cpu]" jaxlib
+          pip install -e ".[all]"
+
+      - name: Ruff lint
+        run: python -m ruff check dantinox/ core/ utils/
+
+      - name: MyPy
+        run: python -m mypy dantinox/ core/
+
+      - name: Interrogate (docstring coverage)
+        run: |
+          python -m interrogate \
+            --verbose \
+            --fail-under=100 \
+            --ignore-init-module \
+            --ignore-magic \
+            --ignore-private \
+            --ignore-semiprivate \
+            dantinox/ core/
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          pip install -U "jax[cpu]" jaxlib
+          pip install -e ".[all]"
+
+      - name: Run tests
+        run: |
+          JAX_PLATFORM_NAME=cpu python -m pytest tests/ \
+            --ignore=tests/test_sweep_simulation.py \
+            -m "not slow and not gpu" \
+            -v --tb=short \
+            --cov=dantinox --cov=core \
+            --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.10'
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false

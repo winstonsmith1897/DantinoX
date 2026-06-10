@@ -88,7 +88,7 @@ class TestModelOutput:
         )
         model = Transformer(config, rngs=nnx.Rngs(0))
         x = jnp.ones((1, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert isinstance(out, ModelOutput)
         assert out.logits.shape == (1, 8, 64)
 
@@ -108,13 +108,13 @@ class TestRoPEScaling:
     def test_default_no_scaling(self):
         model = self._make_model(1.0)
         x = jnp.ones((1, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert not jnp.isnan(out.logits).any()
 
     def test_scaled_rope(self):
         model = self._make_model(2.0)
         x = jnp.ones((1, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert not jnp.isnan(out.logits).any()
 
     def test_scaled_rope_angles_differ(self):
@@ -157,19 +157,19 @@ class TestFlashAttention:
     def test_flash_disabled_runs(self):
         model = Transformer(self._config(False), rngs=nnx.Rngs(0))
         x = jnp.ones((1, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert not jnp.isnan(out.logits).any()
 
     def test_flash_enabled_runs(self):
         model = Transformer(self._config(True), rngs=nnx.Rngs(0))
         x = jnp.ones((1, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert not jnp.isnan(out.logits).any()
 
     def test_flash_and_non_flash_same_shape(self):
         x = jnp.ones((1, 8), dtype=jnp.int32)
-        out_std   = Transformer(self._config(False), rngs=nnx.Rngs(0))(x, use_cache=False, kv_caches=None, cache_index=0)
-        out_flash = Transformer(self._config(True),  rngs=nnx.Rngs(0))(x, use_cache=False, kv_caches=None, cache_index=0)
+        out_std   = Transformer(self._config(False), rngs=nnx.Rngs(0))(x)
+        out_flash = Transformer(self._config(True),  rngs=nnx.Rngs(0))(x)
         assert out_std.logits.shape == out_flash.logits.shape
 
 
@@ -225,6 +225,6 @@ class TestRMSNormModel:
         )
         model = Transformer(config, rngs=nnx.Rngs(0))
         x = jnp.ones((2, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert not jnp.isnan(out.logits).any()
         assert not jnp.isinf(out.logits).any()

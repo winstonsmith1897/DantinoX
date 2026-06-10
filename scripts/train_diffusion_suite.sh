@@ -4,38 +4,41 @@
 # Full Diffusion model training suite for DantinoX — EMNLP 2026 paper.
 #
 # ══════════════════════════════════════════════════════════════════════════════
-# Experiment matrix  (~90 runs total)
+# Experiment matrix — LARGE MODELS ONLY (≥67M params, up to 40 GB GPU)
 # ══════════════════════════════════════════════════════════════════════════════
 #
-# PART A — Size × Attention × FFN matrix  (48 runs)
-# ─────────────────────────────────────────────────
+# PART A — Size × Attention × FFN matrix
+# ───────────────────────────────────────
 #   Attention: MHA / GQA(×4) / MLA
-#   Sizes (dim × blocks):
-#     128×12, 192×12,
-#     256×8,  256×12, 256×16,
-#     384×12,
-#     512×8,  512×12, 512×16,
-#     768×12
-#   FFN: Dense (all sizes) + MoE top-2/6exp (256+512 only)
+#   Sizes (dim × blocks × approx params):
+#     512×12   ~67M
+#     768×16  ~176M
+#    1024×24  ~435M
+#    1536×24  ~954M
+#    2048×32  ~2.2B  ← max for 1× A100 40 GB with Muon
+#   FFN: Dense (all) + MoE top-2/6exp (1024 + 2048 only)
 #
-# PART B — Architecture ablations on 256d×12b  (~42 runs)
-# ────────────────────────────────────────────────────────
-# Each ablation varies ONE axis vs the Dense 256d×12b baseline:
+# PART B — Architecture ablations on 1024d×24b baseline  (~42 runs)
+# ──────────────────────────────────────────────────────────────────
+# ONE axis varies at a time vs Dense 1024d×24b MHA/GQA/MLA:
 #
-#   B1. norm_type:       rmsnorm          (vs layernorm)           × MHA/GQA/MLA
-#   B2. noise_schedule:  linear, sqrt     (vs cosine)              × MHA/GQA/MLA
-#   B3. dropout_rate:    0.0, 0.20        (vs 0.15)                × MHA/GQA/MLA
-#   B4. use_swiglu:      false/GELU       (vs SwiGLU)              × MHA/GQA/MLA
-#   B5. sliding_window:  true,ctx=64      (vs full attention)      × MHA/GQA/MLA
-#   B6. no_sink:         true             (vs false)               × MHA/GQA/MLA
-#   B7. lr_schedule:     wsd              (vs cosine)              × MHA/GQA/MLA
-#   B8. optimizer:       lion             (vs adamw)               × MHA/GQA/MLA
+#   B1.  norm_type:       rmsnorm                                 × MHA/GQA/MLA
+#   B2.  noise_schedule:  cosine, sqrt                            × MHA/GQA/MLA
+#   B3.  dropout_rate:    0.0, 0.20                               × MHA/GQA/MLA
+#   B4.  use_swiglu:      false/GELU                              × MHA/GQA/MLA
+#   B5.  sliding_window:  true, ctx=64                            × MHA/GQA/MLA
+#   B6.  no_sink:         true                                    × MHA/GQA/MLA
+#   B7.  lr_schedule:     wsd                                     × MHA/GQA/MLA
+#   B8.  optimizer:       adamw (lr=3e-4), lion (lr=1e-4)         × MHA/GQA/MLA
+#   B9.  MoE 8exp                                                 × MHA/GQA/MLA
+#   B10. batch_size:      128, grad_accum=8                       × MHA/GQA/MLA
+#   B11. max_context:     256, 1024                               × MHA/GQA/MLA
 #
 # ══════════════════════════════════════════════════════════════════════════════
-# Hardware:   2 × A100 (n_devices=2 in base config)
-# Precision:  bf16 (n_devices=2 in base config)
-# Dataset:    Daniele/dante-corpus (HuggingFace, streaming)
-# Tokenizer:  char-level (re-trained per run)
+# Hardware:   1 × A100 40 GB (GPU=2 default)
+# Precision:  bf16
+# Dataset:    wikitext-103-raw-v1 (HuggingFace)
+# Tokenizer:  T5 SentencePiece (vocab_size=32128)
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Usage:
@@ -53,9 +56,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${ROOT}"
 
+GPU="${GPU:-2}"
 BASE_CFG="configs/diffusion_base.yaml"
 LOG_DIR="logs/diffusion_suite"
 mkdir -p "${LOG_DIR}" logs
+
+# ── Training budget ────────────────────────────────────────────────────────────
+# Part A (main results):  full budget
+# Part B (ablations):     reduced — enough to establish relative ordering
+TOKENS_A="${TOKENS_A:-50000000}"
+EPOCHS_A="${EPOCHS_A:-30}"
+TOKENS_B="${TOKENS_B:-20000000}"
+EPOCHS_B="${EPOCHS_B:-15}"
+_CUR_TOKENS=${TOKENS_A}
+_CUR_EPOCHS=${EPOCHS_A}
 
 # ── Filters ──────────────────────────────────────────────────────────────────
 PART="${PART:-all}"       # all | A | B
@@ -104,12 +118,20 @@ train_one() {
         return 0
     fi
 
-    local cmd=(env PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
+    local tag_dim; tag_dim=$(echo "${tag}" | sed -E 's/.*_([0-9]+)d_.*/\1/')
+    local _gc="true"; [[ -n "${tag_dim}" && "${tag_dim}" -le 768 ]] && _gc="false"
+
+    local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
         --config "${BASE_CFG}"
         --run_dir "${run_dir}"
         --use_bf16 true
         --use_flash_attention true
-        --gradient_checkpointing true
+        --gradient_checkpointing "${_gc}"
+        --tokenizer_type t5
+        --vocab_size 32128
+        --mask_token_id 32099
+        --max_train_tokens "${_CUR_TOKENS}"
+        --epochs "${_CUR_EPOCHS}"
         "${extra_args[@]}")
 
     echo ""
@@ -143,18 +165,11 @@ run_part_a() {
     [[ "${PART}" == "B" ]] && return 0
 
     # ── A1: Dense size × attention matrix ────────────────────────────────────
-    # dim  n_heads  head_size  num_blocks  lr      optimizer
+    # dim  n_heads  head_size  num_blocks  lr     optimizer
+    # head_size=64 throughout — clean dims, efficient on A100 flash-attention.
     local -a DENSE=(
-        "128  4  32 12  0.0012 lion"
-        "192  6  32 12  0.0012 lion"
-        "256  8  32  8  0.0012 lion"
-        "256  8  32 12  0.0012 lion"
-        "256  8  32 16  0.0010 adamw"
-        "384 12  32 12  0.0010 adamw"
-        "512 16  32  8  0.0008 adamw"
-        "512 16  32 12  0.0008 adamw"
-        "512 16  32 16  0.0006 adamw"
-        "768 12  64 12  0.0006 adamw"
+        " 512  8 64 12  0.002 muon"
+        " 768 12 64 16  0.002 muon"
     )
     for cfg in "${DENSE[@]}"; do
         read -r dim nh hs blocks lr opt <<< "${cfg}"
@@ -168,40 +183,17 @@ run_part_a() {
         train_one "diff_mla_${dim}d_${blocks}b_Dense" --dim "${dim}" --n_heads "${nh}" --head_size "${hs}" \
             --num_blocks "${blocks}" --lr "${lr}" --optimizer "${opt}" --use_moe false $(mla_flags "${nh}" "${hs}")
     done
-
-    # ── A2: MoE variants (256+512, select depths) ─────────────────────────────
-    local -a MOE=(
-        "256  8  32  8  0.0012 lion"
-        "256  8  32 12  0.0012 lion"
-        "256  8  32 16  0.0010 adamw"
-        "512 16  32  8  0.0008 adamw"
-        "512 16  32 12  0.0008 adamw"
-        "512 16  32 16  0.0006 adamw"
-    )
-    for cfg in "${MOE[@]}"; do
-        read -r dim nh hs blocks lr opt <<< "${cfg}"
-        # shellcheck disable=SC2046,SC2086
-        train_one "diff_mha_${dim}d_${blocks}b_MoE" --dim "${dim}" --n_heads "${nh}" --head_size "${hs}" \
-            --num_blocks "${blocks}" --lr "${lr}" --optimizer "${opt}" \
-            --use_moe true --n_experts 6 --top_k_mlp 2 $(mha_flags "${nh}")
-        # shellcheck disable=SC2046,SC2086
-        train_one "diff_gqa_${dim}d_${blocks}b_MoE" --dim "${dim}" --n_heads "${nh}" --head_size "${hs}" \
-            --num_blocks "${blocks}" --lr "${lr}" --optimizer "${opt}" \
-            --use_moe true --n_experts 6 --top_k_mlp 2 $(gqa_flags "${nh}")
-        # shellcheck disable=SC2046,SC2086
-        train_one "diff_mla_${dim}d_${blocks}b_MoE" --dim "${dim}" --n_heads "${nh}" --head_size "${hs}" \
-            --num_blocks "${blocks}" --lr "${lr}" --optimizer "${opt}" \
-            --use_moe true --n_experts 6 --top_k_mlp 2 $(mla_flags "${nh}" "${hs}")
-    done
 }
 
-# ── Part B: ablations on 256d×12b baseline ────────────────────────────────────
-# All ablations use the same base: dim=256, n_heads=8, head_size=32, blocks=12,
-# lr=0.0012, optimizer=lion, use_moe=false.  ONE variable changes at a time.
+# ── Part B: ablations on 1024d×24b baseline ───────────────────────────────────
+# All ablations use the same base: dim=1024, n_heads=16, head_size=64, blocks=24,
+# optimizer=muon, lr=0.002.  ONE variable changes at a time.
 run_part_b() {
     [[ "${PART}" == "A" ]] && return 0
+    _CUR_TOKENS=${TOKENS_B}
+    _CUR_EPOCHS=${EPOCHS_B}
 
-    local BASE_DIM=256 BASE_NH=8 BASE_HS=32 BASE_BLOCKS=12 BASE_LR=0.0012 BASE_OPT=lion
+    local BASE_DIM=768 BASE_NH=12 BASE_HS=64 BASE_BLOCKS=16 BASE_LR=0.002 BASE_OPT=muon
 
     ablation() {
         # ablation <label_suffix> <attn_tag> <attn_flags> <extra...>
@@ -210,7 +202,7 @@ run_part_b() {
         local attn_flags="$1"; shift
         local extra=("$@")
         # shellcheck disable=SC2086
-        train_one "diff_${attn_tag}_256d_12b_${suffix}" \
+        train_one "diff_${attn_tag}_768d_16b_${suffix}" \
             --dim "${BASE_DIM}" --n_heads "${BASE_NH}" --head_size "${BASE_HS}" \
             --num_blocks "${BASE_BLOCKS}" --lr "${BASE_LR}" --optimizer "${BASE_OPT}" \
             --use_moe false ${attn_flags} "${extra[@]}"
@@ -226,8 +218,8 @@ run_part_b() {
         # B1 — norm_type: RMSNorm
         ablation "RMSNorm"       "${attn}" "${flags}" --norm_type rmsnorm
 
-        # B2 — noise_schedule
-        ablation "SchedLinear"   "${attn}" "${flags}" --noise_schedule linear
+        # B2 — noise_schedule: cosine, sqrt (vs linear default)
+        ablation "SchedCosine"   "${attn}" "${flags}" --noise_schedule cosine
         ablation "SchedSqrt"     "${attn}" "${flags}" --noise_schedule sqrt
 
         # B3 — dropout
@@ -238,7 +230,7 @@ run_part_b() {
         ablation "GELU"          "${attn}" "${flags}" --use_swiglu false
 
         # B5 — sliding window attention (window=64)
-        ablation "SlidingWin64" "${attn}" "${flags}" --sliding_window true --context_window 64
+        ablation "SlidingWin64"  "${attn}" "${flags}" --sliding_window true --context_window 64
 
         # B6 — attention gate (no_sink)
         ablation "NoSink"        "${attn}" "${flags}" --no_sink true
@@ -246,25 +238,18 @@ run_part_b() {
         # B7 — LR schedule: WSD (warmup-stable-decay)
         ablation "SchedWSD"      "${attn}" "${flags}" --lr_schedule wsd
 
-        # B8 — optimizer: Lion
-        ablation "OptLion"       "${attn}" "${flags}" --optimizer lion --lr 0.0003
+        # B8 — optimizer: AdamW and Lion (compare vs Muon base)
+        ablation "OptAdamW"      "${attn}" "${flags}" --optimizer adamw --lr 0.0003
+        ablation "OptLion"       "${attn}" "${flags}" --optimizer lion  --lr 0.0001
 
-        # B9 — deeper diffusion T grid: 500 steps (vs 1000)
-        ablation "T500"          "${attn}" "${flags}" --diffusion_steps 500
-
-        # B10 — time_emb_dim: 128 (vs 256)
-        ablation "TimeEmb128"    "${attn}" "${flags}" --time_emb_dim 128
-
-        # B11 — MoE 8exp on 256d (complement to Part A MoE 6exp)
+        # B9 — MoE 8exp (complement to Part A MoE 6exp)
         ablation "MoE8exp"       "${attn}" "${flags}" --use_moe true --n_experts 8 --top_k_mlp 2
 
-        # B12 — batch size 128 (2× larger)
+        # B10 — batch size 128 (2× larger micro-batch)
         ablation "BS128"         "${attn}" "${flags}" --batch_size 128 --grad_accum 8
 
-        # B13 — max_context 256 (half the default)
+        # B11 — context length
         ablation "Ctx256"        "${attn}" "${flags}" --max_context 256
-
-        # B14 — max_context 1024 (double the default)
         ablation "Ctx1024"       "${attn}" "${flags}" --max_context 1024
     done
 }

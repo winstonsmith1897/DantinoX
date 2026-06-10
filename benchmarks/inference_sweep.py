@@ -85,19 +85,19 @@ _GQA_RATIO = 4
 
 @nnx.jit
 def _prefill(model: nnx.Module, x: jnp.ndarray) -> jnp.ndarray:
-    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0, deterministic=True)
+    logits, _, _ = model(x, deterministic=True)
     return logits
 
 
 @nnx.jit
 def _prefill_cached(model: nnx.Module, x: jnp.ndarray, cache: tuple) -> tuple:
-    logits, new_cache, _ = model(x, use_cache=True, kv_caches=cache, cache_index=0, deterministic=True)
+    logits, new_cache, _ = model(x, caches=cache, cache_index=0, deterministic=True)
     return logits, new_cache
 
 
 @nnx.jit
 def _decode(model: nnx.Module, tok: jnp.ndarray, cache: tuple, pos: jax.Array) -> tuple:
-    logits, new_cache, _ = model(tok, use_cache=True, kv_caches=cache, cache_index=pos, deterministic=True)
+    logits, new_cache, _ = model(tok, caches=cache, cache_index=pos, deterministic=True)
     return logits, new_cache
 
 

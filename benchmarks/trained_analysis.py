@@ -180,25 +180,25 @@ def _count_params_m(model: nnx.Module) -> float:
 
 @nnx.jit
 def _ar_prefill(model: nnx.Module, x: jnp.ndarray) -> jnp.ndarray:
-    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0, deterministic=True)
+    logits, _, _ = model(x, deterministic=True)
     return logits
 
 
 @nnx.jit
 def _ar_prefill_cached(model: nnx.Module, x: jnp.ndarray, cache: tuple) -> tuple:
-    logits, new_cache, _ = model(x, use_cache=True, kv_caches=cache, cache_index=0, deterministic=True)
+    logits, new_cache, _ = model(x, caches=cache, cache_index=0, deterministic=True)
     return logits, new_cache
 
 
 @nnx.jit
 def _ar_decode(model: nnx.Module, tok: jnp.ndarray, cache: tuple, pos: jax.Array) -> tuple:
-    logits, new_cache, _ = model(tok, use_cache=True, kv_caches=cache, cache_index=pos, deterministic=True)
+    logits, new_cache, _ = model(tok, caches=cache, cache_index=pos, deterministic=True)
     return logits, new_cache
 
 
 @nnx.jit
 def _diff_step(model: nnx.Module, x_t: jnp.ndarray, t: jnp.ndarray) -> jnp.ndarray:
-    out = model(x_t, t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
+    out = model(x_t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
     return out.logits
 
 

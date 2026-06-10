@@ -94,27 +94,24 @@ _DIFF_STEPS  = 20    # default denoising steps for generation throughput estimat
 
 @nnx.jit
 def _ar_prefill(model: nnx.Module, x: jnp.ndarray) -> jnp.ndarray:
-    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0,
-                         deterministic=True)
-    return logits
+    out = model(x, deterministic=True)
+    return out.logits
 
 
 @nnx.jit
 def _ar_prefill_cached(
     model: nnx.Module, x: jnp.ndarray, cache: tuple
 ) -> tuple[jnp.ndarray, tuple]:
-    logits, new_cache, _ = model(x, use_cache=True, kv_caches=cache,
-                                 cache_index=0, deterministic=True)
-    return logits, new_cache
+    out = model(x, caches=cache, cache_index=0, deterministic=True)
+    return out.logits, out.kv_caches
 
 
 @nnx.jit
 def _ar_decode(
     model: nnx.Module, tok: jnp.ndarray, cache: tuple, pos: jax.Array
 ) -> tuple[jnp.ndarray, tuple]:
-    logits, new_cache, _ = model(tok, use_cache=True, kv_caches=cache,
-                                 cache_index=pos, deterministic=True)
-    return logits, new_cache
+    out = model(tok, caches=cache, cache_index=pos, deterministic=True)
+    return out.logits, out.kv_caches
 
 
 # ── JIT functions (Diffusion — full sequence) ────────────────────────────────
@@ -123,7 +120,7 @@ def _ar_decode(
 def _diff_step(
     model: nnx.Module, x_t: jnp.ndarray, t: jnp.ndarray
 ) -> jnp.ndarray:
-    out = model(x_t, t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
+    out = model(x_t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
     return out.logits
 
 
@@ -131,7 +128,7 @@ def _diff_step(
 def _diff_step_cached(
     model: nnx.Module, x_t: jnp.ndarray, t: jnp.ndarray, dual_cache: DualCache
 ) -> jnp.ndarray:
-    out = model(x_t, t, dual_cache=dual_cache, deterministic=True)  # type: ignore[call-arg]
+    out = model(x_t, dual_cache=dual_cache, deterministic=True)  # type: ignore[call-arg]
     return out.logits
 
 
@@ -145,7 +142,7 @@ def _diff_decode_block(
     dual_cache: DualCache,
     block_start: jax.Array,
 ) -> jnp.ndarray:
-    return model.decode_block(x_block, t, dual_cache, block_start,   # type: ignore[attr-defined]
+    return model.decode_block(x_block, dual_cache, block_start,   # type: ignore[attr-defined]
                               deterministic=True)
 
 
@@ -160,7 +157,7 @@ def _diff_build_dual_cache(
     # as slice endpoints inside compute_block_dual_cache — they cannot be traced
     # as JAX values.  XLA still compiles the op graph internally on the first
     # call (visible as compile latency in _time_fn's first trial).
-    return model.compute_block_dual_cache(x_full, t, block_start, block_end)  # type: ignore[attr-defined]
+    return model.compute_block_dual_cache(x_full, block_start, block_end)  # type: ignore[attr-defined]
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -508,7 +505,7 @@ def _run_diff_blockwise(exp: dict, n_warmup: int, n_trials: int) -> dict:
     _bs, _be = block_start, block_end  # captured as Python ints
     @nnx.jit
     def _build_cache_jit(x_full: jnp.ndarray, t: jnp.ndarray) -> DualCache:
-        return model.compute_block_dual_cache(x_full, t, _bs, _be)  # type: ignore[attr-defined]
+        return model.compute_block_dual_cache(x_full, _bs, _be)  # type: ignore[attr-defined]
 
     try:
         # ── Build dual cache once (for timing of inner decode_block) ───────

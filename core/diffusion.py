@@ -1,53 +1,39 @@
-"""Masked Discrete Diffusion for DantinoX — Fast-dLLM KV Cache.
+"""Masked Discrete Diffusion for DantinoX — LLaDA-style.
 
-Implements masked-diffusion (MDLM-style) forward/reverse process with the
-**block-wise approximate KV cache** from Fast-dLLM (Wu et al., 2025,
-arXiv:2505.22618).
+Implements masked-diffusion following LLaDA (arXiv:2502.09992):
 
 Forward process
 ---------------
-Each token is independently replaced by ``[MASK]`` with probability 1 − ᾱ_t:
+Each token is independently masked with continuous probability t ∈ (0, 1]:
 
-    x_t[i] = x_0[i]           with probability  ᾱ_t
-    x_t[i] = mask_token_id    with probability  1 − ᾱ_t
+    x_t[i] = mask_token_id    with probability  p_mask(t)
+    x_t[i] = x_0[i]           with probability  1 − p_mask(t)
 
-Reverse process
----------------
-A bidirectional ``DiffusionTransformer`` is trained to predict x_0 from
-(x_t, t).  Block-wise generation with DualCache is used for efficient
-inference.
+where p_mask depends on the noise schedule (linear: p_mask=t, etc.).
+
+Loss (LLaDA Eq. 3)
+------------------
+L = -E_{t~U[0,1], x_t} [ (1/t) * Σ_i 1[x_t^i=M] log p_θ(x_0^i | x_t) ]
+
+The 1/t weight ensures each noise level contributes equally in expectation
+and is the correct VLB weight for the linear masking schedule.
+
+Time-free parameterization (LLaDA Eq. 11)
+------------------------------------------
+The optimal predictor p_θ(x_0 | x_t) depends only on the unmasked tokens,
+not on t.  The model therefore receives NO time-step input — standard
+bidirectional transformer, no AdaLayerNorm.
 
 DualCache (Fast-dLLM §3.2)
 ---------------------------
-The output sequence is divided into K blocks of size B.  For block k:
-
-    [Prompt | Block 0 | … | Block k-1 | **Block k** | Block k+1 | … ]
-    |<——— prefix_kvs ————>|              |<——— suffix_kvs ————————>|
-
-  • ``prefix_kvs``: KV for the prompt — computed from the full forward pass
-    and reused unchanged for all steps within every block.
-
-  • ``suffix_kvs``: KV for the remaining *all-MASK* blocks after block k —
-    also reused within the inner loop and **refreshed** (recomputed) only
-    after block k is fully decoded.
-
-For each inner step the model runs **only on x[s:e]** (block k tokens);
-its attention context is [prefix_KV | fresh_block_KV | suffix_KV].
-This avoids recomputing suffix KV every step and gives 1.4–2.1× speedup
-over prefix-only caching (Table 4 in the paper).
-
-Confidence-aware parallel decoding (Fast-dLLM §3.3)
-----------------------------------------------------
-Instead of unmasking a fixed number of tokens per step, only tokens whose
-max-softmax confidence exceeds a threshold τ are revealed.  The *factor*
-strategy extends this by finding the largest n satisfying (n+1)(1-c_(n))<f,
-providing a theoretically grounded guarantee (Theorem 1).
+Block-wise inference cache for efficient generation.  The output sequence is
+divided into K blocks.  For block k, prefix and suffix KV are cached and
+only the current block is recomputed each step.
 """
 from __future__ import annotations
 
 from typing import NamedTuple
 
-import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 
@@ -69,8 +55,7 @@ class DualCache(NamedTuple):
     suffix_kvs:
         Per-layer ``(k, v)`` for the remaining all-MASK blocks **after** the
         current block being decoded.  These are approximately constant within
-        a block's inner loop (high cosine similarity across adjacent steps,
-        Fig. 3 in the paper).  Refreshed at each block boundary.
+        a block's inner loop.  Refreshed at each block boundary.
         ``None`` when using prefix-only caching, or before the first block.
     """
     prefix_kvs: tuple
@@ -80,40 +65,15 @@ class DualCache(NamedTuple):
 # ── Noise schedule ─────────────────────────────────────────────────────────────
 
 class NoiseSchedule(NamedTuple):
-    """Precomputed ᾱ_t for t = 0, …, T.
+    """Continuous masking schedule: maps t ∈ [0,1] → mask probability p_mask(t).
 
-    ᾱ_t = probability that a token is *unmasked* at step t.
-    ᾱ_0 = 1 (clean), ᾱ_T ≈ 0 (fully masked).
+    schedule: "linear" | "cosine" | "sqrt"
     """
-    alpha_bar: jnp.ndarray  # shape [T+1]
     schedule: str
 
 
 def make_noise_schedule(config: Config) -> NoiseSchedule:
-    """Build a discrete masking schedule from ``config.noise_schedule``.
-
-    Supported schedules
-    -------------------
-    ``"cosine"``  Squared-cosine (Nichol & Dhariwal 2021). Slow at boundaries.
-    ``"linear"``  ᾱ_t = 1 − t/T.
-    ``"sqrt"``    ᾱ_t = 1 − √(t/T).  Masking decelerates over time.
-    """
-    T = config.diffusion_steps
-    t = jnp.arange(T + 1, dtype=jnp.float32) / T
-
-    if config.noise_schedule == "cosine":
-        s     = 0.008
-        alpha = jnp.cos(((t + s) / (1.0 + s)) * (jnp.pi / 2.0)) ** 2
-        alpha = alpha / alpha[0]
-    elif config.noise_schedule == "linear":
-        alpha = 1.0 - t
-    else:  # "sqrt"
-        alpha = 1.0 - jnp.sqrt(t + 1e-4)
-
-    return NoiseSchedule(
-        alpha_bar=jnp.clip(alpha, 0.0, 1.0),
-        schedule=config.noise_schedule,
-    )
+    return NoiseSchedule(schedule=config.noise_schedule)
 
 
 # ── Forward process ────────────────────────────────────────────────────────────
@@ -122,27 +82,39 @@ def corrupt(
     x0: jnp.ndarray,
     t: jnp.ndarray,
     rng: jax.Array,
-    schedule: NoiseSchedule,
+    noise_schedule: str | NoiseSchedule,
     mask_token_id: int,
 ) -> jnp.ndarray:
-    """Apply masked-diffusion forward process to a batch.
-
-    Each token is independently replaced by ``mask_token_id`` with
-    probability 1 − ᾱ_t.
+    """LLaDA-style forward process: mask each token with probability p_mask(t).
 
     Args:
-        x0:            Clean token IDs, shape ``[B, T]``.
-        t:             Per-sample integer timestep indices, shape ``[B]``.
-        rng:           JAX PRNG key.
-        schedule:      Precomputed noise schedule.
-        mask_token_id: Vocabulary ID of ``[MASK]``.
+        x0:             Clean token IDs, shape ``[B, L]``.
+        t:              Per-sample noise level, shape ``[B]``, values in (0, 1].
+        rng:            JAX PRNG key.
+        noise_schedule: Schedule name (str) or ``NoiseSchedule`` namedtuple.
+                        "linear" → p_mask = t (LLaDA default).
+                        "cosine" → p_mask = 1 − cos²(πt/2 · scale).
+                        "sqrt"   → p_mask = √t.
+        mask_token_id:  Vocabulary ID of ``[MASK]``.
 
     Returns:
-        Noisy token sequence ``x_t``, shape ``[B, T]``.
+        Noisy token sequence ``x_t``, shape ``[B, L]``.
     """
-    alpha_t = schedule.alpha_bar[t][:, None]  # [B, 1]
-    keep    = jax.random.bernoulli(rng, alpha_t, x0.shape)
-    return jnp.where(keep, x0, mask_token_id)
+    sched = noise_schedule.schedule if isinstance(noise_schedule, NoiseSchedule) else noise_schedule
+
+    if sched == "linear":
+        p_mask = t
+    elif sched == "cosine":
+        s = 0.008
+        alpha = jnp.cos(((t + s) / (1.0 + s)) * (jnp.pi / 2.0)) ** 2
+        alpha0 = jnp.cos((s / (1.0 + s)) * (jnp.pi / 2.0)) ** 2
+        p_mask = 1.0 - alpha / alpha0
+    else:  # "sqrt"
+        p_mask = jnp.sqrt(t + 1e-8)
+
+    p_mask = jnp.clip(p_mask, 0.0, 1.0)[:, None]   # [B, 1]
+    mask   = jax.random.bernoulli(rng, p_mask, x0.shape)
+    return jnp.where(mask, mask_token_id, x0)
 
 
 # ── Loss ───────────────────────────────────────────────────────────────────────
@@ -152,50 +124,40 @@ def masked_cross_entropy(
     targets: jnp.ndarray,
     x_t: jnp.ndarray,
     mask_token_id: int,
+    t_float: jnp.ndarray | None = None,
     aux_loss: float | jnp.ndarray = 0.0,
     alpha_balance: float = 0.1,
 ) -> jnp.ndarray:
-    """Cross-entropy ELBO loss, evaluated only at masked positions.
+    """LLaDA ELBO loss (Eq. 3): (1/t)-weighted masked cross-entropy.
 
     Args:
-        logits:        Model predictions, shape ``[B, T, vocab_size]``.
-        targets:       Original clean tokens x_0, shape ``[B, T]``.
-        x_t:           Noisy tokens, shape ``[B, T]``.
+        logits:        Model predictions, shape ``[B, L, vocab_size]``.
+        targets:       Original clean tokens x_0, shape ``[B, L]``.
+        x_t:           Noisy tokens, shape ``[B, L]``.
         mask_token_id: Vocabulary ID of ``[MASK]``.
+        t_float:       Per-sample noise level, shape ``[B]``, values in (0, 1].
+                       When provided, applies the LLaDA ``1/t`` importance weight.
+                       Falls back to plain mean-over-masked-tokens when ``None``.
         aux_loss:      MoE load-balancing term.
         alpha_balance: Weight for aux_loss.
     """
-    is_masked  = (x_t == mask_token_id)
+    is_masked  = (x_t == mask_token_id)                                     # [B, L]
     log_probs  = jax.nn.log_softmax(logits, axis=-1)
     nll        = -jnp.sum(log_probs * jax.nn.one_hot(targets, logits.shape[-1]), axis=-1)
-    nll_masked = jnp.where(is_masked, nll, 0.0)
-    n_masked   = jnp.maximum(jnp.sum(is_masked.astype(jnp.float32)), 1.0)
-    return jnp.sum(nll_masked) / n_masked + alpha_balance * aux_loss
+    nll_masked = jnp.where(is_masked, nll, 0.0)                             # [B, L]
 
+    if t_float is not None:
+        # LLaDA Eq. 3: (1/t) * Σ_masked nll, divided by L for scale invariance.
+        # Expected value ≈ avg NLL per token regardless of t.
+        L       = logits.shape[1]
+        t_safe  = jnp.maximum(t_float, 1e-6)                                # [B]
+        per_ex  = nll_masked.sum(axis=-1) / (t_safe * L)                    # [B]
+        base_loss = per_ex.mean()
+    else:
+        n_masked  = jnp.maximum(is_masked.astype(jnp.float32).sum(), 1.0)
+        base_loss = nll_masked.sum() / n_masked
 
-# ── Time embedding ─────────────────────────────────────────────────────────────
-
-def sinusoidal_embedding(t: jnp.ndarray, dim: int) -> jnp.ndarray:
-    """Sinusoidal timestep embedding, shape ``[B, dim]``."""
-    half    = dim // 2
-    freqs   = jnp.exp(-jnp.log(10_000.0) * jnp.arange(half, dtype=jnp.float32) / half)
-    args    = t[:, None].astype(jnp.float32) * freqs[None, :]
-    return jnp.concatenate([jnp.cos(args), jnp.sin(args)], axis=-1)
-
-
-class TimeEmbedding(nnx.Module):
-    """Maps integer diffusion timesteps → continuous embeddings (sinusoidal + 2-layer MLP)."""
-
-    def __init__(self, model_dim: int, emb_dim: int, rngs: nnx.Rngs) -> None:
-        self.model_dim = model_dim
-        self.fc1 = nnx.Linear(model_dim, emb_dim, rngs=rngs)
-        self.fc2 = nnx.Linear(emb_dim,   emb_dim, rngs=rngs)
-
-    def __call__(self, t: jnp.ndarray) -> jnp.ndarray:
-        """t: [B] integer timesteps → [B, emb_dim]."""
-        x = sinusoidal_embedding(t, self.model_dim)
-        x = jax.nn.silu(self.fc1(x))
-        return self.fc2(x)
+    return base_loss + alpha_balance * aux_loss
 
 
 # ── Confidence-aware parallel decoding helpers (Fast-dLLM §3.3) ───────────────
@@ -276,3 +238,118 @@ def confidence_unmask_factor(
             new_x = new_x.at[b, pos].set(token)
 
     return new_x
+
+
+# ── Continuous flow-matching utilities (ELF) ──────────────────────────────────
+# Analogous to corrupt() / masked_cross_entropy() above, but for the continuous
+# rectified-flow paradigm used by ELFTransformer.
+#
+# Forward process:  z_t = t·x + (1−t)·ε,  ε ~ N(0, I),  t ∈ [0, 1]
+# Network predicts clean embeddings x̂ (x-prediction).
+# At inference, use logit_normal_schedule + ODE/SDE steps (see generation.py).
+
+def sample_t_logit_normal(
+    rng:        jax.Array,
+    batch_size: int,
+    pmean:      float,
+    pstd:       float,
+) -> jax.Array:
+    """Sample t ∈ (0, 1) per example from a logit-normal distribution.
+
+    Draws t' ~ N(pmean, pstd²) then maps t = sigmoid(t').
+    Default denoiser params (pmean=-1.5, pstd=0.8) concentrate mass near
+    t ≈ 0.18, ensuring the noisy regime is well-trained.
+    """
+    return jax.nn.sigmoid(jax.random.normal(rng, (batch_size,)) * pstd + pmean)
+
+
+def sample_p_per_token(
+    rng:        jax.Array,
+    batch_size: int,
+    seq_len:    int,
+    pmean:      float,
+    pstd:       float,
+) -> jax.Array:
+    """Per-token corruption level p ∈ (0, 1) for the ELF decoder branch.
+
+    Each token in each sequence gets its own p, encouraging the decoder to
+    handle a range of corruption levels within a single context.
+    Returns shape [B, L].
+    """
+    return jax.nn.sigmoid(jax.random.normal(rng, (batch_size, seq_len)) * pstd + pmean)
+
+
+def sample_cfg_scale(
+    rng:       jax.Array,
+    batch_size: int,
+    scale_min: float,
+    scale_max: float,
+) -> jax.Array:
+    """Sample CFG scale w ∈ [scale_min, scale_max] with a power distribution.
+
+    Uses a quadratic transform biased toward smaller values, matching ELF §B.1.
+    Returns shape [B].
+    """
+    u = jax.random.uniform(rng, (batch_size,))
+    return scale_min + (scale_max - scale_min) * u ** 2
+
+
+def corrupt_denoiser(
+    x:           jnp.ndarray,  # [B, L, D] clean normalised embeddings
+    t:           jnp.ndarray,  # [B]
+    rng:         jax.Array,
+    noise_scale: float = 2.0,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
+    """Denoiser-branch corruption (ELF Appendix B.1).
+
+    z_t = t · x + (1 − t) · (noise_scale · ε),   ε ~ N(0, I)
+    v   = x − (noise_scale · ε)
+
+    Returns ``(z_t, v)``.  ``noise_scale=2`` is the ELF default.
+    """
+    eps = noise_scale * jax.random.normal(rng, x.shape)
+    t_b = t[:, None, None]
+    z_t = t_b * x + (1.0 - t_b) * eps
+    return z_t, x - eps
+
+
+def corrupt_decoder(
+    x:           jnp.ndarray,  # [B, L, D] clean normalised embeddings
+    p:           jnp.ndarray,  # [B, L] per-token corruption level
+    rng:         jax.Array,
+    noise_scale: float = 5.0,
+) -> jnp.ndarray:
+    """Decoder-branch corruption (ELF Appendix B.1).
+
+    z̃ = p · x + (1 − p) · (noise_scale · ε),   ε ~ N(0, I)
+
+    Per-token p makes the decoder robust to imperfect denoiser outputs.
+    """
+    eps = noise_scale * jax.random.normal(rng, x.shape)
+    p_b = p[:, :, None]
+    return p_b * x + (1.0 - p_b) * eps
+
+
+def logit_normal_schedule(
+    n_steps: int,
+    pmean:   float = -1.5,
+    pstd:    float = 0.8,
+    *,
+    rng:     jax.Array | None = None,
+) -> jnp.ndarray:
+    """Logit-normal inference time schedule for ELF (ELF §B.2).
+
+    Samples ``n_steps − 1`` interior time-points from the same logit-normal
+    distribution used at training time, sorts them, and bookends with 0 and 1.
+
+    Returns sorted array of shape ``[n_steps + 1]`` with ts[0]=0, ts[-1]=1.
+    Smaller intervals near t=0 (noisy) and larger near t=1 (clean).
+    """
+    import numpy as np
+    rng_np = np.random.default_rng(
+        int(jax.random.randint(rng, (), 0, 2**31 - 1)) if rng is not None else None
+    )
+    t_prime   = rng_np.normal(pmean, pstd, size=(n_steps - 1,))
+    t_interior = 1.0 / (1.0 + np.exp(-t_prime))
+    t_interior.sort()
+    return jnp.asarray(np.concatenate([[0.0], t_interior, [1.0]]), dtype=jnp.float32)

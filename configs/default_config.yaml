@@ -52,6 +52,7 @@ training:
   optimizer: "adamw"           
   epochs: 3  # 3 epochs on WikiText-103 ~ 9k steps
   warmup_steps: 0 #100
+  patience: 5
 
 
 generation:

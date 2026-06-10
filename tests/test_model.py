@@ -11,17 +11,15 @@ from core.model import Transformer
 
 def test_training_forward_shape(tiny_config, batch_input, rngs):
     model = Transformer(tiny_config, rngs=rngs)
-    logits, kv_caches, bal_loss = model(
-        batch_input, use_cache=False, kv_caches=None, cache_index=0
-    )
-    assert logits.shape == (*batch_input.shape, tiny_config.vocab_size)
-    assert len(kv_caches) == tiny_config.num_blocks
+    out = model(batch_input)
+    assert out.logits.shape == (*batch_input.shape, tiny_config.vocab_size)
+    assert len(out.kv_caches) == tiny_config.num_blocks
     assert not jnp.isnan(logits).any()
 
 
 def test_no_nan_in_output(tiny_config, batch_input, rngs):
     model = Transformer(tiny_config, rngs=rngs)
-    logits, _, _ = model(batch_input, use_cache=False, kv_caches=None, cache_index=0)
+    logits, _, _ = model(batch_input)
     assert not jnp.isnan(logits).any()
     assert not jnp.isinf(logits).any()
 
@@ -32,11 +30,11 @@ def test_inference_kv_cache(tiny_config, rngs):
     model = Transformer(tiny_config, rngs=rngs)
     x = jnp.array([[42, 7]], dtype=jnp.int32)
 
-    logits_1, cache_1, _ = model(x, use_cache=True, kv_caches=None, cache_index=0)
+    logits_1, cache_1, _ = model(x, caches=tuple((None,None) for _ in range(model.num_blocks)), cache_index=0)
     assert logits_1.shape == (1, 2, tiny_config.vocab_size)
 
     x_next = jnp.array([[15]], dtype=jnp.int32)
-    logits_2, cache_2, _ = model(x_next, use_cache=True, kv_caches=cache_1, cache_index=2)
+    logits_2, cache_2, _ = model(x_next, caches=cache_1, cache_index=2)
     assert logits_2.shape == (1, 1, tiny_config.vocab_size)
 
 
@@ -44,7 +42,7 @@ def test_inference_kv_cache(tiny_config, rngs):
 
 def test_moe_balancing_loss(tiny_moe_config, batch_input, rngs):
     model = Transformer(tiny_moe_config, rngs=rngs)
-    _, _, bal_loss = model(batch_input, use_cache=False, kv_caches=None, cache_index=0)
+    _, _, bal_loss = model(batch_input)
     assert bal_loss is not None
     assert float(bal_loss) >= 0.0
 
@@ -56,7 +54,7 @@ def test_jit_compilation(tiny_config, batch_input, rngs):
 
     @nnx.jit
     def forward(m, x):
-        return m(x, use_cache=False, kv_caches=None, cache_index=0)
+        return m(x)
 
     logits, _, _ = forward(model, batch_input)
     assert logits is not None
@@ -77,7 +75,7 @@ def test_weight_tying(rngs):
     assert model.weight_tying is True
     # Forward pass must still produce correct output shape.
     x = jnp.array([[1, 2, 3]], dtype=jnp.int32)
-    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
+    logits, _, _ = model(x)
     assert logits.shape == (1, 3, 256)
 
 
@@ -96,7 +94,7 @@ def test_no_weight_tying(rngs):
 
 def test_gqa_forward(tiny_gqa_config, batch_input, rngs):
     model = Transformer(tiny_gqa_config, rngs=rngs)
-    logits, _, _ = model(batch_input, use_cache=False, kv_caches=None, cache_index=0)
+    logits, _, _ = model(batch_input)
     assert logits.shape == (*batch_input.shape, tiny_gqa_config.vocab_size)
     assert not jnp.isnan(logits).any()
 
@@ -106,7 +104,7 @@ def test_gqa_forward(tiny_gqa_config, batch_input, rngs):
 def test_mla_training_forward(tiny_mla_config, rngs):
     model = Transformer(tiny_mla_config, rngs=rngs)
     x = jnp.ones((2, 8), dtype=jnp.int32)
-    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0)
+    logits, _, _ = model(x)
     assert logits.shape == (2, 8, tiny_mla_config.vocab_size)
     assert not jnp.isnan(logits).any()
 

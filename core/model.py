@@ -1,125 +1,363 @@
 from __future__ import annotations
 
+import contextlib
+
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 
-from .block import ARBlock, DiffusionBlock, _build_norm
-from .config import Config
-from .diffusion import DualCache, TimeEmbedding
+from .block import Block, RMSNorm, _build_norm
+from .config import Config, ModelConfig
+from .diffusion import DualCache
 from .output import ModelOutput
 
 
-# ── Autoregressive Transformer ─────────────────────────────────────────────────
+def _to_model_config(config: ModelConfig | Config) -> ModelConfig:
+    """Accept either the new ModelConfig or the legacy monolithic Config."""
+    if isinstance(config, ModelConfig) and not isinstance(config, Config):
+        return config
+    return config.to_model_config()  # type: ignore[attr-defined]
+
+
+# ── Unified Transformer ────────────────────────────────────────────────────────
 
 class Transformer(nnx.Module, pytree=False):
-    """Causal (autoregressive) transformer with MHA / GQA / MLA attention.
+    """Composable transformer for autoregressive and masked-diffusion modelling.
 
-    Supports KV-cache for efficient autoregressive generation, optional
-    Mixture-of-Experts feed-forward, gradient checkpointing, and weight tying.
+    A single class replaces the old ``Transformer`` (AR) and
+    ``DiffusionTransformer`` (diffusion).  The ``causal`` flag in
+    ``ModelConfig`` drives the behaviour:
+
+    - ``causal=True``  — standard causal AR transformer with KV-cache support.
+    - ``causal=False`` — bidirectional LLaDA-style transformer with optional
+      dual-cache inference helpers.
+
+    Quick-start
+    -----------
+    **String-based** (serialisable to YAML, recommended for experiments)::
+
+        config = ModelConfig(
+            dim=512, n_heads=16, head_size=32, num_blocks=12,
+            attention="gqa", kv_heads=4, causal=False,
+            vocab_size=tok.vocab_size,
+        )
+        model = Transformer(config, rngs=nnx.Rngs(42))
+
+    **Class-based builder** (most explicit, zero magic strings)::
+
+        from core.attention import GQAAttention
+        model = Transformer.build(
+            dim=512, n_heads=16, head_size=32, num_blocks=12,
+            attention=GQAAttention, kv_heads=4, causal=False,
+            vocab_size=tok.vocab_size, max_context=512,
+            rngs=nnx.Rngs(42),
+        )
+
+    **Legacy Config** (trainer/CLI unchanged)::
+
+        model = Transformer(config, rngs=nnx.Rngs(42))   # Config auto-converted
     """
 
-    def __init__(self, config: Config, rngs: nnx.Rngs):
-        self.num_blocks: int     = config.num_blocks
-        self.blocks: list        = [ARBlock(config, rngs=rngs) for _ in range(self.num_blocks)]
-        self.wte: nnx.Embed      = nnx.Embed(config.vocab_size, config.dim, rngs=rngs)
-        self.weight_tying: bool  = config.weight_tying
-        self.trainable_pos: bool = config.trainable_pos
-        self.absolute_pos: bool  = config.absolute_pos
-        self.max_context: int    = config.max_context
-        self.gradient_checkpointing: bool = config.gradient_checkpointing
-        self.ln_f: nnx.Module    = _build_norm(config, config.dim, rngs)
-        self.emb_dropout         = nnx.Dropout(config.dropout_rate, rngs=rngs)
-        self.use_moe: bool        = config.use_moe
-        self.alpha_balance: float = config.alpha_balance
+    def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
+        cfg = _to_model_config(config)
 
-        if config.weight_tying:
-            self.lm_head: nnx.Linear | None = None
+        self.num_blocks: int              = cfg.num_blocks
+        self.blocks: list[Block]          = [Block(cfg, rngs=rngs) for _ in range(cfg.num_blocks)]
+        self.embed: nnx.Embed             = nnx.Embed(cfg.vocab_size, cfg.dim, rngs=rngs)
+        self.norm_f: nnx.Module           = _build_norm(cfg, cfg.dim, rngs)
+        self.emb_dropout                  = nnx.Dropout(cfg.dropout_rate, rngs=rngs)
+        self.weight_tying: bool           = cfg.weight_tying
+        self.causal: bool                 = cfg.causal
+        self.max_context: int             = cfg.max_context
+        self.gradient_checkpointing: bool = cfg.gradient_checkpointing
+        self.use_moe: bool                = cfg.use_moe
+        self.moe_balance_coeff: float     = cfg.moe_balance_coeff
+        self.pos_encoding: str            = cfg.pos_encoding
+
+        if cfg.weight_tying:
+            self.head: nnx.Linear | None = None
         else:
-            self.lm_head = nnx.Linear(config.dim, config.vocab_size, rngs=rngs)
+            self.head = nnx.Linear(cfg.dim, cfg.vocab_size, rngs=rngs)
 
-        if self.trainable_pos:
-            self.wpe: nnx.Embed = nnx.Embed(config.max_context, config.dim, rngs=rngs)
-        elif self.absolute_pos:
-            def _build_compute_absolute_pos(T: int, C: int) -> jnp.ndarray:
-                pos = jnp.zeros((T, C))
-                row = jnp.arange(T)
-                col = jnp.arange(0, C, 2)
-                k   = 1.0 / (10000 ** (col / C))
-                ratio = jnp.einsum("i,j->ij", row, k)
-                pos = pos.at[:, 0::2].set(jnp.sin(ratio))
-                pos = pos.at[:, 1::2].set(jnp.cos(ratio))
-                return jnp.expand_dims(pos, axis=0)
+        if cfg.pos_encoding == "learned":
+            self.wpe: nnx.Embed = nnx.Embed(cfg.max_context, cfg.dim, rngs=rngs)
+        elif cfg.pos_encoding == "absolute":
+            self.wpe: jnp.ndarray = self._build_sinusoidal(cfg.max_context, cfg.dim)  # type: ignore[assignment]
 
-            self.wpe: jnp.ndarray = _build_compute_absolute_pos(  # type: ignore[assignment, no-redef]
-                config.max_context, config.dim
+    # ── Positional encoding helpers ────────────────────────────────────────────
+
+    @staticmethod
+    def _build_sinusoidal(T: int, C: int) -> jnp.ndarray:
+        row = jnp.arange(T)
+        col = jnp.arange(0, C, 2)
+        k   = 1.0 / (10000 ** (col / C))
+        ratio = jnp.einsum("i,j->ij", row, k)
+        pos   = jnp.zeros((T, C))
+        pos   = pos.at[:, 0::2].set(jnp.sin(ratio))
+        pos   = pos.at[:, 1::2].set(jnp.cos(ratio))
+        return jnp.expand_dims(pos, axis=0)   # [1, T, C]
+
+    def _add_pos(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
+        T = x.shape[1]
+        if self.pos_encoding == "learned":
+            return x + self.wpe(jnp.arange(T, dtype=x.dtype))
+        if self.pos_encoding == "absolute":
+            wpe_slice = jax.lax.dynamic_slice_in_dim(
+                self.wpe, start_index=cache_index, slice_size=T, axis=1  # type: ignore[arg-type]
             )
+            return x + wpe_slice
+        return x  # "rotary" and "none": positional info is in attention, not added here
+
+    # ── Backward-compat properties ────────────────────────────────────────────
+
+    @property
+    def alpha_balance(self) -> float:
+        return self.moe_balance_coeff
+
+    @property
+    def lm_head(self):
+        return self.head
+
+    @property
+    def wte(self):
+        return self.embed
+
+    # ── Forward pass ──────────────────────────────────────────────────────────
 
     def __call__(
         self,
         x: jnp.ndarray,
-        use_cache: bool,
-        kv_caches: tuple | None,
-        cache_index: int | None,
+        *,
+        caches: tuple | None = None,
+        cache_index: int = 0,
+        dual_cache: DualCache | None = None,
         deterministic: bool = False,
     ) -> ModelOutput:
-        B, T = x.shape
-        x = self.wte(x)
-        if kv_caches is None:
-            kv_caches = tuple((None, None) for _ in range(self.num_blocks))
-        if self.absolute_pos:
-            wpe_slice = jax.lax.dynamic_slice_in_dim(
-                self.wpe,  # type: ignore[arg-type]
-                start_index=cache_index,  # type: ignore[arg-type]
-                slice_size=T,
-                axis=1,
-            )
-            x = x + wpe_slice
-        elif self.trainable_pos:
-            x = x + self.wpe(jnp.arange(T, dtype=x.dtype))
+        """Run the transformer forward pass.
 
-        x = self.emb_dropout(x, deterministic=deterministic)
+        Parameters
+        ----------
+        x:             Token IDs ``[B, T]``.
+        caches:        Per-layer ``(k_cache, v_cache)`` for AR generation.
+                       Pass ``tuple((None, None) for _ in range(model.num_blocks))``
+                       to initialise a fresh KV cache (first token).
+                       ``None`` (default) disables caching entirely (training).
+        cache_index:   Write position for the AR KV cache.
+        dual_cache:    Bidirectional prefix KV cache for diffusion inference.
+        deterministic: Disables dropout.
 
-        def block_fn(
-            block_module: object, hidden_state: jnp.ndarray, kv_c: object, det: bool
-        ) -> tuple:
-            return block_module(  # type: ignore[call-arg, operator]
-                hidden_state,
-                use_cache=use_cache,
-                kv_cache=kv_c,
-                cache_index=cache_index,
-                deterministic=det,
-            )
+        Returns
+        -------
+        ``ModelOutput(logits, kv_caches, aux_loss)``
+        """
+        use_cache = (caches is not None)
 
-        def _apply_block(bm: object, hs: jnp.ndarray, kvc: object) -> tuple:
-            return block_fn(bm, hs, kvc, deterministic)
+        h = self.embed(x)
+        h = self._add_pos(h, cache_index)
+        h = self.emb_dropout(h, deterministic=deterministic)
 
-        if self.gradient_checkpointing and not use_cache:
-            checkpointed_block = nnx.remat(_apply_block)
-        else:
-            checkpointed_block = _apply_block
+        # Block-level caches: (None, None) sentinel = "create cache on first use"
+        block_caches: tuple = (
+            caches if use_cache
+            else tuple((None, None) for _ in range(self.num_blocks))
+        )
+        prefix_kvs: tuple = (
+            dual_cache.prefix_kvs if dual_cache is not None
+            else (None,) * self.num_blocks
+        )
 
-        new_kv_caches         = []
-        balancing_loss_total  = 0.0
+        use_remat = (
+            self.gradient_checkpointing
+            and not deterministic
+            and not use_cache
+            and dual_cache is None
+        )
+
+        if use_remat:
+            def _block_fn(block: object, hs: jnp.ndarray) -> tuple:
+                return block(hs, deterministic=False)  # type: ignore[call-arg, operator]
+            _checkpointed = nnx.remat(_block_fn)
+
+        new_caches: list      = []
+        balancing_loss: float = 0.0
+
         for i, block in enumerate(self.blocks):
-            x, new_kv, balancing_loss = checkpointed_block(
-                block, x, kv_caches[i] if kv_caches else None
-            )
-            new_kv_caches.append(new_kv)
-            balancing_loss_total += balancing_loss
+            if use_remat:
+                h, new_c, aux = _checkpointed(block, h)  # type: ignore[possibly-undefined]
+            else:
+                h, new_c, aux = block(
+                    h,
+                    cache=block_caches[i] if use_cache else None,
+                    cache_index=cache_index,
+                    prefix_kv=prefix_kvs[i],
+                    deterministic=deterministic,
+                )
+            new_caches.append(new_c)
+            balancing_loss += aux
 
-        x      = self.ln_f(x)
+        h = self.norm_f(h)
         logits = (
-            x @ self.wte.embedding[...].T
+            h @ self.embed.embedding[...].T
             if self.weight_tying
-            else self.lm_head(x)  # type: ignore[union-attr, misc]
+            else self.head(h)  # type: ignore[misc]
         )
 
         return ModelOutput(
             logits=logits,
-            kv_caches=tuple(new_kv_caches),
-            aux_loss=balancing_loss_total,
+            kv_caches=tuple(new_caches),
+            aux_loss=balancing_loss,
         )
+
+    # ── Diffusion-specific inference methods ──────────────────────────────────
+    # Valid only when causal=False (bidirectional transformer).
+
+    def compute_prefix_cache(self, prefix: jnp.ndarray) -> DualCache:
+        """Process a static conditioning prefix once and cache per-layer KV."""
+        h = self.embed(prefix)
+        h = self.emb_dropout(h, deterministic=True)
+
+        prefix_kvs: list = []
+        for block in self.blocks:
+            h, _, _, kv = block(h, deterministic=True, return_kv=True)
+            prefix_kvs.append(kv)
+
+        return DualCache(prefix_kvs=tuple(prefix_kvs))
+
+    def compute_block_dual_cache(
+        self,
+        x_full: jnp.ndarray,
+        block_start: int,
+        block_end: int,
+    ) -> DualCache:
+        """Run a full forward pass and split KV into prefix and suffix parts."""
+        h = self.embed(x_full)
+        h = self.emb_dropout(h, deterministic=True)
+
+        prefix_kvs: list = []
+        suffix_kvs: list = []
+
+        for block in self.blocks:
+            h, _, _, kv = block(h, deterministic=True, return_kv=True)
+            if kv is not None:
+                k_full, v_full = kv
+                prefix_kvs.append((k_full[:, :, :, :block_start, :],
+                                   v_full[:, :, :, :block_start, :]))
+                suffix_kvs.append((k_full[:, :, :, block_end:, :],
+                                   v_full[:, :, :, block_end:, :]))
+            else:
+                prefix_kvs.append(None)
+                suffix_kvs.append(None)
+
+        return DualCache(prefix_kvs=tuple(prefix_kvs), suffix_kvs=tuple(suffix_kvs))
+
+    def decode_block(
+        self,
+        x_block: jnp.ndarray,
+        dual_cache: DualCache,
+        block_start: int | jax.Array,
+        deterministic: bool = True,
+    ) -> jnp.ndarray:
+        """Denoise a single block using the dual KV cache; returns logits."""
+        h      = self.embed(x_block)
+        h      = self.emb_dropout(h, deterministic=deterministic)
+        offset = jnp.asarray(block_start, dtype=jnp.int32)
+
+        for i, block in enumerate(self.blocks):
+            p_kv = dual_cache.prefix_kvs[i]
+            s_kv = dual_cache.suffix_kvs[i] if dual_cache.suffix_kvs is not None else None
+
+            if p_kv is not None and s_kv is not None:
+                ctx: tuple | None = (
+                    jnp.concatenate([p_kv[0], s_kv[0]], axis=3),
+                    jnp.concatenate([p_kv[1], s_kv[1]], axis=3),
+                )
+            elif p_kv is not None:
+                ctx = p_kv
+            elif s_kv is not None:
+                ctx = s_kv
+            else:
+                ctx = None
+
+            x_norm = block.norm1(h)
+            x_attn, _ = block.attention(
+                x_norm,
+                use_cache=False,
+                kv_cache=(None, None),
+                cache_index=offset,
+                deterministic=deterministic,
+                is_causal=False,
+                prefix_kv=ctx,
+            )
+            h = h + x_attn
+            ff, _ = block.ffn(block.norm2(h), deterministic=deterministic)
+            h = h + ff
+
+        h = self.norm_f(h)
+        return (
+            h @ self.embed.embedding[...].T
+            if self.weight_tying
+            else self.head(h)  # type: ignore[misc]
+        )
+
+    # ── Class-based builder ────────────────────────────────────────────────────
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        dim: int,
+        n_heads: int,
+        head_size: int,
+        num_blocks: int,
+        vocab_size: int,
+        max_context: int,
+        rngs: nnx.Rngs,
+        attention: type | str = "mha",
+        ffn: type | str = "mlp",
+        norm: type | str = "rmsnorm",
+        causal: bool = True,
+        **kwargs: object,
+    ) -> Transformer:
+        """Build a Transformer by passing component classes (or canonical strings).
+
+        Component classes are resolved to their canonical string names before
+        creating the ``ModelConfig``, so the config remains serialisable.
+
+        Example::
+
+            from core.attention import GQAAttention
+            model = Transformer.build(
+                dim=512, n_heads=16, head_size=32, num_blocks=12,
+                vocab_size=tok.vocab_size, max_context=512,
+                attention=GQAAttention, kv_heads=4,
+                causal=False,           # bidirectional diffusion model
+                rngs=nnx.Rngs(42),
+            )
+        """
+        from .attention import GQAAttention, MHAAttention, MLAAttention
+        from .mlp import MLP as _MLP
+        from .moe import MoE as _MoE
+
+        _attn_cls_map: dict = {MHAAttention: "mha", GQAAttention: "gqa", MLAAttention: "mla"}
+        _ffn_cls_map:  dict = {_MLP: "mlp", _MoE: "moe"}
+        _norm_cls_map: dict = {RMSNorm: "rmsnorm", nnx.LayerNorm: "layernorm"}
+
+        attn_str = _attn_cls_map.get(attention, attention)   # type: ignore[arg-type]
+        ffn_str  = _ffn_cls_map.get(ffn, ffn)                # type: ignore[arg-type]
+        norm_str = _norm_cls_map.get(norm, norm)              # type: ignore[arg-type]
+
+        config = ModelConfig(
+            dim=dim, n_heads=n_heads, head_size=head_size, num_blocks=num_blocks,
+            vocab_size=vocab_size, max_context=max_context,
+            attention=attn_str,   # type: ignore[arg-type]
+            ffn=ffn_str,          # type: ignore[arg-type]
+            norm=norm_str,        # type: ignore[arg-type]
+            causal=causal,
+            **kwargs,             # type: ignore[arg-type]
+        )
+        return cls(config, rngs=rngs)
+
+    # ── Pretrained checkpoint loader ──────────────────────────────────────────
 
     @classmethod
     def from_pretrained(
@@ -131,25 +369,7 @@ class Transformer(nnx.Module, pytree=False):
         token: str | None = None,
         revision: str | None = None,
     ) -> Transformer:
-        """Load a trained Transformer from a local directory or HuggingFace Hub.
-
-        Parameters
-        ----------
-        path_or_repo:
-            Local path produced by ``Trainer.fit()`` **or** a Hub repo ID such
-            as ``"my-org/dantinox-dante"``.  The checkpoint is downloaded
-            automatically when a Hub ID is given.
-        rngs:
-            PRNG state for initialisation. Defaults to ``nnx.Rngs(0)``.
-        best:
-            When ``True`` (default), loads ``best_model_weights.msgpack``
-            if it exists, otherwise falls back to ``model_weights.msgpack``.
-        token:
-            HuggingFace access token for private repositories.
-        revision:
-            Branch, tag, or commit SHA to download from the Hub.
-        """
-        import contextlib
+        """Load a trained Transformer from a local directory or HuggingFace Hub."""
         import os
 
         import msgpack
@@ -161,379 +381,30 @@ class Transformer(nnx.Module, pytree=False):
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        config = Config.from_yaml(os.path.join(run_dir, "config.yaml"))
-        model  = cls(config, rngs=rngs)
+        # Try new ModelConfig first, fall back to legacy Config
+        config_path = os.path.join(run_dir, "config.yaml")
+        try:
+            config: ModelConfig | Config = ModelConfig.from_yaml(config_path)
+        except Exception:
+            config = Config.from_yaml(config_path)
+
+        model = cls(config, rngs=rngs)
 
         weights_path = os.path.join(run_dir, "best_model_weights.msgpack")
         if not best or not os.path.exists(weights_path):
             weights_path = os.path.join(run_dir, "model_weights.msgpack")
 
-        with open(weights_path, "rb") as f:
-            raw = f.read()
-
         _ext_hook: object = None
-        with contextlib.suppress(ImportError):
+        with contextlib.suppress(ImportError, AttributeError):
             from flax.serialization import _msgpack_ext_unpack  # type: ignore[attr-defined]
             _ext_hook = _msgpack_ext_unpack
 
-        state_dict = msgpack.unpackb(raw, ext_hook=_ext_hook, strict_map_key=False)
+        with open(weights_path, "rb") as f:
+            state_dict = msgpack.unpackb(f.read(), ext_hook=_ext_hook, strict_map_key=False)
         nnx.update(model, state_dict)
         return model
 
 
-# ── Diffusion Transformer ──────────────────────────────────────────────────────
+# ── Backward-compatible alias ─────────────────────────────────────────────────
 
-class DiffusionTransformer(nnx.Module, pytree=False):
-    """Bidirectional transformer for masked discrete diffusion (MDLM-style).
-
-    Architecture differences from ``Transformer``
-    ---------------------------------------------
-    - **Bidirectional attention**: no causal mask; every token attends to every
-      other token.
-    - **Time-step conditioning**: each block uses ``AdaLayerNorm`` to modulate
-      normalisation parameters based on a learned time-step embedding.
-    - **Dual-cache inference**: ``compute_prefix_cache`` processes a static
-      conditioning prefix once and returns per-layer KV tensors that are
-      concatenated with the noisy sequence's KV at each denoising step.
-
-    Training
-    --------
-    Pass noisy token IDs ``x_t`` (produced by ``diffusion.corrupt``) and
-    integer timesteps ``t`` to ``__call__``.  Compute loss with
-    ``diffusion.masked_cross_entropy``.
-
-    Inference
-    ---------
-    Use ``diffusion_generate`` from ``core.generation`` for iterative
-    reverse-diffusion sampling with dual-cache acceleration.
-    """
-
-    def __init__(self, config: Config, rngs: nnx.Rngs) -> None:
-        self.num_blocks: int = config.num_blocks
-        self.diff_blocks: list = [
-            DiffusionBlock(config, rngs=rngs) for _ in range(self.num_blocks)
-        ]
-        self.wte         = nnx.Embed(config.vocab_size, config.dim, rngs=rngs)
-        self.weight_tying: bool = config.weight_tying
-        self.gradient_checkpointing: bool = config.gradient_checkpointing
-        self.ln_f        = _build_norm(config, config.dim, rngs)
-        self.emb_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
-        self.use_moe: bool       = config.use_moe
-        self.alpha_balance: float = config.alpha_balance
-        self.max_context: int    = config.max_context
-
-        # Time-step embedding: sinusoidal → 2-layer MLP
-        self.time_emb = TimeEmbedding(config.dim, config.time_emb_dim, rngs=rngs)
-
-        if config.weight_tying:
-            self.lm_head: nnx.Linear | None = None
-        else:
-            self.lm_head = nnx.Linear(config.dim, config.vocab_size, rngs=rngs)
-
-    # ── Fast-dLLM block-wise dual cache ──────────────────────────────────────
-
-    def compute_block_dual_cache(
-        self,
-        x_full: jnp.ndarray,
-        t: jnp.ndarray,
-        block_start: int,
-        block_end: int,
-    ) -> DualCache:
-        """Run a full forward pass and split KV into prefix and suffix parts.
-
-        This implements the DualCache initialisation / refresh from Fast-dLLM
-        (Algorithm 1, line 2 and line 19).
-
-        The full sequence ``x_full = [prompt | ... | block_k | ... | suffix]``
-        is passed through the transformer.  At each transformer layer the KV
-        tensors are sliced into:
-
-          - ``prefix_kvs[i]``:  positions ``0 … block_start-1``  (prompt)
-          - ``suffix_kvs[i]``:  positions ``block_end … T-1``    (remaining MASK blocks)
-
-        The slice for the current block (``block_start … block_end-1``) is
-        **discarded** here — it will be recomputed fresh at every inner step
-        inside ``decode_block``.
-
-        Call this method once before decoding block k, and again (refresh) after
-        block k is finished and before starting block k+1.
-
-        Args:
-            x_full:      Full token sequence ``[B, T_total]``.
-            t:           Per-sample timestep ``[B]``.
-            block_start: Absolute token index of the current block's first token.
-            block_end:   Absolute token index one past the current block's last token.
-
-        Returns:
-            ``DualCache(prefix_kvs, suffix_kvs)`` with per-layer (k, v) slices.
-        """
-        B = x_full.shape[0]
-        x = self.wte(x_full)
-        x = self.emb_dropout(x, deterministic=True)
-        t_emb = self.time_emb(t)
-
-        prefix_kvs: list = []
-        suffix_kvs: list = []
-
-        for block in self.diff_blocks:
-            # Single pass: run the block and capture KV (no double AdaLN)
-            x, _, kv = block(x, t_emb, prefix_kv=None,
-                             deterministic=True, return_kv=True)
-
-            if kv is not None:
-                k_full, v_full = kv  # [B, kv_heads, 1, T_total, head_size]
-                prefix_kvs.append((k_full[:, :, :, :block_start, :],
-                                   v_full[:, :, :, :block_start, :]))
-                suffix_kvs.append((k_full[:, :, :, block_end:, :],
-                                   v_full[:, :, :, block_end:, :]))
-            else:
-                prefix_kvs.append(None)
-                suffix_kvs.append(None)
-
-        return DualCache(
-            prefix_kvs=tuple(prefix_kvs),
-            suffix_kvs=tuple(suffix_kvs),
-        )
-
-    def decode_block(
-        self,
-        x_block: jnp.ndarray,
-        t: jnp.ndarray,
-        dual_cache: DualCache,
-        block_start: int | jax.Array,
-        deterministic: bool = True,
-    ) -> jnp.ndarray:
-        """Run the denoising model on a single block with the dual KV cache.
-
-        This is the inner-loop operation of Fast-dLLM block-wise decoding
-        (Algorithm 1, line 6 — ``use_DualCache`` branch).
-
-        Only the current block's tokens ``x[s:e]`` are processed.  Their
-        queries attend to:
-          1. Fresh KV computed from ``x_block`` (positions ``block_start … block_end-1``).
-          2. Cached prefix KV (prompt positions ``0 … block_start-1``).
-          3. Cached suffix KV (remaining MASK positions ``block_end … T-1``).
-
-        RoPE is applied at the correct absolute offset (``cache_index=block_start``)
-        so that position encodings are consistent with those stored in the cache.
-
-        Args:
-            x_block:     Current block tokens ``[B, block_size]``.
-            t:           Per-sample timestep ``[B]``.
-            dual_cache:  ``DualCache`` from ``compute_block_dual_cache``.
-            block_start: Absolute start index of the block (for RoPE offset).
-            deterministic: Disables dropout when ``True``.
-
-        Returns:
-            Logits ``[B, block_size, vocab_size]`` for the current block.
-        """
-        B, block_size = x_block.shape
-        x     = self.wte(x_block)
-        x     = self.emb_dropout(x, deterministic=deterministic)
-        t_emb = self.time_emb(t)
-
-        # Convert block_start to a JAX scalar so dynamic_slice_in_dim stays dynamic
-        # across different block positions without triggering recompilation.
-        offset = jnp.asarray(block_start, dtype=jnp.int32)
-
-        for i, block in enumerate(self.diff_blocks):
-            # ── Build context KV: prefix ‖ suffix ──────────────────────────
-            p_kv = dual_cache.prefix_kvs[i]   # (k_prefix, v_prefix) or None
-            s_kv = dual_cache.suffix_kvs[i]   # (k_suffix, v_suffix) or None
-
-            if p_kv is not None and s_kv is not None:
-                # Concatenate prefix and suffix along the sequence axis (axis=3)
-                context_kv: tuple | None = (
-                    jnp.concatenate([p_kv[0], s_kv[0]], axis=3),
-                    jnp.concatenate([p_kv[1], s_kv[1]], axis=3),
-                )
-            elif p_kv is not None:
-                context_kv = p_kv
-            elif s_kv is not None:
-                context_kv = s_kv
-            else:
-                context_kv = None
-
-            # ── AdaLN norm ─────────────────────────────────────────────────
-            x_norm = block.ada_ln1(x, t_emb)
-
-            # ── Bidirectional attention with correct RoPE offset ────────────
-            # cache_index=offset so Q gets RoPE for positions block_start..block_end-1.
-            # prefix_kv=context_kv prepends [prefix_K|suffix_K] to the fresh block K.
-            # is_causal=False: fully bidirectional.
-            x_attn, _ = block.attention(
-                x_norm,
-                use_cache=False,
-                kv_cache=(None, None),
-                cache_index=offset,
-                deterministic=deterministic,
-                is_causal=False,
-                prefix_kv=context_kv,
-            )
-            x = x + x_attn
-
-            # ── Feed-forward ───────────────────────────────────────────────
-            ff, _ = (
-                block.moe(block.ada_ln2(x, t_emb), deterministic=deterministic)
-                if block.use_moe
-                else block.mlp(block.ada_ln2(x, t_emb), deterministic=deterministic)
-            )
-            x = x + ff
-
-        x      = self.ln_f(x)
-        logits = (
-            x @ self.wte.embedding[...].T
-            if self.weight_tying
-            else self.lm_head(x)  # type: ignore[union-attr, misc]
-        )
-        return logits
-
-    # ── Simple prefix-only cache (kept for backward compat) ──────────────────
-
-    def compute_prefix_cache(self, prefix: jnp.ndarray) -> DualCache:
-        """Process a static conditioning prefix once and cache per-layer KV.
-
-        The returned ``DualCache`` should be passed to every subsequent call of
-        ``__call__`` during reverse diffusion.  This amortises the cost of
-        encoding the prefix across all denoising steps.
-
-        .. note::
-            This is an *approximate* optimisation for fully-bidirectional
-            models: the cached prefix KV is computed from the prefix alone
-            (without seeing the noisy sequence), so cross-token interactions
-            between prefix and noisy tokens are not captured in the cache.
-            Empirically this approximation works well when the prefix is long
-            relative to the generated sequence.
-
-        Args:
-            prefix: Conditioning token IDs, shape ``[B, T_prefix]``.
-
-        Returns:
-            A ``DualCache`` whose ``prefix_kvs`` is a tuple of per-layer
-            ``(k, v)`` tensors (or ``None`` for blocks whose attention variant
-            does not support prefix injection, e.g. MLA).
-        """
-        B = prefix.shape[0]
-        x = self.wte(prefix)
-        x = self.emb_dropout(x, deterministic=True)
-
-        # Use t=0 (no noise) for the prefix — it is always a clean sequence.
-        t_zero = jnp.zeros((B,), dtype=jnp.int32)
-        t_emb  = self.time_emb(t_zero)
-
-        prefix_kvs = []
-        for block in self.diff_blocks:
-            # Single pass: run the block and capture KV simultaneously
-            x, _, kv = block(x, t_emb, prefix_kv=None,
-                             deterministic=True, return_kv=True)
-            prefix_kvs.append(kv)
-
-        return DualCache(prefix_kvs=tuple(prefix_kvs))
-
-    # ── Forward pass ──────────────────────────────────────────────────────────
-
-    def __call__(
-        self,
-        x_t: jnp.ndarray,
-        t: jnp.ndarray,
-        dual_cache: DualCache | None = None,
-        deterministic: bool = False,
-    ) -> ModelOutput:
-        """Run the denoising network.
-
-        Args:
-            x_t:         Noisy token IDs, shape ``[B, T]``.
-            t:           Per-sample diffusion timestep (integer), shape ``[B]``.
-            dual_cache:  Optional ``DualCache`` from ``compute_prefix_cache``.
-                         When provided each block prepends the cached prefix KV
-                         to its attention context.
-            deterministic: Disables dropout when ``True``.
-
-        Returns:
-            ``ModelOutput`` with ``logits`` of shape ``[B, T, vocab_size]``
-            representing the predicted clean-token distribution p(x_0 | x_t, t).
-        """
-        B, T = x_t.shape
-        x    = self.wte(x_t)
-        x    = self.emb_dropout(x, deterministic=deterministic)
-        t_emb = self.time_emb(t)  # [B, time_emb_dim]
-
-        # Resolve per-block prefix KV (None during training)
-        prefix_kvs: tuple | list = (
-            dual_cache.prefix_kvs if dual_cache is not None
-            else (None,) * self.num_blocks
-        )
-
-        # Gradient checkpointing during training (no dual_cache, deterministic=False)
-        use_remat = self.gradient_checkpointing and not deterministic and dual_cache is None
-
-        if use_remat:
-            # Capture t_emb as a closure variable; deterministic is always False here.
-            def _block_fn(bm: object, hs: jnp.ndarray) -> tuple:
-                return bm(hs, t_emb, prefix_kv=None, deterministic=False)  # type: ignore[call-arg, operator]
-            _checkpointed = nnx.remat(_block_fn)
-
-        balancing_loss = 0.0
-        for i, block in enumerate(self.diff_blocks):
-            if use_remat:
-                x, aux = _checkpointed(block, x)  # type: ignore[possibly-undefined]
-            else:
-                x, aux = block(
-                    x, t_emb, prefix_kv=prefix_kvs[i], deterministic=deterministic
-                )
-            balancing_loss += aux
-
-        x      = self.ln_f(x)
-        logits = (
-            x @ self.wte.embedding[...].T
-            if self.weight_tying
-            else self.lm_head(x)  # type: ignore[union-attr, misc]
-        )
-
-        return ModelOutput(
-            logits=logits,
-            kv_caches=(),           # diffusion does not use AR KV-cache
-            aux_loss=balancing_loss,
-        )
-
-    @classmethod
-    def from_pretrained(
-        cls,
-        path_or_repo: str,
-        rngs: nnx.Rngs | None = None,
-        *,
-        best: bool = True,
-        token: str | None = None,
-        revision: str | None = None,
-    ) -> DiffusionTransformer:
-        """Load a trained DiffusionTransformer from a local directory or HuggingFace Hub."""
-        import contextlib
-        import os
-
-        import msgpack
-
-        from dantinox.hub import resolve_checkpoint  # type: ignore[import]
-
-        run_dir = resolve_checkpoint(path_or_repo, token=token, revision=revision)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        config = Config.from_yaml(os.path.join(run_dir, "config.yaml"))
-        model  = cls(config, rngs=rngs)
-
-        weights_path = os.path.join(run_dir, "best_model_weights.msgpack")
-        if not best or not os.path.exists(weights_path):
-            weights_path = os.path.join(run_dir, "model_weights.msgpack")
-
-        with open(weights_path, "rb") as f:
-            raw = f.read()
-
-        _ext_hook: object = None
-        with contextlib.suppress(ImportError):
-            from flax.serialization import _msgpack_ext_unpack  # type: ignore[attr-defined]
-            _ext_hook = _msgpack_ext_unpack
-
-        state_dict = msgpack.unpackb(raw, ext_hook=_ext_hook, strict_map_key=False)
-        nnx.update(model, state_dict)
-        return model
+DiffusionTransformer = Transformer

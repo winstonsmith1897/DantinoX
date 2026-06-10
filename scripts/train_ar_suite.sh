@@ -74,6 +74,8 @@ train_one() {
         --use_bf16 true
         --use_flash_attention true
         --gradient_checkpointing true
+        --tokenizer_type bpe
+        --vocab_size 4096
         --dataset_source huggingface
         --dataset_name "wikitext"
         --dataset_config "wikitext-103-raw-v1"

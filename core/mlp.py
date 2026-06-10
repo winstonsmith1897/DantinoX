@@ -1,6 +1,7 @@
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
+from jax.sharding import PartitionSpec as P
 
 from .config import Config
 from .lora import LoRALinear
@@ -38,9 +39,15 @@ class MLP(nnx.Module):
         self.activation = Swiglu() if config.use_swiglu else Activation(config.activation)
         self.dropout    = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.mlp_loss   = 0
+        self.tp_size: int = getattr(config, "tp_size", 1)
 
     def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> tuple[jnp.ndarray, float]:
         x = self.up_proj(x)
         x = self.activation(x)
         x = self.down_proj(x)
+        # All-reduce partial sums from row-parallel down_proj across TP devices.
+        # with_sharding_constraint tells XLA the output must be fully replicated,
+        # which triggers an all-reduce over the model-parallel axis.
+        if self.tp_size > 1:
+            x = jax.lax.with_sharding_constraint(x, P(None, None, None))
         return self.dropout(x, deterministic=deterministic), self.mlp_loss

@@ -4,6 +4,7 @@
 
 model:
   model_type: "diffusion"
+  vocab_size: 32128         # T5 SentencePiece vocabulary — same as ELF for fair comparison
   dim: 256
   n_heads: 8
   head_size: 32
@@ -28,11 +29,10 @@ attention:
   rope_dim: 16
 
 diffusion:
-  diffusion_steps: 1000
-  noise_schedule: "cosine"
-  mask_token_id: 0
+  diffusion_steps: 100       # inference steps only (training uses continuous t)
+  noise_schedule: "linear"   # LLaDA: p_mask = t directly
+  mask_token_id: 32099      # T5 <extra_id_0> — never appears in natural text
   num_sampling_steps: 50
-  time_emb_dim: 256
 
 moe:
   use_moe: false
@@ -42,8 +42,8 @@ moe:
   alpha_balance: 0.1
 
 tokenizer:
-  tokenizer_type: "char"
-  tokenizer_path: null         # re-trained from corpus each run
+  tokenizer_type: "t5"
+  tokenizer_path: null
 
 data:
   dataset_source: "huggingface"
@@ -51,18 +51,18 @@ data:
   dataset_config: "wikitext-103-raw-v1"
   dataset_text_field: "text"
   dataset_split: "train"
-  streaming: false           # WikiText-103 is small enough to download fully
+  streaming: false
 
 training:
   lr: 0.001
   batch_size: 64
   grad_accum: 4
   optimizer: "adamw"
-  epochs: 3           # 3 epochs × 3052 steps = ~9k steps on WikiText-103 (sufficient for EMNLP demo comparisons)
-  warmup_steps: 420
+  epochs: 30
+  warmup_steps: 200
   grad_clip: 1.0
-  patience: 0
+  patience: 10
   use_bf16: true          # bf16 halves weight file size (~50% disk saving per run)
   lr_schedule: "cosine"
   seed: 42
-  n_devices: 2            # use 2 GPUs for data-parallel training
+  n_devices: 1

@@ -17,6 +17,7 @@ from tqdm import tqdm
 
 from core.config import Config
 from core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
+from core.elf import ELFTransformer, elf_loss
 from core.lora import LoRAParam
 from core.model import DiffusionTransformer, Transformer
 from core.sharding import make_mesh, num_devices, replicate, shard_batch
@@ -83,6 +84,11 @@ def _build_optimizer(config: Config, total_steps: int) -> optax.GradientTransfor
         base_opt = optax.adafactor(learning_rate=schedule)
     elif name == "lion":
         base_opt = optax.lion(learning_rate=schedule)
+    elif name == "muon":
+        # Muon (Momentum Orthogonalized by Newton-Schulz): applies Newton-Schulz
+        # orthogonalization to 2-D param gradients; falls back to Adam for biases
+        # and norms.  optax.contrib.muon, available since optax 0.2.6.
+        base_opt = optax.contrib.muon(learning_rate=schedule)
     else:
         base_opt = optax.adam(learning_rate=schedule)
 
@@ -140,14 +146,16 @@ def _format_text(text: str) -> str:
 
 def _create_model(
     config: Config, rngs: nnx.Rngs
-) -> Transformer | DiffusionTransformer:
+) -> Transformer | DiffusionTransformer | ELFTransformer:
     """Instantiate the right model class from config.model_type."""
+    if config.model_type == "elf":
+        return ELFTransformer(config.to_elf_config(), rngs=rngs)
     if config.model_type == "diffusion":
         return DiffusionTransformer(config, rngs=rngs)
     return Transformer(config, rngs=rngs)
 
 
-def _model_summary(model: Transformer | DiffusionTransformer, config: Config, optimizer: nnx.Optimizer) -> dict:
+def _model_summary(model: Transformer | DiffusionTransformer | ELFTransformer, config: Config, optimizer: nnx.Optimizer) -> dict:
     params = nnx.state(model, nnx.Param)
     total = sum(x.size for x in jax.tree_util.tree_leaves(params))
     opt_state = nnx.state(optimizer)
@@ -171,7 +179,7 @@ def _model_summary(model: Transformer | DiffusionTransformer, config: Config, op
     }
 
 
-def _cast_params(model: Transformer, dtype: jnp.dtype) -> None:
+def _cast_params(model: Transformer | ELFTransformer, dtype: jnp.dtype) -> None:
     params = nnx.state(model, nnx.Param)
     nnx.update(
         model,
@@ -182,7 +190,7 @@ def _cast_params(model: Transformer, dtype: jnp.dtype) -> None:
     )
 
 
-def _save_weights(model: Transformer | DiffusionTransformer, path: str) -> None:
+def _save_weights(model: Transformer | DiffusionTransformer | ELFTransformer, path: str) -> None:
     state_dict = nnx.state(model, nnx.Param).to_pure_dict()
     with open(path, "wb") as f:
         f.write(flax.serialization.msgpack_serialize(state_dict))
@@ -275,6 +283,8 @@ class Trainer:
 
         tok_path = os.path.join(run_dir, "tokenizer.json")
 
+        os.makedirs(run_dir, exist_ok=True)
+
         if os.path.exists(_arr_cache) and os.path.exists(_tok_cache):
             # Fast path: load pre-tokenised array and shared tokenizer
             log.info("Loading tokenised data from cache: %s", _arr_cache)
@@ -291,11 +301,13 @@ class Trainer:
                 tokenizer = load_tokenizer_from_file(tok_path)
                 log.info("Resumed tokenizer from %s", tok_path)
             else:
-                tokenizer = get_tokenizer(config.tokenizer_type)
+                _t5_name = getattr(config, "t5_model_name", "t5-base")
+                tokenizer = get_tokenizer(config.tokenizer_type, model_name=_t5_name)
                 if config.tokenizer_type == "char":
                     tokenizer.train_from_text(text)
                 elif config.tokenizer_type == "bpe":
                     tokenizer.train_from_text(text, vocab_size=config.vocab_size)
+                # t5: pre-trained, no training needed
                 tokenizer.save(tok_path)
                 log.info("Tokenizer saved to %s", tok_path)
             config.vocab_size = tokenizer.vocab_size
@@ -329,6 +341,7 @@ class Trainer:
             log.info("Model cast to bfloat16")
 
         is_diffusion = config.model_type == "diffusion"
+        is_elf       = config.model_type == "elf"
         schedule: NoiseSchedule | None = make_noise_schedule(config) if is_diffusion else None
 
         # LoRA: only train adapter params; base weights are frozen nnx.Param
@@ -382,26 +395,126 @@ class Trainer:
         micro_bs = config.batch_size // config.grad_accum
         _wrt = wrt_type  # captured in closure for JIT
 
-        if is_diffusion:
-            # ── Diffusion training step ───────────────────────────────────────
-            # Inputs: full_x = token sequence x_0, key = PRNG for corruption.
-            # For each gradient-accumulation micro-batch we sample a random
-            # timestep t, corrupt x_0 → x_t, and compute the masked CE ELBO.
-            _sched = schedule  # captured in closure
+        if is_elf:
+            # ── ELF continuous flow-matching training step ────────────────────
+            # Each step:
+            #   1. T5 contextual encoder runs OUTSIDE JIT → embeddings [B, L, E]
+            #   2. JIT-compiled step normalizes embeddings and runs elf_loss
+            #   3. elf_loss routes to denoiser (MSE) or decoder (CE) branch
+            #
+            # Keeping T5 encoder outside JIT avoids retracing its large graph
+            # and lets it run on its own XLA computation.  At inference the
+            # ELF model generates from Gaussian noise — T5 is never called.
+            _elf_config = config.to_elf_config()
+
+            # Initialize contextual T5 encoder (not a JAX module, never updated)
+            from utils.t5_encoder import T5ContextualEncoder
+            log.info("Loading T5 contextual encoder: %s", config.t5_model_name)
+            _t5_encoder = T5ContextualEncoder(config.t5_model_name)
+            log.info("T5 encoder loaded — hidden_dim=%d", _t5_encoder.hidden_dim)
+
+            # Compute channel-wise norm stats from a few training batches and
+            # store them in the model's ELFEmbedder so JIT-compiled steps can
+            # normalize consistently.
+            log.info("Computing T5 embedding normalization statistics …")
+            _stat_key = jax.random.PRNGKey(0)
+            _stat_batches: list[jnp.ndarray] = []
+            for _ in range(4):
+                _stat_key, _sub = jax.random.split(_stat_key)
+                _xb, _ = get_batch(train_data, config.batch_size, config.max_context, _sub)
+                _stat_batches.append(_xb)
+            _emb_mean, _emb_std = _t5_encoder.compute_norm_stats(_stat_batches)
+            model.embedder.emb_mean.value = _emb_mean
+            model.embedder.emb_std.value  = _emb_std
+            log.info(
+                "Norm stats set — mean |μ|=%.4f  mean σ=%.4f",
+                float(jnp.abs(_emb_mean).mean()),
+                float(_emb_std.mean()),
+            )
+
+            @nnx.jit
+            def train_step(model, opt, metrics, full_emb, full_x, key):  # type: ignore[misc]
+                E    = full_emb.shape[-1]
+                embs = full_emb.reshape(config.grad_accum, micro_bs, -1, E)
+                xs   = full_x.reshape(config.grad_accum, micro_bs, -1)
+
+                def _loss(model, emb_i, x_i, key):
+                    embeddings = model.encode(emb_i)  # normalize: [B, L, E]
+                    loss, aux  = elf_loss(model, embeddings, x_i, key, _elf_config)
+                    return loss, aux["den_loss"]
+
+                grad_fn    = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
+                acc        = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, _wrt))
+                total_loss = jnp.array(0.0)
+                total_bal  = jnp.array(0.0)
+                for i in range(config.grad_accum):
+                    key, sub = jax.random.split(key)
+                    (loss, bal), grads = grad_fn(model, embs[i], xs[i], sub)
+                    acc = jax.tree_util.tree_map(
+                        lambda a, g: a + g / config.grad_accum, acc, grads
+                    )
+                    total_loss += loss / config.grad_accum
+                    total_bal  += bal  / config.grad_accum
+                opt.update(model, acc)
+                metrics.update(loss=total_loss)
+                return total_loss, total_bal, key
+
+            @nnx.jit
+            def eval_step(model, emb, x, key):  # type: ignore[misc]
+                embeddings = model.encode(emb)  # normalize
+                loss, aux  = elf_loss(model, embeddings, x, key, _elf_config)
+                return loss, aux["den_loss"], key
+
+            def estimate_loss(key: jax.Array) -> tuple[dict[str, float], jax.Array]:
+                out: dict[str, float] = {}
+                for split, d in [("train", train_data), ("val", val_data)]:
+                    losses, bals = [], []
+                    for _ in range(config.eval_iters):
+                        key, sub_b = jax.random.split(key)
+                        x, _ = get_batch(d, config.batch_size, config.max_context, sub_b)
+                        emb = _t5_encoder.encode(x)  # outside JIT
+                        key, sub_l = jax.random.split(key)
+                        loss_val, b, _ = eval_step(model, emb, x, sub_l)
+                        losses.append(float(loss_val))
+                        bals.append(float(b))
+                    out[split]          = sum(losses) / len(losses)
+                    out[f"{split}_bal"] = sum(bals)   / len(bals)
+                return out, key
+
+        elif is_diffusion:
+            # ── LLaDA-style diffusion training step ───────────────────────────
+            # Follows arXiv:2502.09992:
+            #   • t ~ U[t_min, 1] continuous — mask rate directly
+            #   • p_mask(t) depends on noise_schedule (linear: p_mask=t)
+            #   • Loss = (1/t) * Σ_masked nll / L  (ELBO weight, Eq. 3)
+            #   • Model is time-free — no t passed to model.__call__
+            _noise_schedule = getattr(config, "noise_schedule", "linear")
+            # t_min=0.05 prevents extreme gradient variance: at t=1/L≈0.002 a
+            # single masked token gets a 1/t≈500 weight that dominates the step.
+            # Floor at 0.05 (≈26 masked tokens per seq) keeps the gradient stable
+            # while still covering the full denoising range.
+            _t_min = max(1.0 / max(config.max_context, 1), 0.05)
 
             @nnx.jit
             def train_step(model, opt, metrics, full_x, _unused_y, key):  # type: ignore[misc]
-                xs  = full_x.reshape(config.grad_accum, micro_bs, -1)
+                xs = full_x.reshape(config.grad_accum, micro_bs, -1)
 
+                # Sample t independently per sequence (LLaDA §3): each of the
+                # micro_bs sequences gets its own noise level.  With the 1/t loss
+                # all noise levels contribute equally in expectation, so mixing
+                # multiple t values per micro-batch is safe and reduces gradient
+                # variance relative to using one t for the whole optimizer step.
                 def _loss(model, x, key):
-                    B = x.shape[0]
-                    key, sub_t, sub_c = jax.random.split(key, 3)
-                    t   = jax.random.randint(sub_t, (B,), 1, config.diffusion_steps + 1)
-                    x_t = corrupt(x, t, sub_c, _sched, config.mask_token_id)  # type: ignore[arg-type]
-                    out = model(x_t, t, deterministic=False)  # type: ignore[call-arg]
+                    key, sub_t = jax.random.split(key)
+                    t_batch = jax.random.uniform(sub_t, (micro_bs,), minval=_t_min, maxval=1.0)
+                    key, sub_c = jax.random.split(key)
+                    x_t = corrupt(x, t_batch, sub_c, _noise_schedule, config.mask_token_id)
+                    out = model(x_t, deterministic=False)  # time-free: no t arg
                     loss = masked_cross_entropy(
                         out.logits, x, x_t, config.mask_token_id,
-                        out.aux_loss, model.alpha_balance,
+                        t_float=t_batch,
+                        aux_loss=out.aux_loss,
+                        alpha_balance=model.alpha_balance,
                     )
                     return loss, out.aux_loss
 
@@ -422,25 +535,34 @@ class Trainer:
                 return total_loss, total_bal, key
 
             @nnx.jit
-            def eval_step(model, x, _unused_y, key):  # type: ignore[misc]
-                B = x.shape[0]
-                key, sub_t, sub_c = jax.random.split(key, 3)
-                t   = jax.random.randint(sub_t, (B,), 1, config.diffusion_steps + 1)
-                x_t = corrupt(x, t, sub_c, _sched, config.mask_token_id)  # type: ignore[arg-type]
-                out = model(x_t, t, deterministic=True)  # type: ignore[call-arg]
+            def eval_step(model, x, t_float, key):  # type: ignore[misc]
+                key, sub_c = jax.random.split(key)
+                x_t = corrupt(x, t_float, sub_c, _noise_schedule, config.mask_token_id)
+                out = model(x_t, deterministic=True)
                 loss = masked_cross_entropy(
-                    out.logits, x, x_t, config.mask_token_id,
+                    out.logits, x, x_t, config.mask_token_id, t_float=t_float,
                 )
                 return loss, out.aux_loss, key
 
             def estimate_loss(key: jax.Array) -> tuple[dict[str, float], jax.Array]:
+                # Stratified t in [t_min, 1]: same lower bound as training so that
+                # val and train losses are on the same scale.  Previously starting
+                # strata at t=0.5/n (below t_min=0.05) inflated val > train because
+                # the model was never trained at t<0.05 AND 1/t amplified those strata.
+                n = config.eval_iters
+                eval_bs = 8
+                t_low = _t_min
+                t_strata = [
+                    jnp.full((eval_bs,), t_low + (1.0 - t_low) * (i + 0.5) / n)
+                    for i in range(n)
+                ]
                 out: dict[str, float] = {}
                 for split, d in [("train", train_data), ("val", val_data)]:
                     losses, bals = [], []
-                    for _ in range(config.eval_iters):
+                    for i in range(n):
                         key, sub = jax.random.split(key)
-                        x, _ = get_batch(d, 1, config.max_context, sub)
-                        loss_val, b, key = eval_step(model, x, None, key)
+                        x, _ = get_batch(d, eval_bs, config.max_context, sub)
+                        loss_val, b, key = eval_step(model, x, t_strata[i], key)
                         losses.append(float(loss_val))
                         bals.append(float(b))
                     out[split] = sum(losses) / len(losses)
@@ -456,11 +578,11 @@ class Trainer:
                 ys = full_y.reshape(config.grad_accum, micro_bs, -1)
 
                 def _loss(model, x, y):
-                    logits, _, bal = model(x, use_cache=False, kv_caches=None, cache_index=0)
-                    loss = compute_loss(logits, y)
+                    out = model(x)
+                    loss = compute_loss(out.logits, y)
                     if getattr(model, "use_moe", False):
-                        loss = loss + model.alpha_balance * bal
-                    return loss, bal
+                        loss = loss + model.alpha_balance * out.aux_loss
+                    return loss, out.aux_loss
 
                 grad_fn = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
                 acc        = jax.tree_util.tree_map(jnp.zeros_like, nnx.state(model, _wrt))
@@ -479,11 +601,11 @@ class Trainer:
 
             @nnx.jit
             def eval_step(model, x, y, _unused_key=None):  # type: ignore[misc]
-                logits, _, bal = model(x, use_cache=False, kv_caches=None, cache_index=0)
-                loss = compute_loss(logits, y)
+                out = model(x, deterministic=True)
+                loss = compute_loss(out.logits, y)
                 if getattr(model, "use_moe", False):
-                    loss = loss + model.alpha_balance * bal
-                return loss, bal, None
+                    loss = loss + model.alpha_balance * out.aux_loss
+                return loss, out.aux_loss, None
 
             def estimate_loss(key: jax.Array) -> tuple[dict[str, float], jax.Array]:
                 out: dict[str, float] = {}
@@ -540,9 +662,13 @@ class Trainer:
                         assert mesh is not None
                         x = shard_batch(x, mesh)
                         y = shard_batch(y, mesh)
-                    _, _, key = train_step(model, optimizer, metrics, x, y, key)
+                    if is_elf:
+                        emb = _t5_encoder.encode(x)  # contextual embeddings outside JIT
+                        _, _, key = train_step(model, optimizer, metrics, emb, x, key)
+                    else:
+                        _, _, key = train_step(model, optimizer, metrics, x, y, key)
 
-                    if step % 50 == 0:
+                    if step % 500 == 0:
                         t1 = time.time()
                         dt = (t1 - t0) * 1000 / 50
                         t0 = t1
@@ -569,12 +695,7 @@ class Trainer:
                         )
                         log_f.flush()
 
-                        # Periodic checkpoint for resume
-                        _save_weights(model, weights_path)
-                        with open(cursor_path, "w") as cf:
-                            json.dump({"step": step}, cf)
-
-                        # Best checkpoint tracking
+                        # Only the best checkpoint is saved to disk
                         if val_loss < best_val_loss:
                             best_val_loss = val_loss
                             no_improve = 0
@@ -598,8 +719,6 @@ class Trainer:
                     import wandb
                     wandb.finish()  # type: ignore[attr-defined]
 
-        _save_weights(model, weights_path)
-        log.info("Checkpoint saved: %s", weights_path)
         return run_dir
 
     def find_lr(
@@ -641,7 +760,8 @@ class Trainer:
         config = self.config
         text = _format_text(_load_text(config, data_path))
 
-        tokenizer = get_tokenizer(config.tokenizer_type)
+        _t5_name = getattr(config, "t5_model_name", "t5-base")
+        tokenizer = get_tokenizer(config.tokenizer_type, model_name=_t5_name)
         if config.tokenizer_type == "char":
             tokenizer.train_from_text(text)
         elif config.tokenizer_type == "bpe":
@@ -669,8 +789,7 @@ class Trainer:
         @nnx.jit
         def _step(model, opt, x, y):
             def loss_fn(m):
-                logits, _, _ = m(x, use_cache=False, kv_caches=None, cache_index=0)
-                return compute_loss(logits, y)
+                return compute_loss(m(x).logits, y)
 
             loss, grads = nnx.value_and_grad(loss_fn)(model)
             opt.update(model, grads)

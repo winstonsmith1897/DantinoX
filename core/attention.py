@@ -5,6 +5,7 @@ import math
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
+from jax.sharding import PartitionSpec as P
 
 from .config import Config
 from .lora import LoRALinear
@@ -38,6 +39,7 @@ class BaseAttention(nnx.Module):
 
         self.attn_dropout  = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.resid_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
+        self.tp_size: int  = getattr(config, "tp_size", 1)
 
         # Output projection (with optional LoRA)
         _use_lora = (
@@ -283,6 +285,9 @@ class _StandardAttention(BaseAttention):
             y   = y.reshape(B, T, self.dim)
             y   = self._apply_gate(y, x)
             out = self.o_proj(y)
+            # All-reduce partial sums from row-parallel o_proj across TP devices.
+            if self.tp_size > 1:
+                out = jax.lax.with_sharding_constraint(out, P(None, None, None))
             return self.resid_dropout(out, deterministic=deterministic), kv_cache
 
         # General path (cache / sliding window / bidirectional diffusion)
@@ -309,6 +314,8 @@ class _StandardAttention(BaseAttention):
         y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
         y   = self._apply_gate(y, x)
         out = self.o_proj(y)
+        if self.tp_size > 1:
+            out = jax.lax.with_sharding_constraint(out, P(None, None, None))
         return self.resid_dropout(out, deterministic=deterministic), kv_cache
 
 

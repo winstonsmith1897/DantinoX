@@ -1,0 +1,92 @@
+# configs/elf_base.yaml
+# ELF (Embedded Language Flows) — continuous flow-matching diffusion.
+#
+# The embedding oracle is a *frozen* T5 model (ELF §3.1): vocab and embed_dim
+# are fixed by the T5 variant.  The transformer backbone dim / n_heads /
+# head_size / num_blocks use the same fields as the AR and diffusion configs.
+#
+# T5 variant → vocab_size / embed_dim:
+#   t5-small  → 32128 / 512
+#   t5-base   → 32128 / 768   ← default
+#   t5-large  → 32128 / 1024
+#
+# Training (1 GPU):
+#   bash scripts/train_elf.sh
+#
+# Override any field via CLI:
+#   python train.py --config configs/elf_base.yaml --dim 768 --num_blocks 16
+
+model:
+  model_type: "elf"
+  # ── transformer backbone ──────────────────────────────────────────────────
+  dim: 512              # model_dim = n_heads × head_size
+  n_heads: 8
+  head_size: 64
+  num_blocks: 12
+  max_context: 512      # sequence length (same as diffusion for fair comparison)
+  vocab_size: 32128     # T5 vocabulary — must match t5_model_name
+  weight_tying: false   # ELF uses a separate unembed head
+  use_swiglu: true
+  gradient_checkpointing: true
+  dropout_rate: 0.0
+  kv_heads: 8           # full MHA (bidirectional)
+
+attention:
+  use_rotary_pos: true
+  sliding_window: false
+  mla: false
+
+elf:
+  # ── frozen T5 embedding oracle (ELF §3.1) ────────────────────────────────
+  t5_model_name: "t5-base"   # HuggingFace model ID
+  embed_dim: 768              # must match t5-base (512=small, 768=base, 1024=large)
+  bottleneck_dim: 256         # projection between embed and model space
+  # ── control tokens ────────────────────────────────────────────────────────
+  time_emb_dim: 256           # sinusoidal dim for t and w
+  num_time_tokens: 4
+  num_cfg_tokens: 4
+  num_mode_tokens: 4
+  # ── denoiser branch ───────────────────────────────────────────────────────
+  denoiser_pmean: -1.5        # logit-normal t (concentrates near t≈0.18)
+  denoiser_pstd: 0.8
+  denoiser_noise_scale: 2.0
+  # ── decoder branch ────────────────────────────────────────────────────────
+  decoder_pmean: 0.8
+  decoder_pstd: 0.8
+  decoder_noise_scale: 5.0
+  # ── shared training ───────────────────────────────────────────────────────
+  denoiser_prob: 0.8          # 80 % denoiser / 20 % decoder
+  self_cond_prob: 0.5
+  cfg_scale_min: 0.5
+  cfg_scale_max: 5.0
+  # ── inference ─────────────────────────────────────────────────────────────
+  elf_cfg_scale: 1.5
+  elf_n_steps: 64
+
+tokenizer:
+  # ELF must use T5's SentencePiece tokenizer so that token IDs correctly
+  # index into the frozen T5 embedding matrix (vocab_size=32128).
+  tokenizer_type: "t5"
+  tokenizer_path: null
+
+data:
+  dataset_source: "huggingface"
+  dataset_name: "wikitext"
+  dataset_config: "wikitext-103-raw-v1"
+  dataset_text_field: "text"
+  dataset_split: "train"
+  streaming: false
+
+training:
+  lr: 0.0003
+  batch_size: 64            # same as diffusion for fair comparison
+  grad_accum: 4             # effective batch = 256, same as diffusion
+  optimizer: "adamw"
+  epochs: 30
+  warmup_steps: 200
+  grad_clip: 1.0
+  patience: 10
+  use_bf16: true
+  lr_schedule: "cosine"
+  seed: 42
+  n_devices: 1             # single GPU; set to 0 for all available

@@ -1,4 +1,4 @@
-.PHONY: help install test lint typecheck check build publish bump-patch bump-minor bump-major clean infbench trained-bench diffbench diffusion-train diffusion-train-dry benchmark-full
+.PHONY: help install test lint typecheck doccheck check docs-build docs-serve build publish bump-patch bump-minor bump-major clean infbench trained-bench diffbench diffusion-train diffusion-train-dry benchmark-full
 
 PYTHON  ?= python
 PACKAGE  = dantinox
@@ -6,20 +6,30 @@ PACKAGE  = dantinox
 help:
 	@echo "DantinoX development targets"
 	@echo ""
-	@echo "  make install    Install package in editable mode with all dev deps"
-	@echo "  make test       Run the test suite"
-	@echo "  make lint       Lint with ruff"
-	@echo "  make typecheck  Type-check with mypy"
-	@echo "  make check      lint + typecheck + test (run before every push)"
-	@echo "  make infbench       Run full AR inference benchmark suite (sweep + 21 plots)
-  make diffbench      Run AR vs Diffusion + Fast-dLLM benchmark suite (sweep + 23 plots)"
-	@echo "  make trained-bench  Run trained-model benchmark pipeline (analysis + batch sweep)"
-	@echo "  make bump-patch Bump version x.y.Z → x.y.(Z+1)"
-	@echo "  make bump-minor Bump version x.Y.z → x.(Y+1).0"
-	@echo "  make bump-major Bump version X.y.z → (X+1).0.0"
-	@echo "  make build      Build sdist + wheel into dist/"
-	@echo "  make publish    Publish dist/ to PyPI (requires twine + credentials)"
-	@echo "  make clean      Remove build artefacts"
+	@echo "  ── Quality ────────────────────────────────────────────────────────"
+	@echo "  make install       Install in editable mode with all dev deps"
+	@echo "  make test          Run the test suite (CPU JAX)"
+	@echo "  make lint          Lint with ruff"
+	@echo "  make typecheck     Type-check with mypy"
+	@echo "  make doccheck      Docstring coverage with interrogate (100 % required)"
+	@echo "  make check         lint + typecheck + test + doccheck (run before every push)"
+	@echo ""
+	@echo "  ── Documentation ──────────────────────────────────────────────────"
+	@echo "  make docs-serve    Start local MkDocs dev server at http://127.0.0.1:8000"
+	@echo "  make docs-build    Build static docs into site/"
+	@echo ""
+	@echo "  ── Benchmarks ─────────────────────────────────────────────────────"
+	@echo "  make infbench      Full AR inference benchmark suite (sweep + 21 plots)"
+	@echo "  make diffbench     AR vs Diffusion + Fast-dLLM benchmark suite"
+	@echo "  make trained-bench Trained-model benchmark pipeline (analysis + batch sweep)"
+	@echo ""
+	@echo "  ── Release ────────────────────────────────────────────────────────"
+	@echo "  make bump-patch    Bump version x.y.Z → x.y.(Z+1)"
+	@echo "  make bump-minor    Bump version x.Y.z → x.(Y+1).0"
+	@echo "  make bump-major    Bump version X.y.z → (X+1).0.0"
+	@echo "  make build         Build sdist + wheel into dist/"
+	@echo "  make publish       Publish dist/ to PyPI (requires twine + credentials)"
+	@echo "  make clean         Remove build artefacts"
 
 install:
 	pip install --user "jax[cpu]" jaxlib
@@ -35,7 +45,24 @@ lint:
 typecheck:
 	$(PYTHON) -m mypy $(PACKAGE)/ core/
 
-check: lint typecheck test
+doccheck:
+	$(PYTHON) -m interrogate \
+		--verbose \
+		--fail-under=100 \
+		--ignore-init-module \
+		--ignore-magic \
+		--ignore-private \
+		--ignore-semiprivate \
+		$(PACKAGE)/ core/
+
+check: lint typecheck doccheck test
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+docs-serve:
+	PYTHONPATH=. mkdocs serve
+
+docs-build:
+	PYTHONPATH=. mkdocs build --strict
 
 bump-patch:
 	$(PYTHON) -c "import re,pathlib; p=pathlib.Path('pyproject.toml'); t=p.read_text(); v=re.search(r'version = \"(\d+)\.(\d+)\.(\d+)\"',t); a,b,c=int(v.group(1)),int(v.group(2)),int(v.group(3)); nv=f'{a}.{b}.{c+1}'; p.write_text(t.replace(v.group(0),f'version = \"{nv}\"')); print('Bumped to',nv)"

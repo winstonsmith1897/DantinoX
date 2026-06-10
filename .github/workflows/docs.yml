@@ -1,29 +1,77 @@
-name: publish-docs
+name: Docs
+
 on:
   push:
-    branches:
-      - main  
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "dantinox/**/*.py"
+      - "core/**/*.py"
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  deploy:
+  build:
+    name: Build & validate MkDocs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Configure Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          fetch-depth: 0
 
-      - name: Install dependencies
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install docs dependencies
         run: |
-          pip install mkdocs-material mkdocstrings[python] mkdocs-minify-plugin mkdocs-glightbox pymdown-extensions
-          pip install jax flax
-          
-      - name: Deploy to GitHub Pages
+          pip install -U "jax[cpu]" jaxlib
+          pip install -e ".[all]"
+          pip install \
+            mkdocs-material \
+            "mkdocstrings[python]" \
+            mkdocs-minify-plugin \
+            mkdocs-glightbox \
+            pymdown-extensions \
+            mike
+
+      - name: Build (strict — fails on warnings)
         run: |
           export PYTHONPATH=$PYTHONPATH:.
-          mkdocs gh-deploy --force
+          mkdocs build --strict
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install docs dependencies
+        run: |
+          pip install -U "jax[cpu]" jaxlib
+          pip install -e ".[all]"
+          pip install mkdocs-material "mkdocstrings[python]" mkdocs-minify-plugin mkdocs-glightbox mike
+
+      - name: Configure Git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy (latest alias)
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          mike deploy --push --update-aliases latest

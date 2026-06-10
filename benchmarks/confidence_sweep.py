@@ -121,7 +121,7 @@ def _make_config(
 
 @nnx.jit
 def _diff_step(model: nnx.Module, x_t: jnp.ndarray, t: jnp.ndarray) -> jnp.ndarray:
-    out = model(x_t, t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
+    out = model(x_t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
     return out.logits
 
 

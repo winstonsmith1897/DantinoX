@@ -45,6 +45,7 @@ batch_sweep_results.csv
 /plots/
 
 # ── Logs & metrics ───────────────────────────────────────────────────────────
+logs/
 training_log.csv
 model_summary.json
 *.log
@@ -69,12 +70,21 @@ wandb/
 *.swp
 *~
 
+# ── Claude Code session data ──────────────────────────────────────────────────
+.claude/
+
+# ── Superseded internal modules (replaced by dantinox/visualization/) ────────
+dantinox/plots/
+
 # ── Scratchpad / one-off scripts not part of the library ─────────────────────
-# (benchmark_analysis.py and benchmark_batch_sweep.py are tracked thin stubs)
 analyze_dataset.py
 analyze_runs.py
 benchmark.py
+benchmark_analysis.py
+benchmark_batch_sweep.py
 generate.py
+generate_elf.py
+paper_sweep.py
 train.py
 plot.py
 plot_3d.py
@@ -89,3 +99,5 @@ train_sweep.py
 train_sweep_attention_comparison.py
 core/old_model.py
 test.py
+demo_dual_cache.py
+demo_simple_gen.py

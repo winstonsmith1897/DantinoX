@@ -218,13 +218,13 @@ def _encode_text(text: str, tokenizer: Any) -> tuple[list[int], int]:
 
 @nnx.jit
 def _ar_forward(model: nnx.Module, x: jnp.ndarray) -> jnp.ndarray:
-    logits, _, _ = model(x, use_cache=False, kv_caches=None, cache_index=0, deterministic=True)
+    logits, _, _ = model(x, deterministic=True)
     return logits
 
 
 @nnx.jit
 def _diff_forward(model: nnx.Module, x_t: jnp.ndarray, t: jnp.ndarray) -> jnp.ndarray:
-    out = model(x_t, t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
+    out = model(x_t, dual_cache=None, deterministic=True)  # type: ignore[call-arg]
     return out.logits
 
 

@@ -101,21 +101,21 @@ class TestModelWithLoRA:
         cfg = _tiny_cfg(use_lora=True, lora_targets="attention", lora_rank=4, lora_alpha=8.0)
         model = Transformer(cfg, rngs=nnx.Rngs(0))
         x = jnp.ones((2, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert out.logits.shape == (2, 8, cfg.vocab_size)
 
     def test_mlp_lora_forward(self):
         cfg = _tiny_cfg(use_lora=True, lora_targets="mlp", lora_rank=4, lora_alpha=8.0)
         model = Transformer(cfg, rngs=nnx.Rngs(0))
         x = jnp.ones((2, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert out.logits.shape == (2, 8, cfg.vocab_size)
 
     def test_all_lora_forward(self):
         cfg = _tiny_cfg(use_lora=True, lora_targets="all", lora_rank=4, lora_alpha=8.0)
         model = Transformer(cfg, rngs=nnx.Rngs(0))
         x = jnp.ones((2, 8), dtype=jnp.int32)
-        out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+        out = model(x)
         assert out.logits.shape == (2, 8, cfg.vocab_size)
 
     def test_lora_param_count_less_than_full(self):
@@ -137,7 +137,7 @@ class TestModelWithLoRA:
 
         def loss_fn(model):
             x = jnp.ones((1, 4), dtype=jnp.int32)
-            out = model(x, use_cache=False, kv_caches=None, cache_index=0)
+            out = model(x)
             return jnp.mean(out.logits)
 
         grad_fn = nnx.value_and_grad(loss_fn, argnums=DiffState(0, LoRAParam))

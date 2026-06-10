@@ -48,7 +48,7 @@ class BPETokenizer:
         from tokenizers import trainers
         trainer = trainers.BpeTrainer(
             vocab_size=vocab_size,
-            special_tokens=["[PAD]", "[UNK]", "[BOS]", "[EOS]"]
+            special_tokens=["[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]"]
         )
         self.tokenizer.train_from_iterator([text], trainer=trainer)
         self.vocab_size = self.tokenizer.get_vocab_size()
@@ -69,13 +69,82 @@ class BPETokenizer:
             json.dump(payload, f, ensure_ascii=False)
 
 
-def get_tokenizer(tokenizer_type: str) -> Tokenizer:
+class T5SentencePieceTokenizer:
+    """T5's pre-trained SentencePiece tokenizer (vocab_size=32128).
+
+    Token IDs from this tokenizer correctly index into the T5 embedding matrix,
+    making it the only valid choice for ELF which uses frozen T5 embeddings.
+    No training is needed — the vocabulary is fixed by the T5 model.
+    """
+
+    def __init__(self, model_name: str = "t5-base") -> None:
+        self.model_name = model_name
+        self._tok = self._load(model_name)
+
+    @staticmethod
+    def _load(model_name: str):
+        # Try transformers T5TokenizerFast (tokenizer-only import, no torch models)
+        try:
+            from transformers import T5TokenizerFast
+            return T5TokenizerFast.from_pretrained(model_name)
+        except Exception:
+            pass
+        # Fallback: raw sentencepiece (avoids transformers entirely)
+        try:
+            from sentencepiece import SentencePieceProcessor
+            from huggingface_hub import hf_hub_download
+            path = hf_hub_download(repo_id=model_name, filename="spiece.model")
+            sp = SentencePieceProcessor()
+            sp.Load(path)
+            return sp
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot load T5 tokenizer for '{model_name}'. "
+                "pip install transformers sentencepiece"
+            ) from exc
+
+    def train_from_text(self, text: str, **kwargs: Any) -> None:
+        pass  # pre-trained — no training needed
+
+    def encode(self, text: str) -> list[int]:
+        if hasattr(self._tok, "encode"):
+            # T5TokenizerFast: returns token IDs, no special tokens
+            return self._tok.encode(text, add_special_tokens=False)
+        # SentencePieceProcessor fallback
+        return self._tok.EncodeAsIds(text)
+
+    def decode(self, tokens) -> str:
+        if not isinstance(tokens, list):
+            tokens = list(tokens)
+        if hasattr(self._tok, "decode"):
+            return self._tok.decode(tokens, skip_special_tokens=True)
+        return self._tok.Decode(tokens)
+
+    @property
+    def vocab_size(self) -> int:
+        v = self._tok.vocab_size
+        return v() if callable(v) else int(v)
+
+    def save(self, path: str) -> None:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"type": "t5", "model_name": self.model_name}, f)
+
+    @classmethod
+    def load(cls, path: str) -> "T5SentencePieceTokenizer":
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return cls(model_name=data.get("model_name", "t5-base"))
+
+
+def get_tokenizer(tokenizer_type: str, **kwargs) -> Tokenizer:
     if tokenizer_type == "char":
         return CharTokenizer()
     elif tokenizer_type == "bpe":
         return BPETokenizer()
+    elif tokenizer_type == "t5":
+        return T5SentencePieceTokenizer(kwargs.get("model_name", "t5-base"))
     else:
-        raise ValueError(f"Unknown tokenizer type: {tokenizer_type}")
+        raise ValueError(f"Unknown tokenizer type: {tokenizer_type!r}")
 
 
 def load_tokenizer_from_file(path: str) -> Tokenizer:
@@ -96,4 +165,6 @@ def load_tokenizer_from_file(path: str) -> Tokenizer:
         bpe_tok.tokenizer = HFTokenizer.from_str(payload["tokenizer"])
         bpe_tok.vocab_size = payload["vocab_size"]
         return bpe_tok
+    if tok_type == "t5":
+        return T5SentencePieceTokenizer.load(path)
     raise ValueError(f"Unknown tokenizer type in file: {tok_type!r}")

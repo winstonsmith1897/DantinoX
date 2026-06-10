@@ -31,12 +31,16 @@ dev       = [
     "ruff",
     "mypy",
     "types-PyYAML",
+    "types-tqdm",
+    "interrogate>=1.7",
+    "pre-commit>=3",
     "build",
     "twine",
-    "mkdocs-material",
+    "mkdocs-material>=9",
     "mkdocs-minify-plugin",
     "mkdocs-glightbox",
     "mkdocstrings[python]",
+    "mike",
 ]
 all = ["dantinox[data,hub,benchmark,dev]"]
 
@@ -102,3 +106,17 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "dantinox.plots.*"
 ignore_errors = true
+
+# ── interrogate ───────────────────────────────────────────────────────────────
+[tool.interrogate]
+ignore-init-module   = true
+ignore-magic         = true
+ignore-private       = true
+ignore-semiprivate   = true
+ignore-property-decorators = true
+fail-under           = 100
+verbose              = 1
+color                = true
+exclude              = ["core/old_model.py", "dantinox/plots/", "dantinox/bench.py",
+                        "dantinox/plotting.py"]
+whitelist-regex      = []
