@@ -125,7 +125,7 @@ train_one() {
     local _resume="false"
     [[ -f "${run_dir}/training_cursor.json" ]] && _resume="true"
 
-    local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" TF_GPU_ALLOCATOR=cuda_malloc_async PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
+    local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" XLA_PYTHON_CLIENT_PREALLOCATE=false PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
         --config "${BASE_CFG}"
         --run_dir "${run_dir}"
         --use_bf16 true

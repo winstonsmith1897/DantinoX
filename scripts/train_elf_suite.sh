@@ -127,7 +127,7 @@ train_one() {
     local cmd=(
         env
         CUDA_VISIBLE_DEVICES="${GPU}"
-        TF_GPU_ALLOCATOR=cuda_malloc_async
+        XLA_PYTHON_CLIENT_PREALLOCATE=false
         PYTHONPATH="${ROOT}:${PYTHONPATH:-}"
         python dantinox/cli.py train
         --config "${BASE_CFG}"
