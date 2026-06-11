@@ -33,8 +33,7 @@ theme:
     - navigation.indexes
     - navigation.tracking
     - navigation.sections
-    - navigation.tabs
-    - navigation.tabs.sticky
+    - navigation.expand
     - search.suggest
     - search.highlight
     - search.share
@@ -49,14 +48,14 @@ theme:
       primary: custom
       accent: custom
       toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
+        icon: material/weather-night
+        name: Passa alla modalità scura
     - scheme: slate
       primary: custom
       accent: custom
       toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+        icon: material/weather-sunny
+        name: Passa alla modalità chiara
 
 # ── Plugins ───────────────────────────────────────────────────────────────────
 plugins:
