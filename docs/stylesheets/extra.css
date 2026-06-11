@@ -360,3 +360,153 @@
   .dnx-hero { padding: 2.2rem 1.5rem 1.8rem; }
   .dnx-hero h1 { font-size: 1.65rem !important; }
 }
+
+/* ── 21. Grid cards — enhanced ── */
+.md-typeset .grid.cards > ul,
+.md-typeset .grid.cards > ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .9rem;
+  padding: 0;
+  list-style: none;
+}
+
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li {
+  border: 1px solid var(--dnx-border);
+  border-radius: var(--dnx-r);
+  padding: 1rem 1.1rem;
+  transition: border-color var(--dnx-t), box-shadow var(--dnx-t);
+  list-style: none;
+}
+
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > ol > li:hover {
+  border-color: var(--dnx-blue-lt);
+  box-shadow: 0 2px 12px rgba(37, 99, 235, .08);
+}
+
+.md-typeset .grid.cards > ul > li > p:first-child,
+.md-typeset .grid.cards > ol > li > p:first-child {
+  margin-bottom: .4rem;
+}
+
+.md-typeset .grid.cards > ul > li :is(h2,h3,h4),
+.md-typeset .grid.cards > ol > li :is(h2,h3,h4) {
+  border-bottom: none;
+  margin-top: 0;
+  padding-bottom: 0;
+}
+
+/* ── 22. Step list (ordered list with circles) ── */
+.md-typeset ol.dnx-steps {
+  counter-reset: steps;
+  list-style: none;
+  padding: 0;
+}
+
+.md-typeset ol.dnx-steps > li {
+  counter-increment: steps;
+  display: flex;
+  gap: .9rem;
+  align-items: flex-start;
+  margin-bottom: .9rem;
+}
+
+.md-typeset ol.dnx-steps > li::before {
+  content: counter(steps);
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  font-size: .72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: .15rem;
+}
+
+/* ── 23. Inline type badge ── */
+.dnx-type {
+  display: inline-block;
+  font-family: var(--md-code-font);
+  font-size: .73rem;
+  background: var(--dnx-code-bg);
+  border: 1px solid var(--dnx-border);
+  border-radius: 3px;
+  padding: .05em .35em;
+  color: var(--md-default-fg-color--light);
+  white-space: nowrap;
+}
+
+/* ── 24. Compact table variant ── */
+.md-typeset table.dnx-compact td,
+.md-typeset table.dnx-compact th {
+  padding: .4rem .7rem;
+  font-size: .82rem;
+}
+
+/* ── 25. Code block with title ── */
+.md-typeset .highlight[title]::before {
+  content: attr(title);
+  display: block;
+  font-family: var(--md-code-font);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  padding: .4rem 1rem;
+  border-bottom: 1px solid var(--dnx-border);
+}
+
+/* ── 26. Tabs inside grid cards ── */
+.md-typeset .grid .tabbed-set {
+  border: none;
+}
+
+/* ── 27. Admonition colour accents ── */
+.md-typeset .admonition.abstract,
+.md-typeset .admonition.summary {
+  border-left-color: #7c3aed;
+}
+.md-typeset .admonition.abstract > .admonition-title,
+.md-typeset .admonition.summary > .admonition-title {
+  background-color: rgba(124, 58, 237, .06);
+  color: #7c3aed;
+}
+
+/* ── 28. TOC depth control ── */
+.md-nav--secondary .md-nav__list .md-nav__list {
+  display: none;   /* hide h4 from right sidebar by default */
+}
+
+/* ── 29. Smaller HR between major sections ── */
+.md-typeset h2 + hr {
+  margin-top: -.4rem;
+  margin-bottom: 1.6rem;
+}
+
+/* ── 30. Cookbook quick-nav grid ── */
+.md-typeset .grid.cards > ul > li > p a:only-child {
+  font-weight: 600;
+  font-size: .85rem;
+}
+
+/* ── 31. Responsive grid min-width for large cards ── */
+@media screen and (max-width: 60em) {
+  .md-typeset .grid.cards > ul,
+  .md-typeset .grid.cards > ol {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .grid.cards > ul,
+  .md-typeset .grid.cards > ol {
+    grid-template-columns: 1fr;
+  }
+}

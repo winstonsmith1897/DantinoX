@@ -127,10 +127,42 @@ dantinox plot --in_csv results/benchmark.csv --out_dir plots/
 
 ## Next steps
 
-| Goal | Where to go |
-| :--- | :--- |
-| Understand the three-layer architecture | [Architecture](architecture.md) |
-| Deep-dive on discrete diffusion | [LLaDA Paradigm](paradigms/diffusion.md) |
-| Add Muon, LoRA, or multi-GPU training | [Training Guide](training/index.md) |
-| Write a custom benchmark task | [Developer Guide — Custom Task](guides/new-benchmark.md) |
-| Full API docs for every class | [API Reference](api/index.md) |
+<div class="grid cards" markdown>
+
+-   :material-book-open-variant: **Architecture**
+
+    Core layers, the Paradigm abstraction, and the profiling stack.
+
+    [Architecture →](architecture.md)
+
+-   :material-blur: **Masked Diffusion**
+
+    Forward/reverse process, noise schedules, ELBO loss, iterative unmasking.
+
+    [LLaDA Paradigm →](paradigms/diffusion.md)
+
+-   :material-tune: **Training Guide**
+
+    Muon, LoRA, multi-GPU SPMD, LR schedules, gradient accumulation.
+
+    [Training →](training/index.md)
+
+-   :material-chef-hat: **Cookbook**
+
+    Copy-paste recipes for training, generation, LoRA, Hub upload, benchmarking.
+
+    [Cookbook →](cookbook.md)
+
+-   :material-console: **CLI Reference**
+
+    All 9 subcommands — train, generate, sweep, infbench, push, pull, …
+
+    [CLI →](cli.md)
+
+-   :material-code-tags: **API Reference**
+
+    Full auto-generated docs for every public class and function.
+
+    [API →](api/index.md)
+
+</div>

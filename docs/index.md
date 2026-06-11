@@ -49,15 +49,33 @@ See [Quickstart](quickstart.md) for the full three-level API.
 
 ## Capabilities at a glance
 
-| Layer | What you get |
-| :--- | :--- |
-| **Core** | MHA, GQA, MLA attention · SwiGLU/GELU FFN · Sparse MoE · RMSNorm/LayerNorm · RoPE/NTK/Learned PE · LoRA · Flash Attention |
-| **Paradigms** | Autoregressive (AR) · Discrete Diffusion (LLaDA) · Continuous Flow-Matching (ELF) |
-| **Training** | Paradigm-agnostic `Trainer` · AdamW/Lion/Muon/Adafactor · WSD/Cosine/Linear schedules · Gradient accumulation · Multi-GPU SPMD |
-| **Profiling** | `LatencyTracker` · `count_flops()` · barrier-accurate wall-clock timing |
-| **Benchmarking** | `BenchmarkSuite` with plug-in `BenchmarkTask` · CSV export · Throughput/Latency/Perplexity tasks |
-| **Visualization** | `Visualizer` chart registry · Training curves · Throughput/Latency/Pareto/Radar charts |
-| **Integration** | HuggingFace Hub push/pull · W&B sweeps · Full CLI (`dantinox train / generate / benchmark / plot`) |
+<div class="grid cards" markdown>
+
+-   :material-cpu-64-bit: **Core layers**
+
+    MHA · GQA · MLA · SwiGLU/GELU FFN · Sparse MoE · RMSNorm / LayerNorm · RoPE / NTK / Learned PE · LoRA · Flash Attention
+
+-   :material-source-branch: **Three generation paradigms**
+
+    **Autoregressive** — causal, KV-cached · **Masked Diffusion** (LLaDA) — bidirectional iterative unmasking · **ELF** — continuous flow-matching in embedding space
+
+-   :material-lightning-bolt: **Training**
+
+    Paradigm-agnostic `Trainer` · AdamW / Lion / Muon / Adafactor · WSD / Cosine / Linear schedules · Gradient accumulation · Multi-GPU JAX SPMD
+
+-   :material-speedometer: **Profiling & Benchmarks**
+
+    `LatencyTracker` · `count_flops()` · `BenchmarkSuite` with plug-in tasks · CSV export · Throughput / Latency / Perplexity
+
+-   :material-chart-line: **Visualization**
+
+    `Visualizer` chart registry · Training curves · Throughput / Pareto / Radar charts · 21 auto-generated benchmark figures
+
+-   :material-cloud-sync: **Ecosystem integration**
+
+    HuggingFace Hub push/pull · W&B sweeps · Full CLI · Colab notebooks · HF tokenizers / BPE support
+
+</div>
 
 ---
 
@@ -121,17 +139,63 @@ DantinoX/
 
 ## Documentation map
 
-| Section | Description |
-| :--- | :--- |
-| [Quickstart](quickstart.md) | From install to running model in under 2 minutes |
-| [Architecture](architecture.md) | Core layers, Paradigm abstraction, profiling stack |
-| [Generation Paradigms](paradigms/index.md) | AR, Discrete Diffusion, ELF, Fast-dLLM, Confidence-Aware |
-| [Training](training/index.md) | Trainer internals, optimizers, schedules, multi-GPU |
-| [Benchmarks](benchmarks.md) | Throughput, FLOPs, latency — MHA vs GQA vs MLA |
-| [Notebooks](notebooks/index.md) | Interactive Colab notebooks — quickstart, diffusion, ELF, LoRA, benchmarking |
-| [API Reference](api/index.md) | Full auto-generated reference for every public symbol |
-| [Developer Guide](guides/index.md) | How to add layers, paradigms, benchmark tasks, charts |
-| [Contributing](contributing.md) | PR workflow, docstring standards, CI checks |
+<div class="grid cards" markdown>
+
+-   :material-rocket-launch: **Quickstart**
+
+    From install to trained model in under 2 minutes.
+
+    [Quickstart →](quickstart.md)
+
+-   :material-chef-hat: **Cookbook**
+
+    14 copy-paste recipes: train, generate, LoRA, Hub, benchmarks.
+
+    [Cookbook →](cookbook.md)
+
+-   :material-book-open-variant: **Architecture**
+
+    Core layers, Paradigm abstraction, profiling stack.
+
+    [Architecture →](architecture.md)
+
+-   :material-source-branch: **Generation Paradigms**
+
+    AR · Diffusion (LLaDA) · ELF · Fast-dLLM · Confidence-Aware Decoding.
+
+    [Paradigms →](paradigms/index.md)
+
+-   :material-school: **Training Guide**
+
+    Trainer internals, optimizers, schedules, multi-GPU SPMD.
+
+    [Training →](training/index.md)
+
+-   :material-notebook: **Notebooks**
+
+    5 interactive Colab notebooks — quickstart, diffusion, ELF, benchmarking, LoRA.
+
+    [Notebooks →](notebooks/index.md)
+
+-   :material-file-cog: **Configuration**
+
+    Every `Config` field with type, default, and valid values.
+
+    [Config →](configuration.md)
+
+-   :material-console: **CLI Reference**
+
+    All 9 subcommands with full argument tables.
+
+    [CLI →](cli.md)
+
+-   :material-code-tags: **API Reference**
+
+    Auto-generated docs for every public symbol.
+
+    [API →](api/index.md)
+
+</div>
 
 ---
 

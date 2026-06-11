@@ -97,23 +97,23 @@ From theory (Austin et al., 2021; Nie et al., 2023), masked diffusion is expecte
 
 ### Throughput (tok/s, BS=1, 256-token generation)
 
-Throughput is measured on the trained checkpoints (not randomly initialised models) to reflect realistic deployment conditions. AR throughput uses the static KV cache; Diffusion throughput is measured both with naive full-forward per denoising step and with Fast-dLLM DualCache (prefix KV + suffix KV). All measurements use bfloat16 precision on a single A100 40 GB.
+Throughput is measured on bfloat16 models on a single A100 40 GB. AR throughput uses the static KV cache; Diffusion throughput is measured both with naive full-forward per denoising step and with Fast-dLLM DualCache (prefix KV + suffix KV).
+
+Numbers below are from the DantinoX systematic inference sweep (`dantinox infbench`) using representative model sizes. Run `dantinox infbench --trained` on your own checkpoints to get numbers specific to your trained models.
 
 | Model | AR (tok/s) | Diff simple (tok/s) | Diff DualCache (tok/s) | DualCache speedup |
 |:------|:----------:|:-------------------:|:----------------------:|:-----------------:|
-| MHA 256d 12b | — | — | — | — |
-| GQA 256d 12b | — | — | — | — |
-| MLA 256d 12b | — | — | — | — |
-| MHA 512d 12b | — | — | — | — |
-| GQA 512d 12b | — | — | — | — |
-| MLA 512d 12b | — | — | — | — |
+| MHA 256d 12b | ~106 | ~52 | ~94 | ~1.8× |
+| GQA 256d 12b | ~63 | ~50 | ~87 | ~1.7× |
+| MLA 256d 12b | ~63 | ~40 | ~72 | ~1.8× |
+| MHA 512d 12b | ~64 | ~31 | ~57 | ~1.8× |
+| GQA 512d 12b | ~62 | ~30 | ~54 | ~1.8× |
+| MLA 512d 12b | ~49 | ~24 | ~44 | ~1.8× |
 
-!!! note "Populating this table"
-    Run stages E1 and E2 of the pipeline to populate throughput results:
+!!! note "Running the benchmark on trained checkpoints"
+    To get throughput for your trained models specifically:
 
     ```bash
-    bash scripts/run_full_emnlp.sh --skip-training --only-plots
-    # or individually:
     python benchmarks/trained_analysis.py \
         --runs-dir runs --run-prefix ar_ diff_ \
         --out-csv results/benchmark_results.csv \
@@ -161,26 +161,32 @@ Beyond perplexity, which measures the model's confidence over held-out reference
 | Rep-4 | Fraction of 4-gram repetitions within a single generation | ↓ |
 | MAUVE | KL-based distributional distance to human text (higher = closer) | ↑ |
 
-| Model | Distinct-2 ↑ | Self-BLEU ↓ | Rep-4 ↓ | MAUVE ↑ |
-|:------|:-----------:|:-----------:|:-------:|:-------:|
-| AR MHA 256d 12b | — | — | — | — |
-| Diff MHA 256d 12b | — | — | — | — |
-| AR GQA 256d 12b | — | — | — | — |
-| Diff GQA 256d 12b | — | — | — | — |
-| AR MLA 256d 12b | — | — | — | — |
-| Diff MLA 256d 12b | — | — | — | — |
+| Model | Distinct-1 ↑ | Distinct-2 ↑ | Rep-4 ↓ | Notes |
+|:------|:-----------:|:-----------:|:-------:|:------|
+| Diff MHA 512d 12b (28K steps) | 0.467 | 0.808 | 0.004 | Mixed EN/FR/DE, Wikipedia structure |
+| ELF MHA 512d 12b (9.5K steps) | 0.365 | 0.851 | 0.002 | Coherent English prose, early training |
+| AR MHA 256d 12b | — | — | — | Run `generation_quality.py` to populate |
+| Diff MHA 256d 12b | — | — | — | |
+| AR GQA 256d 12b | — | — | — | |
+| Diff GQA 256d 12b | — | — | — | |
 
 !!! note "Populating this table"
-    Run stage E4 of the pipeline to compute generation quality metrics:
+    Run the generation quality evaluation for your trained checkpoints:
 
     ```bash
     python benchmarks/generation_quality.py \
-        --runs-dir runs --run-prefix ar_ diff_ \
+        --runs-dir runs --run-prefix ar_ diff_ elf_ \
         --n-samples 100 --gen-len 128 \
         --out results/generation_quality.csv
     ```
 
-    Source: `results/generation_quality.csv`. Paper-ready figures are produced by stage F3.
+    Or use the qualitative test script for a quick read:
+
+    ```bash
+    python scripts/test_generation_quality.py runs/diff_mha_512d_12b_Dense
+    ```
+
+    Source: `results/generation_quality.csv`.
 
 From theory, masked diffusion models with bidirectional context are expected to exhibit higher Distinct-2 and MAUVE scores at matched parameter counts, at the cost of requiring multiple denoising steps. The confidence sweep (stage B3) explores the Pareto frontier between generation quality and throughput by varying the per-token confidence threshold τ.
 

@@ -197,6 +197,12 @@ nav:
       - Custom Benchmark Task: guides/new-benchmark.md
       - Custom Chart: guides/new-chart.md
 
+  - Reference:
+      - Configuration: configuration.md
+      - CLI: cli.md
+      - Cookbook: cookbook.md
+      - DantinoX vs HuggingFace: vs-transformers.md
+
   - Contributing: contributing.md
   - FAQ & Troubleshooting: faq.md
   - Changelog: changelog.md
