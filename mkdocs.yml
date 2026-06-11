@@ -205,7 +205,6 @@ nav:
       - Contributing: contributing.md
       - FAQ & Troubleshooting: faq.md
       - Changelog: changelog.md
-      - Coverage Report: coverage/index.html
 
 # ── Extra metadata ────────────────────────────────────────────────────────────
 extra:

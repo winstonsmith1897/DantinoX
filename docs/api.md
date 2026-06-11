@@ -91,7 +91,7 @@ Internal implementation. Import directly when you need low-level access.
 
 Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA), `MoE`, and `MLP`.
 
-::: core.model
+::: dantinox.core.model
     options:
       members_order: alphabetical
       show_source: true
@@ -102,7 +102,7 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 `RMSNorm` is the alternative to `nnx.LayerNorm` selected when `norm_type = "rmsnorm"`.
 
-::: core.block.RMSNorm
+::: dantinox.core.block.RMSNorm
     options:
       show_source: true
 
@@ -112,7 +112,7 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 `Transformer.__call__` returns a `ModelOutput` NamedTuple — supports both attribute access and positional unpacking.
 
-::: core.output.ModelOutput
+::: dantinox.core.output.ModelOutput
     options:
       show_source: true
 
@@ -122,11 +122,11 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 `LoRAParam` is a distinct NNX variable type that freezes base weights at the type level. `LoRALinear` is a drop-in replacement for `nnx.Linear` with a trainable low-rank delta.
 
-::: core.lora.LoRAParam
+::: dantinox.core.lora.LoRAParam
     options:
       show_source: true
 
-::: core.lora.LoRALinear
+::: dantinox.core.lora.LoRALinear
     options:
       show_source: true
       members:
@@ -140,7 +140,7 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 SPMD data-parallel helpers built on `jax.sharding`. Pass `n_devices` in `Config` to activate automatically, or call these directly for custom sharding strategies.
 
-::: core.sharding
+::: dantinox.core.sharding
     options:
       show_source: true
       members:
@@ -155,7 +155,7 @@ SPMD data-parallel helpers built on `jax.sharding`. Pass `n_devices` in `Config`
 
 The `Config` dataclass is the single source of truth for all architectural and training hyperparameters.
 
-::: core.config
+::: dantinox.core.config
     options:
       show_root_heading: true
 
@@ -165,7 +165,7 @@ The `Config` dataclass is the single source of truth for all architectural and t
 
 Autoregressive inference with static KV-cache management, `jax.lax.fori_loop` token loop, and sampling strategies (greedy, Top-K, Top-P).
 
-::: core.generation
+::: dantinox.core.generation
     options:
       show_source: true
 
@@ -175,7 +175,7 @@ Autoregressive inference with static KV-cache management, `jax.lax.fori_loop` to
 
 Character-level and Byte-Level BPE tokenizers with save/load support.
 
-::: utils.tokenizer
+::: dantinox.utils.tokenizer
     options:
       show_source: true
       members:

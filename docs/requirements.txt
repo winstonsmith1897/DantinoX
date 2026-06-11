@@ -7,3 +7,4 @@ mkdocstrings[python]>=0.25
 mkdocs-glightbox>=0.4
 mkdocs-minify-plugin>=0.8
 pymdown-extensions>=10.7
+black>=24.0          # used by mkdocstrings to format API signatures
