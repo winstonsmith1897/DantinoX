@@ -4,7 +4,10 @@
 
 *"Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura..."*
 
-A decoder-only Transformer built from scratch in **JAX** and **Flax NNX** — complete with a training pipeline, autoregressive generation, hyperparameter sweeps, and a benchmarking suite.
+A research-grade JAX/Flax NNX transformer library for **autoregressive**,
+**discrete diffusion**, and **continuous flow-matching** language models.
+
+Three paradigms. One trainer. Zero boilerplate.
 
 <br>
 
@@ -14,10 +17,10 @@ A decoder-only Transformer built from scratch in **JAX** and **Flax NNX** — co
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/badge/linter-ruff-orange?style=flat-square)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue?style=flat-square)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-22%20passed-brightgreen?style=flat-square)](https://github.com/winstonsmith1897/DantinoX/actions)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen?style=flat-square)](https://github.com/winstonsmith1897/DantinoX/actions)
 [![Documentation](https://readthedocs.org/projects/dantinox/badge/?version=latest&style=flat-square)](https://dantinox.readthedocs.io/en/latest/)
 
-**[Documentation](https://dantinox.readthedocs.io/en/latest/) · [Coverage Report](https://dantinox.readthedocs.io/en/latest/coverage/) · [API Reference](https://dantinox.readthedocs.io/en/latest/api/)**
+**[Documentation](https://dantinox.readthedocs.io) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/) · [API Reference](https://dantinox.readthedocs.io/en/latest/api/)**
 
 </div>
 
@@ -25,226 +28,134 @@ A decoder-only Transformer built from scratch in **JAX** and **Flax NNX** — co
 
 ## Overview
 
-**DantinoX** is a research-grade library for building, training, and benchmarking decoder-only Transformers in pure JAX. It is designed as a transparent, modular codebase for studying how architectural choices — attention mechanism, positional encoding, MoE routing — affect convergence, memory footprint, and inference throughput.
+**DantinoX** is a modular, research-focused library for building and training transformer language models in pure JAX. It supports three generation paradigms on the same backbone — autoregressive (AR), masked discrete diffusion (LLaDA), and continuous flow-matching (ELF) — and provides a systematic benchmarking suite for comparing them.
 
-The library ships as an installable Python package (`pip install dantinox`) with a unified CLI, a programmatic Python API, a typed configuration dataclass, and a full test suite.
+The library ships as an installable Python package with a unified CLI, a three-level programmatic API, typed configuration dataclasses, and a full test suite.
 
-### Implemented Architectures
+---
 
-| Component | Variants |
-| :--- | :--- |
-| **Attention** | Multi-Head (MHA) · Grouped-Query (GQA) · Multi-Head Latent (MLA) |
+## Features
+
+| Layer | What you get |
+|:------|:-------------|
+| **Attention** | MHA · GQA · MLA (Multi-Latent) · Flash Attention · Sliding Window |
 | **Feed-Forward** | Dense MLP (SwiGLU / GELU) · Sparse Mixture-of-Experts (Top-K) |
-| **Positional Encoding** | Rotary (RoPE) · Absolute Sinusoidal · Learned |
-| **Attention Masking** | Causal · Sliding Window |
-| **Memory Optimizations** | Gradient Checkpointing (`nnx.remat`) · Weight Tying · Static KV-Cache |
-| **Training** | Gradient Accumulation · AdamW / Adafactor / Lion · Cosine LR Schedule |
-| **Tokenizers** | Character-level · Byte-Pair Encoding (BPE) |
+| **Position** | Rotary (RoPE) · Absolute Sinusoidal · Learned |
+| **Paradigms** | Autoregressive · Masked Diffusion (LLaDA) · ELF Continuous Flow-Matching |
+| **Training** | Paradigm-agnostic `Trainer` · AdamW / Lion / Muon / Adafactor · WSD / Cosine / Linear LR · Gradient accumulation · Multi-GPU JAX SPMD |
+| **Inference** | Static KV-cache · Fast-dLLM DualCache (1.4–2.1× speedup for diffusion) · Streaming |
+| **Fine-tuning** | Built-in LoRA (`use_lora=True`) · Auto-frozen base weights · `merge_lora()` |
+| **Benchmarking** | `BenchmarkSuite` · Throughput / Latency / Perplexity tasks · CSV + 21 plots |
+| **Integration** | HuggingFace Hub push/pull · W&B sweeps · Full CLI · Colab notebooks |
 
 ---
 
 ## Installation
 
-### From PyPI
-
 ```bash
-pip install dantinox                        # core only
-pip install "dantinox[data]"               # + HuggingFace datasets
-pip install "dantinox[benchmark]"          # + pandas / matplotlib / scipy
-pip install "dantinox[all]"               # everything including dev tools
+pip install dantinox                   # core only
+pip install "dantinox[data]"          # + HuggingFace datasets
+pip install "dantinox[benchmark]"     # + pandas / matplotlib / scipy
+pip install "dantinox[all]"           # everything including dev tools
 ```
 
-### From Source
+**From source:**
 
 ```bash
 git clone https://github.com/winstonsmith1897/DantinoX.git
 cd DantinoX
-
-conda create -n dantinox python=3.12 -y
-conda activate dantinox
-
-make install      # installs JAX + all extras in editable mode
+conda create -n dantinox python=3.10 -y && conda activate dantinox
+make install
 ```
 
-> **GPU support:** replace the JAX CPU wheels with `pip install -U "jax[cuda12]"` after running `make install`.
+> **GPU:** after `make install`, run `pip install -U "jax[cuda12]"` for CUDA support.
 
 ---
 
 ## Quick Start
 
+### One-liner API
+
+```python
+import dantinox as dx
+
+# Train an AR model
+run_dir = dx.fit("ar", "data/wiki.txt",
+                 dim=512, n_heads=8, head_size=64, num_blocks=12,
+                 vocab_size=32_000, lr=3e-4, epochs=5)
+
+print(dx.quick_generate(run_dir, "In the beginning"))
+```
+
+Switch paradigm by changing the first argument — the trainer, optimizer, and checkpoint logic are identical:
+
+```python
+# Masked Diffusion (LLaDA)
+run_dir = dx.fit("diffusion", "data/wiki.txt",
+                 dim=512, n_heads=8, head_size=64, num_blocks=12,
+                 vocab_size=32_000, noise_schedule="cosine",
+                 tokenizer_type="bpe", tokenizer_path="t5-base",
+                 lr=1e-4, epochs=20)
+
+# ELF — continuous flow-matching in embedding space
+run_dir = dx.fit("elf", "data/wiki.txt",
+                 embed_dim=512, bottleneck_dim=128,
+                 dim=512, n_heads=8, head_size=64, num_blocks=12,
+                 vocab_size=32_128, elf_cfg_scale=1.5, lr=1e-4, epochs=30)
+```
+
+### Explicit Paradigm API
+
+```python
+from core.config import ModelConfig
+from dantinox.paradigms.ar import ARParadigm
+from dantinox.trainer import Trainer
+from dantinox.generator import Generator
+from flax import nnx
+
+cfg      = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
+paradigm = ARParadigm(cfg)
+model    = paradigm.build_model(nnx.Rngs(42))
+
+# Train
+run_dir = Trainer(paradigm).fit("data/wiki.txt")
+
+# Generate
+gen  = Generator(run_dir)
+text = gen.generate("In the beginning", max_new_tokens=200, top_p=0.9)
+print(text)
+```
+
 ### CLI
 
-DantinoX registers a single `dantinox` entry-point with five subcommands:
-
 ```bash
-# Train from a YAML config
-dantinox train --config configs/default_config.yaml --data_path data/corpus.txt
+# Train (any field from Config can be overridden inline)
+dantinox train --config configs/default_config.yaml --data_path wiki.txt
 
-# Override any config field from the command line
-dantinox train --config configs/default_config.yaml --data_path data/corpus.txt \
-    --lr 3e-4 --use_moe true --num_blocks 8
+# Override fields on the command line
+dantinox train --config configs/default_config.yaml --data_path wiki.txt \
+    --model_type diffusion --lr 1e-4 --use_bf16 true --n_devices 4
 
-# Generate text from a saved checkpoint
-dantinox generate --run_dir runs/run_20260101_120000 \
-    --prompt "Nel mezzo del cammin " --max_new_tokens 200 --temperature 1.2
+# Generate with streaming
+dantinox generate --run_dir runs/ar_mha_512d \
+    --prompt "In the beginning" --stream --top_p 0.9
 
-# Run a W&B Bayesian hyperparameter sweep
-dantinox sweep --sweep_config configs/sweep.yaml --data_path data/corpus.txt
+# Find optimal learning rate
+dantinox find-lr --config configs/default_config.yaml --data_path wiki.txt --plot
 
-# Benchmark all run directories and save metrics to CSV
-dantinox benchmark --runs_dir runs --out_csv benchmark_results.csv
+# Run hyperparameter sweep (W&B)
+dantinox sweep --sweep_config configs/sweep.yaml --data_path wiki.txt
 
-# Generate plots from benchmark results
-dantinox plot --in_csv benchmark_results.csv --out_dir plots
+# Full inference benchmark suite
+dantinox infbench --trained --eval
+
+# Push/pull checkpoints to HuggingFace Hub
+dantinox push --run_dir runs/ar_mha_512d --repo my-org/my-model
+dantinox pull --repo my-org/my-model --local_dir runs/downloaded
+
+# Generate benchmark plots
+dantinox plot --in_csv results/benchmark.csv --out_dir plots/
 ```
-
-### Python API
-
-```python
-from dantinox import Trainer, Generator, BenchmarkRunner
-from core.config import Config
-
-# --- Training ---
-config = Config(
-    dim=512, n_heads=16, head_size=32, kv_heads=4,
-    num_blocks=12, max_context=512,
-    use_moe=True, n_experts=4, top_k_mlp=2,
-    lr=3e-4, batch_size=64, grad_accum=4, epochs=100,
-)
-trainer = Trainer(config)
-run_dir = trainer.fit("data/corpus.txt")
-
-# --- Generation ---
-gen = Generator(run_dir)
-text = gen.generate(
-    "Nel mezzo del cammin ",
-    max_new_tokens=200,
-    temperature=1.2,
-    top_p=0.9,
-    use_cache=True,
-)
-print(text)
-
-# --- Benchmarking ---
-runner = BenchmarkRunner("runs")
-df = runner.run(out_csv="benchmark_results.csv")
-print(df[["run", "type", "params_m", "prefill_ms"]].to_string())
-```
-
----
-
-## Configuration
-
-All architecture and training settings live in a single typed dataclass. YAML files are fully supported and can be partially overridden from the CLI.
-
-```yaml
-# configs/default_config.yaml
-
-model:
-  dim: 512                      # Hidden dimension (must equal n_heads × head_size)
-  n_heads: 16                   # Query heads
-  kv_heads: 4                   # Key/value heads — set < n_heads to enable GQA
-  head_size: 32                 # Per-head dimension
-  num_blocks: 12                # Transformer depth
-  max_context: 512              # Maximum sequence length
-  weight_tying: true            # Tie embedding ↔ LM-head weights
-  activation: gelu              # Activation function (gelu | silu)
-  use_swiglu: true              # Replace MLP activation with SwiGLU gate
-  gradient_checkpointing: true  # Recompute activations to reduce VRAM
-  dropout_rate: 0.15
-
-moe:
-  use_moe: false                # Toggle Sparse MoE (true) vs Dense MLP (false)
-  n_experts: 4                  # Total number of experts
-  top_k_mlp: 2                  # Active experts per token
-  expansion: 4                  # Expert hidden-dimension multiplier
-  alpha_balance: 0.1            # Load-balancing loss weight
-
-attention:
-  use_rotary_pos: true          # Rotary Positional Embedding (RoPE)
-  sliding_window: false         # Restrict attention to a local window
-  context_window: 4             # Window size (if sliding_window: true)
-  no_sink: true                 # Sigmoid attention gate for training stability
-
-  # Multi-Head Latent Attention (MLA)
-  mla: false
-  down_dim_q: 256               # Query compression dimension
-  down_dim_kv: 256              # Key/Value compression dimension
-  rope_dim: 32                  # RoPE dimensions for decoupled key encoding
-
-tokenizer:
-  tokenizer_type: char          # char | bpe
-  tokenizer_path: null
-
-data:
-  dataset_source: local         # local | huggingface
-  dataset_name: ""
-
-training:
-  lr: 0.005
-  batch_size: 128
-  grad_accum: 16
-  optimizer: adamw              # adamw | adafactor | lion
-  epochs: 1000
-  warmup_steps: 420
-  seed: 42
-```
-
-### Config Validation
-
-The `Config` dataclass enforces constraints at instantiation:
-
-```python
-Config(dim=512, n_heads=16, head_size=32)   # OK — 16 × 32 = 512
-Config(dim=512, n_heads=16, head_size=31)   # ConfigError: dim must equal n_heads × head_size
-Config(dim=512, n_heads=16, kv_heads=3)     # ConfigError: n_heads must be divisible by kv_heads
-```
-
----
-
-## CLI Reference
-
-### `dantinox train`
-
-| Argument | Default | Description |
-| :--- | :--- | :--- |
-| `--config` | `configs/default_config.yaml` | YAML config file |
-| `--data_path` | — | Path to plain-text corpus |
-| `--run_dir` | auto-generated | Output directory for weights and logs |
-| `--wandb_project` | — | W&B project name for live logging |
-| `--<field>` | config value | Override any `Config` field directly |
-
-### `dantinox generate`
-
-| Argument | Default | Description |
-| :--- | :--- | :--- |
-| `--run_dir` | **required** | Run directory with `config.yaml` + `model_weights.msgpack` |
-| `--prompt` | `"Nel mezzo del cammin "` | Input text prefix |
-| `--max_new_tokens` | `150` | Number of tokens to generate |
-| `--temperature` | `1.0` | Sampling temperature |
-| `--top_p` | `null` | Nucleus sampling threshold |
-| `--top_k` | `null` | Top-K sampling limit |
-| `--greedy` | `false` | Deterministic greedy decoding |
-| `--no_cache` | `false` | Disable KV-cache (slower, for debugging) |
-| `--seed` | `42` | RNG seed |
-
-### `dantinox benchmark`
-
-| Argument | Default | Description |
-| :--- | :--- | :--- |
-| `--runs_dir` | `runs` | Directory containing run sub-directories |
-| `--runs` | all | Specific run names to benchmark |
-| `--out_csv` | — | Save results to this CSV path |
-
-### `dantinox sweep`
-
-| Argument | Default | Description |
-| :--- | :--- | :--- |
-| `--sweep_config` | `configs/sweep.yaml` | W&B sweep YAML |
-| `--config` | `configs/default_config.yaml` | Base model config (overridden by sweep) |
-| `--data_path` | **required** | Training corpus |
-| `--wandb_project` | `DantinoX` | W&B project |
-| `--count` | unlimited | Maximum sweep runs |
 
 ---
 
@@ -253,55 +164,181 @@ Config(dim=512, n_heads=16, kv_heads=3)     # ConfigError: n_heads must be divis
 ```
 DantinoX/
 ├── core/                        # Neural network primitives
-│   ├── config.py                # Config dataclass — single source of truth
-│   ├── model.py                 # Transformer: embedding → blocks → LM head
+│   ├── config.py                # ModelConfig · TrainingConfig · Config · ELFConfig
+│   ├── model.py                 # Transformer · DiffusionTransformer
+│   ├── elf.py                   # ELFTransformer (continuous flow-matching)
 │   ├── attention.py             # MHA / GQA / MLA + RoPE + KV-cache
-│   ├── block.py                 # Transformer block (Attention + FFN + LayerNorm)
+│   ├── block.py                 # Transformer block (Attention + FFN + Norm)
 │   ├── mlp.py                   # Dense MLP (SwiGLU / GELU)
-│   ├── moe.py                   # Sparse Mixture-of-Experts with load-balancing loss
-│   └── generation.py            # Autoregressive decode loop (fori_loop + vmap)
+│   ├── moe.py                   # Sparse MoE with load-balancing loss
+│   ├── diffusion.py             # NoiseSchedule · make_noise_schedule
+│   ├── lora.py                  # LoRAParam · merge_lora
+│   └── generation.py            # generate · diffusion_generate · elf_generate · fast_dllm_generate
 │
 ├── dantinox/                    # Installable library package
-│   ├── cli.py                   # `dantinox` entry-point (train/generate/sweep/benchmark/plot)
-│   ├── trainer.py               # Trainer — JIT training loop, logging, checkpointing
-│   ├── generator.py             # Generator — checkpoint loading + text generation
-│   ├── bench.py                 # BenchmarkRunner — latency / throughput / FLOPs
-│   ├── plotting.py              # Plotter — automated figure generation
-│   └── exceptions.py            # Exception hierarchy (DantinoXError → sub-classes)
+│   ├── cli.py                   # 9 subcommands: train/generate/sweep/benchmark/infbench/find-lr/push/pull/plot
+│   ├── paradigms/
+│   │   ├── ar.py                # ARParadigm
+│   │   └── diffusion/
+│   │       ├── discrete.py      # DiscreteParadigm (LLaDA)
+│   │       └── continuous.py    # ContinuousParadigm (ELF)
+│   ├── training/
+│   │   ├── trainer.py           # Trainer — JIT loop, checkpointing, multi-GPU
+│   │   └── optimizer.py         # build_optimizer · build_schedule
+│   ├── benchmarking/            # BenchmarkSuite · BenchmarkTask · ThroughputTask · LatencyTask
+│   ├── profiling/               # LatencyTracker · count_flops
+│   ├── visualization/           # Visualizer · chart registry
+│   └── hub.py                   # push · pull (HuggingFace Hub)
 │
 ├── utils/
-│   ├── tokenizer.py             # CharTokenizer · BPETokenizer · Tokenizer Protocol
-│   └── helpers.py               # Loss · batch sampling · LR schedule
+│   ├── tokenizer.py             # CharTokenizer · BPETokenizer
+│   └── helpers.py               # Loss helpers, batch sampling
 │
-├── configs/                     # YAML configuration files
+├── benchmarks/                  # Stand-alone benchmark scripts
+│   ├── inference_sweep.py       # Random-model sweep (13 groups)
+│   ├── trained_analysis.py      # Throughput on real checkpoints
+│   └── generation_quality.py    # Distinct-N, Rep-4, MAUVE
+│
+├── configs/                     # YAML templates
 │   ├── default_config.yaml
+│   ├── diffusion_base.yaml
 │   └── sweep.yaml
 │
-├── tests/                       # Pytest test suite (22 tests)
-│   ├── conftest.py              # Session-scoped Config fixtures
-│   ├── test_model.py            # Forward pass · GQA · MoE · weight tying · JIT
-│   └── test_mla.py              # MLA training · inference cache · RoPE constraints
-│
-├── pyproject.toml               # Package metadata, deps, ruff, mypy, pytest config
-├── Makefile                     # Development targets
-└── mkdocs.yml                   # Documentation site configuration
+├── docs/                        # MkDocs Material documentation
+├── tests/                       # Pytest test suite
+├── pyproject.toml
+└── mkdocs.yml
 ```
 
-### Exception Hierarchy
+---
 
+## Configuration
+
+All settings are typed dataclasses. The `Config` class is the flat, CLI-compatible form; `ModelConfig` + `TrainingConfig` is the preferred split API for new code.
+
+```python
+from core.config import Config
+
+cfg = Config(
+    # Architecture
+    dim=512, n_heads=8, head_size=64, num_blocks=12,
+    vocab_size=32_000, max_context=1024,
+    attention_type="gqa", kv_heads=2,
+    norm_type="rmsnorm", use_swiglu=True,
+
+    # Paradigm
+    model_type="autoregressive",   # "autoregressive" | "diffusion" | "elf"
+
+    # Training
+    lr=3e-4, batch_size=64, grad_accum=4,
+    optimizer="adamw", lr_schedule="cosine",
+    warmup_steps=400, epochs=500,
+    use_bf16=True, n_devices=4,
+)
 ```
-DantinoXError
-├── ConfigError        — invalid or inconsistent Config fields
-├── CheckpointError    — missing run directory, config, or weights
-├── BenchmarkError     — failure loading or running a benchmark
-└── PlotError          — missing CSV or plot module import failure
+
+Key constraint: `dim` must equal `n_heads × head_size`.
+
+```python
+Config(dim=512, n_heads=8, head_size=64)   # ✓
+Config(dim=512, n_heads=8, head_size=32)   # ✗  ValueError
+```
+
+Full field reference: [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration/).
+
+---
+
+## Generation Paradigms
+
+### Autoregressive
+
+Token-by-token left-to-right generation with static KV-cache:
+
+```python
+from core.generation import generate
+
+tokens = generate(model, prompt_ids, max_generations=256, top_p=0.9, use_cache=True)
+```
+
+### Masked Diffusion (LLaDA)
+
+All positions decoded in parallel over iterative unmasking steps:
+
+```python
+from core.generation import diffusion_generate, fast_dllm_generate
+from core.diffusion import make_noise_schedule
+
+schedule = make_noise_schedule(cfg)
+
+# Standard iterative unmasking
+tokens = diffusion_generate(model, prefix, gen_len=128, schedule=schedule,
+                            mask_token_id=cfg.mask_token_id)
+
+# Fast-dLLM DualCache — 1.4–2.1× speedup
+tokens = fast_dllm_generate(model, prefix, gen_len=256, schedule=schedule,
+                             mask_token_id=cfg.mask_token_id,
+                             block_size=32, steps_per_block=20)
+```
+
+### ELF — Continuous Flow-Matching
+
+Euler ODE from Gaussian noise to clean token embeddings:
+
+```python
+from core.generation import elf_generate
+
+tokens = elf_generate(model, gen_len=128, batch_size=4,
+                      n_steps=64, cfg_scale=1.5, seed=42)
+```
+
+---
+
+## LoRA Fine-Tuning
+
+```python
+from core.config import Config
+from core.model import Transformer
+from core.lora import merge_lora
+from flax import nnx
+
+# Enable LoRA — base weights are frozen automatically
+cfg   = Config.from_yaml("runs/ar_base/config.yaml")
+cfg.use_lora, cfg.lora_rank, cfg.lora_alpha = True, 8, 16.0
+
+model = Transformer(cfg, rngs=nnx.Rngs(42))
+# ... load base weights, train adapters ...
+
+merged = merge_lora(model)   # fold adapters into base weights for deployment
+```
+
+---
+
+## Benchmarking
+
+```python
+from core.config import ModelConfig
+from dantinox.paradigms.ar import ARParadigm
+from dantinox.benchmarking import BenchmarkSuite
+from flax import nnx
+
+cfg      = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
+paradigm = ARParadigm(cfg)
+model    = paradigm.build_model(nnx.Rngs(0))
+
+report = BenchmarkSuite.default().run(paradigm, model, save_csv="results.csv")
+print(report.summary())
+```
+
+Or use the full inference sweep via CLI:
+
+```bash
+dantinox infbench --groups attention_type scale --n-trials 20
+dantinox infbench --trained --eval   # include trained models + quality metrics
 ```
 
 ---
 
 ## Development
-
-All common workflows are exposed through `make`:
 
 ```bash
 make install      # Install package + all dev/doc dependencies (editable)
@@ -310,117 +347,58 @@ make lint         # Ruff static analysis
 make typecheck    # Mypy type checking
 make check        # lint + typecheck + test  (run before every push)
 make build        # Build sdist + wheel into dist/
-make publish      # Upload dist/ to PyPI via twine
+make publish      # Upload to PyPI via twine
 make clean        # Remove build artefacts and __pycache__
 ```
 
 ### Running Tests
 
 ```bash
-make test
-
-# Or directly:
 JAX_PLATFORM_NAME=cpu python -m pytest tests/ -v
 ```
 
-The suite runs on CPU (no GPU required) and covers:
+Tests run entirely on CPU and cover:
 
-- Forward-pass output shapes for MHA, GQA, and MLA
+- Forward-pass shapes for MHA, GQA, MLA, MoE, LoRA, Diffusion, ELF
 - KV-cache correctness and accumulation
-- MoE load-balancing loss propagation
 - Weight tying between embedding and LM head
 - JIT compilation stability
-- `Config` validation (dim constraints, GQA divisibility, MLA rope_dim)
-- `Config` round-trip serialization (`to_dict` / `from_dict`)
-
-Coverage output is written to `docs/coverage/` and published automatically with the documentation site.
+- `Config` / `ModelConfig` / `ELFConfig` validation and round-trip serialisation
 
 ### Code Quality
 
-The project enforces a strict quality baseline:
-
-| Tool | Configuration | What it checks |
-| :--- | :--- | :--- |
-| **ruff** | `pyproject.toml` | Style (E/W), imports (I), pyupgrade (UP), bugbear (B), simplify (SIM) |
-| **mypy** | `pyproject.toml` | Full type annotation coverage across `dantinox/`, `core/`, `utils/` |
-| **pytest** | `pyproject.toml` | 22 unit tests, CPU-only, session-scoped fixtures |
-
----
-
-## Training Artifacts
-
-Each training run writes an isolated artifact directory:
-
-```
-runs/run_20260101_120000/
-├── config.yaml              # Exact config used for the run
-├── model_summary.json       # Parameter counts per component
-├── training_log.csv         # step, train_loss, val_loss, bal_loss, ms_per_step
-└── model_weights.msgpack    # Serialized model state (Flax msgpack format)
-```
-
-The training loop logs to console via `tqdm` with live loss postfix, and optionally streams metrics to **Weights & Biases** when `--wandb_project` is specified.
-
----
-
-## Benchmarking
-
-`BenchmarkRunner` measures latency and throughput across a matrix of sequence lengths and batch sizes using XLA cost analysis for FLOPs:
-
-```python
-from dantinox import BenchmarkRunner
-from dantinox.plotting import Plotter
-
-df = BenchmarkRunner("runs").run(out_csv="benchmark_results.csv")
-Plotter("benchmark_results.csv", out_dir="plots").run()
-```
-
-**Reported metrics per run:**
-
-| Metric | Description |
-| :--- | :--- |
-| `params_m` | Total trainable parameters (millions) |
-| `theoretical_cache_mb` | KV-cache memory at `max_context` (MB) |
-| `prefill_ms` | Prefill latency for a 256-token prompt |
-| `tps_{64,128,256,512}` | Decode throughput (tok/s) at each sequence length |
-| `tps_bs{1,4,16,64,...}` | Decode throughput at each batch size |
-| `decode_gflops` | FLOPs per decode step (XLA cost analysis) |
-| `prefill_arith_int` | Arithmetic intensity of the prefill kernel |
-| `val_loss` | Final validation loss from `training_log.csv` |
-
----
-
-## Empirical Results
-
-Ablation studies were conducted via W&B Bayesian sweeps over 100+ configurations. Key findings:
-
-- **MLA vs GQA vs MHA:** MLA achieves lower KV-cache memory with comparable perplexity when `down_dim_kv ≤ dim / 4`.
-- **SwiGLU:** Consistently outperforms GELU by ~0.05 val-loss across all model sizes.
-- **Sliding Window:** Improves training speed on long contexts with negligible perplexity loss when `context_window ≥ 64`.
-- **Attention Gating (`no_sink`):** Stabilizes training when combined with RoPE at high learning rates.
-- **MoE (Top-2/4):** Matches dense perplexity at 60% of the active-parameter count.
-
-Full charts and analysis: [Ablation Studies](https://dantinox.readthedocs.io/en/latest/ablation_studies/)
+| Tool | Checks |
+|:-----|:-------|
+| **ruff** | Style (E/W), imports (I), pyupgrade (UP), bugbear (B), simplify (SIM) |
+| **mypy** | Full type annotation coverage across `dantinox/`, `core/`, `utils/` |
+| **pytest** | Unit tests, CPU-only, session-scoped fixtures |
 
 ---
 
 ## Documentation
 
-The full documentation is built with MkDocs Material and deployed to GitHub Pages:
+Full documentation is built with MkDocs Material:
 
 ```bash
-# Rebuild and deploy
-mkdocs gh-deploy --force
+pip install "dantinox[docs]"
+mkdocs serve          # local preview at http://127.0.0.1:8000
+mkdocs gh-deploy      # deploy to GitHub Pages
 ```
 
-Sections:
+Key sections: [Quickstart](https://dantinox.readthedocs.io/en/latest/quickstart/) · [Paradigms](https://dantinox.readthedocs.io/en/latest/paradigms/) · [Configuration](https://dantinox.readthedocs.io/en/latest/configuration/) · [CLI](https://dantinox.readthedocs.io/en/latest/cli/) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/)
 
-- [Architecture](https://dantinox.readthedocs.io/en/latest/architecture/) — attention variants, MoE, positional encodings
-- [Training & Sweeps](https://dantinox.readthedocs.io/en/latest/training/) — training loop internals, W&B integration
-- [Inference & Generation](https://dantinox.readthedocs.io/en/latest/generation/) — KV-cache, decoding strategies
-- [Benchmarks](https://dantinox.readthedocs.io/en/latest/benchmarks/) — throughput and FLOPs analysis
-- [API Reference](https://dantinox.readthedocs.io/en/latest/api/) — auto-generated from docstrings
-- [Coverage Report](https://dantinox.readthedocs.io/en/latest/coverage/) — line-level test coverage
+---
+
+## Citation
+
+```bibtex
+@software{dantinox2026,
+  author  = {Simoni, Marco},
+  title   = {DantinoX: A Unified {JAX}/Flax Framework for {AR}, Masked Diffusion, and Flow-Matching Language Models},
+  year    = {2026},
+  url     = {https://github.com/winstonsmith1897/DantinoX},
+}
+```
 
 ---
 
