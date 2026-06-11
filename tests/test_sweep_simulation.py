@@ -538,7 +538,7 @@ class TestTokenizer:
             mock_tokenizer.encode = Mock(return_value=[1, 2, 3, 4, 5])
             mock_get_tokenizer.return_value = mock_tokenizer
 
-            from utils.tokenizer import get_tokenizer
+            from dantinox.utils.tokenizer import get_tokenizer
             tokenizer = get_tokenizer('char')
 
             assert tokenizer.vocab_size == 128
@@ -553,7 +553,7 @@ class TestTokenizer:
             mock_tokenizer.encode = Mock(return_value=[100, 200, 300])
             mock_get_tokenizer.return_value = mock_tokenizer
 
-            from utils.tokenizer import get_tokenizer
+            from dantinox.utils.tokenizer import get_tokenizer
             tokenizer = get_tokenizer('bpe')
 
             assert tokenizer.vocab_size == 10000

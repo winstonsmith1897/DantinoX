@@ -60,7 +60,7 @@ where $B$ = batch, $T$ = seq len, $D$ = dim, $E$ = expansion, $L$ = layers, $V$ 
 
 ```python
 from dantinox.profiling import LatencyTracker, count_flops, profile_fn
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 
 # --- Analytical FLOPs (no model instance needed) ---
 cfg   = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)

@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.config import Config
+from dantinox.core.config import Config
 from dantinox.generator import Generator
 from dantinox.trainer import Trainer
 

@@ -38,7 +38,7 @@ DantinoX uses a single `Trainer` class for all three paradigms (AR, Diffusion, E
 
     ```python
     from dantinox import Trainer
-    from core.config import Config
+    from dantinox.core.config import Config
 
     config  = Config.from_yaml("configs/default_config.yaml")
     run_dir = Trainer(config).fit("data/wiki.txt")

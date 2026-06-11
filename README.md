@@ -107,7 +107,7 @@ run_dir = dx.fit("elf", "data/wiki.txt",
 ### Explicit Paradigm API
 
 ```python
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 from dantinox.paradigms.ar import ARParadigm
 from dantinox.trainer import Trainer
 from dantinox.generator import Generator
@@ -217,7 +217,7 @@ DantinoX/
 All settings are typed dataclasses. The `Config` class is the flat, CLI-compatible form; `ModelConfig` + `TrainingConfig` is the preferred split API for new code.
 
 ```python
-from core.config import Config
+from dantinox.core.config import Config
 
 cfg = Config(
     # Architecture
@@ -255,7 +255,7 @@ Full field reference: [Configuration Reference](https://dantinox.readthedocs.io/
 Token-by-token left-to-right generation with static KV-cache:
 
 ```python
-from core.generation import generate
+from dantinox.core.generation import generate
 
 tokens = generate(model, prompt_ids, max_generations=256, top_p=0.9, use_cache=True)
 ```
@@ -265,8 +265,8 @@ tokens = generate(model, prompt_ids, max_generations=256, top_p=0.9, use_cache=T
 All positions decoded in parallel over iterative unmasking steps:
 
 ```python
-from core.generation import diffusion_generate, fast_dllm_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.generation import diffusion_generate, fast_dllm_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 schedule = make_noise_schedule(cfg)
 
@@ -285,7 +285,7 @@ tokens = fast_dllm_generate(model, prefix, gen_len=256, schedule=schedule,
 Euler ODE from Gaussian noise to clean token embeddings:
 
 ```python
-from core.generation import elf_generate
+from dantinox.core.generation import elf_generate
 
 tokens = elf_generate(model, gen_len=128, batch_size=4,
                       n_steps=64, cfg_scale=1.5, seed=42)
@@ -296,9 +296,9 @@ tokens = elf_generate(model, gen_len=128, batch_size=4,
 ## LoRA Fine-Tuning
 
 ```python
-from core.config import Config
-from core.model import Transformer
-from core.lora import merge_lora
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer
+from dantinox.core.lora import merge_lora
 from flax import nnx
 
 # Enable LoRA — base weights are frozen automatically
@@ -316,7 +316,7 @@ merged = merge_lora(model)   # fold adapters into base weights for deployment
 ## Benchmarking
 
 ```python
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 from dantinox.paradigms.ar import ARParadigm
 from dantinox.benchmarking import BenchmarkSuite
 from flax import nnx

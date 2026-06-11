@@ -70,9 +70,9 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.config import Config
-from core.diffusion import DualCache, NoiseSchedule, make_noise_schedule
-from core.model import DiffusionTransformer, Transformer
+from dantinox.core.config import Config
+from dantinox.core.diffusion import DualCache, NoiseSchedule, make_noise_schedule
+from dantinox.core.model import DiffusionTransformer, Transformer
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)

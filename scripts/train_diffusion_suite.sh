@@ -118,12 +118,12 @@ train_one() {
         return 0
     fi
 
-    local tag_dim; tag_dim=$(echo "${tag}" | sed -E 's/.*_([0-9]+)d_.*/\1/')
-    local _gc="true"; [[ -n "${tag_dim}" && "${tag_dim}" -le 768 ]] && _gc="false"
+    # GC always on: 768d+ needs >40GB without it; on 512d it only costs ~10% speed
+    local _gc="true"
 
-    # Resume if interrupted checkpoint exists
-    local _resume="false"
-    [[ -f "${run_dir}/training_cursor.json" ]] && _resume="true"
+    # Resume if interrupted checkpoint exists (--resume is a store_true flag)
+    local -a _resume_flag=()
+    [[ -f "${run_dir}/training_cursor.json" ]] && _resume_flag=(--resume)
 
     local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" XLA_PYTHON_CLIENT_PREALLOCATE=false PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
         --config "${BASE_CFG}"
@@ -136,7 +136,7 @@ train_one() {
         --mask_token_id 32099
         --max_train_tokens "${_CUR_TOKENS}"
         --epochs "${_CUR_EPOCHS}"
-        --resume "${_resume}"
+        "${_resume_flag[@]}"
         "${extra_args[@]}")
 
     echo ""

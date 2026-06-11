@@ -5,8 +5,8 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
-from core.attention import Attention
-from core.config import Config
+from dantinox.core.attention import Attention
+from dantinox.core.config import Config
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

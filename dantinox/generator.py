@@ -11,11 +11,11 @@ import yaml
 from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
 
-from core.config import Config
-from core.generation import generate as _generate
-from core.model import Transformer
+from dantinox.core.config import Config
+from dantinox.core.generation import generate as _generate
+from dantinox.core.model import Transformer
 from dantinox.exceptions import CheckpointError
-from utils.tokenizer import Tokenizer, get_tokenizer, load_tokenizer_from_file
+from dantinox.utils.tokenizer import Tokenizer, get_tokenizer, load_tokenizer_from_file
 
 log = logging.getLogger(__name__)
 
@@ -98,13 +98,19 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
     if not os.path.exists(config_path):
         raise CheckpointError(f"Config file not found: {config_path}")
 
-    # Try best_model_weights.msgpack first, fall back to model_weights.msgpack
+    # Legacy-trainer weights first, then the paradigm Trainer's checkpoints.
     weights_path = None
-    for fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
+    for fname in ("best_model_weights.msgpack", "model_weights.msgpack",
+                  "checkpoint_best.msgpack", "checkpoint_latest.msgpack"):
         candidate = os.path.join(run_dir, fname)
         if os.path.exists(candidate):
             weights_path = candidate
             break
+    # The legacy trainer rebuilt the model with the tokenizer's vocab, so its
+    # weights expect vocab_size == tokenizer.vocab_size; the paradigm Trainer
+    # keeps the configured vocab_size (which may exceed the tokenizer's).
+    is_legacy_weights = weights_path is not None and not os.path.basename(
+        weights_path).startswith("checkpoint_")
 
     with open(config_path) as f:
         raw = yaml.safe_load(f)
@@ -159,7 +165,8 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
         tokenizer.save(tok_path)
         log.warning("Saved tokenizer to %s — subsequent calls will skip the download.", tok_path)
 
-    config.vocab_size = tokenizer.vocab_size
+    if is_legacy_weights or weights_path is None:
+        config.vocab_size = tokenizer.vocab_size
 
     rngs = nnx.Rngs(seed)
     model = Transformer(config, rngs=rngs)
@@ -170,7 +177,12 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
             state_dict = msgpack.unpackb(
                 f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
             )
-        nnx.update(model, state_dict)
+        if is_legacy_weights:
+            nnx.update(model, state_dict)
+        else:
+            state = nnx.state(model, nnx.Not(nnx.RngState))
+            state.replace_by_pure_dict(state_dict)
+            nnx.update(model, state)
     else:
         log.warning("No weights file found in %s — using random initialisation", run_dir)
 

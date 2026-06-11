@@ -126,7 +126,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
 
     ```python
     from dantinox.trainer import Trainer
-    from core.config import Config
+    from dantinox.core.config import Config
 
     cfg     = Config.from_yaml("runs/ar_mha_512d_12b/config.yaml")
     trainer = Trainer(cfg)
@@ -179,10 +179,10 @@ import yaml, msgpack
 import jax.numpy as jnp
 from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
-from core.config import Config
-from core.model import DiffusionTransformer
-from core.generation import diffusion_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.config import Config
+from dantinox.core.model import DiffusionTransformer
+from dantinox.core.generation import diffusion_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 # Load config and model
 with open("runs/diff_mha_512d/config.yaml") as f:
@@ -214,8 +214,8 @@ tokens   = diffusion_generate(
 
 ```python
 import yaml
-from core.config import Config
-from core.model import Transformer
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer
 from flax import nnx
 import msgpack
 from flax.serialization import _msgpack_ext_unpack
@@ -248,7 +248,7 @@ ft_run = Trainer(lora_cfg).fit("data/new_domain.txt")
 Merge adapters into base weights before deployment:
 
 ```python
-from core.lora import merge_lora
+from dantinox.core.lora import merge_lora
 merged = merge_lora(model)    # pure base architecture, no LoRA overhead
 ```
 
@@ -260,8 +260,8 @@ merged = merge_lora(model)    # pure base architecture, no LoRA overhead
 import yaml, msgpack
 from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
-from core.config import Config
-from core.model import Transformer
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer
 
 def load_model(run_dir: str):
     with open(f"{run_dir}/config.yaml") as f:
@@ -327,7 +327,7 @@ model, cfg = load_model("runs/ar_mha_512d_12b")
 
     ```python
     from dantinox.trainer import Trainer
-    from core.config import Config
+    from dantinox.core.config import Config
 
     cfg  = Config.from_yaml("configs/default_config.yaml")
     t    = Trainer(cfg)
@@ -365,8 +365,8 @@ model, cfg = load_model("runs/ar_mha_512d_12b")
 ```python
 import jax
 from flax import nnx
-from core.config import ModelConfig
-from core.model import Transformer
+from dantinox.core.config import ModelConfig
+from dantinox.core.model import Transformer
 from dantinox.profiling import count_flops
 
 cfg    = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32000)
@@ -401,7 +401,7 @@ dantinox train \
 ## 14. Convert between config APIs
 
 ```python
-from core.config import Config
+from dantinox.core.config import Config
 
 cfg = Config.from_yaml("configs/default_config.yaml")
 

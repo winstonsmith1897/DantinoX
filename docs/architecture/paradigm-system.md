@@ -71,7 +71,7 @@ A shared helper (not abstract). Counts `nnx.Param` leaves. Override in subclasse
 
 ```python
 from dantinox.paradigms.ar import ARParadigm
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 
 paradigm = ARParadigm(ModelConfig(
     dim=512, n_heads=8, head_size=64, num_blocks=12,
@@ -142,7 +142,7 @@ The model predicts clean `x` from noisy `z_t` (x-prediction). An auxiliary cross
 
 ```python
 from dantinox.paradigms.diffusion.continuous import ContinuousParadigm
-from core.config import ELFConfig
+from dantinox.core.config import ELFConfig
 
 paradigm  = ContinuousParadigm(ELFConfig(embed_dim=768, model_dim=512, ...))
 model     = paradigm.build_model(rngs)

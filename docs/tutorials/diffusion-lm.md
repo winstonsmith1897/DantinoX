@@ -92,7 +92,7 @@ dantinox train \
 Or via the Python API:
 
 ```python
-from core.config import Config
+from dantinox.core.config import Config
 from dantinox.trainer import Trainer
 
 config  = Config.from_yaml("configs/diffusion_tutorial.yaml")
@@ -108,9 +108,9 @@ Diffusion training is typically slower per step than AR because the loss is comp
 ### Simple MDLM sampler
 
 ```python
-from core.model import DiffusionTransformer
-from core.generation import diffusion_generate
-from core.config import Config
+from dantinox.core.model import DiffusionTransformer
+from dantinox.core.generation import diffusion_generate
+from dantinox.core.config import Config
 import jax
 
 config = Config.from_yaml(f"{run_dir}/config.yaml")
@@ -131,7 +131,7 @@ tokens = diffusion_generate(
 Fast-dLLM reduces decoding latency by maintaining two KV caches: one for the stable prefix (tokens with high confidence that have already converged) and one for the active denoising region. This avoids recomputing attention for positions that are already determined.
 
 ```python
-from core.generation import fast_dllm_generate
+from dantinox.core.generation import fast_dllm_generate
 
 tokens = fast_dllm_generate(
     model,
@@ -148,7 +148,7 @@ tokens = fast_dllm_generate(
 Diffusion LMs support native infilling: provide a prefix and suffix and let the model fill in the middle.
 
 ```python
-from utils.tokenizer import load_tokenizer_from_file
+from dantinox.utils.tokenizer import load_tokenizer_from_file
 
 tokenizer = load_tokenizer_from_file(f"{run_dir}/tokenizer.json")
 

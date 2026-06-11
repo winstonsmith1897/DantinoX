@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 
 
 @dataclass(frozen=True)

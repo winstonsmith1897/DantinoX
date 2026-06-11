@@ -70,7 +70,7 @@ class ModelConfig:
 
 ```python
 # core/block.py
-from core.attention import Attention, LinearAttention
+from dantinox.core.attention import Attention, LinearAttention
 
 class Block(nnx.Module):
     def __init__(self, config: ModelConfig, rngs: nnx.Rngs) -> None:
@@ -91,7 +91,7 @@ import pytest
 import jax
 import jax.numpy as jnp
 from flax import nnx
-from core.attention import LinearAttention
+from dantinox.core.attention import LinearAttention
 
 def test_linear_attention_output_shape():
     rngs  = nnx.Rngs(0)

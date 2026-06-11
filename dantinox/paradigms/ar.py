@@ -7,9 +7,9 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 
-from core.config import ModelConfig
-from core.generation import generate as _generate
-from core.model import Transformer
+from dantinox.core.config import ModelConfig
+from dantinox.core.generation import generate as _generate
+from dantinox.core.model import Transformer
 from dantinox.paradigms.base import Paradigm
 
 
@@ -25,6 +25,8 @@ class ARParadigm(Paradigm):
         paradigm = ARParadigm(cfg)
         # hand to Trainer — paradigm.build_model() is called there
     """
+
+    requires_shifted_targets = True
 
     def __init__(self, config: ModelConfig) -> None:
         if not config.causal:
@@ -43,7 +45,7 @@ class ARParadigm(Paradigm):
         self,
         model: Transformer,
         batch: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         x, y = batch[:, :-1], batch[:, 1:]
         out  = model(x)
@@ -55,17 +57,21 @@ class ARParadigm(Paradigm):
         self,
         model: Transformer,
         prompt: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
         max_new_tokens: int = 200,
         temperature: float = 1.0,
         top_k: int | None = None,
         top_p: float | None = None,
+        greedy: bool = False,
+        use_cache: bool = True,
     ) -> jnp.ndarray:
         return _generate(
             model,
             prompt,
-            rng,
-            max_new_tokens=max_new_tokens,
+            max_generations=max_new_tokens,
+            greedy=greedy,
+            seed=_seed_from(rng),
+            use_cache=use_cache,
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
@@ -73,3 +79,10 @@ class ARParadigm(Paradigm):
 
     def __repr__(self) -> str:
         return f"ARParadigm({self.config!r})"
+
+
+def _seed_from(rng: jax.Array | None) -> int:
+    """Derive a Python int seed from a JAX PRNG key (legacy or typed)."""
+    if rng is None:
+        return 42
+    return int(jax.random.randint(rng, (), 0, 2**31 - 1))

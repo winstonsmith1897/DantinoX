@@ -39,7 +39,7 @@ Load the pretrained config and enable LoRA:
 
 ```python
 # finetune.py
-from core.config import Config
+from dantinox.core.config import Config
 from dantinox.trainer import Trainer
 
 # Load the exact config the pretrained model was trained with
@@ -133,9 +133,9 @@ The `Generator` loads the LoRA adapters automatically. The base weights remain u
 Once fine-tuning is complete you can merge the adapters into the base weights to eliminate the LoRA overhead at inference time:
 
 ```python
-from core.lora import LoRALinear
-from core.model import Transformer
-from core.config import Config
+from dantinox.core.lora import LoRALinear
+from dantinox.core.model import Transformer
+from dantinox.core.config import Config
 import flax.serialization
 
 config = Config.from_yaml("runs/run_20260101_120000/lora_ft/config.yaml")

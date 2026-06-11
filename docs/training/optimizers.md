@@ -74,7 +74,7 @@ lr
 ## Usage
 
 ```python
-from core.config import TrainingConfig
+from dantinox.core.config import TrainingConfig
 from dantinox.training.optimizer import build_optimizer, build_schedule
 
 cfg = TrainingConfig(

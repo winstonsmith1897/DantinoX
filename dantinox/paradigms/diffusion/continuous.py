@@ -6,9 +6,9 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from core.config import ELFConfig
-from core.elf import ELFEmbedder, ELFTransformer, elf_loss
-from core.generation import elf_generate as _elf_generate
+from dantinox.core.config import ELFConfig
+from dantinox.core.elf import ELFEmbedder, ELFTransformer, elf_loss
+from dantinox.core.generation import elf_generate as _elf_generate
 from dantinox.paradigms.base import Paradigm
 
 
@@ -22,6 +22,12 @@ class ContinuousParadigm(Paradigm):
     embedding space, conditioned on in-context control tokens for timestep,
     CFG scale, and operating mode (denoiser vs. decoder branch).
 
+    Training requires a frozen T5 contextual encoder (``transformers``
+    package, ``pip install dantinox[elf]``).  The encoder runs outside JIT;
+    the Trainer obtains per-batch embeddings through ``prepare_batch`` and
+    initialises the embedding normalisation statistics via
+    ``on_train_start``.
+
     Quick-start::
 
         cfg      = ELFConfig(embed_dim=768, model_dim=512, n_heads=8,
@@ -29,8 +35,11 @@ class ContinuousParadigm(Paradigm):
         paradigm = ContinuousParadigm(cfg)
     """
 
+    provides_batch_extras = True
+
     def __init__(self, config: ELFConfig) -> None:
         self.config = config
+        self._t5_encoder: Any = None
 
     # ── Paradigm contract ─────────────────────────────────────────────────────
 
@@ -45,7 +54,7 @@ class ContinuousParadigm(Paradigm):
         self,
         model: ELFTransformer,
         batch: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
         embeddings: jnp.ndarray | None = None,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         """Compute ELF training loss.
@@ -54,8 +63,9 @@ class ContinuousParadigm(Paradigm):
             model      : ELFTransformer NNX module.
             batch      : Integer token IDs ``[B, T]`` (targets for CE branch).
             rng        : JAX random key.
-            embeddings : Pre-computed T5 embeddings ``[B, T, embed_dim]``.
-                         Must be provided; obtain from ``ELFEmbedder``.
+            embeddings : Raw T5 contextual embeddings ``[B, T, embed_dim]``
+                         from ``prepare_batch``; normalised here via
+                         ``model.encode`` before the flow-matching loss.
 
         Returns:
             (scalar_loss, metrics_dict)
@@ -63,28 +73,65 @@ class ContinuousParadigm(Paradigm):
         if embeddings is None:
             raise ValueError(
                 "ContinuousParadigm.loss_fn requires 'embeddings' — "
-                "pre-compute them via ELFEmbedder before calling loss_fn."
+                "pre-compute them via prepare_batch() / ELFEmbedder before "
+                "calling loss_fn."
             )
-        loss, metrics = elf_loss(model, embeddings, batch, rng, self.config)
+        normed = model.encode(embeddings)
+        loss, metrics = elf_loss(model, normed, batch, rng, self.config)
         return loss, metrics
+
+    # ── Training hooks ────────────────────────────────────────────────────────
+
+    def on_train_start(self, model: ELFTransformer, sample_batches: list[Any]) -> None:
+        """Initialise the embedder's normalisation stats from real T5 outputs."""
+        encoder = self._encoder()
+        token_batches = [jnp.asarray(b) for b in sample_batches]
+        emb_mean, emb_std = encoder.compute_norm_stats(token_batches)
+        model.embedder.emb_mean.value = emb_mean
+        model.embedder.emb_std.value = emb_std
+
+    def prepare_batch(self, batch: Any) -> jnp.ndarray:
+        """Run the frozen T5 encoder (outside JIT) → embeddings ``[B, T, E]``."""
+        return self._encoder().encode(jnp.asarray(batch))
+
+    def _encoder(self) -> Any:
+        if self._t5_encoder is None:
+            from dantinox.utils.t5_encoder import T5ContextualEncoder
+            self._t5_encoder = T5ContextualEncoder(self.config.t5_model_name)
+        return self._t5_encoder
+
+    # ── Generation ────────────────────────────────────────────────────────────
 
     def generate(
         self,
         model: ELFTransformer,
         prompt: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
+        gen_len: int | None = None,
         n_steps: int | None = None,
         cfg_scale: float | None = None,
+        gamma: float | None = None,
     ) -> jnp.ndarray:
-        steps     = n_steps   or getattr(self.config, "elf_n_steps",   64)
-        cfg_w     = cfg_scale or getattr(self.config, "elf_cfg_scale",  1.0)
+        """ELF generates unconditionally from Gaussian noise.
+
+        *prompt* only provides the batch size / sequence length defaults
+        (``gen_len`` overrides its length); its token contents are unused.
+        """
+        from dantinox.paradigms.ar import _seed_from
+        steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
+        cfg_w  = cfg_scale or getattr(self.config, "elf_cfg_scale", 1.0)
+        sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
+        length = gen_len or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
+                             else self.config.max_seq_len)
+        batch  = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
         return _elf_generate(
             model,
-            prompt,
-            rng,
+            gen_len=length,
+            batch_size=batch,
             n_steps=steps,
             cfg_scale=cfg_w,
-            config=self.config,
+            gamma=sde_g,
+            seed=_seed_from(rng),
         )
 
     def num_parameters(self, model: ELFTransformer) -> int:

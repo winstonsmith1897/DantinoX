@@ -116,7 +116,7 @@ class MyParadigm(Paradigm):
 ### ARParadigm
 
 ```python
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 from dantinox.paradigms.ar import ARParadigm
 from flax import nnx
 
@@ -135,7 +135,7 @@ loss, metrics = paradigm.loss_fn(model, batch)
 ### DiscreteParadigm
 
 ```python
-from core.config import Config
+from dantinox.core.config import Config
 from dantinox.paradigms.diffusion.discrete import DiscreteConfig, DiscreteParadigm
 from flax import nnx
 
@@ -154,7 +154,7 @@ model    = paradigm.build_model(nnx.Rngs(42))
 ### ContinuousParadigm (ELF)
 
 ```python
-from core.config import ELFConfig
+from dantinox.core.config import ELFConfig
 from dantinox.paradigms.diffusion.continuous import ContinuousParadigm
 from flax import nnx
 

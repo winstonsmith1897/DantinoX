@@ -58,8 +58,8 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.config import Config
-from core.model import Transformer
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)

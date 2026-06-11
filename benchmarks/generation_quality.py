@@ -57,9 +57,9 @@ from benchmarks.trained_analysis import (
     _load_config,
     _load_model,
 )
-from core.config import Config
-from core.diffusion import make_noise_schedule
-from core.generation import diffusion_generate, elf_generate, generate
+from dantinox.core.config import Config
+from dantinox.core.diffusion import make_noise_schedule
+from dantinox.core.generation import diffusion_generate, elf_generate, generate
 
 log = logging.getLogger(__name__)
 

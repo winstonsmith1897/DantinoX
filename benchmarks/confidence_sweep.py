@@ -63,15 +63,15 @@ import numpy as np
 from flax import nnx
 from tqdm import tqdm
 
-from core.config import Config
-from core.diffusion import (
+from dantinox.core.config import Config
+from dantinox.core.diffusion import (
     NoiseSchedule,
     confidence_unmask_factor,
     confidence_unmask_threshold,
     corrupt,
     make_noise_schedule,
 )
-from core.model import DiffusionTransformer
+from dantinox.core.model import DiffusionTransformer
 
 log = logging.getLogger(__name__)
 

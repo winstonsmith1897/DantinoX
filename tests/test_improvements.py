@@ -10,10 +10,10 @@ from flax import nnx
 os.environ.setdefault("JAX_PLATFORM_NAME", "cpu")
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
-from core.block import RMSNorm, _build_norm
-from core.config import Config
-from core.model import Transformer
-from core.output import ModelOutput
+from dantinox.core.block import RMSNorm, _build_norm
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer
+from dantinox.core.output import ModelOutput
 from dantinox.trainer import _build_schedule
 
 # ── RMSNorm ───────────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ class TestRoPEScaling:
         assert not jnp.isnan(out.logits).any()
 
     def test_scaled_rope_angles_differ(self):
-        from core.attention import Attention
+        from dantinox.core.attention import Attention
         config_base = Config(
             dim=128, n_heads=4, head_size=32, num_blocks=1,
             vocab_size=64, max_context=32, kv_heads=2,

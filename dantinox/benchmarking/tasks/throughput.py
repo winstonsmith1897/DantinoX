@@ -31,7 +31,7 @@ class ThroughputTask(BenchmarkTask):
         paradigm: Any,
         model: Any,
         config: BenchmarkConfig,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
     ) -> BenchmarkResult:
         vocab_size = _infer_vocab(paradigm)
         metrics: dict[str, float] = {}

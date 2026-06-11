@@ -32,7 +32,7 @@ class LatencyTask(BenchmarkTask):
         paradigm: Any,
         model: Any,
         config: BenchmarkConfig,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
     ) -> BenchmarkResult:
         from dantinox.paradigms.ar import ARParadigm
 

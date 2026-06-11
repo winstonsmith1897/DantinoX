@@ -77,27 +77,7 @@ wandb/
 dantinox/plots/
 
 # ── Scratchpad / one-off scripts not part of the library ─────────────────────
-analyze_dataset.py
-analyze_runs.py
-benchmark.py
-benchmark_analysis.py
-benchmark_batch_sweep.py
-generate.py
-generate_elf.py
-paper_sweep.py
-train.py
-plot.py
-plot_3d.py
-plot_3d_dkv.py
-plot_compression.py
-plot_insights.py
-plot_linkedin.py
-plot_perf.py
-plot_results.py
-plot_sweeps.py
-train_sweep.py
-train_sweep_attention_comparison.py
-core/old_model.py
-test.py
-demo_dual_cache.py
-demo_simple_gen.py
+scripts/scratch/
+dantinox/core/old_model.py
+examples/demo_dual_cache.py
+examples/demo_simple_gen.py

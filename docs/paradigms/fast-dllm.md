@@ -78,8 +78,8 @@ For MLA the KV tensors use the compressed latent dimension $d_c^{KV}$;
 ## Python API
 
 ```python
-from core.generation import fast_dllm_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.generation import fast_dllm_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 schedule = make_noise_schedule(config)
 

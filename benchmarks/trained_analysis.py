@@ -59,9 +59,9 @@ import numpy as np
 from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
 
-from core.config import Config
-from core.elf import ELFTransformer
-from core.model import DiffusionTransformer, Transformer
+from dantinox.core.config import Config
+from dantinox.core.elf import ELFTransformer
+from dantinox.core.model import DiffusionTransformer, Transformer
 
 log = logging.getLogger(__name__)
 

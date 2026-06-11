@@ -112,7 +112,7 @@ See the [LoRA Fine-Tuning tutorial](../tutorials/lora-fine-tuning.md) and the [A
 ## Checkpoint Loading
 
 ```python
-from core.model import Transformer
+from dantinox.core.model import Transformer
 
 model = Transformer.from_pretrained("runs/ar_mha_256d_12b_Dense")
 # or load from HuggingFace Hub:

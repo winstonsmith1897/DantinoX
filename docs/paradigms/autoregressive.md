@@ -181,9 +181,9 @@ where $L$ = num_blocks, $S$ = sequence length, $H_{kv}$ = number of KV heads.
 ### `generate` function
 
 ```python
-from core.generation import generate
-from core.model import Transformer
-from core.config import Config
+from dantinox.core.generation import generate
+from dantinox.core.model import Transformer
+from dantinox.core.config import Config
 from flax import nnx
 
 cfg   = Config.from_yaml("runs/ar_512d/config.yaml")

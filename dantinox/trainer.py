@@ -15,15 +15,15 @@ from flax import nnx
 from flax.nnx.transforms.autodiff import DiffState
 from tqdm import tqdm
 
-from core.config import Config
-from core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
-from core.elf import ELFTransformer, elf_loss
-from core.lora import LoRAParam
-from core.model import DiffusionTransformer, Transformer
-from core.sharding import make_mesh, num_devices, replicate, shard_batch
+from dantinox.core.config import Config
+from dantinox.core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
+from dantinox.core.elf import ELFTransformer, elf_loss
+from dantinox.core.lora import LoRAParam
+from dantinox.core.model import DiffusionTransformer, Transformer
+from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
 from dantinox.exceptions import ConfigError
-from utils.helpers import compute_loss, get_batch
-from utils.tokenizer import get_tokenizer, load_tokenizer_from_file
+from dantinox.utils.helpers import compute_loss, get_batch
+from dantinox.utils.tokenizer import get_tokenizer, load_tokenizer_from_file
 
 log = logging.getLogger(__name__)
 
@@ -214,6 +214,16 @@ class Trainer:
     """
 
     def __init__(self, config: Config) -> None:
+        import warnings
+        warnings.warn(
+            "dantinox.trainer.Trainer (monolithic-Config engine) is deprecated. "
+            "Use dantinox.Trainer with a Paradigm instead: "
+            "Trainer(ARParadigm(ModelConfig(...)), TrainingConfig(...)).fit(data). "
+            "A legacy Config can be passed directly to the new Trainer, which "
+            "converts it automatically.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.config = config
 
     def __repr__(self) -> str:
@@ -408,7 +418,7 @@ class Trainer:
             _elf_config = config.to_elf_config()
 
             # Initialize contextual T5 encoder (not a JAX module, never updated)
-            from utils.t5_encoder import T5ContextualEncoder
+            from dantinox.utils.t5_encoder import T5ContextualEncoder
             log.info("Loading T5 contextual encoder: %s", config.t5_model_name)
             _t5_encoder = T5ContextualEncoder(config.t5_model_name)
             log.info("T5 encoder loaded — hidden_dim=%d", _t5_encoder.hidden_dim)

@@ -36,8 +36,8 @@ model:
 ```
 
 ```python
-from core.config import Config
-from core.model import Transformer, DiffusionTransformer
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer, DiffusionTransformer
 
 ar_config   = Config(model_type="autoregressive", ...)
 diff_config = Config(model_type="diffusion",       ...)

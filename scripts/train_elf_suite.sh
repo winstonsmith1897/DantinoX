@@ -120,9 +120,9 @@ train_one() {
 
     local _gc="true"
 
-    # Resume if interrupted checkpoint exists
-    local _resume="false"
-    [[ -f "${run_dir}/training_cursor.json" ]] && _resume="true"
+    # Resume if interrupted checkpoint exists (--resume is a store_true flag)
+    local -a _resume_flag=()
+    [[ -f "${run_dir}/training_cursor.json" ]] && _resume_flag=(--resume)
 
     local cmd=(
         env
@@ -139,7 +139,7 @@ train_one() {
         --grad_accum 4
         --max_train_tokens "${_CUR_TOKENS}"
         --epochs "${_CUR_EPOCHS}"
-        --resume "${_resume}"
+        "${_resume_flag[@]}"
         --tokenizer_type t5
         --dataset_source huggingface
         --dataset_name "wikitext"

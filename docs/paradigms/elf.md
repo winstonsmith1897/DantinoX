@@ -50,7 +50,7 @@ Input tokens [B, T]
 
 ```python
 from dantinox.paradigms.diffusion.continuous import ContinuousParadigm
-from core.config import ELFConfig
+from dantinox.core.config import ELFConfig
 from flax import nnx
 
 cfg = ELFConfig(
@@ -77,7 +77,7 @@ ELF requires pre-computed embeddings passed into `loss_fn`. The embedder is **no
 
 ```python
 from dantinox.training.trainer import Trainer
-from core.config import TrainingConfig
+from dantinox.core.config import TrainingConfig
 
 # Pre-compute embeddings once per batch in a custom trainer loop
 # or integrate ELFEmbedder into a custom Paradigm subclass that

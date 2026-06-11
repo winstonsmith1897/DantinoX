@@ -75,7 +75,7 @@ Strategies can be combined: `top_k=50, top_p=0.9` first restricts to top-50 toke
 ## Low-level API
 
 ```python
-from core.generation import generate
+from dantinox.core.generation import generate
 import jax.numpy as jnp
 
 tokens = generate(

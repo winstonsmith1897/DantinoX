@@ -71,8 +71,8 @@ training:
 The schedule affects how quickly tokens are masked during the forward process.
 
 ```python
-from core.diffusion import make_noise_schedule
-from core.config import Config
+from dantinox.core.diffusion import make_noise_schedule
+from dantinox.core.config import Config
 
 config   = Config(diffusion_steps=1000, noise_schedule="cosine")
 schedule = make_noise_schedule(config)   # NoiseSchedule(alpha_bar=[T+1])
@@ -147,7 +147,7 @@ more accurately — equivalent to decreasing perplexity.
 ## Checkpoint Loading
 
 ```python
-from core.model import DiffusionTransformer
+from dantinox.core.model import DiffusionTransformer
 
 model = DiffusionTransformer.from_pretrained("runs/diff_mha_256d_12b_Dense")
 ```

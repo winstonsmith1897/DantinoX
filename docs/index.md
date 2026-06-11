@@ -171,8 +171,8 @@ The library is designed to be used at different levels of abstraction, from the 
     Direct access to all internal components. Ideal for modifying the training loop or adding custom components.
 
     ```python
-    from core.config import ModelConfig
-    from core.model import Transformer
+    from dantinox.core.config import ModelConfig
+    from dantinox.core.model import Transformer
     from dantinox.paradigms.ar import ARParadigm
     from dantinox.training.trainer import Trainer
     from dantinox.training.optimizer import build_optimizer, build_schedule

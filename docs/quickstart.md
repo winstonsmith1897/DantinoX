@@ -226,10 +226,10 @@ print(output)
 ### Diffusion — generation with Fast-dLLM
 
 ```python title="generate_diffusion.py"
-from core.generation import fast_dllm_generate
-from core.diffusion import make_noise_schedule
-from core.config import Config
-from core.model import DiffusionTransformer
+from dantinox.core.generation import fast_dllm_generate
+from dantinox.core.diffusion import make_noise_schedule
+from dantinox.core.config import Config
+from dantinox.core.model import DiffusionTransformer
 from flax import nnx
 
 # Load config and model
@@ -253,7 +253,7 @@ tokens = fast_dllm_generate(
 ### ELF — generation with flow-matching
 
 ```python title="generate_elf.py"
-from core.generation import elf_generate
+from dantinox.core.generation import elf_generate
 
 tokens = elf_generate(
     model,

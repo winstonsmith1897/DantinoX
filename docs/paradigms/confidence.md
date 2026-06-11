@@ -27,7 +27,7 @@ If no position meets the threshold, the most confident masked position is
 unconditionally revealed (progress guarantee, Algorithm 1 line 9).
 
 ```python
-from core.diffusion import confidence_unmask_threshold
+from dantinox.core.diffusion import confidence_unmask_threshold
 
 x_new = confidence_unmask_threshold(
     logits,
@@ -63,7 +63,7 @@ This bound ensures greedy parallel decoding is equivalent to sequential
 decoding up to the $f$-factor slack.
 
 ```python
-from core.diffusion import confidence_unmask_factor
+from dantinox.core.diffusion import confidence_unmask_factor
 
 x_new = confidence_unmask_factor(
     logits,
@@ -103,7 +103,7 @@ minor accuracy cost (see [Confidence Sweep benchmark](../benchmarks.md)).
 ## Using in `fast_dllm_generate`
 
 ```python
-from core.generation import fast_dllm_generate
+from dantinox.core.generation import fast_dllm_generate
 
 # Threshold strategy (default)
 tokens = fast_dllm_generate(

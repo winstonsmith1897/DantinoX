@@ -379,7 +379,7 @@ With `lora_rank=8` and `lora_targets="attention"`, only ~0.1–0.5 % of paramete
 After fine-tuning, merge the LoRA delta back into the base weight for deployment (no runtime overhead):
 
 ```python
-from core.lora import LoRALinear
+from dantinox.core.lora import LoRALinear
 
 for module in model.modules():
     if isinstance(module, LoRALinear):
@@ -431,7 +431,7 @@ dantinox train \
 ### Sharding utilities (low-level API)
 
 ```python
-from core.sharding import make_mesh, replicate, shard_batch, num_devices
+from dantinox.core.sharding import make_mesh, replicate, shard_batch, num_devices
 
 mesh = make_mesh(n_devices=4)
 print(f"Training on {num_devices(mesh)} GPUs")

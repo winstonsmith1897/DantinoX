@@ -17,7 +17,7 @@ from flax import nnx
 os.environ.setdefault("JAX_PLATFORM_NAME", "cpu")
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
-from core.config import Config
+from dantinox.core.config import Config
 
 # ── Tiny model configs ────────────────────────────────────────────────────────
 

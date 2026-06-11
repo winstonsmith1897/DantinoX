@@ -31,8 +31,8 @@ DantinoX and HuggingFace Transformers serve different goals. This page helps you
 === "DantinoX"
 
     ```python
-    from core.config import ModelConfig
-    from core.model import Transformer
+    from dantinox.core.config import ModelConfig
+    from dantinox.core.model import Transformer
     from flax import nnx
 
     cfg   = ModelConfig(
@@ -64,7 +64,7 @@ DantinoX and HuggingFace Transformers serve different goals. This page helps you
     ```python
     from dantinox.paradigms.ar import ARParadigm
     from dantinox.trainer import Trainer
-    from core.config import Config
+    from dantinox.core.config import Config
 
     cfg     = Config.from_yaml("configs/default_config.yaml")
     trainer = Trainer(cfg)
@@ -160,7 +160,7 @@ DantinoX and HuggingFace Transformers serve different goals. This page helps you
 === "DantinoX"
 
     ```python
-    from core.generation import generate
+    from dantinox.core.generation import generate
 
     tokens = generate(
         model, prompt_ids,
@@ -188,8 +188,8 @@ DantinoX and HuggingFace Transformers serve different goals. This page helps you
 HuggingFace has no built-in support for non-autoregressive discrete diffusion or continuous flow-matching. DantinoX provides both:
 
 ```python
-from core.generation import diffusion_generate, fast_dllm_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.generation import diffusion_generate, fast_dllm_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 schedule = make_noise_schedule(cfg)
 

@@ -26,8 +26,8 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from core.config import ModelConfig
-from core.model import Transformer
+from dantinox.core.config import ModelConfig
+from dantinox.core.model import Transformer
 from dantinox.paradigms.base import Paradigm
 
 
@@ -162,7 +162,7 @@ from dantinox.paradigms.contrastive import ContrastiveParadigm
 def _build_contrastive(config, kwargs):
     temp = kwargs.pop("temperature", 0.05)
     if config is None:
-        from core.config import ModelConfig
+        from dantinox.core.config import ModelConfig
         config = ModelConfig(**{**kwargs, "causal": False})
     return ContrastiveParadigm(config, temperature=temp)
 
@@ -178,7 +178,7 @@ _PARADIGM_MAP["contrastive"] = _build_contrastive
 import jax
 import jax.numpy as jnp
 from flax import nnx
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 from dantinox.paradigms.contrastive import ContrastiveParadigm
 
 def test_contrastive_loss_shape():

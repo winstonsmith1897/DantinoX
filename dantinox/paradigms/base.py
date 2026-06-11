@@ -20,7 +20,26 @@ class Paradigm(ABC):
             def build_model(self, rngs): ...
             def loss_fn(self, model, batch, rng): ...
             def generate(self, model, prompt, rng, **kwargs): ...
+
+    Two optional hooks let a paradigm participate in the training loop
+    without the Trainer knowing its internals:
+
+    * ``on_train_start(model, sample_batches)`` — one-time setup before the
+      first step (e.g. ELF computes T5 embedding normalisation statistics).
+    * ``prepare_batch(batch)`` — host-side, non-JIT preprocessing of each
+      batch; whatever it returns is forwarded to ``loss_fn`` as the
+      ``embeddings`` keyword.  Set ``provides_batch_extras = True`` to
+      enable it.
     """
+
+    # AR-style paradigms need ``seq_len + 1`` tokens per row so the loss can
+    # form (input, shifted-target) pairs; diffusion paradigms consume the
+    # batch as-is.
+    requires_shifted_targets: bool = False
+
+    # True when ``prepare_batch`` returns per-batch extras that must be
+    # computed outside JIT and passed to ``loss_fn(..., embeddings=...)``.
+    provides_batch_extras: bool = False
 
     @abstractmethod
     def build_model(self, rngs: Any) -> Any:
@@ -37,7 +56,7 @@ class Paradigm(ABC):
         self,
         model: Any,
         batch: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         """Compute the scalar training loss for one batch.
 
@@ -56,11 +75,28 @@ class Paradigm(ABC):
         self,
         model: Any,
         prompt: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
         **kwargs: Any,
     ) -> jnp.ndarray:
         """Generate token sequences given a prompt prefix."""
         ...
+
+    # ── Optional training hooks ───────────────────────────────────────────────
+
+    def on_train_start(self, model: Any, sample_batches: list[Any]) -> None:
+        """One-time setup before training starts (default: no-op).
+
+        *sample_batches* is a small list of token batches drawn from the
+        training set, for paradigms that need data-dependent initialisation.
+        """
+
+    def prepare_batch(self, batch: Any) -> Any:
+        """Host-side per-batch preprocessing executed outside JIT.
+
+        Only called when ``provides_batch_extras`` is True; the return value
+        is forwarded to ``loss_fn`` as the ``embeddings`` keyword argument.
+        """
+        return None
 
     # ── Shared helpers ────────────────────────────────────────────────────────
 

@@ -7,15 +7,15 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from core.config import ModelConfig
-from core.diffusion import (
+from dantinox.core.config import ModelConfig
+from dantinox.core.diffusion import (
     NoiseSchedule,
     corrupt,
     make_noise_schedule,
     masked_cross_entropy,
 )
-from core.generation import diffusion_generate as _diffusion_generate
-from core.model import Transformer
+from dantinox.core.generation import diffusion_generate as _diffusion_generate
+from dantinox.core.model import Transformer
 from dantinox.paradigms.base import Paradigm
 
 
@@ -81,7 +81,7 @@ class DiscreteParadigm(Paradigm):
         self,
         model: Transformer,
         batch: jnp.ndarray,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         mask_id = self.diffusion_config.mask_token_id
         rng_t, rng_corrupt = jax.random.split(rng)
@@ -99,20 +99,21 @@ class DiscreteParadigm(Paradigm):
         self,
         model: Transformer,
         prompt: jnp.ndarray,
-        rng: jax.random.KeyArray,
-        seq_len: int = 256,
+        rng: jax.Array,
+        gen_len: int = 256,
         n_steps: int = 50,
-        unmask_factor: float = 1.0,
+        temperature: float = 1.0,
     ) -> jnp.ndarray:
+        from dantinox.paradigms.ar import _seed_from
         return _diffusion_generate(
             model,
             prompt,
-            rng,
-            seq_len=seq_len,
-            n_steps=n_steps,
+            gen_len=gen_len,
+            schedule=self._schedule,
             mask_token_id=self.diffusion_config.mask_token_id,
-            noise_schedule=self._schedule,
-            unmask_factor=unmask_factor,
+            seed=_seed_from(rng),
+            num_sampling_steps=n_steps,
+            temperature=temperature,
         )
 
     def __repr__(self) -> str:

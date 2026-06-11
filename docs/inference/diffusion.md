@@ -9,9 +9,9 @@ title: Diffusion Generation
 Block-wise generation with DualCache — 1.4–2.1× faster than prefix-only:
 
 ```python
-from core.model import DiffusionTransformer
-from core.generation import fast_dllm_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.model import DiffusionTransformer
+from dantinox.core.generation import fast_dllm_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 model    = DiffusionTransformer.from_pretrained("runs/diff_mha_256d_12b_Dense")
 schedule = make_noise_schedule(model.config)   # or: Config.from_yaml(...)
@@ -44,7 +44,7 @@ tokens = fast_dllm_generate(
 Full-sequence denoising without block-wise optimisation — slower but simpler:
 
 ```python
-from core.generation import diffusion_generate
+from dantinox.core.generation import diffusion_generate
 
 tokens = diffusion_generate(
     model, prefix, gen_len=128,
@@ -107,7 +107,7 @@ More `steps_per_block` improves generation quality at the cost of speed:
 Use the tokenizer saved in the run directory:
 
 ```python
-from utils.tokenizer import load_tokenizer_from_file
+from dantinox.utils.tokenizer import load_tokenizer_from_file
 
 tokenizer = load_tokenizer_from_file("runs/diff_mha_256d_12b_Dense/tokenizer.json")
 text = tokenizer.decode(tokens[0].tolist())

@@ -51,8 +51,8 @@ title: Configuration Reference
 Architecture specification for `Transformer` (AR and Diffusion). Everything here describes *what the model is* — not how it trains.
 
 ```python
-from core.config import ModelConfig
-from core.model import Transformer
+from dantinox.core.config import ModelConfig
+from dantinox.core.model import Transformer
 from flax import nnx
 
 cfg   = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32000)
@@ -146,7 +146,7 @@ model = Transformer(cfg, rngs=nnx.Rngs(42))
 Training hyperparameters, dataset, and hardware settings. Completely independent of model architecture — mix and match with any `ModelConfig`.
 
 ```python
-from core.config import TrainingConfig
+from dantinox.core.config import TrainingConfig
 
 cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 ```
@@ -354,8 +354,8 @@ The field names below are what Config uses; where the name differs from ModelCon
 Dedicated architecture config for `ELFTransformer`. Use this class when instantiating ELF models directly rather than through the `Config` + `Trainer` pipeline.
 
 ```python
-from core.config import ELFConfig
-from core.elf import ELFTransformer
+from dantinox.core.config import ELFConfig
+from dantinox.core.elf import ELFTransformer
 from flax import nnx
 
 cfg   = ELFConfig(

@@ -72,8 +72,8 @@ class BenchmarkRunner:
         import os
         import traceback
         import pandas as pd
-        from core.config import Config
-        from core.model import Transformer
+        from dantinox.core.config import Config
+        from dantinox.core.model import Transformer
         from flax import nnx
         from dantinox.paradigms.ar import ARParadigm
 

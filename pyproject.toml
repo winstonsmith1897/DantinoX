@@ -4,17 +4,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dantinox"
-version = "0.3.15"
+version = "0.4.0"
 description = "A decoder-only Transformer built from scratch in JAX and Flax NNX"
 authors = [{name = "Marco Simoni"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "jax",
-    "jaxlib",
-    "flax",
-    "optax",
+    "jax>=0.4.30,<0.10",
+    "jaxlib>=0.4.30",
+    "flax>=0.10,<0.13",
+    "optax>=0.2",
+    "numpy",
     "pyyaml",
     "tokenizers",
     "msgpack",
@@ -24,6 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 data      = ["datasets"]
 hub       = ["huggingface-hub"]
+elf       = ["transformers"]
 benchmark = ["pandas", "matplotlib", "numpy", "scipy"]
 dev       = [
     "pytest>=8",
@@ -42,11 +44,13 @@ dev       = [
     "mkdocstrings[python]",
     "mike",
 ]
-all = ["dantinox[data,hub,benchmark,dev]"]
+all = ["dantinox[data,hub,elf,benchmark,dev]"]
 
 [project.scripts]
 dantinox = "dantinox.cli:main"
 
+# NOTE: top-level "core" and "utils" are deprecation shims for the packages
+# that moved to dantinox.core / dantinox.utils — drop them in 0.5.0.
 [tool.setuptools.packages.find]
 include = ["dantinox*", "core*", "utils*"]
 
@@ -64,7 +68,7 @@ markers      = [
 [tool.ruff]
 line-length    = 100
 target-version = "py310"
-exclude        = ["core/old_model.py"]
+exclude        = ["dantinox/core/old_model.py"]
 
 [tool.ruff.lint]
 select = [
@@ -82,7 +86,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "utils", "dantinox"]
+known-first-party = ["dantinox", "core", "utils"]
 
 # ── mypy ─────────────────────────────────────────────────────────────────────
 [tool.mypy]
@@ -92,11 +96,11 @@ ignore_missing_imports = true
 warn_unused_ignores   = false
 warn_return_any       = false
 disallow_untyped_defs = true
-files                 = ["dantinox", "core", "utils"]
-exclude               = ["core/old_model\\.py"]
+files                 = ["dantinox"]
+exclude               = ["dantinox/core/old_model\\.py"]
 
 [[tool.mypy.overrides]]
-module = ["core.generation", "core.attention"]
+module = ["dantinox.core.generation", "dantinox.core.attention"]
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
@@ -117,6 +121,6 @@ ignore-property-decorators = true
 fail-under           = 100
 verbose              = 1
 color                = true
-exclude              = ["core/old_model.py", "dantinox/plots/", "dantinox/bench.py",
+exclude              = ["dantinox/core/old_model.py", "dantinox/plots/", "dantinox/bench.py",
                         "dantinox/plotting.py"]
 whitelist-regex      = []

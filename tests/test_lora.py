@@ -9,10 +9,10 @@ import jax.numpy as jnp
 import pytest
 from flax.nnx.transforms.autodiff import DiffState
 
-from core.config import Config
-from core.lora import LoRALinear, LoRAParam
-from core.model import Transformer
-from core.sharding import make_mesh, num_devices, replicate, shard_batch
+from dantinox.core.config import Config
+from dantinox.core.lora import LoRALinear, LoRAParam
+from dantinox.core.model import Transformer
+from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 

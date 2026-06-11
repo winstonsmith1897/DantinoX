@@ -4,8 +4,8 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
-from core.config import Config
-from core.model import Transformer
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer
 
 # ── Forward pass ─────────────────────────────────────────────────────────────
 

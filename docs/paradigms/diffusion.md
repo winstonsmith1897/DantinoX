@@ -147,8 +147,8 @@ Generation starts from a fully masked sequence and runs $N$ denoising steps, eac
 ### Simple sampler (`diffusion_generate`)
 
 ```python
-from core.generation import diffusion_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.generation import diffusion_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 schedule = make_noise_schedule(cfg)
 
@@ -175,7 +175,7 @@ tokens = diffusion_generate(
 For long sequences, the block-wise sampler gives 1.4–2.1× speedup:
 
 ```python
-from core.generation import fast_dllm_generate
+from dantinox.core.generation import fast_dllm_generate
 
 tokens = fast_dllm_generate(
     model,

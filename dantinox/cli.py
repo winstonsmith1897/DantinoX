@@ -26,7 +26,7 @@ import logging
 import sys
 from pathlib import Path
 
-from core.config import Config
+from dantinox.core.config import Config
 from dantinox import __version__
 
 
@@ -81,13 +81,24 @@ def _apply_overrides(config: Config, args: argparse.Namespace) -> Config:
 
 # ─── subcommand handlers ────────────────────────────────────────────────────
 
+def _legacy_trainer(config: Config):
+    """Build the legacy monolithic-Config trainer without its deprecation
+    warning — the CLI intentionally drives this engine until the paradigm
+    Trainer reaches feature parity (wandb sweeps, find-lr)."""
+    import warnings
+
+    from dantinox.trainer import Trainer
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        return Trainer(config)
+
+
 def _cmd_train(args: argparse.Namespace) -> None:
     _init_jax_cache()   # persist XLA-compiled kernels across runs
     config = Config.from_yaml(args.config)
     config = _apply_overrides(config, args)
 
-    from dantinox.trainer import Trainer
-    trainer = Trainer(config)
+    trainer = _legacy_trainer(config)
     run_dir = trainer.fit(
         args.data_path,
         run_dir=getattr(args, "run_dir", None),
@@ -167,10 +178,10 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         import jax.numpy as jnp
         from flax import nnx
         from flax.serialization import _msgpack_ext_unpack
-        from core.config import Config
-        from core.diffusion import make_noise_schedule
-        from core.model import DiffusionTransformer
-        from core.generation import diffusion_generate, fast_dllm_generate
+        from dantinox.core.config import Config
+        from dantinox.core.diffusion import make_noise_schedule
+        from dantinox.core.model import DiffusionTransformer
+        from dantinox.core.generation import diffusion_generate, fast_dllm_generate
         from transformers import AutoTokenizer
 
         cfg = Config.from_dict(_flat)
@@ -221,9 +232,9 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         import msgpack
         from flax import nnx
         from flax.serialization import _msgpack_ext_unpack
-        from core.config import Config
-        from core.elf import ELFTransformer
-        from core.generation import elf_generate
+        from dantinox.core.config import Config
+        from dantinox.core.elf import ELFTransformer
+        from dantinox.core.generation import elf_generate
         from transformers import AutoTokenizer
 
         cfg = Config.from_dict(_flat)
@@ -285,8 +296,6 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
     print(f"Sweep ID: {sweep_id}  (project: {project})")
 
     def _agent_fn() -> None:
-        from dantinox.trainer import Trainer
-
         run = wandb.init()  # type: ignore[attr-defined]
         wc = dict(run.config)
 
@@ -295,7 +304,7 @@ def _cmd_sweep(args: argparse.Namespace) -> None:
             if hasattr(base, k):
                 setattr(base, k, v)
 
-        trainer = Trainer(base)
+        trainer = _legacy_trainer(base)
         trainer.fit(args.data_path, wandb_project=None)
         wandb.finish()  # type: ignore[attr-defined]
 
@@ -306,8 +315,7 @@ def _cmd_find_lr(args: argparse.Namespace) -> None:
     config = Config.from_yaml(args.config)
     config = _apply_overrides(config, args)
 
-    from dantinox.trainer import Trainer
-    trainer = Trainer(config)
+    trainer = _legacy_trainer(config)
     suggested_lr, lr_hist, loss_hist = trainer.find_lr(
         args.data_path,
         min_lr=args.min_lr,
@@ -395,8 +403,8 @@ def _cmd_benchmark(args: argparse.Namespace) -> None:
     import os
     import traceback
     import pandas as pd
-    from core.config import Config
-    from core.model import Transformer
+    from dantinox.core.config import Config
+    from dantinox.core.model import Transformer
     from flax import nnx
     from dantinox.paradigms.ar import ARParadigm
     from dantinox.benchmarking import BenchmarkConfig, BenchmarkSuite, ThroughputTask, LatencyTask
@@ -507,8 +515,8 @@ def _cmd_merge_lora(args: argparse.Namespace) -> None:
     import yaml
     from flax import nnx
     from flax.serialization import _msgpack_ext_unpack
-    from core.config import Config
-    from core.lora import LoRALinear
+    from dantinox.core.config import Config
+    from dantinox.core.lora import LoRALinear
 
     run_dir = args.run_dir
     out_dir = args.out_dir
@@ -545,13 +553,13 @@ def _cmd_merge_lora(args: argparse.Namespace) -> None:
     model_type = flat.get("model_type", "autoregressive")
     rngs = nnx.Rngs(42)
     if model_type == "elf":
-        from core.elf import ELFTransformer
+        from dantinox.core.elf import ELFTransformer
         model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
     elif model_type == "diffusion":
-        from core.model import DiffusionTransformer
+        from dantinox.core.model import DiffusionTransformer
         model = DiffusionTransformer(cfg, rngs=rngs)
     else:
-        from core.model import Transformer
+        from dantinox.core.model import Transformer
         model = Transformer(cfg, rngs=rngs)
     nnx.update(model, state_dict)
 
@@ -580,7 +588,7 @@ def _cmd_profile(args: argparse.Namespace) -> None:
     """Print parameter count and FLOPs for a checkpoint or config."""
     import yaml
     from flax import nnx
-    from core.config import Config
+    from dantinox.core.config import Config
     from dantinox.profiling.counter import count_flops
 
     if args.run_dir:
@@ -609,13 +617,13 @@ def _cmd_profile(args: argparse.Namespace) -> None:
     model_type = flat.get("model_type", "autoregressive")
     rngs = nnx.Rngs(42)
     if model_type == "elf":
-        from core.elf import ELFTransformer
+        from dantinox.core.elf import ELFTransformer
         model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
     elif model_type == "diffusion":
-        from core.model import DiffusionTransformer
+        from dantinox.core.model import DiffusionTransformer
         model = DiffusionTransformer(cfg, rngs=rngs)
     else:
-        from core.model import Transformer
+        from dantinox.core.model import Transformer
         model = Transformer(cfg, rngs=rngs)
 
     param_leaves = nnx.state(model, nnx.Param)

@@ -3,12 +3,16 @@ from __future__ import annotations
 import optax
 from flax import nnx
 
-from core.config import TrainingConfig
-from core.lora import LoRAParam
+from dantinox.core.config import TrainingConfig
+from dantinox.core.lora import LoRAParam
 
 
 def build_schedule(config: TrainingConfig, total_steps: int) -> optax.Schedule:
     """Return the learning-rate schedule specified by *config.lr_schedule*.
+
+    *total_steps* counts optimizer **updates** (i.e. micro-steps divided by
+    ``grad_accum``), since gradient accumulation only advances the inner
+    schedule once per accumulated update.
 
     Schedules
     ---------
@@ -63,6 +67,12 @@ def build_optimizer(
 ) -> nnx.Optimizer:
     """Build an ``nnx.Optimizer`` wrapping the requested optax transformation.
 
+    *total_steps* counts optimizer updates (micro-steps / ``grad_accum``).
+
+    When ``config.grad_accum > 1`` the transformation is wrapped in
+    ``optax.MultiSteps`` so gradients are accumulated over that many
+    micro-batches before each update.
+
     When LoRA is active only ``LoRAParam`` variables are updated; all other
     parameters are frozen by zeroing their gradients via a masked transform.
 
@@ -72,43 +82,36 @@ def build_optimizer(
 
     name = config.optimizer.lower()
     if name == "adamw":
-        base = optax.adamw(schedule, weight_decay=0.1)
+        tx = optax.chain(optax.clip_by_global_norm(config.grad_clip),
+                         optax.adamw(schedule, weight_decay=0.1))
     elif name == "adafactor":
-        base = optax.adafactor(learning_rate=schedule)
+        tx = optax.chain(optax.clip_by_global_norm(config.grad_clip),
+                         optax.adafactor(learning_rate=schedule))
     elif name == "lion":
-        base = optax.lion(schedule)
+        tx = optax.chain(optax.clip_by_global_norm(config.grad_clip),
+                         optax.lion(schedule))
     elif name == "adam":
-        base = optax.adam(schedule)
+        tx = optax.chain(optax.clip_by_global_norm(config.grad_clip),
+                         optax.adam(schedule))
     elif name == "muon":
-        # Muon handles clipping internally; skip the outer chain below.
-        base = optax.contrib.muon(learning_rate=schedule)
-        return _maybe_lora(nnx.Optimizer(model, base), model, base)
+        # Muon handles clipping internally; skip the outer clip chain.
+        tx = optax.contrib.muon(learning_rate=schedule)
     else:
         raise ValueError(
             f"Unknown optimizer {config.optimizer!r}. "
             "Choose from: adamw, adafactor, lion, adam, muon."
         )
 
-    tx: optax.GradientTransformation = optax.chain(
-        optax.clip_by_global_norm(config.grad_clip),
-        base,
-    )
-    return _maybe_lora(nnx.Optimizer(model, tx), model, tx)
+    if _model_has_lora(model):
+        tx = _lora_masked_optimizer(tx, model)
+
+    if config.grad_accum > 1:
+        tx = optax.MultiSteps(tx, every_k_schedule=config.grad_accum)
+
+    return nnx.Optimizer(model, tx, wrt=nnx.Param)
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
-
-
-def _maybe_lora(
-    opt: nnx.Optimizer,
-    model: nnx.Module,
-    tx: optax.GradientTransformation,
-) -> nnx.Optimizer:
-    """Rebuild *opt* with LoRA masking when the model has LoRA parameters."""
-    if _model_has_lora(model):
-        masked_tx = _lora_masked_optimizer(tx, model)
-        return nnx.Optimizer(model, masked_tx)
-    return opt
 
 
 def _model_has_lora(model: nnx.Module) -> bool:

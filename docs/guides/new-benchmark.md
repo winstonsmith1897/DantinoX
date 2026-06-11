@@ -129,7 +129,7 @@ print(report.summary())
 import jax
 import jax.numpy as jnp
 from flax import nnx
-from core.config import ModelConfig
+from dantinox.core.config import ModelConfig
 from dantinox.paradigms.ar import ARParadigm
 from dantinox.benchmarking import BenchmarkConfig
 from dantinox.benchmarking.tasks.accuracy import TopKAccuracyTask

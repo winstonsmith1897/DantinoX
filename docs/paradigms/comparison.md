@@ -215,8 +215,8 @@ The following guidance is grounded in the theoretical properties of each paradig
 ## Side-by-Side Code
 
 ```python
-from core.config import Config
-from core.model import Transformer, DiffusionTransformer
+from dantinox.core.config import Config
+from dantinox.core.model import Transformer, DiffusionTransformer
 import flax.nnx as nnx
 
 base = dict(
@@ -228,7 +228,7 @@ base = dict(
 ar_cfg   = Config(**base, model_type="autoregressive")
 ar_model = Transformer(ar_cfg, rngs=nnx.Rngs(0))
 
-from core.generation import generate
+from dantinox.core.generation import generate
 tokens_ar = generate(ar_model, prompt_ids, max_generations=128,
                      top_p=0.9, use_cache=True)
 
@@ -237,8 +237,8 @@ diff_cfg   = Config(**base, model_type="diffusion",
                     diffusion_steps=1000, noise_schedule="cosine")
 diff_model = DiffusionTransformer(diff_cfg, rngs=nnx.Rngs(0))
 
-from core.generation import fast_dllm_generate
-from core.diffusion import make_noise_schedule
+from dantinox.core.generation import fast_dllm_generate
+from dantinox.core.diffusion import make_noise_schedule
 
 schedule    = make_noise_schedule(diff_cfg)
 tokens_diff = fast_dllm_generate(

@@ -40,11 +40,11 @@ import numpy as np
 from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
 
-from core.config import Config
-from core.diffusion import make_noise_schedule
-from core.elf import ELFTransformer
-from core.generation import diffusion_generate, elf_generate
-from core.model import DiffusionTransformer
+from dantinox.core.config import Config
+from dantinox.core.diffusion import make_noise_schedule
+from dantinox.core.elf import ELFTransformer
+from dantinox.core.generation import diffusion_generate, elf_generate
+from dantinox.core.model import DiffusionTransformer
 
 RUNS_DIR = _ROOT / "runs"
 

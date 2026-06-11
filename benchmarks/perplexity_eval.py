@@ -82,8 +82,8 @@ from benchmarks.trained_analysis import (
     _load_model,
     _val_ppl,
 )
-from core.config import Config
-from core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
+from dantinox.core.config import Config
+from dantinox.core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
 
 log = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ def _load_tokenizer(run_path: str) -> Any | None:
     if not os.path.exists(tok_path):
         return None
     try:
-        from utils.tokenizer import load_tokenizer_from_file
+        from dantinox.utils.tokenizer import load_tokenizer_from_file
         return load_tokenizer_from_file(tok_path)
     except Exception as exc:
         log.warning("Could not load tokenizer from %s: %s", tok_path, exc)

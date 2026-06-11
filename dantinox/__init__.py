@@ -27,8 +27,8 @@ Three levels of API
 
 **Level 3 — full control**::
 
-    from core.config    import ModelConfig
-    from core.model     import Transformer
+    from dantinox.core.config    import ModelConfig
+    from dantinox.core.model     import Transformer
     from dantinox.paradigms.ar      import ARParadigm
     from dantinox.training.trainer  import Trainer
     from dantinox.profiling         import LatencyTracker, count_flops
@@ -42,10 +42,10 @@ except PackageNotFoundError:
     __version__ = "0.0.0.dev"
 
 # ── Config re-exports ─────────────────────────────────────────────────────────
-from core.config import Config, ELFConfig, ModelConfig, TrainingConfig
+from dantinox.core.config import Config, ELFConfig, ModelConfig, TrainingConfig
 
 # ── Core model ────────────────────────────────────────────────────────────────
-from core.model import Transformer
+from dantinox.core.model import Transformer
 
 # ── Paradigms ─────────────────────────────────────────────────────────────────
 from dantinox.paradigms import (
@@ -266,7 +266,6 @@ def profile(
 
     if model is not None:
         import jax
-        import jax.numpy as jnp
         rng = jax.random.PRNGKey(0)
         x   = jax.random.randint(rng, (batch_size, seq_len), 0, config.vocab_size)
 
@@ -278,7 +277,7 @@ def profile(
                 _ = model(x)
 
     result = tracker.result()
-    result.__dict__["flops"] = flops  # attach FLOPs to the result for convenience
+    result.flops = flops
     return result
 
 
@@ -302,14 +301,15 @@ def load(run_dir: str, paradigm: Paradigm | None = None):
         raise FileNotFoundError(f"No checkpoint found at {ckpt_path}")
 
     if paradigm is not None:
+        from dantinox.training.trainer import _msgpack_load
         model = paradigm.build_model(nnx.Rngs(0))
-        state = nnx.state(model)
-        with open(ckpt_path, "rb") as f:
-            restored = flax.serialization.from_bytes(state, f.read())
-        nnx.update(model, restored)
+        raw = _msgpack_load(ckpt_path)
+        state = nnx.state(model, nnx.Not(nnx.RngState))
+        state.replace_by_pure_dict(raw)
+        nnx.update(model, state)
         return model
 
-    from core.model import Transformer
+    from dantinox.core.model import Transformer
     return Transformer.from_pretrained(run_dir, rngs=nnx.Rngs(0))
 
 
@@ -324,16 +324,55 @@ def quick_generate(
 ) -> str:
     """Load checkpoint and generate text — no boilerplate required.
 
+    When *paradigm* is given the checkpoint is restored through
+    ``paradigm.build_model()`` and decoded with ``paradigm.generate``;
+    *tokenizer* (or the run's saved ``tokenizer.json``) handles text ↔ ids.
+    Otherwise the run directory is loaded with :class:`Generator`.
+
     Example::
 
         print(dx.quick_generate("runs/20240101_120000", "Once upon a time"))
     """
-    gen = Generator(run_dir)
-    return gen.generate(
-        prompt,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-    )
+    if paradigm is None:
+        gen = Generator(run_dir)
+        return gen.generate(
+            prompt,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+        )
+
+    import os
+    import jax
+    import jax.numpy as jnp
+
+    if tokenizer is None:
+        from dantinox.utils.tokenizer import load_tokenizer_from_file
+        tok_path = os.path.join(run_dir, "tokenizer.json")
+        if not os.path.exists(tok_path):
+            raise FileNotFoundError(
+                f"No tokenizer.json in {run_dir!r} — pass tokenizer= explicitly."
+            )
+        tokenizer = load_tokenizer_from_file(tok_path)
+
+    model = load(run_dir, paradigm=paradigm)
+    ids   = jnp.asarray([tokenizer.encode(prompt)], dtype=jnp.int32)
+    rng   = jax.random.PRNGKey(0)
+
+    # Paradigms name their length/temperature knobs differently (AR:
+    # max_new_tokens, diffusion: gen_len, ELF: gen_len only) — forward what
+    # this paradigm actually accepts.
+    import inspect
+    params = inspect.signature(paradigm.generate).parameters
+    kwargs = {}
+    if "max_new_tokens" in params:
+        kwargs["max_new_tokens"] = max_new_tokens
+    elif "gen_len" in params:
+        kwargs["gen_len"] = max_new_tokens
+    if "temperature" in params:
+        kwargs["temperature"] = temperature
+
+    out = paradigm.generate(model, ids, rng, **kwargs)
+    return tokenizer.decode([int(t) for t in out[0]])
 
 
 __all__ = [

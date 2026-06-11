@@ -9,7 +9,11 @@ from typing import Any, Callable, Iterator
 
 @dataclass
 class ProfilingResult:
-    """Aggregated latency and throughput statistics."""
+    """Aggregated latency and throughput statistics.
+
+    ``flops`` is filled in by :func:`dantinox.profile` with the analytical
+    FLOPs breakdown when a model config is provided.
+    """
 
     latency_mean_ms: float
     latency_p50_ms: float
@@ -17,15 +21,19 @@ class ProfilingResult:
     throughput_tps: float
     n_samples: int
     total_tokens: int
+    flops: Any | None = None
 
     def __str__(self) -> str:
-        return (
+        out = (
             f"Profiling ({self.n_samples} samples, {self.total_tokens:,} tokens):\n"
             f"  latency mean : {self.latency_mean_ms:.2f} ms\n"
             f"  latency p50  : {self.latency_p50_ms:.2f} ms\n"
             f"  latency p99  : {self.latency_p99_ms:.2f} ms\n"
             f"  throughput   : {self.throughput_tps:,.0f} tokens/s"
         )
+        if self.flops is not None:
+            out += f"\n  flops        : {self.flops}"
+        return out
 
 
 class LatencyTracker:

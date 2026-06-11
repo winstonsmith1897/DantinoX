@@ -10,6 +10,50 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.0] — 2026-06-11
+
+### Changed — package layout (action required by 0.5.0)
+
+- **`core` and `utils` moved into the package**: `core/` → `dantinox/core/`, `utils/` → `dantinox/utils/`. Installing dantinox no longer pollutes site-packages with generic top-level `core` / `utils` packages. Thin top-level shims keep old imports (`from core.config import …`) working with a `DeprecationWarning`; **the shims will be removed in 0.5.0**.
+- Dependency bounds pinned (`jax>=0.4.30,<0.10`, `flax>=0.10,<0.13`) — JAX/Flax make frequent breaking changes; the library is now tested against an explicit range.
+- New optional extra `elf` (`pip install dantinox[elf]`) installs `transformers` for the frozen T5 encoder used by ELF.
+
+### Added — paradigm Trainer reaches feature parity
+
+- **Validation split** (`TrainingConfig.val_frac`, default 0.1): the best checkpoint is now selected by *validation* loss, not training loss.
+- **Gradient accumulation** (`grad_accum`) via `optax.MultiSteps`; the LR schedule advances per optimizer update, not per micro-step.
+- **Early stopping** (`patience` epochs without validation improvement).
+- **bf16 parameter casting** (`use_bf16`).
+- **Full train-state checkpointing**: `train_state.msgpack` stores model + optimizer state every epoch; `Trainer.fit(..., resume=True)` continues a crashed run exactly (epoch, schedule position, best-loss bookkeeping).
+- **ELF training through the paradigm Trainer**: new `Paradigm.on_train_start` / `Paradigm.prepare_batch` hooks drive the frozen T5 encoder outside JIT (norm-stats initialisation + per-batch contextual embeddings).
+- **Memory-mapped token cache**: corpora are tokenised once into `<source>.<tok>.tokens.npy` and re-read via `np.load(mmap_mode="r")` — large corpora are no longer held in RAM as Python lists.
+- Run metadata: the paradigm Trainer now writes `config.yaml` and `tokenizer.json`, so `Generator` / `dx.quick_generate` work on its runs.
+- Legacy bridge: `Trainer(Config(...))` (monolithic config) still works — it converts to the paradigm API with a `DeprecationWarning` — and passing the wrong config type raises a `TypeError` that shows the correct usage.
+
+### Fixed
+
+- Paradigm Trainer derived `seq_len`/`vocab_size` from `TrainingConfig` defaults (512/200) instead of the model config — batches now match `max_context` and the tokenizer is checked against the model vocabulary.
+- `ARParadigm.generate`, `DiscreteParadigm.generate`, and `ContinuousParadigm.generate` called `core.generation` with non-existent signatures.
+- `ContinuousParadigm.loss_fn` skipped T5 embedding normalisation (`model.encode`).
+- `dantinox.training` stack used the pre-0.11 Flax NNX `Optimizer` API (`nnx.Optimizer(model, tx)` / `update(grads)`) and crashed on current Flax.
+- Multi-device path crashed (`replicate()` on a Module; non-divisible batch sizes now fall back to fewer devices with a warning).
+- Checkpoint serialisation of NNX state on Flax ≥ 0.12 (typed RNG keys are excluded; states round-trip via `to_pure_dict`).
+- `dx.profile()` no longer smuggles FLOPs via `result.__dict__` — `ProfilingResult` has a real `flops` field.
+- `dx.quick_generate()` honours its `paradigm` and `tokenizer` arguments.
+- Removed uses of the long-deprecated `jax.random.KeyArray` type alias.
+
+### Deprecated
+
+- Top-level `core` / `utils` packages (use `dantinox.core` / `dantinox.utils`).
+- `dantinox.trainer.Trainer` (monolithic-Config engine) — use `dantinox.Trainer` with a Paradigm. The CLI still drives the legacy engine for `sweep`/`find-lr`.
+
+### Repo
+
+- `site/` (generated docs) and root scratchpad scripts untracked; scratch scripts moved to `scripts/scratch/`, demos to `examples/`.
+- `examples/DantinoX_Colab.ipynb` rewritten for the paradigm API, including a new ELF section.
+
+---
+
 ## [0.1.0] — 2026-04-30
 
 ### Added

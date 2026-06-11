@@ -75,7 +75,7 @@ the per-device batch size (and thus gradient noise) constant:
 ## Low-level API
 
 ```python
-from core.sharding import make_mesh, replicate, shard_batch, num_devices
+from dantinox.core.sharding import make_mesh, replicate, shard_batch, num_devices
 
 mesh = make_mesh(n_devices=4)
 print(f"Training on {num_devices(mesh)} GPUs")

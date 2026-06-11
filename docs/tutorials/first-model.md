@@ -102,7 +102,7 @@ dantinox train \
 ### Using the Python API
 
 ```python
-from core.config import Config
+from dantinox.core.config import Config
 from dantinox.trainer import Trainer
 
 config = Config.from_yaml("configs/tutorial.yaml")

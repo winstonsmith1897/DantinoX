@@ -39,7 +39,7 @@ class PerplexityTask(BenchmarkTask):
         paradigm: Any,
         model: Any,
         config: BenchmarkConfig,
-        rng: jax.random.KeyArray,
+        rng: jax.Array,
     ) -> BenchmarkResult:
         if self.data_source is None:
             log.warning(
@@ -101,7 +101,7 @@ def _sample_batch(
     tokens: list[int],
     bs: int,
     seq_len: int,
-    rng: jax.random.KeyArray,
+    rng: jax.Array,
 ) -> jnp.ndarray:
     max_start = max(len(tokens) - seq_len - 1, 1)
     starts    = jax.random.randint(rng, (bs,), 0, max_start)
