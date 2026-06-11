@@ -1,107 +1,109 @@
 # Quickstart
 
-Questa guida ti porta da zero a un modello linguistico funzionante in pochi minuti.
-Sono illustrati tutti i passaggi: installazione, addestramento, generazione, e i tre paradigmi disponibili.
+This guide takes you from zero to a working language model in a few minutes.
+Every step is explained: installation, training, generation, and all three available paradigms.
 
 ---
 
-## 1. Installazione
+## 1. Installation
 
-### Prerequisiti
+### Prerequisites
 
-| Requisito | Versione minima | Note |
-|:----------|:---------------:|:-----|
-| Python | 3.10 | Richiesto per le type annotations |
-| JAX | 0.4.25 | Serve XLA e JIT compilation |
-| Flax NNX | 0.8 | API a stato mutabile (diversa da Linen) |
-| CUDA | 12.x | Solo per GPU NVIDIA |
+| Requirement | Minimum version | Notes |
+|:------------|:---------------:|:------|
+| Python | 3.10 | Required for type annotations |
+| JAX | 0.4.25 | Provides XLA and JIT compilation |
+| Flax NNX | 0.8 | Mutable-state API (different from Linen) |
+| CUDA | 12.x | NVIDIA GPU only |
 
-### Da sorgente (consigliato per la ricerca)
+### From source (recommended for research)
 
-```bash title="Terminale"
-# 1. Clona il repository
+```bash title="Terminal"
+# 1. Clone the repository
 git clone https://github.com/winstonsmith1897/DantinoX.git
 cd DantinoX
 
-# 2. (Opzionale ma consigliato) Crea un ambiente virtuale dedicato
+# 2. (Optional but recommended) Create a dedicated virtual environment
 conda create -n dantinox python=3.10 -y
 conda activate dantinox
 
-# 3. Installa JAX con supporto GPU CUDA 12
+# 3. Install JAX with CUDA 12 GPU support
 pip install -U "jax[cuda12]" jaxlib
 
-# 4. Installa DantinoX in modalità editabile con tutte le dipendenze
+# 4. Install DantinoX in editable mode with all dependencies
 pip install -e ".[all]"
 ```
 
-!!! note "Solo CPU"
-    Se non hai una GPU o vuoi girare su CPU, sostituisci `jax[cuda12]` con `jax[cpu]`. Il codice funziona identicamente, solo più lento.
+!!! note "CPU-only"
+    If you have no GPU or want to run on CPU, replace `jax[cuda12]` with `jax[cpu]`.
+    All code works identically, just slower.
 
-!!! tip "Verifica l'installazione"
-    Dopo l'installazione, verifica che JAX veda la tua GPU:
+!!! tip "Verify the installation"
+    After installing, confirm JAX can see your GPU:
     ```python
     import jax
-    print(jax.devices())   # dovrebbe stampare [CudaDevice(id=0), ...]
+    print(jax.devices())   # should print [CudaDevice(id=0), ...]
     ```
 
-### Come pacchetto PyPI
+### From PyPI
 
 ```bash
-pip install dantinox                   # solo il core
+pip install dantinox                   # core only
 pip install "dantinox[data]"          # + HuggingFace datasets
 pip install "dantinox[benchmark]"     # + pandas, matplotlib, scipy
-pip install "dantinox[all]"           # tutto inclusi dev e doc tools
+pip install "dantinox[all]"           # everything including dev and doc tools
 ```
 
 ---
 
-## 2. Il tuo primo modello in 10 righe
+## 2. Your first model in 10 lines
 
-DantinoX offre tre livelli di astrazione. La funzione `dx.fit` è il livello più alto: fa tutto in automatico.
+DantinoX provides three levels of abstraction. The `dx.fit` function is the highest level: it handles everything automatically.
 
-```python title="primo_modello.py"
+```python title="first_model.py"
 import dantinox as dx
 
-# dx.fit costruisce il modello, lo addestra e salva il checkpoint
+# dx.fit builds the model, trains it, and saves the checkpoint
 run_dir = dx.fit(
-    "ar",                               # paradigma: "ar" | "discrete" | "continuous"
-    "data/wiki.txt",                    # file di testo per l'addestramento
-    dim=512,                            # dimensione degli embedding (latent space)
-    n_heads=8,                          # numero di teste dell'attention
-    head_size=64,                       # dim per testa — DEVE valere: dim = n_heads × head_size
-    num_blocks=12,                      # numero di layer Transformer
-    vocab_size=32_000,                  # dimensione del vocabolario
-    lr=3e-4,                            # learning rate iniziale (Adam)
-    epochs=5,                           # numero di epoche di addestramento
+    "ar",                               # paradigm: "ar" | "discrete" | "continuous"
+    "data/wiki.txt",                    # text file used for training
+    dim=512,                            # embedding dimension (latent space size)
+    n_heads=8,                          # number of attention heads
+    head_size=64,                       # dimension per head — MUST satisfy: dim = n_heads × head_size
+    num_blocks=12,                      # number of Transformer layers
+    vocab_size=32_000,                  # vocabulary size
+    lr=3e-4,                            # initial learning rate (Adam)
+    epochs=5,                           # number of training epochs
 )
 
-# run_dir è la cartella salvata, es. "runs/20260611_142301"
+# run_dir is the saved folder, e.g. "runs/20260611_142301"
 print(dx.quick_generate(run_dir, "Once upon a time"))
 ```
 
-**Cosa succede internamente:**
+**What happens internally:**
 
-1. `dx.fit` costruisce il `Transformer` con la configurazione specificata
-2. Istanzia un `CharTokenizer` (o BPE se `tokenizer_type="bpe"`)
-3. Crea un `Trainer` con `AdamW` e schedule cosine
-4. Addestra per `epochs` epoche, salvando il checkpoint migliore in `runs/<timestamp>/best_model_weights.msgpack`
-5. Restituisce il path della cartella
+1. `dx.fit` constructs a `Transformer` with the specified configuration
+2. Instantiates a `CharTokenizer` (or BPE if `tokenizer_type="bpe"`)
+3. Creates a `Trainer` with `AdamW` and a cosine learning-rate schedule
+4. Trains for `epochs` epochs, saving the best checkpoint to `runs/<timestamp>/best_model_weights.msgpack`
+5. Returns the path to the run folder
 
-!!! warning "Vincolo fondamentale"
-    `dim` deve essere esattamente uguale a `n_heads × head_size`.
-    Con `n_heads=8` e `head_size=64`, devi usare `dim=512`.
-    Se i valori non corrispondono, il costruttore lancia un `ValueError`.
+!!! warning "Key constraint"
+    `dim` must equal exactly `n_heads × head_size`.
+    With `n_heads=8` and `head_size=64`, you must use `dim=512`.
+    If the values do not match, the constructor raises a `ValueError`.
 
 ---
 
-## 3. I tre paradigmi
+## 3. The three paradigms
 
-DantinoX supporta tre modi diversi di generare testo, tutti con la stessa architettura transformer di base. Cambia solo come il modello viene addestrato e come genera.
+DantinoX supports three different ways to generate text, all sharing the same base Transformer architecture.
+Only the training objective and the generation procedure differ.
 
-### Paradigma 1 — Autoregressive (AR)
+### Paradigm 1 — Autoregressive (AR)
 
-Il modello classico: genera un token alla volta, da sinistra a destra.
-Ogni token generato dipende da tutti i token precedenti.
+The classic paradigm: generates one token at a time, left to right.
+Each generated token depends on all previous tokens.
 
 ```python
 run_dir = dx.fit(
@@ -109,18 +111,18 @@ run_dir = dx.fit(
     "data/wiki.txt",
     dim=512, n_heads=8, head_size=64, num_blocks=12,
     vocab_size=32_000,
-    causal=True,          # applica una maschera causale (lower triangular)
+    causal=True,          # applies a causal (lower-triangular) attention mask
     lr=3e-4,
     epochs=5,
 )
 ```
 
-**Quando usarlo:** È il paradigma più semplice da addestrare e più veloce in inferenza con KV-cache. Buono come baseline.
+**When to use it:** The simplest paradigm to train and the fastest at inference with KV-cache. Good as a baseline.
 
-### Paradigma 2 — Masked Diffusion (LLaDA / Discrete)
+### Paradigm 2 — Masked Diffusion (LLaDA / Discrete)
 
-Il modello è addestrato a "de-noisare": durante il training, parte dei token viene sostituita con un token `[MASK]`, e il modello impara a predirli tutti simultaneamente.
-In generazione, parte da una sequenza completamente mascherata e rimuove i mask iterativamente.
+The model is trained to denoise: during training, a fraction of tokens is replaced with a `[MASK]` token, and the model learns to predict all masked positions simultaneously.
+At generation time, it starts from a fully masked sequence and unmasks tokens iteratively.
 
 ```python
 run_dir = dx.fit(
@@ -128,53 +130,55 @@ run_dir = dx.fit(
     "data/wiki.txt",
     dim=512, n_heads=8, head_size=64, num_blocks=12,
     vocab_size=32_000,
-    causal=False,             # l'attention è bidirezionale (vede tutta la sequenza)
-    noise_schedule="cosine",  # schedule per decidere quanti token mascherare
-    mask_token_id=4,          # ID del token [MASK] nel vocabolario
+    causal=False,             # bidirectional attention (sees the whole sequence)
+    noise_schedule="cosine",  # schedule that controls how many tokens to mask
+    mask_token_id=4,          # vocabulary ID of the [MASK] token
     lr=3e-4,
-    epochs=20,                # richiede più epoche dell'AR
+    epochs=20,                # requires more epochs than AR
 )
 ```
 
-**Quando usarlo:** Genera output più coerenti e diversificati rispetto all'AR su certi task. È più lento in inferenza perché richiede più passaggi, ma può essere accelerato con Fast-dLLM (vedi sotto).
+**When to use it:** Produces more coherent and diverse outputs than AR on certain tasks.
+Inference requires multiple steps but can be accelerated with Fast-dLLM (see Generation section below).
 
-### Paradigma 3 — ELF (Continuous Flow-Matching)
+### Paradigm 3 — ELF (Continuous Flow-Matching)
 
-Il modello opera nello spazio degli embedding continui, non su token discreti.
-Parte da rumore gaussiano e, con un ODE di Euler, lo trasforma negli embedding dei token.
+The model operates in the continuous embedding space rather than on discrete tokens.
+It transforms Gaussian noise into clean token embeddings using an Euler ODE solver.
 
 ```python
 run_dir = dx.fit(
     "continuous",
     "data/wiki.txt",
-    embed_dim=768,     # dimensione dello spazio di embedding continuo
-    model_dim=512,     # dimensione interna del transformer
+    embed_dim=768,     # dimension of the continuous embedding space
+    model_dim=512,     # internal Transformer dimension
     n_heads=8, head_size=64, num_blocks=12,
     vocab_size=32_128,
-    elf_cfg_scale=1.5, # scala del Classifier-Free Guidance (0 = no guidance)
+    elf_cfg_scale=1.5, # Classifier-Free Guidance scale (0 = no guidance)
     lr=1e-4,
     epochs=30,
 )
 ```
 
-**Quando usarlo:** Paradigma sperimentale per ricerca su flow-matching discreto. Richiede più dati e più epoche.
+**When to use it:** Experimental paradigm for research on discrete flow-matching.
+Requires more data and more training epochs than AR or diffusion.
 
 ---
 
-## 4. API esplicita (livello 2)
+## 4. Explicit API (Level 2)
 
-Se hai bisogno di più controllo — ad esempio per customizzare l'ottimizzatore o accedere al modello direttamente — usa l'API a paradigma esplicito.
+If you need more control — for example to customise the optimiser or access the model directly — use the explicit paradigm API.
 
-```python title="training_esplicito.py"
+```python title="explicit_training.py"
 import dantinox as dx
 from flax import nnx
 
-# Definisci separatamente architettura e training
+# Separate architecture config from training config
 model_cfg    = dx.ModelConfig(
     dim=512, n_heads=8, head_size=64,
     num_blocks=12, vocab_size=32_000,
-    attention_type="gqa",   # usa Grouped-Query Attention invece di MHA
-    kv_heads=2,             # 2 KV heads condivisi da 8 query heads
+    attention_type="gqa",   # use Grouped-Query Attention instead of MHA
+    kv_heads=2,             # 2 KV heads shared across 8 query heads
 )
 
 training_cfg = dx.TrainingConfig(
@@ -187,53 +191,52 @@ training_cfg = dx.TrainingConfig(
     epochs=5,
 )
 
-# Crea il paradigma e costruisci il modello
+# Build paradigm and model
 paradigm = dx.ARParadigm(model_cfg)
 model    = paradigm.build_model(nnx.Rngs(params=42))
 
-# Addestra
+# Train
 run_dir = dx.Trainer(paradigm, training_cfg).fit("data/wiki.txt")
 
-# Carica e genera
-model   = dx.load(run_dir, paradigm=paradigm)
-tokens  = paradigm.generate(model, prompt_ids, rng=nnx.Rngs(0))
+# Load and generate
+model  = dx.load(run_dir, paradigm=paradigm)
+tokens = paradigm.generate(model, prompt_ids, rng=nnx.Rngs(0))
 ```
 
 ---
 
-## 5. Generazione
+## 5. Generation
 
-### AR — generazione autoregressive
+### AR — autoregressive generation
 
-```python title="generazione_ar.py"
+```python title="generate_ar.py"
 from dantinox.generator import Generator
 
 gen    = Generator("runs/ar_512d_12b")
 output = gen.generate(
     "In the beginning",
     max_new_tokens=200,
-    top_p=0.9,          # nucleus sampling: considera solo i token che coprono il 90% di prob
-    temperature=0.8,    # abbassa la casualità
-    use_cache=True,     # usa il KV-cache per velocità 3-4× maggiore
+    top_p=0.9,          # nucleus sampling: keep tokens covering 90% of probability mass
+    temperature=0.8,    # lower value = less random output
+    use_cache=True,     # use static KV-cache for 3-4× faster inference
 )
 print(output)
 ```
 
-### Diffusion — generazione con Fast-dLLM
+### Diffusion — generation with Fast-dLLM
 
-```python title="generazione_diffusion.py"
+```python title="generate_diffusion.py"
 from core.generation import fast_dllm_generate
 from core.diffusion import make_noise_schedule
-import yaml, msgpack
 from core.config import Config
 from core.model import DiffusionTransformer
 from flax import nnx
 
-# Carica config e modello
+# Load config and model
 cfg      = Config.from_yaml("runs/diffusion_512d/config.yaml")
 schedule = make_noise_schedule(cfg)
 model    = DiffusionTransformer(cfg, rngs=nnx.Rngs(0))
-# ... carica i pesi ...
+# ... load weights ...
 
 tokens = fast_dllm_generate(
     model,
@@ -241,40 +244,40 @@ tokens = fast_dllm_generate(
     gen_len=128,
     schedule=schedule,
     mask_token_id=cfg.mask_token_id,
-    block_size=32,              # decodifica 32 token per blocco
-    use_dual_cache=True,        # cache duale: ~1.8× più veloce
-    confidence_threshold=0.9,  # committa un token quando la confidenza > 90%
+    block_size=32,              # decode 32 tokens per block
+    use_dual_cache=True,        # dual cache: ~1.8× faster
+    confidence_threshold=0.9,  # commit a token once confidence exceeds 90%
 )
 ```
 
-### ELF — generazione con flow-matching
+### ELF — generation with flow-matching
 
-```python title="generazione_elf.py"
+```python title="generate_elf.py"
 from core.generation import elf_generate
 
 tokens = elf_generate(
     model,
     gen_len=128,
     batch_size=4,
-    n_steps=64,       # passi dell'ODE di Euler (più passi = più qualità)
-    cfg_scale=1.5,    # forza del guidance
+    n_steps=64,       # Euler ODE steps (more steps = higher quality)
+    cfg_scale=1.5,    # guidance strength
     seed=42,
 )
 ```
 
 ---
 
-## 6. Interfaccia CLI
+## 6. CLI
 
-Ogni operazione disponibile in Python è accessibile anche da terminale. Utile per script di training e automazione.
+Every Python operation is also accessible from the command line. Useful for training scripts and automation.
 
-```bash title="Terminale"
-# Addestra con un file di configurazione YAML
+```bash title="Terminal"
+# Train using a YAML config file
 dantinox train \
     --config configs/default_config.yaml \
     --data_path data/wiki.txt
 
-# Sovrascrivi parametri al volo senza toccare il YAML
+# Override parameters inline without editing the YAML
 dantinox train \
     --config configs/default_config.yaml \
     --data_path data/wiki.txt \
@@ -283,94 +286,95 @@ dantinox train \
     --use_bf16 true \
     --n_devices 4
 
-# Genera testo da un checkpoint salvato
+# Generate text from a saved checkpoint
 dantinox generate \
     --run_dir runs/ar_512d_12b \
     --prompt "In the beginning" \
     --top_p 0.9 \
     --max_new_tokens 300 \
-    --stream              # stampa i token man mano che vengono generati
+    --stream              # print tokens as they are generated
 
-# Trova il learning rate ottimale prima di addestrare
+# Find the optimal learning rate before training
 dantinox find-lr \
     --config configs/default_config.yaml \
     --data_path data/wiki.txt \
     --plot
 
-# Mostra parametri e FLOPs per un checkpoint
+# Print parameter count and FLOPs for a checkpoint
 dantinox profile --run_dir runs/ar_512d_12b
 
-# Valuta la qualità della generazione (distinct-1, distinct-2, rep-4)
+# Evaluate generation quality (distinct-1, distinct-2, rep-4)
 dantinox eval \
     --run_dir runs/ar_512d_12b \
     --n_samples 50 \
     --gen_len 128
 
-# Fondi i pesi LoRA nel modello base (per deployment)
+# Merge LoRA adapter weights into the base model (for deployment)
 dantinox merge-lora \
     --run_dir runs/lora_finetune \
     --out_dir runs/lora_merged
 ```
 
-Vedi la [CLI Reference](cli.md) per l'elenco completo dei comandi e di tutti i loro argomenti.
+See the [CLI Reference](cli.md) for the full list of commands and all their arguments.
 
 ---
 
-## 7. Struttura dell'output di training
+## 7. Training output structure
 
-Quando esegui un training, DantinoX salva tutto in una cartella strutturata così:
+When you run a training job, DantinoX saves everything in a structured folder:
 
 ```
 runs/
-└── 20260611_142301/          ← nome generato automaticamente (data + ora)
-    ├── config.yaml           ← copia esatta della configurazione usata (riproducibile!)
-    ├── best_model_weights.msgpack  ← pesi del checkpoint con validation loss migliore
-    ├── training_log.csv      ← log step-by-step di loss, lr, grad_norm, …
-    └── model_summary.json    ← riepilogo architettura (n. parametri, FLOPs, …)
+└── 20260611_142301/                    ← auto-generated name (date + time)
+    ├── config.yaml                     ← exact copy of the config used (fully reproducible)
+    ├── best_model_weights.msgpack      ← checkpoint with the best validation loss
+    ├── training_log.csv                ← step-by-step log: loss, lr, grad_norm, …
+    └── model_summary.json             ← architecture summary (parameter count, FLOPs, …)
 ```
 
-Il file `config.yaml` ti permette di riprodurre esattamente lo stesso training in futuro, oppure di riprendere da dove si era interrotto con `--resume`.
+The `config.yaml` file lets you reproduce the exact same training run in the future,
+or resume from where it stopped with `--resume`.
 
 ---
 
-## 8. Prossimi passi
+## 8. Next steps
 
 <div class="grid cards" markdown>
 
--   :material-book-open-variant: **Architettura**
+-   :material-book-open-variant: **Architecture**
 
-    Capire i layer interni: MHA, GQA, MLA, SwiGLU, MoE, RoPE, LoRA.
+    Understand the internal layers: MHA, GQA, MLA, SwiGLU, MoE, RoPE, LoRA.
 
-    [Architettura →](architecture.md)
+    [Architecture →](architecture.md)
 
 -   :material-blur: **Masked Diffusion (LLaDA)**
 
-    Forward process, noise schedule cosine, ELBO loss, unmasking iterativo.
+    Forward process, cosine noise schedule, ELBO loss, iterative unmasking.
 
-    [Paradigma Diffusion →](paradigms/diffusion.md)
+    [Diffusion Paradigm →](paradigms/diffusion.md)
 
--   :material-tune: **Guida al Training**
+-   :material-tune: **Training Guide**
 
-    Ottimizzatori (Muon, AdamW, Lion), multi-GPU, gradient accumulation, sweep W&B.
+    Optimisers (Muon, AdamW, Lion), multi-GPU, gradient accumulation, W&B sweeps.
 
     [Training →](training/index.md)
 
 -   :material-chef-hat: **Cookbook**
 
-    Ricette copia-incolla per ogni scenario: training, generazione, LoRA, Hub, benchmark.
+    Copy-paste recipes for every scenario: training, generation, LoRA, Hub, benchmarks.
 
     [Cookbook →](cookbook.md)
 
 -   :material-console: **CLI Reference**
 
-    Tutti i 12 sottocomandi con tabelle complete degli argomenti.
+    All 12 subcommands with complete argument tables.
 
     [CLI →](cli.md)
 
--   :material-file-cog: **Configurazione**
+-   :material-file-cog: **Configuration**
 
-    Ogni campo di `ModelConfig`, `TrainingConfig`, `Config`, `ELFConfig` spiegato in dettaglio.
+    Every field of `ModelConfig`, `TrainingConfig`, `Config`, and `ELFConfig` explained in detail.
 
-    [Configurazione →](configuration.md)
+    [Configuration →](configuration.md)
 
 </div>

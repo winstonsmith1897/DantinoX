@@ -112,11 +112,17 @@ train_one() {
 
     ((N_TOTAL++)) || true
     local run_dir="runs/${tag}"
-    if [[ -f "${run_dir}/model_weights.msgpack" || -f "${run_dir}/best_model_weights.msgpack" ]]; then
+
+    # Skip if completed (best checkpoint exists but no cursor = training finished)
+    if [[ -f "${run_dir}/best_model_weights.msgpack" && ! -f "${run_dir}/training_cursor.json" ]]; then
         echo "  [SKIP]  ${tag}"; ((N_SKIP++)) || true; return 0
     fi
 
     local _gc="true"
+
+    # Resume if interrupted checkpoint exists
+    local _resume="false"
+    [[ -f "${run_dir}/training_cursor.json" ]] && _resume="true"
 
     local cmd=(
         env
@@ -133,6 +139,7 @@ train_one() {
         --grad_accum 4
         --max_train_tokens "${_CUR_TOKENS}"
         --epochs "${_CUR_EPOCHS}"
+        --resume "${_resume}"
         --tokenizer_type t5
         --dataset_source huggingface
         --dataset_name "wikitext"

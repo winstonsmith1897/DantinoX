@@ -49,13 +49,13 @@ theme:
       accent: custom
       toggle:
         icon: material/weather-night
-        name: Passa alla modalità scura
+        name: Switch to dark mode
     - scheme: slate
       primary: custom
       accent: custom
       toggle:
         icon: material/weather-sunny
-        name: Passa alla modalità chiara
+        name: Switch to light mode
 
 # ── Plugins ───────────────────────────────────────────────────────────────────
 plugins:

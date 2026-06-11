@@ -7,8 +7,8 @@ hide:
 
 # DantinoX
 
-**Una libreria JAX/Flax NNX per la ricerca su modelli linguistici.**
-Tre paradigmi di generazione — Autoregressive, Masked Diffusion e ELF — sulla stessa architettura transformer, con un unico trainer e zero boilerplate.
+**A research-grade JAX/Flax NNX library for language model research.**
+Three generation paradigms — Autoregressive, Masked Diffusion, and ELF — on the same Transformer architecture, with a single trainer and zero boilerplate.
 
 <div class="hero-badges" markdown>
 [![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=google&logoColor=white)](https://github.com/google/jax)
@@ -18,7 +18,7 @@ Tre paradigmi di generazione — Autoregressive, Masked Diffusion e ELF — sull
 [![Docs](https://readthedocs.org/projects/dantinox/badge/?version=latest&style=flat-square)](https://dantinox.readthedocs.io)
 </div>
 
-[Inizia subito →](quickstart.md){ .md-button .md-button--primary }
+[Get Started →](quickstart.md){ .md-button .md-button--primary }
 [API Reference](api/index.md){ .md-button }
 [Cookbook](cookbook.md){ .md-button }
 [GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
@@ -27,103 +27,103 @@ Tre paradigmi di generazione — Autoregressive, Masked Diffusion e ELF — sull
 
 ---
 
-## Cos'è DantinoX?
+## What is DantinoX?
 
-DantinoX è una libreria di ricerca scritta in puro JAX per costruire e addestrare transformer per la generazione di linguaggio naturale. Nasce per rispondere a una domanda semplice: **come si comportano diversi paradigmi di generazione — autoregressive, masked diffusion, e flow-matching — sulla stessa architettura e con lo stesso codice di training?**
+DantinoX is a research library written in pure JAX for building and training Transformer language models. It was created to answer a simple question: **how do different generation paradigms — autoregressive, masked diffusion, and flow-matching — compare when trained on the same architecture with the same training code?**
 
-La libreria è progettata per tre tipi di utenti:
+The library is designed for three types of users:
 
-- **Ricercatori** che vogliono confrontare AR vs. Diffusion vs. ELF in modo riproducibile
-- **Studenti** che vogliono capire i dettagli interni di un transformer moderno
-- **Ingegneri** che vogliono sperimentare con varianti architetturali (GQA, MLA, MoE, LoRA) senza riscrivere il trainer da zero
+- **Researchers** who want to compare AR vs. Diffusion vs. ELF in a reproducible way
+- **Students** who want to understand the internal details of a modern Transformer
+- **Engineers** who want to experiment with architectural variants (GQA, MLA, MoE, LoRA) without rewriting the trainer from scratch
 
 ---
 
-## I tre paradigmi in sintesi
+## The three paradigms
 
 <div class="grid cards" markdown>
 
 -   :material-arrow-right-circle: **Autoregressive (AR)**
 
-    Il paradigma classico: genera un token alla volta, da sinistra a destra. Ogni token prodotto viene aggiunto al contesto e usato per predire il successivo.
+    The classical paradigm: generates one token at a time, left to right. Each produced token is appended to the context and used to predict the next one.
 
-    **Pro:** Semplice, veloce con KV-cache, ottimo come baseline.
+    **Pros:** Simple, fast at inference with KV-cache, great as a baseline.
 
-    **Contro:** Non può "correggere" token già generati.
+    **Cons:** Cannot revise tokens that have already been generated.
 
-    [Approfondisci →](paradigms/autoregressive.md)
+    [Learn more →](paradigms/autoregressive.md)
 
 -   :material-blur: **Masked Diffusion (LLaDA)**
 
-    Genera tutti i token in parallelo, partendo da una sequenza completamente mascherata e rimuovendo i `[MASK]` in modo iterativo. L'attention è bidirezionale — vede l'intera sequenza.
+    Generates all tokens in parallel, starting from a fully masked sequence and iteratively removing `[MASK]` tokens. Attention is bidirectional — it sees the entire sequence at once.
 
-    **Pro:** Output più diversificati, coerenti su sequenze lunghe.
+    **Pros:** More diverse and coherent outputs on certain tasks.
 
-    **Contro:** Richiede più step in inferenza (accelerabile con Fast-dLLM).
+    **Cons:** Requires multiple inference steps (can be accelerated with Fast-dLLM).
 
-    [Approfondisci →](paradigms/diffusion.md)
+    [Learn more →](paradigms/diffusion.md)
 
 -   :material-wave: **ELF — Continuous Flow**
 
-    Opera nello spazio degli embedding continui anziché su token discreti. Trasforma rumore gaussiano in embedding puliti tramite un ODE di Euler.
+    Operates in the continuous embedding space rather than on discrete tokens. Transforms Gaussian noise into clean embeddings via an Euler ODE solver.
 
-    **Pro:** Paradigma sperimentale, ottimo per ricerca.
+    **Pros:** Experimental paradigm, excellent for flow-matching research.
 
-    **Contro:** Più complesso da addestrare, richiede più dati.
+    **Cons:** More complex to train, requires more data and epochs.
 
-    [Approfondisci →](paradigms/elf.md)
+    [Learn more →](paradigms/elf.md)
 
 </div>
 
 ---
 
-## Cosa include la libreria
+## What the library includes
 
 <div class="grid cards" markdown>
 
--   :material-layers: **Layer neurali completi**
+-   :material-layers: **Complete neural layers**
 
-    MHA, GQA, MLA (Multi-Latent Attention), Flash Attention, Sliding Window Attention, SwiGLU, GELU, Sparse MoE, RMSNorm, LayerNorm, RoPE, NTK-aware RoPE, Sinusoidale, Learned PE.
+    MHA, GQA, MLA (Multi-Latent Attention), Flash Attention, Sliding Window Attention, SwiGLU, GELU, Sparse MoE, RMSNorm, LayerNorm, RoPE, NTK-aware RoPE, Sinusoidal, Learned PE.
 
--   :material-school: **Trainer unificato**
+-   :material-school: **Unified Trainer**
 
-    Un unico `Trainer` funziona per tutti e tre i paradigmi. Supporta: gradient accumulation, bfloat16, multi-GPU con JAX SPMD, checkpointing automatico, logging su W&B, LR range test.
+    A single `Trainer` works across all three paradigms. Supports: gradient accumulation, bfloat16, multi-GPU via JAX SPMD, automatic checkpointing, W&B logging, and LR range test.
 
--   :material-speedometer: **Ottimizzatori e schedule**
+-   :material-speedometer: **Optimisers and schedules**
 
-    AdamW, Lion, Muon, Adafactor. Schedule: cosine, lineare, WSD (warmup-stable-decay). Warmup configurabile.
+    AdamW, Lion, Muon, Adafactor. Schedules: cosine, linear, WSD (warmup-stable-decay). Configurable warmup.
 
--   :material-lightning-bolt: **Inferenza ottimizzata**
+-   :material-lightning-bolt: **Optimised inference**
 
-    KV-cache statico pre-allocato (AR). Fast-dLLM DualCache per Diffusion (speedup 1.4–2.1×). Streaming per AR.
+    Static pre-allocated KV-cache (AR). Fast-dLLM DualCache for Diffusion (1.4–2.1× speedup). Token streaming for AR.
 
--   :material-tune: **Fine-tuning con LoRA**
+-   :material-tune: **LoRA fine-tuning**
 
-    LoRA integrato (`use_lora=True`). I pesi base vengono congelati automaticamente. Supporto per merge dei pesi (`merge_lora()`).
+    Built-in LoRA support (`use_lora=True`). Base weights are frozen automatically. Supports adapter merging via `merge_lora()`.
 
--   :material-chart-bar: **Benchmarking sistematico**
+-   :material-chart-bar: **Systematic benchmarking**
 
-    `BenchmarkSuite` con task plug-in. Throughput, latenza, perplexity. Export CSV. 21 grafici automatici.
+    `BenchmarkSuite` with plug-in tasks. Throughput, latency, perplexity. CSV export. 21 auto-generated plots.
 
--   :material-cloud-sync: **Integrazione ecosistema**
+-   :material-cloud-sync: **Ecosystem integration**
 
-    HuggingFace Hub (push/pull). W&B sweeps. CLI completa con 12 sottocomandi. Notebook Colab.
+    HuggingFace Hub push/pull. W&B sweeps. Full CLI with 12 subcommands. Colab notebooks.
 
--   :material-wrench: **Strumenti di analisi**
+-   :material-wrench: **Analysis tools**
 
-    `count_flops()` per FLOPs teorici. `LatencyTracker` per misurazioni reali. `Visualizer` per grafici.
+    `count_flops()` for theoretical FLOPs. `LatencyTracker` for real measurements. `Visualizer` for charts.
 
 </div>
 
 ---
 
-## I tre livelli di API
+## Three levels of API
 
-La libreria è pensata per essere usata a diversi livelli di astrazione, dal più semplice al più dettagliato.
+The library is designed to be used at different levels of abstraction, from the simplest to the most detailed.
 
-=== "Livello 1 — Una riga"
+=== "Level 1 — One-liner"
 
-    Ideale per prototipazione rapida. `dx.fit` fa tutto: costruisce il modello, lo addestra, salva il checkpoint.
+    Best for rapid prototyping. `dx.fit` does everything: builds the model, trains it, saves the checkpoint.
 
     ```python
     import dantinox as dx
@@ -132,12 +132,12 @@ La libreria è pensata per essere usata a diversi livelli di astrazione, dal pi�
                      dim=512, n_heads=8, head_size=64,
                      num_blocks=12, vocab_size=32_000)
 
-    print(dx.quick_generate(run_dir, "Nel mezzo del cammin"))
+    print(dx.quick_generate(run_dir, "In the beginning"))
     ```
 
-=== "Livello 2 — API esplicita"
+=== "Level 2 — Explicit API"
 
-    Separa configurazione dell'architettura, del training, e del paradigma. Permette di customizzare ogni componente.
+    Separates architecture config, training config, and paradigm. Allows customising each component individually.
 
     ```python
     import dantinox as dx
@@ -155,9 +155,9 @@ La libreria è pensata per essere usata a diversi livelli di astrazione, dal pi�
     tokens   = paradigm.generate(model, prompt_ids, rng=nnx.Rngs(0))
     ```
 
-=== "Livello 3 — Controllo totale"
+=== "Level 3 — Full control"
 
-    Accedi direttamente a tutti i componenti interni. Ideale per modificare il loop di training o aggiungere componenti custom.
+    Direct access to all internal components. Ideal for modifying the training loop or adding custom components.
 
     ```python
     from core.config import ModelConfig
@@ -167,40 +167,39 @@ La libreria è pensata per essere usata a diversi livelli di astrazione, dal pi�
     from dantinox.training.optimizer import build_optimizer, build_schedule
     from dantinox.profiling import LatencyTracker, count_flops
     from flax import nnx
-    import jax, optax
 
     cfg      = ModelConfig(dim=512, n_heads=8, head_size=64,
                            num_blocks=12, vocab_size=32_000)
     paradigm = ARParadigm(cfg)
     model    = paradigm.build_model(nnx.Rngs(42))
 
-    tx      = build_optimizer(cfg)
+    tx       = build_optimizer(cfg)
     schedule = build_schedule(cfg)
-    # ... loop di training custom ...
+    # ... custom training loop ...
     ```
 
 ---
 
-## Struttura del progetto
+## Project structure
 
 ```text
 DantinoX/
 │
-├── core/                        ← Primitivi neurali (Attention, FFN, MoE, LoRA, …)
+├── core/                        ← Neural primitives (Attention, FFN, MoE, LoRA, …)
 │   ├── config.py                   ModelConfig · TrainingConfig · Config · ELFConfig
 │   ├── model.py                    Transformer · DiffusionTransformer
 │   ├── elf.py                      ELFTransformer
 │   ├── attention.py                MHA / GQA / MLA + RoPE + KV-cache
 │   ├── block.py                    TransformerBlock (Attention + FFN + Norm)
 │   ├── mlp.py                      Dense MLP (SwiGLU / GELU)
-│   ├── moe.py                      Sparse MoE con load-balancing
+│   ├── moe.py                      Sparse MoE with load-balancing loss
 │   ├── diffusion.py                NoiseSchedule · make_noise_schedule
 │   ├── lora.py                     LoRAParam · merge_lora
 │   └── generation.py               generate · diffusion_generate · elf_generate · fast_dllm_generate
 │
-├── dantinox/                    ← Pacchetto installabile
-│   ├── cli.py                      12 sottocomandi CLI
-│   ├── generator.py                Classe Generator (AR, carica checkpoint)
+├── dantinox/                    ← Installable package
+│   ├── cli.py                      12 CLI subcommands
+│   ├── generator.py                Generator class (AR, loads checkpoint)
 │   ├── paradigms/
 │   │   ├── ar.py                   ARParadigm
 │   │   └── diffusion/
@@ -209,24 +208,24 @@ DantinoX/
 │   ├── training/
 │   │   ├── trainer.py              Trainer — JIT loop, checkpointing, multi-GPU
 │   │   └── optimizer.py            build_optimizer · build_schedule
-│   ├── benchmarking/               BenchmarkSuite · task plug-in
+│   ├── benchmarking/               BenchmarkSuite · plug-in tasks
 │   ├── profiling/                  LatencyTracker · count_flops
-│   ├── visualization/              Visualizer · registro grafici
-│   └── hub.py                      push · pull verso HuggingFace Hub
+│   ├── visualization/              Visualizer · chart registry
+│   └── hub.py                      push · pull to/from HuggingFace Hub
 │
 ├── utils/
 │   ├── tokenizer.py                CharTokenizer · BPETokenizer
-│   └── helpers.py                  Funzioni di loss, campionamento batch
+│   └── helpers.py                  Loss helpers, batch sampling
 │
-├── benchmarks/                  ← Script benchmark stand-alone
-├── configs/                     ← Template YAML (default, diffusion, sweep)
-├── docs/                        ← Documentazione MkDocs Material
-└── tests/                       ← Suite pytest (CPU-only)
+├── benchmarks/                  ← Stand-alone benchmark scripts
+├── configs/                     ← YAML templates (default, diffusion, sweep)
+├── docs/                        ← MkDocs Material documentation
+└── tests/                       ← pytest suite (CPU-only)
 ```
 
 ---
 
-## Citazione
+## Citation
 
 ```bibtex
 @software{dantinox2026,

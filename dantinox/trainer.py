@@ -622,7 +622,6 @@ class Trainer:
                 return out, key
 
         log_path = os.path.join(run_dir, "training_log.csv")
-        weights_path = os.path.join(run_dir, "model_weights.msgpack")
         best_weights_path = os.path.join(run_dir, "best_model_weights.msgpack")
 
         key = jax.random.PRNGKey(config.seed)
@@ -710,11 +709,22 @@ class Trainer:
                                 )
                                 break
 
+                        # Periodic resume checkpoint (every checkpoint_every steps)
+                        _ckpt_every = getattr(config, "checkpoint_every", 2000)
+                        if _ckpt_every > 0 and step > 0 and step % _ckpt_every == 0:
+                            _save_weights(model, resume_weights)
+                            with open(cursor_path, "w") as _cf:
+                                json.dump({"step": step, "best_val_loss": best_val_loss}, _cf)
+                            log.info("Resume checkpoint saved at step %d", step)
+
                         if wandb_project is not None:
                             import wandb
                             wandb.log({"train_loss": losses["train"], "val_loss": val_loss, "step": step})  # type: ignore[attr-defined]
             finally:
                 pbar.close()
+                # Remove cursor so a completed run is not mistaken for an interrupted one
+                if os.path.exists(cursor_path):
+                    os.remove(cursor_path)
                 if wandb_project is not None:
                     import wandb
                     wandb.finish()  # type: ignore[attr-defined]

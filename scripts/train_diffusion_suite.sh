@@ -111,8 +111,8 @@ train_one() {
     ((N_TOTAL++)) || true
     local run_dir="runs/${tag}"
 
-    # Skip if already completed
-    if [[ -f "${run_dir}/model_weights.msgpack" || -f "${run_dir}/best_model_weights.msgpack" ]]; then
+    # Skip if completed (best checkpoint exists but no cursor = training finished)
+    if [[ -f "${run_dir}/best_model_weights.msgpack" && ! -f "${run_dir}/training_cursor.json" ]]; then
         echo "  [SKIP]  ${tag}"
         ((N_SKIP++)) || true
         return 0
@@ -120,6 +120,10 @@ train_one() {
 
     local tag_dim; tag_dim=$(echo "${tag}" | sed -E 's/.*_([0-9]+)d_.*/\1/')
     local _gc="true"; [[ -n "${tag_dim}" && "${tag_dim}" -le 768 ]] && _gc="false"
+
+    # Resume if interrupted checkpoint exists
+    local _resume="false"
+    [[ -f "${run_dir}/training_cursor.json" ]] && _resume="true"
 
     local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" TF_GPU_ALLOCATOR=cuda_malloc_async PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
         --config "${BASE_CFG}"
@@ -132,6 +136,7 @@ train_one() {
         --mask_token_id 32099
         --max_train_tokens "${_CUR_TOKENS}"
         --epochs "${_CUR_EPOCHS}"
+        --resume "${_resume}"
         "${extra_args[@]}")
 
     echo ""
