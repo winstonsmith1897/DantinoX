@@ -1,137 +1,172 @@
 /* ══════════════════════════════════════════════════════════════════
-   DantinoX Documentation — Professional Design System
+   DantinoX — Professional Design System
    MkDocs Material · light + dark
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── 1. Design tokens ── */
+/* ── 1. Design tokens ──────────────────────────────────────────── */
 :root {
-  --dnx-navy-950: #080e1a;
-  --dnx-navy-900: #0d1b2e;
-  --dnx-navy-800: #152238;
-  --dnx-navy-700: #1d3252;
-  --dnx-navy-600: #243b68;
-  --dnx-blue:     #2563eb;
-  --dnx-blue-lt:  #3b82f6;
-  --dnx-border:   #d8dde6;
-  --dnx-code-bg:  #f6f8fa;
-  --dnx-r:        6px;
-  --dnx-t:        .18s ease;
+  /* Palette */
+  --dnx-ink-950:   #0f172a;
+  --dnx-ink-900:   #1e293b;
+  --dnx-ink-800:   #334155;
+  --dnx-ink-600:   #475569;
+  --dnx-ink-400:   #94a3b8;
+  --dnx-ink-200:   #e2e8f0;
+  --dnx-ink-100:   #f1f5f9;
+  --dnx-ink-50:    #f8fafc;
+
+  --dnx-violet:    #6366f1;
+  --dnx-violet-lt: #818cf8;
+  --dnx-violet-dk: #4f46e5;
+
+  /* Semantic */
+  --dnx-border:    #e2e8f0;
+  --dnx-surface:   #f8fafc;
+  --dnx-code-bg:   #f1f5f9;
+  --dnx-r:         6px;
+  --dnx-t:         .16s ease;
 }
 
 [data-md-color-scheme="slate"] {
-  --dnx-border:  rgba(255, 255, 255, .09);
-  --dnx-code-bg: rgba(255, 255, 255, .04);
+  --dnx-border:  rgba(255, 255, 255, .08);
+  --dnx-surface: rgba(255, 255, 255, .03);
+  --dnx-code-bg: rgba(255, 255, 255, .05);
 }
 
-/* ── 2. Material theme color overrides ── */
+/* ── 2. Material colour overrides ──────────────────────────────── */
 [data-md-color-scheme="default"] {
-  --md-primary-fg-color:             #1d3252;
-  --md-primary-fg-color--light:      #243b68;
-  --md-primary-fg-color--dark:       #0d1b2e;
+  --md-primary-fg-color:             #0f172a;
+  --md-primary-fg-color--light:      #1e293b;
+  --md-primary-fg-color--dark:       #020617;
   --md-primary-bg-color:             #ffffff;
-  --md-primary-bg-color--light:      rgba(255, 255, 255, .7);
-  --md-accent-fg-color:              #2563eb;
-  --md-accent-fg-color--transparent: rgba(37, 99, 235, .08);
+  --md-primary-bg-color--light:      rgba(255, 255, 255, .72);
+  --md-accent-fg-color:              #6366f1;
+  --md-accent-fg-color--transparent: rgba(99, 102, 241, .08);
   --md-accent-bg-color:              #ffffff;
+  --md-default-bg-color:             #ffffff;
+  --md-default-fg-color:             #0f172a;
+  --md-default-fg-color--light:      #475569;
+  --md-default-fg-color--lighter:    #94a3b8;
+  --md-default-fg-color--lightest:   #cbd5e1;
 }
 
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:             #1d3252;
-  --md-primary-fg-color--light:      #243b68;
-  --md-primary-fg-color--dark:       #080e1a;
+  --md-primary-fg-color:             #1e293b;
+  --md-primary-fg-color--light:      #334155;
+  --md-primary-fg-color--dark:       #0f172a;
   --md-primary-bg-color:             #ffffff;
-  --md-primary-bg-color--light:      rgba(255, 255, 255, .7);
-  --md-accent-fg-color:              #60a5fa;
-  --md-accent-fg-color--transparent: rgba(96, 165, 250, .10);
+  --md-primary-bg-color--light:      rgba(255, 255, 255, .72);
+  --md-accent-fg-color:              #818cf8;
+  --md-accent-fg-color--transparent: rgba(129, 140, 248, .10);
+  --md-default-bg-color:             #0d1117;
 }
 
-/* ── 3. Typography ── */
+/* ── 3. Typography ─────────────────────────────────────────────── */
 .md-typeset {
   font-size: .9rem;
   line-height: 1.75;
+  color: var(--md-default-fg-color);
 }
 
 .md-typeset h1 {
   font-weight: 700;
-  font-size: 1.85rem;
-  letter-spacing: -.03em;
+  font-size: 1.8rem;
+  letter-spacing: -.035em;
   line-height: 1.2;
-  margin-bottom: .9rem;
+  margin-bottom: .75rem;
+  color: var(--md-default-fg-color);
 }
 
 .md-typeset h2 {
   font-weight: 600;
-  font-size: 1.25rem;
-  letter-spacing: -.015em;
-  margin-top: 2.6rem;
-  padding-bottom: .4rem;
+  font-size: 1.2rem;
+  letter-spacing: -.018em;
+  margin-top: 2.5rem;
+  padding-bottom: .5rem;
   border-bottom: 1px solid var(--dnx-border);
+  color: var(--md-default-fg-color);
 }
 
 .md-typeset h3 {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: .975rem;
   letter-spacing: -.01em;
   margin-top: 1.8rem;
+  color: var(--md-default-fg-color);
 }
 
 .md-typeset h4 {
   font-weight: 600;
-  font-size: .75rem;
-  letter-spacing: .08em;
+  font-size: .72rem;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--md-default-fg-color--light);
-  margin-top: 1.5rem;
-  margin-bottom: .35rem;
+  color: var(--dnx-ink-600);
+  margin-top: 1.4rem;
+  margin-bottom: .3rem;
 }
 
 /* Permalink — hover only */
 .md-typeset .headerlink { opacity: 0; transition: opacity var(--dnx-t); }
-.md-typeset :is(h1,h2,h3,h4):hover .headerlink { opacity: .3; }
+.md-typeset :is(h1,h2,h3,h4):hover .headerlink { opacity: .28; }
 
 /* Links */
-.md-typeset a { color: var(--dnx-blue); text-decoration: none; }
-.md-typeset a:hover { text-decoration: underline; text-underline-offset: 2px; }
-[data-md-color-scheme="slate"] .md-typeset a { color: var(--dnx-blue-lt); }
+.md-typeset a { color: var(--dnx-violet-dk); text-decoration: none; }
+.md-typeset a:hover {
+  color: var(--dnx-violet);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-md-color-scheme="slate"] .md-typeset a { color: var(--dnx-violet-lt); }
+[data-md-color-scheme="slate"] .md-typeset a:hover { color: #c7d2fe; }
 
-/* ── 4. Code blocks ── */
+/* ── 4. Code blocks ─────────────────────────────────────────────── */
 .md-typeset .highlight {
   background: var(--dnx-code-bg);
   border: 1px solid var(--dnx-border);
   border-radius: var(--dnx-r);
+  overflow: hidden;
 }
 
 .md-typeset .highlight pre {
   background: transparent;
-  max-height: 500px;
+  max-height: 480px;
   overflow: auto;
-  padding: 1rem 1.1rem;
+  padding: .9rem 1.1rem;
+  margin: 0;
 }
 
 /* Filename bar */
 .md-typeset .highlight > .filename {
   font-family: var(--md-code-font);
-  font-size: .68rem;
+  font-size: .67rem;
   font-weight: 600;
-  letter-spacing: .05em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--md-default-fg-color--light);
-  padding: .45rem 1rem;
+  padding: .4rem 1rem;
   border-bottom: 1px solid var(--dnx-border);
-  background: transparent;
-  border-radius: var(--dnx-r) var(--dnx-r) 0 0;
+  background: var(--dnx-surface);
 }
 
 /* Inline code */
-.md-typeset code:not(.highlight code) {
+.md-typeset :not(pre) > code {
   background: var(--dnx-code-bg);
   border: 1px solid var(--dnx-border);
   border-radius: 4px;
-  padding: .1em .38em;
-  font-size: .84em;
+  padding: .12em .38em;
+  font-size: .83em;
+  color: var(--md-default-fg-color);
 }
 
-/* ── 5. Tables ── */
+/* Copy button */
+.md-typeset .highlight .md-clipboard {
+  opacity: 0;
+  transition: opacity var(--dnx-t);
+}
+.md-typeset .highlight:hover .md-clipboard { opacity: .55; }
+.md-typeset .highlight .md-clipboard:hover { opacity: 1; }
+
+/* ── 5. Tables ──────────────────────────────────────────────────── */
 .md-typeset table:not([class]) {
   border: 1px solid var(--dnx-border);
   border-radius: var(--dnx-r);
@@ -143,120 +178,206 @@
 }
 
 .md-typeset table:not([class]) th {
-  background: var(--md-primary-fg-color);
-  color: var(--md-primary-bg-color);
+  background: var(--dnx-surface);
+  color: var(--dnx-ink-800);
   font-weight: 600;
   font-size: .7rem;
-  letter-spacing: .08em;
+  letter-spacing: .09em;
   text-transform: uppercase;
-  padding: .65rem 1rem;
+  padding: .6rem 1rem;
   border: none;
+  border-bottom: 1px solid var(--dnx-border);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background: rgba(255, 255, 255, .04);
+  color: #94a3b8;
 }
 
 .md-typeset table:not([class]) td {
   border: none;
   border-top: 1px solid var(--dnx-border);
-  padding: .65rem 1rem;
+  padding: .6rem 1rem;
   vertical-align: top;
   line-height: 1.65;
 }
 
+.md-typeset table:not([class]) tr:first-child td { border-top: none; }
+
 .md-typeset table:not([class]) tbody tr:hover td {
-  background: rgba(37, 99, 235, .03);
+  background: rgba(99, 102, 241, .03);
 }
 
-/* ── 6. Admonitions ── */
+/* ── 6. Admonitions ─────────────────────────────────────────────── */
 .md-typeset .admonition,
 .md-typeset details {
   border-radius: var(--dnx-r);
   border-width: 0 0 0 3px;
-  font-size: .88rem;
+  font-size: .875rem;
   box-shadow: none;
+  background: var(--dnx-surface);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .admonition,
+[data-md-color-scheme="slate"] .md-typeset details {
+  background: var(--dnx-surface);
 }
 
 .md-typeset .admonition-title,
 .md-typeset summary {
   font-weight: 600;
   font-size: .7rem;
-  letter-spacing: .07em;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-/* ── 7. Content tabs ── */
+/* Custom admonition colours */
+.md-typeset .admonition.abstract,
+.md-typeset .admonition.summary {
+  border-left-color: #7c3aed;
+}
+.md-typeset .admonition.abstract > .admonition-title,
+.md-typeset .admonition.summary > .admonition-title {
+  background: rgba(124, 58, 237, .06);
+  color: #7c3aed;
+}
+
+/* ── 7. Content tabs ─────────────────────────────────────────────── */
 .md-typeset .tabbed-set {
   border: 1px solid var(--dnx-border);
   border-radius: var(--dnx-r);
   overflow: hidden;
 }
 
+.md-typeset .tabbed-labels {
+  border-bottom: 1px solid var(--dnx-border);
+  background: var(--dnx-surface);
+}
+
 .md-typeset .tabbed-labels > label {
   font-weight: 600;
   font-size: .82rem;
-  letter-spacing: .02em;
-  padding: .55rem 1rem;
+  letter-spacing: .01em;
+  padding: .5rem 1.1rem;
 }
 
-/* ── 8. Blockquotes ── */
+.md-typeset .tabbed-labels > input:checked + label {
+  color: var(--dnx-violet);
+  border-bottom-color: var(--dnx-violet);
+}
+
+.md-typeset .tabbed-content {
+  padding: 1rem 1.1rem;
+}
+
+/* Tabs inside grid cards — no double border */
+.md-typeset .grid .tabbed-set {
+  border: none;
+  border-radius: 0;
+}
+.md-typeset .grid .tabbed-labels { background: transparent; }
+
+/* ── 8. Blockquotes ─────────────────────────────────────────────── */
 .md-typeset blockquote {
   border-left: 3px solid var(--dnx-border);
-  margin: 1.2rem 0;
-  padding: .65rem 1.2rem;
+  margin: 1.1rem 0;
+  padding: .6rem 1.2rem;
   color: var(--md-default-fg-color--light);
   font-style: italic;
-  background: none;
+  background: transparent;
 }
-
 .md-typeset blockquote p { margin: 0; font-size: .92em; }
 
-/* ── 9. Navigation ── */
+/* ── 9. Navigation sidebar ───────────────────────────────────────── */
 .md-nav__link--active {
   font-weight: 600;
-  color: var(--md-accent-fg-color) !important;
+  color: var(--dnx-violet) !important;
+}
+[data-md-color-scheme="slate"] .md-nav__link--active {
+  color: var(--dnx-violet-lt) !important;
 }
 
-.md-nav__title { font-weight: 700; font-size: .75rem; letter-spacing: .06em; }
+.md-nav__title {
+  font-weight: 700;
+  font-size: .72rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
 
-/* ── 10. Header ── */
+/* Section titles in sidebar */
+.md-nav__item--section > .md-nav__link {
+  font-weight: 600;
+  font-size: .78rem;
+  letter-spacing: .03em;
+}
+
+/* ── 10. Header ─────────────────────────────────────────────────── */
 .md-header {
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .10);
-  backdrop-filter: none;
+  box-shadow: 0 1px 0 var(--dnx-border);
 }
 
-/* ── 11. Homepage hero panel ── */
+/* Tab bar */
+.md-tabs {
+  border-bottom: 1px solid var(--dnx-border);
+}
+
+.md-tabs__link {
+  font-size: .83rem;
+  font-weight: 500;
+  letter-spacing: .01em;
+  opacity: .7;
+  transition: opacity var(--dnx-t), color var(--dnx-t);
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  opacity: 1;
+}
+
+/* ── 11. Homepage hero ───────────────────────────────────────────── */
 .dnx-hero {
-  background: var(--dnx-navy-900);
-  border: 1px solid var(--dnx-navy-700);
-  border-radius: var(--dnx-r);
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #1e293b 100%);
+  border: 1px solid rgba(99, 102, 241, .25);
+  border-radius: calc(var(--dnx-r) + 2px);
   padding: 3rem 2.8rem 2.4rem;
   margin: 0 0 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle grid texture */
+.dnx-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(99, 102, 241, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, .04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
 }
 
 .dnx-hero h1 {
-  font-size: 2.1rem !important;
+  font-size: 2rem !important;
   font-weight: 700 !important;
   letter-spacing: -.04em !important;
   color: #f1f5f9 !important;
-  line-height: 1.15 !important;
-  margin-bottom: .8rem !important;
   -webkit-text-fill-color: #f1f5f9 !important;
+  line-height: 1.15 !important;
+  margin-bottom: .65rem !important;
+  position: relative;
 }
 
 .dnx-hero p {
   color: #94a3b8;
   font-size: .95rem;
   line-height: 1.65;
-  max-width: 640px;
+  max-width: 620px;
   margin-bottom: 0;
+  position: relative;
 }
 
-.dnx-hero strong { color: #cbd5e1; }
-
-.dnx-hero .hero-meta {
-  margin-top: .55rem;
-  font-size: .78rem;
-  color: #475569;
-  letter-spacing: .03em;
-}
+.dnx-hero strong { color: #c7d2fe; }
 
 /* Badge row */
 .dnx-hero .hero-badges {
@@ -265,108 +386,52 @@
   gap: .35rem;
   margin-top: 1.5rem;
   align-items: center;
+  position: relative;
 }
-.dnx-hero .hero-badges img { height: 20px; opacity: .80; transition: opacity var(--dnx-t); }
+.dnx-hero .hero-badges img { height: 20px; opacity: .78; transition: opacity var(--dnx-t); }
 .dnx-hero .hero-badges img:hover { opacity: 1; }
 
 /* CTA buttons */
 .dnx-hero .md-button {
   display: inline-block;
   margin: 1.4rem .3rem 0 0;
-  border-radius: 4px;
+  border-radius: 5px;
   font-weight: 600;
-  font-size: .85rem;
+  font-size: .84rem;
   letter-spacing: .01em;
-  padding: .5rem 1.35rem;
+  padding: .48rem 1.3rem;
   transition: background var(--dnx-t), border-color var(--dnx-t), color var(--dnx-t);
+  position: relative;
 }
 
 .dnx-hero .md-button--primary {
-  background: var(--dnx-blue) !important;
-  border-color: var(--dnx-blue) !important;
+  background: var(--dnx-violet) !important;
+  border-color: var(--dnx-violet) !important;
   color: #fff !important;
 }
 .dnx-hero .md-button--primary:hover {
-  background: #1d4ed8 !important;
-  border-color: #1d4ed8 !important;
+  background: var(--dnx-violet-dk) !important;
+  border-color: var(--dnx-violet-dk) !important;
   text-decoration: none;
 }
 
 .dnx-hero .md-button:not(.md-button--primary) {
   background: transparent !important;
-  border-color: #334155 !important;
+  border-color: rgba(99, 102, 241, .35) !important;
   color: #94a3b8 !important;
 }
 .dnx-hero .md-button:not(.md-button--primary):hover {
-  border-color: #64748b !important;
+  border-color: rgba(99, 102, 241, .7) !important;
   color: #e2e8f0 !important;
   text-decoration: none;
 }
 
-/* ── 12. Horizontal rule ── */
-.md-typeset hr {
-  border: none;
-  border-top: 1px solid var(--dnx-border);
-  margin: 2.2rem 0;
-}
-
-/* ── 13. Keyboard shortcuts ── */
-.md-typeset kbd {
-  background: var(--dnx-code-bg);
-  border: 1px solid var(--dnx-border);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  padding: .1em .42em;
-  font-family: var(--md-code-font);
-  font-size: .8em;
-  font-style: normal;
-  white-space: nowrap;
-}
-
-/* ── 14. Lists ── */
-.md-typeset ul li,
-.md-typeset ol li { margin-bottom: .22rem; line-height: 1.7; }
-
-.md-typeset ul li:last-child,
-.md-typeset ol li:last-child { margin-bottom: 0; }
-
-/* ── 15. Collapsible details ── */
-.md-typeset details > summary { cursor: pointer; }
-.md-typeset details[open] > summary { margin-bottom: .75rem; }
-
-/* ── 16. MathJax equations ── */
-.md-typeset .MathJax { font-size: 1.02em !important; }
-.md-typeset .MathJax_Display {
-  margin: 1.4rem 0 !important;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-/* ── 17. Search input ── */
-.md-search__input {
-  border-radius: 4px;
-  font-size: .88rem;
-}
-
-/* ── 18. Footer ── */
-.md-footer-meta { border-top: 1px solid var(--dnx-border); }
-
-/* ── 19. Paragraph spacing ── */
-.md-typeset p { margin-bottom: .85rem; }
-.md-typeset p:last-child { margin-bottom: 0; }
-
-/* ── 20. Responsive ── */
-@media screen and (max-width: 44.9375em) {
-  .dnx-hero { padding: 2.2rem 1.5rem 1.8rem; }
-  .dnx-hero h1 { font-size: 1.65rem !important; }
-}
-
-/* ── 21. Grid cards — enhanced ── */
+/* ── 12. Grid cards ─────────────────────────────────────────────── */
 .md-typeset .grid.cards > ul,
 .md-typeset .grid.cards > ol {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: .9rem;
+  gap: .85rem;
   padding: 0;
   list-style: none;
 }
@@ -376,19 +441,21 @@
   border: 1px solid var(--dnx-border);
   border-radius: var(--dnx-r);
   padding: 1rem 1.1rem;
-  transition: border-color var(--dnx-t), box-shadow var(--dnx-t);
+  background: var(--md-default-bg-color);
+  transition: border-color var(--dnx-t), box-shadow var(--dnx-t), transform var(--dnx-t);
   list-style: none;
 }
 
 .md-typeset .grid.cards > ul > li:hover,
 .md-typeset .grid.cards > ol > li:hover {
-  border-color: var(--dnx-blue-lt);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, .08);
+  border-color: var(--dnx-violet);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, .10);
+  transform: translateY(-1px);
 }
 
 .md-typeset .grid.cards > ul > li > p:first-child,
 .md-typeset .grid.cards > ol > li > p:first-child {
-  margin-bottom: .4rem;
+  margin-bottom: .35rem;
 }
 
 .md-typeset .grid.cards > ul > li :is(h2,h3,h4),
@@ -396,9 +463,62 @@
   border-bottom: none;
   margin-top: 0;
   padding-bottom: 0;
+  font-size: .88rem;
 }
 
-/* ── 22. Step list (ordered list with circles) ── */
+/* ── 13. Horizontal rule ─────────────────────────────────────────── */
+.md-typeset hr {
+  border: none;
+  border-top: 1px solid var(--dnx-border);
+  margin: 2rem 0;
+}
+
+/* ── 14. Lists ──────────────────────────────────────────────────── */
+.md-typeset ul li,
+.md-typeset ol li { margin-bottom: .2rem; line-height: 1.7; }
+
+.md-typeset ul li:last-child,
+.md-typeset ol li:last-child { margin-bottom: 0; }
+
+/* ── 15. Collapsible details ─────────────────────────────────────── */
+.md-typeset details > summary { cursor: pointer; }
+.md-typeset details[open] > summary { margin-bottom: .75rem; }
+
+/* ── 16. MathJax ─────────────────────────────────────────────────── */
+.md-typeset .MathJax { font-size: 1.02em !important; }
+.md-typeset .MathJax_Display {
+  margin: 1.4rem 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ── 17. Search ──────────────────────────────────────────────────── */
+.md-search__input {
+  border-radius: 5px;
+  font-size: .875rem;
+}
+
+/* ── 18. Footer ──────────────────────────────────────────────────── */
+.md-footer-meta { border-top: 1px solid var(--dnx-border); }
+
+/* ── 19. Paragraph spacing ───────────────────────────────────────── */
+.md-typeset p { margin-bottom: .85rem; }
+.md-typeset p:last-child { margin-bottom: 0; }
+
+/* ── 20. Keyboard shortcuts ───────────────────────────────────────── */
+.md-typeset kbd {
+  background: var(--dnx-code-bg);
+  border: 1px solid var(--dnx-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: .1em .4em;
+  font-family: var(--md-code-font);
+  font-size: .8em;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+/* ── 21. Step list ────────────────────────────────────────────────── */
 .md-typeset ol.dnx-steps {
   counter-reset: steps;
   list-style: none;
@@ -416,97 +536,80 @@
 .md-typeset ol.dnx-steps > li::before {
   content: counter(steps);
   flex-shrink: 0;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 50%;
-  background: var(--md-primary-fg-color);
-  color: var(--md-primary-bg-color);
+  background: var(--dnx-violet);
+  color: #fff;
   font-size: .72rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: .15rem;
+  margin-top: .18rem;
 }
 
-/* ── 23. Inline type badge ── */
+/* ── 22. Inline type badge ────────────────────────────────────────── */
 .dnx-type {
   display: inline-block;
   font-family: var(--md-code-font);
-  font-size: .73rem;
+  font-size: .72rem;
   background: var(--dnx-code-bg);
   border: 1px solid var(--dnx-border);
   border-radius: 3px;
-  padding: .05em .35em;
+  padding: .05em .32em;
   color: var(--md-default-fg-color--light);
   white-space: nowrap;
 }
 
-/* ── 24. Compact table variant ── */
+/* ── 23. Compact table variant ────────────────────────────────────── */
 .md-typeset table.dnx-compact td,
 .md-typeset table.dnx-compact th {
-  padding: .4rem .7rem;
+  padding: .38rem .7rem;
   font-size: .82rem;
 }
 
-/* ── 25. Code block with title ── */
-.md-typeset .highlight[title]::before {
-  content: attr(title);
-  display: block;
-  font-family: var(--md-code-font);
-  font-size: .68rem;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--md-default-fg-color--light);
-  padding: .4rem 1rem;
-  border-bottom: 1px solid var(--dnx-border);
-}
+/* ── 24. TOC depth control ────────────────────────────────────────── */
+.md-nav--secondary .md-nav__list .md-nav__list { display: none; }
 
-/* ── 26. Tabs inside grid cards ── */
-.md-typeset .grid .tabbed-set {
-  border: none;
-}
-
-/* ── 27. Admonition colour accents ── */
-.md-typeset .admonition.abstract,
-.md-typeset .admonition.summary {
-  border-left-color: #7c3aed;
-}
-.md-typeset .admonition.abstract > .admonition-title,
-.md-typeset .admonition.summary > .admonition-title {
-  background-color: rgba(124, 58, 237, .06);
-  color: #7c3aed;
-}
-
-/* ── 28. TOC depth control ── */
-.md-nav--secondary .md-nav__list .md-nav__list {
-  display: none;   /* hide h4 from right sidebar by default */
-}
-
-/* ── 29. Smaller HR between major sections ── */
-.md-typeset h2 + hr {
-  margin-top: -.4rem;
-  margin-bottom: 1.6rem;
-}
-
-/* ── 30. Cookbook quick-nav grid ── */
-.md-typeset .grid.cards > ul > li > p a:only-child {
-  font-weight: 600;
-  font-size: .85rem;
-}
-
-/* ── 31. Responsive grid min-width for large cards ── */
-@media screen and (max-width: 60em) {
-  .md-typeset .grid.cards > ul,
-  .md-typeset .grid.cards > ol {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-}
-
+/* ── 25. Responsive ────────────────────────────────────────────────── */
 @media screen and (max-width: 44.9375em) {
+  .dnx-hero { padding: 2rem 1.4rem 1.8rem; }
+  .dnx-hero h1 { font-size: 1.6rem !important; }
+
   .md-typeset .grid.cards > ul,
   .md-typeset .grid.cards > ol {
     grid-template-columns: 1fr;
   }
 }
+
+@media screen and (min-width: 45em) and (max-width: 59.9375em) {
+  .md-typeset .grid.cards > ul,
+  .md-typeset .grid.cards > ol {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── 26. Scrollbar (webkit) ───────────────────────────────────────── */
+.md-typeset .highlight pre::-webkit-scrollbar { height: 5px; width: 5px; }
+.md-typeset .highlight pre::-webkit-scrollbar-track { background: transparent; }
+.md-typeset .highlight pre::-webkit-scrollbar-thumb {
+  background: var(--dnx-border);
+  border-radius: 4px;
+}
+
+/* ── 27. Definition lists ─────────────────────────────────────────── */
+.md-typeset dt {
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--md-default-fg-color);
+  margin-top: .9rem;
+}
+.md-typeset dd {
+  margin-left: 1.4rem;
+  color: var(--md-default-fg-color--light);
+  font-size: .875rem;
+}
+
+/* ── 28. Version selector ─────────────────────────────────────────── */
+.md-version__current { font-weight: 600; }

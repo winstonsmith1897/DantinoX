@@ -99,51 +99,173 @@ def _cmd_train(args: argparse.Namespace) -> None:
 
 def _cmd_generate(args: argparse.Namespace) -> None:
     _init_jax_cache()
+    import os
     import time
+    import yaml
 
-    from dantinox.generator import Generator
-
-    gen = Generator(args.run_dir, seed=args.seed)
+    # Read config.yaml to determine model_type
+    config_path = os.path.join(args.run_dir, "config.yaml")
+    if not os.path.exists(config_path):
+        print(f"Error: config.yaml not found in {args.run_dir}", file=sys.stderr)
+        sys.exit(1)
+    with open(config_path) as _f:
+        _raw = yaml.safe_load(_f)
+    _flat: dict = {}
+    for _v in _raw.values():
+        if isinstance(_v, dict):
+            _flat.update(_v)
+    if not _flat:
+        _flat = _raw
+    model_type = _flat.get("model_type", "autoregressive")
 
     print(f"\nRun: {args.run_dir}")
+    print(f"Model type: {model_type}")
     print(f"Prompt: {args.prompt}")
     print("-" * 40)
 
-    sampling = dict(
-        greedy=args.greedy,
-        top_k=args.top_k,
-        top_p=args.top_p,
-        temperature=args.temperature,
-    )
+    if model_type == "autoregressive":
+        from dantinox.generator import Generator
 
-    if args.stream:
-        # Streaming: print the prompt first, then yield tokens as they arrive.
-        print(args.prompt, end="", flush=True)
+        gen = Generator(args.run_dir, seed=args.seed)
+
+        sampling = dict(
+            greedy=args.greedy,
+            top_k=args.top_k,
+            top_p=args.top_p,
+            temperature=args.temperature,
+        )
+
+        if args.stream:
+            print(args.prompt, end="", flush=True)
+            t0 = time.time()
+            n = 0
+            for chunk in gen.stream(args.prompt, max_new_tokens=args.max_new_tokens, **sampling):
+                print(chunk, end="", flush=True)
+                n += 1
+            elapsed = time.time() - t0
+            print(f"\n{'-' * 40}")
+            print(f"Generated {n} tokens in {elapsed:.2f}s ({n / elapsed:.1f} tok/s)")
+        else:
+            gen.generate(args.prompt, max_new_tokens=1)
+            t0 = time.time()
+            text = gen.generate(
+                args.prompt,
+                max_new_tokens=args.max_new_tokens,
+                use_cache=not args.no_cache,
+                **sampling,
+            )
+            elapsed = time.time() - t0
+            prompt_tokens = len(gen.tokenizer.encode(args.prompt))
+            new_tokens    = len(gen.tokenizer.encode(text)) - prompt_tokens
+            print(text)
+            print("-" * 40)
+            print(f"Generated {new_tokens} tokens in {elapsed:.2f}s "
+                  f"({new_tokens / elapsed:.1f} tok/s)")
+
+    elif model_type == "diffusion":
+        import msgpack
+        import jax.numpy as jnp
+        from flax import nnx
+        from flax.serialization import _msgpack_ext_unpack
+        from core.config import Config
+        from core.diffusion import make_noise_schedule
+        from core.model import DiffusionTransformer
+        from core.generation import diffusion_generate, fast_dllm_generate
+        from transformers import AutoTokenizer
+
+        cfg = Config.from_dict(_flat)
+        for _fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
+            _wp = os.path.join(args.run_dir, _fname)
+            if os.path.exists(_wp):
+                break
+        else:
+            print(f"Error: no weights file found in {args.run_dir}", file=sys.stderr)
+            sys.exit(1)
+        with open(_wp, "rb") as _f:
+            _state = msgpack.unpackb(_f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
+        _model = DiffusionTransformer(cfg, rngs=nnx.Rngs(args.seed))
+        nnx.update(_model, _state)
+
+        tokenizer_type = _flat.get("tokenizer_type", "")
+        tokenizer_path = _flat.get("tokenizer_path", None)
+        if tokenizer_type == "bpe" and tokenizer_path:
+            _tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+        else:
+            _tokenizer = AutoTokenizer.from_pretrained("t5-base")
+
+        _schedule = make_noise_schedule(cfg)
+        _prefix = jnp.zeros((1, 0), dtype=jnp.int32)
+
         t0 = time.time()
-        n = 0
-        for chunk in gen.stream(args.prompt, max_new_tokens=args.max_new_tokens, **sampling):
-            print(chunk, end="", flush=True)
-            n += 1
-        elapsed = time.time() - t0
-        print(f"\n{'-' * 40}")
-        print(f"Generated {n} tokens in {elapsed:.2f}s ({n / elapsed:.1f} tok/s)")
-    else:
-        # Batch mode: warmup then timed generate.
-        gen.generate(args.prompt, max_new_tokens=1)
-        t0 = time.time()
-        text = gen.generate(
-            args.prompt,
-            max_new_tokens=args.max_new_tokens,
-            use_cache=not args.no_cache,
-            **sampling,
+        _out = fast_dllm_generate(
+            _model,
+            _prefix,
+            args.max_new_tokens,
+            _schedule,
+            mask_token_id=cfg.mask_token_id,
+            block_size=args.block_size,
+            steps_per_block=args.n_steps,
+            confidence_threshold=args.confidence_threshold,
+            use_dual_cache=args.use_dual_cache,
+            seed=args.seed,
         )
         elapsed = time.time() - t0
-        prompt_tokens = len(gen.tokenizer.encode(args.prompt))
-        new_tokens    = len(gen.tokenizer.encode(text)) - prompt_tokens
+        token_ids = _out[0].tolist()
+        text = _tokenizer.decode(token_ids, skip_special_tokens=True)
         print(text)
         print("-" * 40)
-        print(f"Generated {new_tokens} tokens in {elapsed:.2f}s "
-              f"({new_tokens / elapsed:.1f} tok/s)")
+        print(f"Generated {len(token_ids)} tokens in {elapsed:.2f}s "
+              f"({len(token_ids) / elapsed:.1f} tok/s)")
+
+    elif model_type == "elf":
+        import msgpack
+        from flax import nnx
+        from flax.serialization import _msgpack_ext_unpack
+        from core.config import Config
+        from core.elf import ELFTransformer
+        from core.generation import elf_generate
+        from transformers import AutoTokenizer
+
+        cfg = Config.from_dict(_flat)
+        for _fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
+            _wp = os.path.join(args.run_dir, _fname)
+            if os.path.exists(_wp):
+                break
+        else:
+            print(f"Error: no weights file found in {args.run_dir}", file=sys.stderr)
+            sys.exit(1)
+        with open(_wp, "rb") as _f:
+            _state = msgpack.unpackb(_f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
+        _model = ELFTransformer(cfg.to_elf_config(), rngs=nnx.Rngs(args.seed))
+        nnx.update(_model, _state)
+
+        tokenizer_type = _flat.get("tokenizer_type", "")
+        tokenizer_path = _flat.get("tokenizer_path", None)
+        if tokenizer_type == "bpe" and tokenizer_path:
+            _tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+        else:
+            _tokenizer = AutoTokenizer.from_pretrained("t5-base")
+
+        t0 = time.time()
+        _out = elf_generate(
+            _model,
+            gen_len=args.max_new_tokens,
+            batch_size=1,
+            n_steps=args.n_steps,
+            cfg_scale=args.cfg_scale,
+            seed=args.seed,
+        )
+        elapsed = time.time() - t0
+        token_ids = _out[0].tolist()
+        text = _tokenizer.decode(token_ids, skip_special_tokens=True)
+        print(text)
+        print("-" * 40)
+        print(f"Generated {len(token_ids)} tokens in {elapsed:.2f}s "
+              f"({len(token_ids) / elapsed:.1f} tok/s)")
+
+    else:
+        print(f"Error: unknown model_type {model_type!r} in config.yaml", file=sys.stderr)
+        sys.exit(1)
 
 
 def _cmd_sweep(args: argparse.Namespace) -> None:
@@ -377,6 +499,171 @@ def _cmd_infbench(args: argparse.Namespace) -> None:
     sys.exit(result.returncode)
 
 
+def _cmd_merge_lora(args: argparse.Namespace) -> None:
+    """Merge LoRA adapters into base weights and save to a new directory."""
+    import os
+    import shutil
+    import msgpack
+    import yaml
+    from flax import nnx
+    from flax.serialization import _msgpack_ext_unpack
+    from core.config import Config
+    from core.lora import LoRALinear
+
+    run_dir = args.run_dir
+    out_dir = args.out_dir
+
+    if not os.path.isdir(run_dir):
+        print(f"Error: run_dir not found: {run_dir}", file=sys.stderr)
+        sys.exit(1)
+    if os.path.exists(out_dir) and not args.overwrite:
+        print(f"Error: out_dir already exists: {out_dir}  (use --overwrite to force)", file=sys.stderr)
+        sys.exit(1)
+
+    config_path = os.path.join(run_dir, "config.yaml")
+    with open(config_path) as f:
+        raw = yaml.safe_load(f)
+    flat: dict = {}
+    for v in raw.values():
+        if isinstance(v, dict):
+            flat.update(v)
+    if not flat:
+        flat = raw
+    cfg = Config.from_dict(flat)
+
+    for fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
+        weights_path = os.path.join(run_dir, fname)
+        if os.path.exists(weights_path):
+            break
+    else:
+        print(f"Error: no weights file found in {run_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    with open(weights_path, "rb") as f:
+        state_dict = msgpack.unpackb(f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
+
+    model_type = flat.get("model_type", "autoregressive")
+    rngs = nnx.Rngs(42)
+    if model_type == "elf":
+        from core.elf import ELFTransformer
+        model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
+    elif model_type == "diffusion":
+        from core.model import DiffusionTransformer
+        model = DiffusionTransformer(cfg, rngs=rngs)
+    else:
+        from core.model import Transformer
+        model = Transformer(cfg, rngs=rngs)
+    nnx.update(model, state_dict)
+
+    # Merge LoRA adapters: fuse each LoRALinear's low-rank delta into the base kernel
+    for path, module in nnx.iter_modules(model):
+        if isinstance(module, LoRALinear):
+            fused = module.merge_weights()
+            module.base.kernel.value = fused
+
+    # Extract merged state and serialise
+    _, merged_state = nnx.split(model)
+    from flax.serialization import _msgpack_ext_pack
+    packed = msgpack.packb(merged_state, default=_msgpack_ext_pack, strict_types=True)
+
+    os.makedirs(out_dir, exist_ok=True)
+    out_weights = os.path.join(out_dir, "best_model_weights.msgpack")
+    with open(out_weights, "wb") as f:
+        f.write(packed)
+
+    shutil.copy(config_path, os.path.join(out_dir, "config.yaml"))
+    print(f"Merged weights saved to: {out_weights}")
+    print(f"Config copied to:        {os.path.join(out_dir, 'config.yaml')}")
+
+
+def _cmd_profile(args: argparse.Namespace) -> None:
+    """Print parameter count and FLOPs for a checkpoint or config."""
+    import yaml
+    from flax import nnx
+    from core.config import Config
+    from dantinox.profiling.counter import count_flops
+
+    if args.run_dir:
+        import os
+        config_path = os.path.join(args.run_dir, "config.yaml")
+        if not os.path.exists(config_path):
+            print(f"Error: config.yaml not found in {args.run_dir}", file=sys.stderr)
+            sys.exit(1)
+        with open(config_path) as f:
+            raw = yaml.safe_load(f)
+    elif args.config:
+        with open(args.config) as f:
+            raw = yaml.safe_load(f)
+    else:
+        print("Error: one of --run_dir or --config is required", file=sys.stderr)
+        sys.exit(1)
+
+    flat: dict = {}
+    for v in raw.values():
+        if isinstance(v, dict):
+            flat.update(v)
+    if not flat:
+        flat = raw
+    cfg = Config.from_dict(flat)
+
+    model_type = flat.get("model_type", "autoregressive")
+    rngs = nnx.Rngs(42)
+    if model_type == "elf":
+        from core.elf import ELFTransformer
+        model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
+    elif model_type == "diffusion":
+        from core.model import DiffusionTransformer
+        model = DiffusionTransformer(cfg, rngs=rngs)
+    else:
+        from core.model import Transformer
+        model = Transformer(cfg, rngs=rngs)
+
+    param_leaves = nnx.state(model, nnx.Param)
+    import jax
+    total_params = sum(x.size for x in jax.tree_util.tree_leaves(param_leaves))
+
+    print(f"\n{'─' * 50}")
+    print(f"  Model type  : {model_type}")
+    print(f"  dim         : {cfg.dim}")
+    print(f"  num_blocks  : {cfg.num_blocks}")
+    print(f"  n_heads     : {cfg.n_heads}")
+    print(f"  vocab_size  : {cfg.vocab_size}")
+    print(f"  Parameters  : {total_params:,}  ({total_params / 1e6:.2f} M)")
+
+    try:
+        model_cfg = cfg.to_model_config() if hasattr(cfg, "to_model_config") else cfg
+        flops = count_flops(model_cfg, seq_len=args.seq_len, batch_size=args.batch_size)
+        print(f"\n  seq_len={args.seq_len}  batch_size={args.batch_size}")
+        print(f"  {flops}")
+    except Exception as exc:
+        print(f"\n  FLOPs: unavailable ({exc})")
+    print(f"{'─' * 50}\n")
+
+
+def _cmd_eval(args: argparse.Namespace) -> None:
+    """Delegate to scripts/test_generation_quality.py via subprocess."""
+    import subprocess
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parent.parent / "scripts" / "test_generation_quality.py"
+    if not script.exists():
+        print(f"Error: {script} not found — is the repo intact?", file=sys.stderr)
+        sys.exit(1)
+
+    cmd = [
+        sys.executable, str(script),
+        "--run-dir", args.run_dir,
+        "--n-samples", str(args.n_samples),
+        "--gen-len", str(args.gen_len),
+        "--seed", str(args.seed),
+    ]
+    if args.out_csv:
+        cmd += ["--out-csv", args.out_csv]
+
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
 # ─── argument parser ────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -413,6 +700,18 @@ def _build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--stream", action="store_true",
                        help="Stream tokens to stdout as they are produced")
     p_gen.add_argument("--seed", type=int, default=42)
+    # Diffusion-specific arguments
+    p_gen.add_argument("--n_steps", type=int, default=50,
+                       help="Denoising steps (diffusion/ELF only)")
+    p_gen.add_argument("--block_size", type=int, default=32,
+                       help="Block size for fast_dllm_generate (diffusion only)")
+    p_gen.add_argument("--use_dual_cache", action="store_true", default=True,
+                       help="Use DualCache in fast_dllm_generate (diffusion only)")
+    p_gen.add_argument("--confidence_threshold", type=float, default=0.9,
+                       help="Confidence threshold for unmasking (diffusion only)")
+    # ELF-specific arguments
+    p_gen.add_argument("--cfg_scale", type=float, default=1.5,
+                       help="CFG guidance scale (ELF only)")
 
     # ── sweep ──────────────────────────────────────────────────────────────
     p_sweep = sub.add_parser("sweep", help="Run a W&B hyperparameter sweep")
@@ -522,6 +821,28 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ib.add_argument("--batch-seq-len", type=int, default=512, metavar="N",
                       help="Fixed sequence length for the batch sweep (default: 512)")
 
+    # ── merge-lora ─────────────────────────────────────────────────────────────
+    p_merge = sub.add_parser("merge-lora", help="Merge LoRA adapters into base weights and save")
+    p_merge.add_argument("--run_dir", required=True, help="Run directory with LoRA checkpoint")
+    p_merge.add_argument("--out_dir", required=True, help="Output directory for merged weights")
+    p_merge.add_argument("--overwrite", action="store_true", help="Overwrite out_dir if it exists")
+
+    # ── profile ────────────────────────────────────────────────────────────────
+    p_profile = sub.add_parser("profile", help="Print parameter count and FLOPs for a checkpoint")
+    p_profile_src = p_profile.add_mutually_exclusive_group()
+    p_profile_src.add_argument("--run_dir", default=None, help="Checkpoint directory (reads config.yaml)")
+    p_profile_src.add_argument("--config", default=None, help="YAML config file (if --run_dir not given)")
+    p_profile.add_argument("--seq_len", type=int, default=512, help="Sequence length for FLOPs (default 512)")
+    p_profile.add_argument("--batch_size", type=int, default=1, help="Batch size for FLOPs (default 1)")
+
+    # ── eval ───────────────────────────────────────────────────────────────────
+    p_eval = sub.add_parser("eval", help="Evaluate generation quality for a checkpoint")
+    p_eval.add_argument("--run_dir", required=True, help="Run directory with checkpoint")
+    p_eval.add_argument("--n_samples", type=int, default=50, help="Number of samples to generate (default 50)")
+    p_eval.add_argument("--gen_len", type=int, default=128, help="Generation length in tokens (default 128)")
+    p_eval.add_argument("--seed", type=int, default=42, help="Random seed (default 42)")
+    p_eval.add_argument("--out_csv", default=None, help="Save metrics to this CSV file")
+
     # ── plot ────────────────────────────────────────────────────────────────
     p_plot = sub.add_parser("plot", help="Generate benchmark plots from a results CSV")
     p_plot.add_argument("--in_csv", default="benchmark_results.csv",
@@ -547,15 +868,18 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     dispatch = {
-        "train":     _cmd_train,
-        "generate":  _cmd_generate,
-        "sweep":     _cmd_sweep,
-        "benchmark": _cmd_benchmark,
-        "infbench":  _cmd_infbench,
-        "plot":      _cmd_plot,
-        "find-lr":   _cmd_find_lr,
-        "push":      _cmd_push,
-        "pull":      _cmd_pull,
+        "train":      _cmd_train,
+        "generate":   _cmd_generate,
+        "sweep":      _cmd_sweep,
+        "benchmark":  _cmd_benchmark,
+        "infbench":   _cmd_infbench,
+        "plot":       _cmd_plot,
+        "find-lr":    _cmd_find_lr,
+        "push":       _cmd_push,
+        "pull":       _cmd_pull,
+        "merge-lora": _cmd_merge_lora,
+        "profile":    _cmd_profile,
+        "eval":       _cmd_eval,
     }
     dispatch[args.command](args)
 

@@ -92,12 +92,19 @@ def _sample_logit(
 def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Tokenizer]:
     """Return (config, model, tokenizer) loaded from a local run directory."""
     config_path = os.path.join(run_dir, "config.yaml")
-    weights_path = os.path.join(run_dir, "model_weights.msgpack")
 
     if not os.path.isdir(run_dir):
         raise CheckpointError(f"Run directory not found: {run_dir}")
     if not os.path.exists(config_path):
         raise CheckpointError(f"Config file not found: {config_path}")
+
+    # Try best_model_weights.msgpack first, fall back to model_weights.msgpack
+    weights_path = None
+    for fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
+        candidate = os.path.join(run_dir, fname)
+        if os.path.exists(candidate):
+            weights_path = candidate
+            break
 
     with open(config_path) as f:
         raw = yaml.safe_load(f)
@@ -157,7 +164,7 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
     rngs = nnx.Rngs(seed)
     model = Transformer(config, rngs=rngs)
 
-    if os.path.exists(weights_path):
+    if weights_path is not None:
         log.info("Loading weights from %s", weights_path)
         with open(weights_path, "rb") as f:
             state_dict = msgpack.unpackb(
@@ -165,7 +172,7 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
             )
         nnx.update(model, state_dict)
     else:
-        log.warning("No weights file found at %s — using random initialisation", weights_path)
+        log.warning("No weights file found in %s — using random initialisation", run_dir)
 
     return config, model, tokenizer
 

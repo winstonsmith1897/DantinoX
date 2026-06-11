@@ -25,7 +25,7 @@ dantinox --version
 
 -   :material-text-box-outline: **generate**
 
-    Generate text from a trained checkpoint, with optional streaming.
+    Generate text from a trained checkpoint. Supports AR, Diffusion, and ELF.
 
     [Details →](#generate)
 
@@ -70,6 +70,24 @@ dantinox --version
     Re-generate benchmark plots from an existing results CSV.
 
     [Details →](#plot)
+
+-   :material-merge: **merge-lora**
+
+    Fold LoRA adapters into base weights and save a standalone checkpoint.
+
+    [Details →](#merge-lora)
+
+-   :material-cpu-64-bit: **profile**
+
+    Print parameter count and FLOPs for a config or checkpoint.
+
+    [Details →](#profile)
+
+-   :material-clipboard-check-outline: **eval**
+
+    Evaluate generation quality (distinct-N, repetition, MAUVE) on a checkpoint.
+
+    [Details →](#eval)
 
 </div>
 
@@ -161,6 +179,8 @@ Generate text from a trained checkpoint.
 dantinox generate --run_dir runs/ar_mha_512d_12b --prompt "Once upon a time"
 ```
 
+The subcommand auto-detects the model type from `config.yaml` and routes to the correct generation function — no manual flag required.
+
 ### Arguments
 
 | Flag | Default | Description |
@@ -172,9 +192,14 @@ dantinox generate --run_dir runs/ar_mha_512d_12b --prompt "Once upon a time"
 | `--top_k` | `None` | Keep only the `k` highest-probability tokens. |
 | `--top_p` | `None` | Nucleus sampling — keep the smallest set with cumulative probability ≥ `p`. |
 | `--temperature` | `1.0` | Sampling temperature. Lower = more focused, higher = more random. |
-| `--no_cache` | `False` | Disable KV cache (slower; useful for debugging). |
-| `--stream` | `False` | Stream tokens to stdout as they are produced (AR only). |
+| `--no_cache` | `False` | Disable KV cache (slower; useful for debugging). AR only. |
+| `--stream` | `False` | Stream tokens to stdout as they are produced. AR only. |
 | `--seed` | `42` | Random seed for sampling. |
+| `--n_steps` | `50` | Denoising steps. Diffusion and ELF models only. |
+| `--block_size` | `32` | Token block size for Fast-dLLM DualCache. Diffusion only. |
+| `--use_dual_cache` | `True` | Enable Fast-dLLM DualCache for ~1.8× speedup. Diffusion only. |
+| `--confidence_threshold` | `0.9` | Confidence threshold for early token commitment. Diffusion only. |
+| `--cfg_scale` | `1.5` | Classifier-free guidance scale. ELF only. |
 
 ### Examples
 
@@ -421,6 +446,152 @@ dantinox plot --in_csv results/benchmark.csv --out_dir results/plots/
 | `insights` | Pareto frontier (quality vs. speed) |
 | `3d` | 3D parameter / quality / throughput surface |
 | `3d_dkv` | 3D KV-cache / throughput surface |
+
+---
+
+## merge-lora
+
+Fold trained LoRA adapters back into the base model weights to produce a standalone checkpoint with no LoRA overhead.
+
+```bash
+dantinox merge-lora \
+    --run_dir runs/lora_finetune \
+    --out_dir runs/lora_merged
+```
+
+### Arguments
+
+| Flag | Default | Description |
+|:-----|:-------:|:------------|
+| `--run_dir` | **required** | Run directory containing a LoRA checkpoint and `config.yaml`. |
+| `--out_dir` | **required** | Output directory. Receives `best_model_weights.msgpack` + `config.yaml`. |
+| `--overwrite` | `False` | Overwrite `--out_dir` if it already exists. |
+
+### Examples
+
+=== "Merge and verify"
+
+    ```bash
+    dantinox merge-lora \
+        --run_dir runs/ar_lora_rank8 \
+        --out_dir runs/ar_lora_merged
+
+    # Verify merged model generates correctly
+    dantinox generate \
+        --run_dir runs/ar_lora_merged \
+        --prompt "In the beginning"
+    ```
+
+=== "Overwrite existing output"
+
+    ```bash
+    dantinox merge-lora \
+        --run_dir runs/ar_lora_rank8 \
+        --out_dir runs/ar_lora_merged \
+        --overwrite
+    ```
+
+!!! tip
+    After merging, `config.yaml` in `--out_dir` has `use_lora: false`. The merged weights are identical in size to the base model and can be pushed to the Hub directly.
+
+---
+
+## profile
+
+Print parameter count and estimated FLOPs for a model config or checkpoint. Works from a saved run directory or a raw YAML config file.
+
+```bash
+dantinox profile --run_dir runs/ar_mha_512d
+```
+
+### Arguments
+
+| Flag | Default | Description |
+|:-----|:-------:|:------------|
+| `--run_dir` | — | Run directory (reads `config.yaml`). Mutually exclusive with `--config`. |
+| `--config` | — | Path to a YAML config file. Mutually exclusive with `--run_dir`. |
+| `--seq_len` | `512` | Sequence length for FLOPs estimation. |
+| `--batch_size` | `1` | Batch size for FLOPs estimation. |
+
+### Examples
+
+=== "From a run directory"
+
+    ```bash
+    dantinox profile --run_dir runs/diffusion_512d_28k
+    ```
+
+=== "From a config file"
+
+    ```bash
+    dantinox profile \
+        --config configs/large.yaml \
+        --seq_len 1024 \
+        --batch_size 4
+    ```
+
+### Output example
+
+```
+Model: DiffusionTransformer (diffusion · MHA)
+──────────────────────────────────────────────
+Parameters:   48,234,496  (48.2 M)
+Embedding:     8,192,000
+Backbone:     39,845,376
+LM head:         197,120
+
+FLOPs per forward pass (seq=512, batch=1)
+  Total:    12.3 GFLOPs
+  Attention: 4.1 GFLOPs   (33.3 %)
+  FFN:       8.2 GFLOPs   (66.7 %)
+──────────────────────────────────────────────
+```
+
+---
+
+## eval
+
+Evaluate generation quality for a checkpoint by generating samples and computing diversity and repetition metrics (distinct-1, distinct-2, rep-4, and optionally MAUVE).
+
+```bash
+dantinox eval --run_dir runs/diffusion_512d_28k
+```
+
+### Arguments
+
+| Flag | Default | Description |
+|:-----|:-------:|:------------|
+| `--run_dir` | **required** | Run directory with checkpoint and `config.yaml`. |
+| `--n_samples` | `50` | Number of samples to generate for evaluation. |
+| `--gen_len` | `128` | Generation length in tokens per sample. |
+| `--seed` | `42` | Random seed. |
+| `--out_csv` | `None` | Save metrics row to this CSV file (appends if exists). |
+
+### Examples
+
+=== "Quick quality check"
+
+    ```bash
+    dantinox eval \
+        --run_dir runs/ar_mha_512d \
+        --n_samples 50 \
+        --gen_len 128
+    ```
+
+=== "Compare two checkpoints"
+
+    ```bash
+    dantinox eval --run_dir runs/ar_mha_512d   --out_csv quality.csv
+    dantinox eval --run_dir runs/diff_mha_512d  --out_csv quality.csv
+    ```
+
+### Metrics
+
+| Metric | Range | Meaning |
+|:-------|:-----:|:--------|
+| `distinct_1` | 0–1 | Fraction of unique unigrams across all samples (higher = more diverse) |
+| `distinct_2` | 0–1 | Fraction of unique bigrams (higher = more diverse) |
+| `rep_4` | 0–1 | Fraction of 4-grams repeated within the same sample (lower = less repetitive) |
 
 ---
 

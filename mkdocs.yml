@@ -137,78 +137,76 @@ extra_javascript:
 # ── Navigation ────────────────────────────────────────────────────────────────
 nav:
   - Home: index.md
-  - Quickstart: quickstart.md
 
-  - Architecture:
-      - Design Overview: architecture.md
-      - Core Layers: architecture/core.md
-      - Paradigm System: architecture/paradigm-system.md
-      - Profiling & Benchmarking: architecture/profiling.md
+  - Get Started:
+      - Quickstart: quickstart.md
+      - Cookbook: cookbook.md
+      - Notebooks: notebooks/index.md
+      - DantinoX vs HuggingFace: vs-transformers.md
 
-  - Tutorials:
-      - Overview: tutorials/index.md
-      - Training Your First Model: tutorials/first-model.md
-      - Masked Diffusion LM: tutorials/diffusion-lm.md
-      - LoRA Fine-Tuning: tutorials/lora-fine-tuning.md
-      - Benchmarking a Model: tutorials/benchmarking.md
-      - Push to HuggingFace Hub: tutorials/hub.md
+  - Models:
+      - Architecture:
+          - Design Overview: architecture.md
+          - Core Layers: architecture/core.md
+          - Paradigm System: architecture/paradigm-system.md
+      - Generation Paradigms:
+          - Overview: paradigms/index.md
+          - Autoregressive (AR): paradigms/autoregressive.md
+          - Masked Diffusion (LLaDA): paradigms/diffusion.md
+          - ELF Continuous Flow: paradigms/elf.md
+          - Fast-dLLM DualCache: paradigms/fast-dllm.md
+          - Confidence-Aware Decoding: paradigms/confidence.md
+          - AR vs Diffusion: paradigms/comparison.md
 
-  - Generation Paradigms:
-      - Overview: paradigms/index.md
-      - Autoregressive (AR): paradigms/autoregressive.md
-      - Masked Diffusion (LLaDA): paradigms/diffusion.md
-      - ELF Continuous Flow: paradigms/elf.md
-      - Fast-dLLM DualCache: paradigms/fast-dllm.md
-      - Confidence-Aware Decoding: paradigms/confidence.md
-      - AR vs Diffusion Comparison: paradigms/comparison.md
+  - Training & Inference:
+      - Training:
+          - Overview: training/index.md
+          - Autoregressive: training/autoregressive.md
+          - Diffusion: training/diffusion.md
+          - Optimizers & Schedules: training/optimizers.md
+          - Hyperparameter Sweeps: training/sweeps.md
+          - Multi-GPU: training/multi-gpu.md
+          - Full Training Suite: training/emnlp-suite.md
+      - Inference:
+          - Overview: inference/index.md
+          - AR Generation: inference/autoregressive.md
+          - Diffusion Generation: inference/diffusion.md
+          - KV-Cache Mechanics: inference/kv-cache.md
+      - Tutorials:
+          - Overview: tutorials/index.md
+          - Your First Model: tutorials/first-model.md
+          - Masked Diffusion LM: tutorials/diffusion-lm.md
+          - LoRA Fine-Tuning: tutorials/lora-fine-tuning.md
+          - Benchmarking a Model: tutorials/benchmarking.md
+          - Push to Hub: tutorials/hub.md
 
-  - Training:
-      - Overview: training/index.md
-      - Autoregressive: training/autoregressive.md
-      - Diffusion: training/diffusion.md
-      - Optimizers & Schedules: training/optimizers.md
-      - Hyperparameter Sweeps: training/sweeps.md
-      - Multi-GPU Training: training/multi-gpu.md
-      - Full Training Suite: training/emnlp-suite.md
-
-  - Inference:
-      - Overview: inference/index.md
-      - AR Generation: inference/autoregressive.md
-      - Diffusion Generation: inference/diffusion.md
-      - KV-Cache Mechanics: inference/kv-cache.md
-
-  - Benchmarks & Profiling:
-      - Benchmark Results: benchmarks.md
+  - Benchmarks:
+      - Results: benchmarks.md
       - Ablation Studies: ablation_studies.md
-
-  - API Reference:
-      - Overview: api/index.md
-      - "dantinox (top-level)": api/dantinox.md
-      - Paradigms: api/paradigms.md
-      - Training: api/training.md
-      - Profiling: api/profiling.md
-      - Benchmarking: api/benchmarking.md
-      - Visualization: api/visualization.md
-
-  - Developer Guide:
-      - Overview: guides/index.md
-      - Adding a Core Layer: guides/new-layer.md
-      - Custom Paradigm: guides/new-paradigm.md
-      - Custom Benchmark Task: guides/new-benchmark.md
-      - Custom Chart: guides/new-chart.md
+      - Experiments & Results: paper.md
+      - Profiling: architecture/profiling.md
 
   - Reference:
       - Configuration: configuration.md
       - CLI: cli.md
-      - Cookbook: cookbook.md
-      - DantinoX vs HuggingFace: vs-transformers.md
-
-  - Contributing: contributing.md
-  - FAQ & Troubleshooting: faq.md
-  - Changelog: changelog.md
-  - Experiments & Results: paper.md
-  - Notebooks: notebooks/index.md
-  - Coverage Report: coverage/index.html
+      - API Reference:
+          - Overview: api/index.md
+          - "dantinox (top-level)": api/dantinox.md
+          - Paradigms: api/paradigms.md
+          - Training: api/training.md
+          - Profiling: api/profiling.md
+          - Benchmarking: api/benchmarking.md
+          - Visualization: api/visualization.md
+      - Developer Guide:
+          - Overview: guides/index.md
+          - Adding a Core Layer: guides/new-layer.md
+          - Custom Paradigm: guides/new-paradigm.md
+          - Custom Benchmark Task: guides/new-benchmark.md
+          - Custom Chart: guides/new-chart.md
+      - Contributing: contributing.md
+      - FAQ & Troubleshooting: faq.md
+      - Changelog: changelog.md
+      - Coverage Report: coverage/index.html
 
 # ── Extra metadata ────────────────────────────────────────────────────────────
 extra:

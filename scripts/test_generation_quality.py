@@ -184,8 +184,10 @@ def eval_run(
     gen_len: int = 64,
     seed: int = 42,
     show_text: int = 5,
+    run_path: Path | None = None,
 ) -> dict:
-    run_path = RUNS_DIR / name
+    if run_path is None:
+        run_path = RUNS_DIR / name
     print(f"\n{'═'*70}")
     print(f"  {name}")
     print(f"{'═'*70}")
@@ -292,11 +294,15 @@ def main() -> None:
     )
     parser.add_argument("--runs",      nargs="*", default=_EVAL_RUNS,
                         help="Run names to evaluate (default: diff_mha + elf_mha).")
+    parser.add_argument("--run-dir",   default=None,
+                        help="Absolute path to a single run directory (overrides --runs).")
     parser.add_argument("--n-samples", type=int, default=10)
     parser.add_argument("--gen-len",   type=int, default=64)
     parser.add_argument("--seed",      type=int, default=42)
     parser.add_argument("--show-text", type=int, default=5,
                         help="Number of text samples to print per model.")
+    parser.add_argument("--out-csv",   default=None,
+                        help="Save metrics to this CSV file.")
     args = parser.parse_args()
 
     print(f"DantinoX generation quality test")
@@ -304,7 +310,9 @@ def main() -> None:
     print(f"Config: {args.n_samples} samples × {args.gen_len} tokens")
 
     results = []
-    for run_name in args.runs:
+    if args.run_dir:
+        run_abs = Path(args.run_dir).resolve()
+        run_name = run_abs.name
         try:
             result = eval_run(
                 run_name,
@@ -312,12 +320,28 @@ def main() -> None:
                 gen_len=args.gen_len,
                 seed=args.seed,
                 show_text=args.show_text,
+                run_path=run_abs,
             )
             results.append(result)
         except Exception as exc:
             print(f"\n[ERROR] {run_name}: {exc}")
             import traceback
             traceback.print_exc()
+    else:
+        for run_name in args.runs:
+            try:
+                result = eval_run(
+                    run_name,
+                    n_samples=args.n_samples,
+                    gen_len=args.gen_len,
+                    seed=args.seed,
+                    show_text=args.show_text,
+                )
+                results.append(result)
+            except Exception as exc:
+                print(f"\n[ERROR] {run_name}: {exc}")
+                import traceback
+                traceback.print_exc()
 
     # ── Summary table ─────────────────────────────────────────────────────────
     if len(results) > 1:
@@ -332,6 +356,22 @@ def main() -> None:
             print(f"  {r['run']:<35} {r['model_type']:<12} "
                   f"{r['distinct_1']:>6.3f} {r['distinct_2']:>6.3f} "
                   f"{r['rep_4']:>6.3f} {r['vocab_cov']:>8.5f}  {status}")
+
+    if args.out_csv and results:
+        try:
+            import csv
+            fieldnames = list(results[0].keys())
+            out_path = Path(args.out_csv)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_path, "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for r in results:
+                    row = {k: ("|".join(v) if isinstance(v, list) else v) for k, v in r.items()}
+                    writer.writerow(row)
+            print(f"\nMetrics saved to: {out_path}")
+        except Exception as exc:
+            print(f"[warn] Could not save CSV: {exc}")
 
     print("\nDone.")
 
