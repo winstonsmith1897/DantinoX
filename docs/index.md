@@ -5,6 +5,14 @@ hide:
 
 <div class="dnx-hero" markdown>
 
+<div class="dnx-hero-inner" markdown>
+
+<div class="dnx-hero-logo" markdown>
+![DantinoX](images/dantinox-transparent.png)
+</div>
+
+<div class="dnx-hero-text" markdown>
+
 # DantinoX
 
 **A research-grade JAX/Flax NNX library for language model research.**
@@ -22,6 +30,9 @@ Three generation paradigms — Autoregressive, Masked Diffusion, and ELF — on 
 [API Reference](api/index.md){ .md-button }
 [Cookbook](cookbook.md){ .md-button }
 [GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
+
+</div>
+</div>
 
 </div>
 

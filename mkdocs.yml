@@ -11,7 +11,7 @@ copyright: Copyright &copy; 2026 Marco Simoni — MIT License
 # ── Theme ─────────────────────────────────────────────────────────────────────
 theme:
   name: material
-  logo: images/dantinox.png
+  logo: images/dantinox-transparent.png
   favicon: images/dantinox.png
   font:
     text: Inter
