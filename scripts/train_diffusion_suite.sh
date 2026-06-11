@@ -121,7 +121,7 @@ train_one() {
     local tag_dim; tag_dim=$(echo "${tag}" | sed -E 's/.*_([0-9]+)d_.*/\1/')
     local _gc="true"; [[ -n "${tag_dim}" && "${tag_dim}" -le 768 ]] && _gc="false"
 
-    local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
+    local cmd=(env CUDA_VISIBLE_DEVICES="${GPU}" TF_GPU_ALLOCATOR=cuda_malloc_async PYTHONPATH="/ssd1/marco.simoni/VULNERABILITY/NETGROUP/DantinoX:${PYTHONPATH:-}" python dantinox/cli.py train
         --config "${BASE_CFG}"
         --run_dir "${run_dir}"
         --use_bf16 true
@@ -147,6 +147,8 @@ train_one() {
         ((N_FAIL++)) || true
         echo "  [FAIL] ${tag}  log: ${log_file}" >&2
     fi
+    # Let CUDA driver fully release GPU memory before the next run
+    sleep 30
 }
 
 # ── Attention config helpers ──────────────────────────────────────────────────

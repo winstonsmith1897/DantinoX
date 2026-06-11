@@ -8,7 +8,7 @@ Both paradigms are trained on the same corpus with the same architecture.
 This page summarises the expected tradeoffs based on DantinoX's systematic
 benchmark suite across three attention types (MHA · GQA · MLA).
 
-The quantitative results reported here are produced by the EMNLP 2026 System Demonstration training pipeline. For full experimental details — including the training matrix, ablation design, and evaluation methodology — see the [EMNLP Paper](../paper.md) companion page. All numerical entries marked with "—" are populated by running `bash scripts/run_full_emnlp.sh`; the resulting CSVs are written to `results/perplexity.csv`, `results/generation_quality.csv`, and `results/benchmark_results.csv`.
+The quantitative results reported here are produced by the DantinoX systematic training pipeline. For full experimental details — including the training matrix, ablation design, and evaluation methodology — see the [Experiments & Results](../paper.md) page. All numerical entries marked with "—" are populated by running `bash scripts/run_full_emnlp.sh`; the resulting CSVs are written to `results/perplexity.csv`, `results/generation_quality.csv`, and `results/benchmark_results.csv`.
 
 ---
 
@@ -69,7 +69,7 @@ Evaluated with sliding-window perplexity; AR uses standard cross-entropy loss, D
         --out results/perplexity.csv
     ```
 
-    Results are written to `results/perplexity.csv`. See the [EMNLP Paper](../paper.md) evaluation pipeline for stage E3 documentation.
+    Results are written to `results/perplexity.csv`. See the [Experiments & Results](../paper.md) page for stage E3 documentation.
 
 ### Cross-Dataset Generalisation (bpb)
 
@@ -188,7 +188,7 @@ From theory, masked diffusion models with bidirectional context are expected to 
 
 ## When to Use Which
 
-The following guidance is grounded in the theoretical properties of each paradigm and is intended to be refined by the empirical findings of the EMNLP 2026 paper once the full pipeline has been run.
+The following guidance is grounded in the theoretical properties of each paradigm and is intended to be refined by the empirical findings once the full evaluation pipeline has been run.
 
 ### Use Autoregressive when:
 

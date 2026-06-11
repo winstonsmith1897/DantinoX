@@ -52,7 +52,7 @@ Inner step on block k:
 ```
 
 The suffix KV barely changes within a single block's inner loop
-(cosine similarity > 0.99 between adjacent steps, Fig. 3 in the paper),
+(cosine similarity > 0.99 between adjacent steps in Fast-dLLM §3.2),
 so it is safely reused and refreshed only at each block boundary.
 
 ---
@@ -91,7 +91,7 @@ tokens = fast_dllm_generate(
     mask_token_id = 0,
 
     # Block-wise parameters
-    block_size        = 32,    # tokens per block  (paper default: 32)
+    block_size        = 32,    # tokens per block  (default: 32)
     steps_per_block   = 20,    # denoising steps per block
 
     # Confidence-aware unmasking
@@ -121,8 +121,8 @@ Larger blocks amortise the cache-refresh cost but introduce more approximation:
 | 64 | high | medium | ~1.6× |
 | 128 | max | high | ~1.3× |
 
-The paper reports 1.4–2.1× speedup over prefix-only caching across model sizes
-(Table 4).
+DualCache delivers 1.4–2.1× speedup over prefix-only caching across model sizes
+(see [Experiments & Results](../paper.md)).
 
 ---
 

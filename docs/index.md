@@ -13,7 +13,6 @@ discrete diffusion, and continuous flow-matching language models.**
 Three paradigms. One trainer. Zero boilerplate.
 
 <div class="hero-badges" markdown>
-[![EMNLP 2026](https://img.shields.io/badge/EMNLP-2026%20System%20Demo-blue?style=flat-square)](paper.md)
 [![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=JAX&logoColor=white)](https://github.com/google/jax)
 [![Flax NNX](https://img.shields.io/badge/Flax_NNX-5E17EB?style=flat-square&logoColor=white)](https://github.com/google/flax)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -23,17 +22,12 @@ Three paradigms. One trainer. Zero boilerplate.
 
 [Get Started](quickstart.md){ .md-button .md-button--primary }
 [API Reference](api/index.md){ .md-button }
-[EMNLP 2026 Paper](paper.md){ .md-button }
+[Notebooks](notebooks/index.md){ .md-button }
 [GitHub](https://github.com/winstonsmith1897/DantinoX){ .md-button }
 
 </div>
 
 ---
-
-!!! abstract "EMNLP 2026 System Demonstration"
-    DantinoX is the official companion codebase for the paper *"DantinoX: A Unified JAX/Flax Framework for Autoregressive and Masked Diffusion Language Models across MHA, GQA, and MLA Attention Variants"*, accepted to the EMNLP 2026 System Demonstrations track. It spans **180 trained checkpoints** across three attention families, ten model sizes, dense and MoE FFNs, and twelve architectural ablations.
-
-    To reproduce all results and paper figures from scratch: `bash scripts/run_full_emnlp.sh`
 
 ## In ten lines of code
 
@@ -134,6 +128,7 @@ DantinoX/
 | [Generation Paradigms](paradigms/index.md) | AR, Discrete Diffusion, ELF, Fast-dLLM, Confidence-Aware |
 | [Training](training/index.md) | Trainer internals, optimizers, schedules, multi-GPU |
 | [Benchmarks](benchmarks.md) | Throughput, FLOPs, latency — MHA vs GQA vs MLA |
+| [Notebooks](notebooks/index.md) | Interactive Colab notebooks — quickstart, diffusion, ELF, LoRA, benchmarking |
 | [API Reference](api/index.md) | Full auto-generated reference for every public symbol |
 | [Developer Guide](guides/index.md) | How to add layers, paradigms, benchmark tasks, charts |
 | [Contributing](contributing.md) | PR workflow, docstring standards, CI checks |

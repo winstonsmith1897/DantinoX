@@ -81,7 +81,7 @@ parameters:
 
 ---
 
-## EMNLP Training Suite
+## Full Training Suite
 
 For the systematic 180-run comparison (84 AR + 96 Diffusion), use the
 pre-built shell scripts that sweep across attention type, model size,

@@ -1,10 +1,10 @@
 ---
-title: EMNLP Training Suite
+title: Full Training Suite
 ---
 
-# EMNLP 2026 Training Suite
+# Full Training Suite
 
-This page documents the systematic training suite used to produce the DantinoX EMNLP 2026 System Demonstration results. The suite comprises two symmetric shell scripts — `scripts/train_ar_suite.sh` and `scripts/train_diffusion_suite.sh` — that together train approximately 180 checkpoints under a controlled experimental design. Both scripts are orchestrated by the top-level pipeline driver `scripts/run_full_emnlp.sh`.
+This page documents the systematic training suite built into DantinoX. The suite comprises two symmetric shell scripts — `scripts/train_ar_suite.sh` and `scripts/train_diffusion_suite.sh` — that together train approximately 180 checkpoints under a controlled experimental design. Both scripts are orchestrated by the top-level pipeline driver `scripts/run_full_emnlp.sh`.
 
 ---
 

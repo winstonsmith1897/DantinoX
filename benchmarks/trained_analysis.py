@@ -60,6 +60,7 @@ from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
 
 from core.config import Config
+from core.elf import ELFTransformer
 from core.model import DiffusionTransformer, Transformer
 
 log = logging.getLogger(__name__)
@@ -94,11 +95,20 @@ def _load_config(run_path: str) -> Config:
 def _load_model(
     run_path: str,
     config: Config,
-) -> Transformer | DiffusionTransformer:
-    """Load model weights into a freshly initialised Transformer or DiffusionTransformer."""
-    weights_path = os.path.join(run_path, "model_weights.msgpack")
-    if not os.path.exists(weights_path):
-        raise FileNotFoundError(f"model_weights.msgpack not found in {run_path}")
+) -> Transformer | DiffusionTransformer | ELFTransformer:
+    """Load model weights from a run directory.
+
+    Tries ``best_model_weights.msgpack`` first, then ``model_weights.msgpack``.
+    Handles ``model_type`` values ``"autoregressive"``, ``"diffusion"``, and
+    ``"elf"``.
+    """
+    for fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
+        weights_path = os.path.join(run_path, fname)
+        if os.path.exists(weights_path):
+            break
+    else:
+        raise FileNotFoundError(f"No weights file found in {run_path}")
+
     with open(weights_path, "rb") as f:
         state_dict = msgpack.unpackb(
             f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
@@ -127,8 +137,11 @@ def _load_model(
                 config = dataclasses.replace(config, vocab_size=vocab)
 
     rngs = nnx.Rngs(42)
-    if config.model_type == "diffusion":
-        model: Transformer | DiffusionTransformer = DiffusionTransformer(config, rngs=rngs)
+    model: Transformer | DiffusionTransformer | ELFTransformer
+    if config.model_type == "elf":
+        model = ELFTransformer(config.to_elf_config(), rngs=rngs)
+    elif config.model_type == "diffusion":
+        model = DiffusionTransformer(config, rngs=rngs)
     else:
         model = Transformer(config, rngs=rngs)
     nnx.update(model, state_dict)

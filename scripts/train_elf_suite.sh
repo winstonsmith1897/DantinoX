@@ -121,6 +121,7 @@ train_one() {
     local cmd=(
         env
         CUDA_VISIBLE_DEVICES="${GPU}"
+        TF_GPU_ALLOCATOR=cuda_malloc_async
         PYTHONPATH="${ROOT}:${PYTHONPATH:-}"
         python dantinox/cli.py train
         --config "${BASE_CFG}"
@@ -152,6 +153,8 @@ train_one() {
     else
         ((N_FAIL++)) || true; echo "  [FAIL] ${tag}  log: ${log_file}" >&2
     fi
+    # Let CUDA driver fully release GPU memory before the next run
+    sleep 30
 }
 
 # ── Attention helpers ─────────────────────────────────────────────────────────

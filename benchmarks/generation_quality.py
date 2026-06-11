@@ -59,7 +59,7 @@ from benchmarks.trained_analysis import (
 )
 from core.config import Config
 from core.diffusion import make_noise_schedule
-from core.generation import diffusion_generate, generate
+from core.generation import diffusion_generate, elf_generate, generate
 
 log = logging.getLogger(__name__)
 
@@ -192,6 +192,24 @@ def _generate_diff(
     return samples
 
 
+def _generate_elf(
+    model, config: Config, n_samples: int, gen_len: int, seed: int = 42
+) -> list[list[int]]:
+    """Generate n_samples sequences using ELF continuous flow-matching decoding."""
+    n_steps   = getattr(config, "elf_n_steps",   64)
+    cfg_scale = getattr(config, "elf_cfg_scale", 1.0)
+    samples: list[list[int]] = []
+    for i in range(n_samples):
+        try:
+            out    = elf_generate(model, gen_len=gen_len, batch_size=1,
+                                  n_steps=n_steps, cfg_scale=cfg_scale, seed=seed + i)
+            tokens = out[0].tolist()
+            samples.append(tokens)
+        except Exception as exc:
+            log.debug("ELF generation failed sample %d: %s", i, exc)
+    return samples
+
+
 # ── Per-run evaluation ────────────────────────────────────────────────────────
 
 def eval_run(
@@ -217,6 +235,8 @@ def eval_run(
 
     if config.model_type == "autoregressive":
         samples = _generate_ar(model, config, n_samples, gen_len, seed)
+    elif config.model_type == "elf":
+        samples = _generate_elf(model, config, n_samples, gen_len, seed)
     else:
         samples = _generate_diff(model, config, n_samples, gen_len, seed)
 
@@ -269,9 +289,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--runs-dir",  default="runs")
     parser.add_argument("--runs",      nargs="*")
-    parser.add_argument("--run-prefix", nargs="+", default=["ar_", "diff_"],
+    parser.add_argument("--run-prefix", nargs="+", default=["ar_", "diff_", "elf_"],
                         metavar="PREFIX",
-                        help="Only evaluate runs whose name starts with a prefix (default: ar_ diff_).")
+                        help="Only evaluate runs whose name starts with a prefix (default: ar_ diff_ elf_).")
     parser.add_argument("--n-samples", type=int, default=_DEFAULT_N_SAMPLES,
                         help=f"Samples to generate per run (default: {_DEFAULT_N_SAMPLES})")
     parser.add_argument("--gen-len",   type=int, default=_DEFAULT_GEN_LEN,

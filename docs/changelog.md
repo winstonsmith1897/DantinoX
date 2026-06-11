@@ -14,9 +14,9 @@ DantinoX uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **EMNLP 2026 System Demo documentation** — `docs/paper.md` companion page with research questions, experimental design (180-checkpoint training matrix), full evaluation pipeline (B1–B3, E1–E4, F1–F3), and reproducibility instructions
-- **EMNLP Training Suite docs** — `docs/training/emnlp-suite.md` documenting the Part A size × attention × FFN matrix and Part B ablation suite with all flag derivations and progress-monitoring commands
-- **`docs/paradigms/comparison.md` improvements** — Research Design section explaining the controlled experimental conditions; expanded placeholder tables for quality (WikiText-103/PTB/LAMBADA/C4 bpb), throughput (AR vs Diffusion simple vs DualCache), and generation quality (Distinct-1/2, Self-BLEU, Rep-4, MAUVE); academically precise "When to Use" section
+- **Experiments & Results documentation** — `docs/paper.md` page with research questions, experimental design (180-checkpoint training matrix), full evaluation pipeline (B1–B3, E1–E4, F1–F3), and reproducibility instructions
+- **Full Training Suite docs** — `docs/training/emnlp-suite.md` documenting the Part A size × attention × FFN matrix and Part B ablation suite with all flag derivations and progress-monitoring commands
+- **`docs/paradigms/comparison.md` improvements** — Research Design section explaining the controlled experimental conditions; expanded placeholder tables for quality (WikiText-103/PTB/LAMBADA/C4 bpb), throughput (AR vs Diffusion simple vs DualCache), and generation quality (Distinct-1/2, Self-BLEU, Rep-4, MAUVE); "When to Use" section
 - **ReadTheDocs migration** — documentation now served from `dantinox.readthedocs.io`; GitHub Pages workflow replaced with a CI-only `mkdocs build --strict` validation step; `site_url` added to `mkdocs.yml`
 
 ### Fixed

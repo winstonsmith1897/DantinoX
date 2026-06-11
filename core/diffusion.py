@@ -32,10 +32,11 @@ only the current block is recomputed each step.
 """
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from .config import Config
 
@@ -65,15 +66,56 @@ class DualCache(NamedTuple):
 # ── Noise schedule ─────────────────────────────────────────────────────────────
 
 class NoiseSchedule(NamedTuple):
-    """Continuous masking schedule: maps t ∈ [0,1] → mask probability p_mask(t).
+    """Discrete masking schedule for reverse-diffusion generation.
 
-    schedule: "linear" | "cosine" | "sqrt"
+    Attributes
+    ----------
+    schedule:
+        Schedule name: ``"linear"`` | ``"cosine"`` | ``"sqrt"``.
+    alpha_bar:
+        Survival probability array, shape ``[T+1]``.
+        ``alpha_bar[t]`` is the fraction of tokens expected to remain
+        unmasked at step ``t``.  ``alpha_bar[0] = 1.0`` (clean),
+        ``alpha_bar[T] ≈ 0.0`` (fully masked).
+        Required by ``diffusion_generate`` / ``fast_dllm_generate``.
     """
     schedule: str
+    alpha_bar: Any = None  # np.ndarray | jnp.ndarray, shape [T+1]
 
 
-def make_noise_schedule(config: Config) -> NoiseSchedule:
-    return NoiseSchedule(schedule=config.noise_schedule)
+def make_noise_schedule(config_or_name: Config | str, n_steps: int | None = None) -> NoiseSchedule:
+    """Build a :class:`NoiseSchedule` with a precomputed ``alpha_bar`` array.
+
+    Args:
+        config_or_name: A :class:`~core.config.Config` (reads ``noise_schedule``
+            and ``diffusion_steps``), or a schedule name string directly.
+        n_steps: Override the number of discrete steps.  Defaults to
+            ``config.diffusion_steps`` when a Config is supplied, else 1000.
+
+    Returns:
+        :class:`NoiseSchedule` with ``alpha_bar`` of shape ``[n_steps + 1]``.
+    """
+    if isinstance(config_or_name, str):
+        sched = config_or_name
+        T     = n_steps or 1000
+    else:
+        sched = config_or_name.noise_schedule
+        T     = n_steps or getattr(config_or_name, "diffusion_steps", 1000)
+
+    ts = np.linspace(0.0, 1.0, T + 1, dtype=np.float32)
+
+    if sched == "cosine":
+        s      = 0.008
+        alpha  = np.cos(((ts + s) / (1.0 + s)) * (np.pi / 2.0)) ** 2
+        alpha0 = np.cos((s / (1.0 + s)) * (np.pi / 2.0)) ** 2
+        p_mask = np.clip(1.0 - alpha / alpha0, 0.0, 1.0)
+    elif sched == "sqrt":
+        p_mask = np.sqrt(np.clip(ts, 0.0, 1.0))
+    else:  # "linear" (default)
+        p_mask = ts
+
+    alpha_bar = np.clip(1.0 - p_mask, 0.0, 1.0).astype(np.float32)
+    return NoiseSchedule(schedule=sched, alpha_bar=alpha_bar)
 
 
 # ── Forward process ────────────────────────────────────────────────────────────
