@@ -101,17 +101,19 @@ class TestTrainerFit:
         assert os.path.exists(os.path.join(trained_run, "config.yaml"))
 
     def test_saves_model_weights(self, trained_run):
-        assert os.path.exists(os.path.join(trained_run, "model_weights.msgpack"))
+        # The best checkpoint is always written; the periodic resume
+        # checkpoint (model_weights.msgpack) only appears for runs longer
+        # than config.checkpoint_every steps.
+        assert os.path.exists(
+            os.path.join(trained_run, "best_model_weights.msgpack"))
 
     def test_saves_tokenizer_json(self, trained_run):
         assert os.path.exists(os.path.join(trained_run, "tokenizer.json"))
 
-    def test_saves_training_cursor(self, trained_run):
-        cursor_path = os.path.join(trained_run, "training_cursor.json")
-        assert os.path.exists(cursor_path)
-        with open(cursor_path) as f:
-            cursor = json.load(f)
-        assert "step" in cursor
+    def test_removes_training_cursor_on_completion(self, trained_run):
+        # A finished run must not look like an interrupted one.
+        assert not os.path.exists(
+            os.path.join(trained_run, "training_cursor.json"))
 
     def test_saves_model_summary(self, trained_run):
         summary_path = os.path.join(trained_run, "model_summary.json")
@@ -158,10 +160,8 @@ class TestCheckpointResume:
         trainer = Trainer(train_config)
         trainer.fit(run_dir=run_dir)
 
-        cursor_path = os.path.join(run_dir, "training_cursor.json")
-        assert os.path.exists(cursor_path)
-
-        # Resume should not raise and should produce a valid run_dir
+        # The cursor is removed once a run completes; resume from a finished
+        # run should not raise and should return the same run_dir.
         result = trainer.fit(run_dir=run_dir, resume=True)
         assert result == run_dir
 

@@ -14,7 +14,7 @@ def test_training_forward_shape(tiny_config, batch_input, rngs):
     out = model(batch_input)
     assert out.logits.shape == (*batch_input.shape, tiny_config.vocab_size)
     assert len(out.kv_caches) == tiny_config.num_blocks
-    assert not jnp.isnan(logits).any()
+    assert not jnp.isnan(out.logits).any()
 
 
 def test_no_nan_in_output(tiny_config, batch_input, rngs):

@@ -759,6 +759,13 @@ class ELFConfig:
     dropout:                float = 0.0
     gradient_checkpointing: bool  = True
 
+    # ── Backbone attention (mirrors ModelConfig) ──────────────────────────────
+    attention: str        = "mha"   # "mha" | "gqa" | "mla"
+    kv_heads:  int | None = None    # GQA: number of KV heads; None → n_heads
+    down_dim_q:  int = 256          # MLA latent dims
+    down_dim_kv: int = 256
+    rope_dim:    int = 32
+
     # ── In-context control tokens ─────────────────────────────────────────────
     time_emb_dim:    int = 256      # sinusoidal embedding dim for t and w
     num_time_tokens: int = 4        # control tokens encoding timestep t
@@ -820,7 +827,11 @@ class ELFConfig:
             num_blocks=self.num_blocks,
             vocab_size=self.vocab_size,
             max_context=self.max_seq_len + self.num_ctrl,
-            attention="mha",
+            attention=self.attention,
+            kv_heads=self.kv_heads,
+            down_dim_q=self.down_dim_q,
+            down_dim_kv=self.down_dim_kv,
+            rope_dim=self.rope_dim,
             ffn="mlp",
             norm=self.norm,
             pos_encoding=self.pos_encoding,
