@@ -198,6 +198,7 @@ def fig_stack(stack: pd.DataFrame, out: Path) -> None:
 # ── D. Memory ceiling ─────────────────────────────────────────────────────────
 
 def fig_ceiling(ceil: pd.DataFrame, out: Path) -> None:
+    """ceil holds probe-level rows: one line per successful batch size."""
     attns = ["MHA", "GQA", "MLA"]
     fig, axes = plt.subplots(1, 2, figsize=(8.4, 3.2))
 
@@ -207,8 +208,13 @@ def fig_ceiling(ceil: pd.DataFrame, out: Path) -> None:
         mb, ts = [], []
         for a in attns:
             r = ceil[(ceil.paradigm == p) & (ceil.attn == a)]
-            mb.append(float(r["max_batch"].iloc[0]) if not r.empty else np.nan)
-            ts.append(float(r["tok_s_at_max"].iloc[0]) if not r.empty else np.nan)
+            if r.empty:
+                mb.append(np.nan)
+                ts.append(np.nan)
+            else:
+                best = r.loc[r["batch"].idxmax()]
+                mb.append(float(best["batch"]))
+                ts.append(float(best["tok_s"]))
         b = axes[0].bar(xs + (i - 1) * width, mb, width, color=COLORS[p], label=NICE[p])
         axes[0].bar_label(b, fmt="%.0f", fontsize=7, padding=1)
         b = axes[1].bar(xs + (i - 1) * width, ts, width, color=COLORS[p])
@@ -264,7 +270,7 @@ def summary(grid: pd.DataFrame | None, stack: pd.DataFrame | None,
             row = [p]
             for a in ("MHA", "GQA", "MLA"):
                 r = ceil[(ceil.paradigm == p) & (ceil.attn == a)]
-                row.append(f"{int(r['max_batch'].iloc[0])}" if not r.empty else "—")
+                row.append(f"{int(r['batch'].max())}" if not r.empty else "—")
             lines.append("| " + " | ".join(row) + " |")
     (out / "ablation_summary.md").write_text("\n".join(lines) + "\n")
     print("  saved ablation_summary.md")
@@ -273,14 +279,18 @@ def summary(grid: pd.DataFrame | None, stack: pd.DataFrame | None,
 def _load_many(pattern: str) -> pd.DataFrame | None:
     """Concatenate all per-arch CSVs matching a glob; None if none exist."""
     import glob
+    import re
     files = sorted(glob.glob(pattern))
     if not files:
         return None
-    frames = [pd.read_csv(f) for f in files]
-    df = pd.concat(frames, ignore_index=True)
-    if "arch" not in df.columns:
-        df["arch"] = "512d12b"
-    return df
+    frames = []
+    for f in files:
+        d = pd.read_csv(f)
+        if "arch" not in d.columns or d["arch"].isna().any():
+            m = re.search(r"_(\d+d\d+b)\.csv$", f)
+            d["arch"] = m.group(1) if m else "512d12b"
+        frames.append(d)
+    return pd.concat(frames, ignore_index=True)
 
 
 def main() -> None:

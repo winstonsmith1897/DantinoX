@@ -556,10 +556,24 @@ CEIL_START, CEIL_CAP = 32, 16384
 
 
 def run_ceiling(args: argparse.Namespace) -> list[dict]:
+    """Probe-level rows, appended to the CSV after every successful batch
+    size so that a hard allocator crash (segfault) only truncates the series
+    instead of losing it.  Use ``--series AR:mha`` to probe one combination
+    per process (the crash-safe driver pattern)."""
     rows: list[dict] = []
+    out_path = Path(args.out or f"results/ablation_ceiling_{args.arch}.csv")
+    if not out_path.exists():
+        out_path.write_text("paradigm,attn,gen_len,prompt_len,dtype,batch,tok_s\n")
+
+    only = None
+    if args.series:
+        p_only, a_only = args.series.split(":")
+        only = (p_only, a_only.lower())
 
     for paradigm in ("AR", "Discrete", "Continuous"):
         for attn in ("mha", "gqa", "mla"):
+            if only and (paradigm, attn) != only:
+                continue
             if paradigm == "AR":
                 cfg, model = build_ar(attn, CEIL_P + CEIL_G, bf16=True)
             elif paradigm == "Discrete":
@@ -609,6 +623,9 @@ def run_ceiling(args: argparse.Namespace) -> list[dict]:
                     max_b, tok_s_at_max = B, tps
                     tqdm.write(f"  ceiling {paradigm:<10} {attn.upper():<3} "
                                f"B={B:<6} ok  ({tps:,.0f} tok/s steady)")
+                    with out_path.open("a") as fh:   # crash-safe incremental log
+                        fh.write(f"{paradigm},{attn.upper()},{CEIL_G},{CEIL_P},"
+                                 f"bf16,{B},{tps:.1f}\n")
                     B *= 2
                 except Exception as exc:  # noqa: BLE001
                     tqdm.write(f"  ceiling {paradigm:<10} {attn.upper():<3} "
@@ -617,12 +634,12 @@ def run_ceiling(args: argparse.Namespace) -> list[dict]:
                 finally:
                     gc.collect()
 
-            rows.append({"paradigm": paradigm, "attn": attn.upper(),
-                         "gen_len": CEIL_G, "prompt_len": CEIL_P, "dtype": "bf16",
-                         "max_batch": max_b, "tok_s_at_max": round(tok_s_at_max, 1),
-                         "hit_cap": max_b >= CEIL_CAP})
+            tqdm.write(f"  → ceiling {paradigm}/{attn.upper()}: "
+                       f"max_batch={max_b}  ({tok_s_at_max:,.0f} tok/s)")
             del model
             gc.collect()
+    # Probe rows are already on disk (incremental, crash-safe); nothing to
+    # rewrite — returning [] tells main() to leave the CSV as-is.
     return rows
 
 
@@ -632,6 +649,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("ablation", choices=["grid", "stack", "ceiling"])
     parser.add_argument("--arch", default="512d12b", choices=list(ARCHS))
+    parser.add_argument("--series", default=None,
+                        help="Ceiling only: probe a single 'Paradigm:attn' "
+                             "combination (e.g. 'AR:mha') — crash isolation.")
     parser.add_argument("--out", default=None)
     parser.add_argument("--n-trials", type=int, default=10)
     parser.add_argument("--n-e2e", type=int, default=3)
@@ -648,6 +668,10 @@ def main() -> None:
           f"({DIM}d × {BLOCKS}b, vocab {VOCAB})  [{jax.devices()[0].device_kind}]")
     runner = {"grid": run_grid, "stack": run_stack, "ceiling": run_ceiling}[args.ablation]
     rows = runner(args)
+
+    if not rows:           # ceiling writes its probes incrementally
+        print(f"\nIncremental probe rows in {out}")
+        return
 
     import pandas as pd
     df = pd.DataFrame(rows)
