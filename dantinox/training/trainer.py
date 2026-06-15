@@ -140,6 +140,21 @@ class Trainer:
 
         # ── Data (memmapped token cache) ──────────────────────────────────────
         tokenizer, tokens = _load_tokens(data_source, cfg, model_cfg)
+
+        # Sync model vocab_size down to the actual tokenizer vocabulary.
+        # _check_vocab raises if tok_vocab > model_vocab; when it is smaller
+        # (e.g. char tokenizer with vocab_size=65 but model config says 200),
+        # the extra output logits are never trained and cause OOV KeyErrors at
+        # decode time.  Clamping here ensures the built model matches the real
+        # tokenizer so generation stays within valid token IDs.
+        tok_vocab = int(tokenizer.vocab_size)
+        if hasattr(model_cfg, "vocab_size") and int(model_cfg.vocab_size) > tok_vocab:
+            log.info(
+                "Clamping model vocab_size from %d to tokenizer vocab_size %d.",
+                model_cfg.vocab_size, tok_vocab,
+            )
+            model_cfg.vocab_size = tok_vocab  # model_cfg IS paradigm.config
+
         n_val = int(len(tokens) * cfg.val_frac)
         if n_val < sample_len + 1:
             if cfg.val_frac > 0:

@@ -29,7 +29,7 @@ class CharTokenizer:
         return [self.stoi[c] for c in s]
 
     def decode(self, tokens: list[int]) -> str:
-        return ''.join(self.itos[i] for i in tokens)
+        return ''.join(self.itos.get(i, '�') for i in tokens)
 
     def save(self, path: str) -> None:
         payload = {"type": "char", "vocab": self.stoi}
