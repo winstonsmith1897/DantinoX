@@ -29,11 +29,12 @@ theme:
   features:
     - navigation.instant
     - navigation.instant.progress
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
     - navigation.indexes
     - navigation.tracking
     - navigation.sections
-    - navigation.expand
     - search.suggest
     - search.highlight
     - search.share

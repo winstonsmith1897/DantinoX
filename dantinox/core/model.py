@@ -100,7 +100,7 @@ class Transformer(nnx.Module, pytree=False):
     def _add_pos(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
         T = x.shape[1]
         if self.pos_encoding == "learned":
-            return x + self.wpe(jnp.arange(T, dtype=x.dtype))
+            return x + self.wpe(jnp.arange(T, dtype=jnp.int32))
         if self.pos_encoding == "absolute":
             wpe_slice = jax.lax.dynamic_slice_in_dim(
                 self.wpe, start_index=cache_index, slice_size=T, axis=1  # type: ignore[arg-type]

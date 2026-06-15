@@ -580,12 +580,23 @@ def _save_checkpoint(model: Any, run_dir: str, tag: str) -> None:
 
 def _save_train_state(path: str, model: Any, optimizer: nnx.Optimizer) -> None:
     """Full train state (model + optimizer) for exact resume."""
-    payload = {
-        "model": nnx.state(model, _WEIGHTS).to_pure_dict(),
-        "opt":   nnx.state(optimizer, _WEIGHTS).to_pure_dict(),
-    }
-    with open(path, "wb") as f:
-        f.write(flax.serialization.msgpack_serialize(payload))
+    model_state = nnx.state(model, _WEIGHTS).to_pure_dict()
+    try:
+        opt_state = nnx.state(optimizer, _WEIGHTS).to_pure_dict()
+        payload   = {"model": model_state, "opt": opt_state}
+        with open(path, "wb") as f:
+            f.write(flax.serialization.msgpack_serialize(payload))
+    except (TypeError, Exception):
+        # Some optimizers (e.g., Muon) produce non-serialisable state
+        # (MaskedNode, etc.). Save model weights only so training still
+        # checkpoints; resume will restart the optimizer from scratch.
+        log.warning(
+            "Optimizer state is not serialisable — saving model weights only. "
+            "Resume will restart the optimizer from scratch."
+        )
+        payload = {"model": model_state, "opt": {}}
+        with open(path, "wb") as f:
+            f.write(flax.serialization.msgpack_serialize(payload))
 
 
 def _msgpack_load(path: str) -> Any:
