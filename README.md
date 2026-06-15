@@ -91,14 +91,14 @@ Switch paradigm by changing the first argument — the trainer, optimizer, and c
 
 ```python
 # Masked Diffusion (LLaDA)
-run_dir = dx.fit("diffusion", "data/wiki.txt",
+run_dir = dx.fit("discrete", "data/wiki.txt",
                  dim=512, n_heads=8, head_size=64, num_blocks=12,
                  vocab_size=32_000, noise_schedule="cosine",
                  tokenizer_type="bpe", tokenizer_path="t5-base",
                  lr=1e-4, epochs=20)
 
 # ELF — continuous flow-matching in embedding space
-run_dir = dx.fit("elf", "data/wiki.txt",
+run_dir = dx.fit("continuous", "data/wiki.txt",
                  embed_dim=512, bottleneck_dim=128,
                  dim=512, n_heads=8, head_size=64, num_blocks=12,
                  vocab_size=32_128, elf_cfg_scale=1.5, lr=1e-4, epochs=30)
@@ -107,21 +107,18 @@ run_dir = dx.fit("elf", "data/wiki.txt",
 ### Explicit Paradigm API
 
 ```python
-from dantinox.core.config import ModelConfig
-from dantinox.paradigms.ar import ARParadigm
-from dantinox.trainer import Trainer
-from dantinox.generator import Generator
+import dantinox as dx
 from flax import nnx
 
-cfg      = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
-paradigm = ARParadigm(cfg)
+cfg      = dx.ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
+paradigm = dx.ARParadigm(cfg)
 model    = paradigm.build_model(nnx.Rngs(42))
 
 # Train
-run_dir = Trainer(paradigm).fit("data/wiki.txt")
+run_dir = dx.Trainer(paradigm).fit("data/wiki.txt")
 
 # Generate
-gen  = Generator(run_dir)
+gen  = dx.Generator(run_dir)
 text = gen.generate("In the beginning", max_new_tokens=200, top_p=0.9)
 print(text)
 ```
