@@ -37,15 +37,15 @@ _BPE_REPLACEMENTS = [
 @nnx.jit
 def _stream_prefill(model: nnx.Module, x: jnp.ndarray, kv_cache: tuple) -> tuple:
     """Full prompt forward pass. Returns (logits [B,T,V], filled_kv_cache)."""
-    logits, new_cache, _ = model(x, True, kv_cache, 0, deterministic=True)
-    return logits, new_cache
+    out = model(x, caches=kv_cache, cache_index=0, deterministic=True)
+    return out.logits, out.kv_caches
 
 
 @nnx.jit
 def _stream_decode(model: nnx.Module, tok: jnp.ndarray, kv_cache: tuple, pos: jax.Array) -> tuple:
     """Single-token decode step. Returns (logits [B,1,V], new_kv_cache)."""
-    logits, new_cache, _ = model(tok, True, kv_cache, pos, deterministic=True)
-    return logits, new_cache
+    out = model(tok, caches=kv_cache, cache_index=pos, deterministic=True)
+    return out.logits, out.kv_caches
 
 
 def _sample_logit(

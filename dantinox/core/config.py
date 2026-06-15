@@ -807,7 +807,9 @@ class ELFConfig:
     cfg_scale_max:  float = 5.0
 
     # ── Inference ─────────────────────────────────────────────────────────────
-    sde_gamma: float = 1.0  # SDE noise re-injection scale (0 = ODE)
+    sde_gamma:     float = 1.0   # SDE noise re-injection scale (0 = ODE)
+    elf_n_steps:   int   = 32    # number of flow-matching integration steps
+    elf_cfg_scale: float = 1.5   # default CFG guidance scale for generation
 
     # ── Pretrained embedder ───────────────────────────────────────────────────
     # T5 variant used as the frozen embedding oracle (ELF §3.1).
