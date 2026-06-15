@@ -20,7 +20,9 @@ class ModelOutput(NamedTuple):
     """Token logits ``[batch, seq_len, vocab_size]``."""
 
     kv_caches: tuple
-    """Per-layer KV caches; ``None`` entries when ``use_cache=False``."""
+    """Per-layer KV caches.  Each element is ``(k, v)`` for standard attention
+    or ``(k, v, k2)`` when differential attention is active.
+    ``None`` entries when ``use_cache=False``."""
 
     aux_loss: float
     """MoE load-balancing auxiliary loss (``0.0`` for dense models)."""

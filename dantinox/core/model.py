@@ -138,9 +138,12 @@ class Transformer(nnx.Module, pytree=False):
         Parameters
         ----------
         x:             Token IDs ``[B, T]``.
-        caches:        Per-layer ``(k_cache, v_cache)`` for AR generation.
-                       Pass ``tuple((None, None) for _ in range(model.num_blocks))``
-                       to initialise a fresh KV cache (first token).
+        caches:        Per-layer KV cache for AR generation.  Each element is
+                       ``(k_cache, v_cache)`` for standard attention, or
+                       ``(k_cache, v_cache, k2_cache)`` when differential
+                       attention is active.  Pass
+                       ``tuple((None, None) for _ in range(model.num_blocks))``
+                       to initialise a fresh cache on the first token step.
                        ``None`` (default) disables caching entirely (training).
         cache_index:   Write position for the AR KV cache.
         dual_cache:    Bidirectional prefix KV cache for diffusion inference.
@@ -156,7 +159,9 @@ class Transformer(nnx.Module, pytree=False):
         h = self._add_pos(h, cache_index)
         h = self.emb_dropout(h, deterministic=deterministic)
 
-        # Block-level caches: (None, None) sentinel = "create cache on first use"
+        # Block-level caches: (None, None) sentinel = "create cache on first step".
+        # After the first step each block returns (kc, vc) or (kc, vc, k2c)
+        # for differential attention; subsequent calls pass those tuples back.
         block_caches: tuple = (
             caches if use_cache
             else tuple((None, None) for _ in range(self.num_blocks))

@@ -35,11 +35,14 @@ class BaseAttention(nnx.Module):
         self.use_flash      = config.use_flash_attention
         self.sliding_window = config.sliding_window
         self.inference      = config.inference
+
         self._rope_scale    = getattr(config, "rope_scale_factor", 1.0)
 
         self.attn_dropout  = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.resid_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.tp_size: int  = getattr(config, "tp_size", 1)
+
+
 
         # Output projection (with optional LoRA)
         _use_lora = (
@@ -116,7 +119,7 @@ class BaseAttention(nnx.Module):
         T: int,
         q: jnp.ndarray,
         k: jnp.ndarray,
-        v: jnp.ndarray,
+        v: jnp.ndarray | None,
     ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
         """Reshape flat QKV vectors into grouped [B, kv_heads, G, T, head_size]."""
         def _reshape(x: jnp.ndarray, h: int) -> jnp.ndarray:
@@ -203,6 +206,35 @@ class _StandardAttention(BaseAttention):
             LoRALinear(self.dim, qkv_out, use_bias=False, **_lk)
             if _use_lora else nnx.Linear(self.dim, qkv_out, use_bias=False, rngs=rngs)
         )
+        self.differential = getattr(config, "differential", False)
+
+        if self.differential:
+            q2k2_out = self.dim + self.kv_heads * self.head_size
+            self.q2k2: nnx.Linear | LoRALinear = (
+                LoRALinear(self.dim, q2k2_out, use_bias=False, **_lk)
+                if _use_lora else nnx.Linear(self.dim, q2k2_out, use_bias=False, rngs=rngs)
+            )
+            # Per-head learnable λ vectors (paper §3.2): λ = exp(λq1·λk1) - exp(λq2·λk2) + λ_init
+            self.lambda_q1 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
+            self.lambda_k1 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
+            self.lambda_q2 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
+            self.lambda_k2 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
+            self.lambda_init: float = getattr(config, "lambda_init", 0.8)
+            self.diff_norm = nnx.RMSNorm(self.head_size, rngs=rngs)
+
+    # ── λ computation (paper eq.) ─────────────────────────────────────────────
+
+    def _compute_lambda(self) -> jnp.ndarray:
+        """λ_h = exp(λq1_h · λk1_h) − exp(λq2_h · λk2_h) + λ_init  →  [n_heads]."""
+        lq1 = self.lambda_q1.get_value()  # [n_heads, head_size]
+        lk1 = self.lambda_k1.get_value()
+        lq2 = self.lambda_q2.get_value()
+        lk2 = self.lambda_k2.get_value()
+        return (
+            jnp.exp((lq1 * lk1).sum(-1))
+            - jnp.exp((lq2 * lk2).sum(-1))
+            + self.lambda_init
+        )  # [n_heads]
 
     # ── KV-cache update ───────────────────────────────────────────────────────
 
@@ -214,12 +246,18 @@ class _StandardAttention(BaseAttention):
         T: int,
         k: jnp.ndarray,
         v: jnp.ndarray,
+        k2: jnp.ndarray | None, 
+        is_differential:bool = False
     ) -> tuple[tuple, jnp.ndarray, jnp.ndarray]:
+        k2c = None
         if kv_cache[0] is None:
             kc = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
             vc = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=v.dtype)
             kc = kc.at[:, :, :, :T, :].set(k)
             vc = vc.at[:, :, :, :T, :].set(v)
+            if is_differential:
+                k2c = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k2.dtype)
+                k2c = k2c.at[:, :, :, :T, :].set(k2)
         else:
             kc, vc = map(
                 lambda arr, new, idx: jax.lax.dynamic_update_slice(
@@ -229,7 +267,10 @@ class _StandardAttention(BaseAttention):
                 (k, v),
                 (cache_index, cache_index),
             )
-        return (kc, vc), kc, vc
+            if is_differential:
+                k2c = jax.lax.dynamic_update_slice(kv_cache[2], k2, (0, 0, 0, cache_index, 0))
+
+        return (kc, vc, k2c), kc, vc, k2c
 
     # ── Dual-cache: extract prefix KV ─────────────────────────────────────────
 
@@ -263,6 +304,8 @@ class _StandardAttention(BaseAttention):
         kv_size = self.kv_heads * self.head_size
         q, k, v = jax.lax.split(self.qkv(x), (q_size, kv_size, kv_size), axis=-1)
 
+        if self.differential:
+            q2, k2  = jax.lax.split(self.q2k2(x), (q_size, kv_size), axis=-1)
         # Flash Attention fast path (causal training, no cache, no prefix injection)
         if (
             not use_cache
@@ -274,14 +317,35 @@ class _StandardAttention(BaseAttention):
             q_fa = q.reshape(B, T, self.n_heads,  self.head_size)
             k_fa = k.reshape(B, T, self.kv_heads, self.head_size)
             v_fa = v.reshape(B, T, self.kv_heads, self.head_size)
+
+            if self.differential:
+                q2_fa = q2.reshape(B, T, self.n_heads, self.head_size)
+                k2_fa = k2.reshape(B, T, self.kv_heads, self.head_size)
+
             if self.use_rotary:
                 q_fa = self._apply_rope_thd(q_fa, cache_index)
                 k_fa = self._apply_rope_thd(k_fa, cache_index)
+
+                if self.differential:
+                    q2_fa = self._apply_rope_thd(q2_fa, cache_index)
+                    k2_fa = self._apply_rope_thd(k2_fa, cache_index)
+
             if self.kv_heads < self.n_heads:
                 g    = self.n_heads // self.kv_heads
                 k_fa = jnp.repeat(k_fa, g, axis=2)
                 v_fa = jnp.repeat(v_fa, g, axis=2)
+
+                if self.differential:
+                    k2_fa = jnp.repeat(k2_fa, g, axis=2)
+
             y   = jax.nn.dot_product_attention(q_fa, k_fa, v_fa, is_causal=True)
+
+            if self.differential:
+                y2  = jax.nn.dot_product_attention(q2_fa, k2_fa, v_fa, is_causal=True)
+                lam = self._compute_lambda()[None, None, :, None]  # [1, 1, n_heads, 1]
+                y   = y - lam * y2
+                y   = self.diff_norm(y) * (1.0 - self.lambda_init)
+
             y   = y.reshape(B, T, self.dim)
             y   = self._apply_gate(y, x)
             out = self.o_proj(y)
@@ -292,11 +356,21 @@ class _StandardAttention(BaseAttention):
 
         # General path (cache / sliding window / bidirectional diffusion)
         q, k, v = self.reshape_head(B, T, q, k, v)
+        if self.differential:
+            q2, k2, _ = self.reshape_head(B, T, q2, k2, k2)
+        else:
+            k2 = None
+
         if self.use_rotary:
             q = self._apply_rope_grouped(q, cache_index)
             k = self._apply_rope_grouped(k, cache_index)
+
+            if self.differential:
+                q2 = self._apply_rope_grouped(q2, cache_index)
+                k2 = self._apply_rope_grouped(k2, cache_index)
+
         if use_cache:
-            kv_cache, k, v = self._update_kv_cache(kv_cache, cache_index, B, T, k, v)
+            kv_cache, k, v, k2 = self._update_kv_cache(kv_cache, cache_index, B, T, k, v, k2, self.differential)
 
         # Dual-cache prefix injection: prepend prefix K/V along the sequence axis
         if prefix_kv is not None:
@@ -308,10 +382,22 @@ class _StandardAttention(BaseAttention):
         S    = attn.shape[-1]
         attn = self._apply_attn_mask(attn, cache_index, T, S, is_causal)
         attn = jax.nn.softmax(attn)
+
+        if self.differential:
+            attn2 = q2 @ jnp.swapaxes(k2, -2, -1) / math.sqrt(self.head_size)
+            attn2 = self._apply_attn_mask(attn2, cache_index, T, S, is_causal)
+            attn2 = jax.nn.softmax(attn2)
+            lam   = self._compute_lambda().reshape(self.kv_heads, -1)[None, :, :, None, None]  # [1, kv_heads, G, 1, 1]
+            attn  = attn - lam * attn2
+
+
         attn = self.attn_dropout(attn, deterministic=deterministic)
 
         y   = attn @ v
-        y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
+        y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.n_heads, self.head_size)
+        if self.differential:
+            y = self.diff_norm(y) * (1.0 - self.lambda_init)
+        y   = y.reshape(B, T, self.dim)
         y   = self._apply_gate(y, x)
         out = self.o_proj(y)
         if self.tp_size > 1:

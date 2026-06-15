@@ -45,6 +45,8 @@ class Block(nnx.Module):
 
         x_out, new_cache, aux = block(x, cache=(k, v), cache_index=i)
 
+    With differential attention the cache is a 3-tuple ``(k, v, k2)``.
+
     For **training** (AR or diffusion, no cache)::
 
         x_out, _, aux = block(x)
@@ -82,8 +84,9 @@ class Block(nnx.Module):
         Parameters
         ----------
         x:             Hidden state ``[B, T, dim]``.
-        cache:         ``(k_cache, v_cache)`` for AR KV-cache generation.
-                       ``None`` means no cache (training or diffusion).
+        cache:         ``(k_cache, v_cache)`` or ``(k_cache, v_cache, k2_cache)``
+                       for AR KV-cache generation (3-tuple when differential
+                       attention is active).  ``None`` = no cache (training).
         cache_index:   Write position in the AR KV cache.
         prefix_kv:     ``(k, v)`` prefix injected for diffusion dual-cache inference.
         deterministic: Disables dropout when ``True``.

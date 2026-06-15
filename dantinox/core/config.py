@@ -369,6 +369,8 @@ class Config:
     sliding_window: bool = False
     context_window: int = 4
     no_sink: bool = True
+    differential: bool = False
+    lambda_init: float = 0.8
     use_flash_attention: bool = False
 
     # ── MLA ───────────────────────────────────────────────────────────────────
