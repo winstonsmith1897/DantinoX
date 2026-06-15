@@ -21,20 +21,22 @@ class Swiglu(nnx.Module):
         return jax.nn.silu(gate) * data
 
 class MLP(nnx.Module):
-    def __init__(self, config: Config, rngs: nnx.Rngs):
+    def __init__(self, config: Config, rngs: nnx.Rngs, in_dim: int | None = None):
+
         intermediate_dim = config.dim * config.expansion
         up_proj_dim = intermediate_dim * 2 if config.use_swiglu else intermediate_dim
 
         _use_lora_mlp = getattr(config, "use_lora", False) and getattr(config, "lora_targets", "attention") in ("mlp", "all")
         _lora_kw: dict = dict(rank=getattr(config, "lora_rank", 8), alpha=getattr(config, "lora_alpha", 16.0), dropout_rate=getattr(config, "lora_dropout", 0.0), rngs=rngs)
 
+        input_dim: int = config.dim if in_dim is None else in_dim
         self.up_proj: nnx.Linear | LoRALinear = (
-            LoRALinear(config.dim, up_proj_dim, **_lora_kw) if _use_lora_mlp
-            else nnx.Linear(config.dim, up_proj_dim, rngs=rngs)
+            LoRALinear(input_dim, up_proj_dim, **_lora_kw) if _use_lora_mlp
+            else nnx.Linear(input_dim, up_proj_dim, rngs=rngs)
         )
         self.down_proj: nnx.Linear | LoRALinear = (
-            LoRALinear(intermediate_dim, config.dim, **_lora_kw) if _use_lora_mlp
-            else nnx.Linear(intermediate_dim, config.dim, rngs=rngs)
+            LoRALinear(intermediate_dim, input_dim, **_lora_kw) if _use_lora_mlp
+            else nnx.Linear(intermediate_dim, input_dim, rngs=rngs)
         )
         self.activation = Swiglu() if config.use_swiglu else Activation(config.activation)
         self.dropout    = nnx.Dropout(config.dropout_rate, rngs=rngs)

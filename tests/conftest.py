@@ -86,7 +86,7 @@ def tiny_mla_config() -> Config:
 
 @pytest.fixture(scope="session")
 def tiny_moe_config() -> Config:
-    """Minimal MoE config."""
+    """Minimal standard MoE config (no latent bottleneck)."""
     return Config(
         dim=128,
         n_heads=4,
@@ -98,6 +98,30 @@ def tiny_moe_config() -> Config:
         use_moe=True,
         n_experts=4,
         top_k_mlp=2,
+        gradient_checkpointing=False,
+        dropout_rate=0.0,
+        epochs=1,
+        batch_size=4,
+        grad_accum=1,
+    )
+
+
+@pytest.fixture(scope="session")
+def tiny_moe_latent_config() -> Config:
+    """MoE config with latent bottleneck (down_proj → experts → up_proj)."""
+    return Config(
+        dim=128,
+        n_heads=4,
+        head_size=32,
+        num_blocks=2,
+        vocab_size=256,
+        max_context=64,
+        kv_heads=4,
+        use_moe=True,
+        n_experts=4,
+        top_k_mlp=2,
+        moe_latent=True,
+        moe_latent_dim=64,      # bottleneck: dim // 2
         gradient_checkpointing=False,
         dropout_rate=0.0,
         epochs=1,

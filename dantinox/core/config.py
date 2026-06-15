@@ -64,6 +64,8 @@ class ModelConfig:
     n_experts: int = 4
     top_k: int = 2
     moe_balance_coeff: float = 0.1
+    moe_latent: bool = False
+    moe_latent_dim: int = 64
 
     # ── Diffusion ─────────────────────────────────────────────────────────────
     mask_token_id: int = 4
@@ -106,6 +108,10 @@ class ModelConfig:
             raise ValueError(f"lora_targets must be 'attention', 'ffn', or 'all'")
         if self.lora_rank < 1:
             raise ValueError(f"lora_rank must be >= 1")
+        if self.moe_latent and not (0 < self.moe_latent_dim < self.dim):
+            raise ValueError(
+                f"moe_latent_dim ({self.moe_latent_dim}) must be in (0, dim={self.dim})"
+            )
 
     # ── Backward-compat property shims ────────────────────────────────────────
     # All existing component code (attention.py, mlp.py, …) uses old field
@@ -353,6 +359,8 @@ class Config:
     top_k_mlp: int = 2
     expansion: int = 4
     alpha_balance: float = 0.1
+    moe_latent: bool = False
+    moe_latent_dim: int = 64
 
     # ── Attention & Positional ────────────────────────────────────────────────
     use_rotary_pos: bool = True
@@ -474,6 +482,10 @@ class Config:
             raise ValueError(f"n_devices must be >= 0")
         if self.tp_size < 1:
             raise ValueError(f"tp_size must be >= 1")
+        if self.moe_latent and not (0 < self.moe_latent_dim < self.dim):
+            raise ValueError(
+                f"moe_latent_dim ({self.moe_latent_dim}) must be in (0, dim={self.dim})"
+            )
 
     @property
     def causal(self) -> bool:
@@ -569,6 +581,8 @@ class Config:
                 n_experts=m.n_experts,
                 top_k_mlp=m.top_k,
                 alpha_balance=m.moe_balance_coeff,
+                moe_latent=m.moe_latent,
+                moe_latent_dim=m.moe_latent_dim,
                 mask_token_id=m.mask_token_id,
                 use_lora=m.use_lora,
                 lora_rank=m.lora_rank,
@@ -679,6 +693,8 @@ class Config:
             n_experts=self.n_experts,
             top_k=self.top_k_mlp,
             moe_balance_coeff=self.alpha_balance,
+            moe_latent=self.moe_latent,
+            moe_latent_dim=self.moe_latent_dim,
             mask_token_id=self.mask_token_id,
             use_lora=self.use_lora,
             lora_rank=self.lora_rank,
