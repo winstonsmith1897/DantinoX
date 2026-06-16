@@ -236,106 +236,117 @@
    LEFT SIDEBAR — primary navigation
    ══════════════════════════════════════════════════════════════════ */
 
-/* Sidebar background */
+/* No box: sidebar is transparent, same bg as the page */
+.md-sidebar--primary,
 .md-sidebar--primary .md-sidebar__scrollwrap {
-  background: var(--dnx-nav-bg);
+  background: transparent;
 }
 
-/* Sidebar links */
+/* Nav links */
 .md-nav--primary .md-nav__link {
-  color: var(--dnx-nav-text);
-  font-size: .875rem;
-  padding: .3rem .8rem;
+  font-size: .85rem;
+  font-weight: 400;
+  color: var(--md-default-fg-color--light);
+  padding: .28rem .6rem;
   border-radius: 4px;
-  transition: background var(--dnx-t), color var(--dnx-t);
+  transition: color var(--dnx-t), background var(--dnx-t);
 }
 
 .md-nav--primary .md-nav__link:hover {
-  color: var(--dnx-nav-hover);
-  background: rgba(255,255,255,.07);
+  color: var(--md-default-fg-color);
+  background: var(--md-accent-fg-color--transparent);
 }
 
-/* Active page in sidebar */
+/* Active page */
 .md-nav--primary .md-nav__link--active {
-  color: var(--dnx-nav-active) !important;
-  background: rgba(96,165,250,.12) !important;
+  color: var(--dnx-blue-600) !important;
   font-weight: 600;
+  background: transparent !important;
 }
 
-/* Section headings in sidebar */
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__link--active {
+  color: var(--dnx-blue-400) !important;
+}
+
+/* Section group headings */
 .md-nav--primary .md-nav__item--section > .md-nav__link {
-  font-size: .72rem;
+  font-size: .7rem;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .09em;
   text-transform: uppercase;
-  color: #64748b;
-  padding-top: 1rem;
-  padding-bottom: .3rem;
+  color: var(--md-default-fg-color--lighter);
+  padding-top: 1.1rem;
+  padding-bottom: .25rem;
   cursor: default;
+  pointer-events: none;
 }
 
 /* Collapsible arrow */
-.md-nav--primary .md-nav__toggle ~ .md-nav__link .md-nav__icon { color: #64748b; }
+.md-nav--primary .md-nav__icon { color: var(--md-default-fg-color--lighter); }
 
-/* Site name at top of sidebar */
+/* Site title in mobile nav */
 .md-nav--primary .md-nav__title {
-  background: rgba(0,0,0,.2);
-  color: #f1f5f9;
+  background: transparent;
+  color: var(--md-default-fg-color);
   font-size: .9rem;
   font-weight: 700;
-  padding: .8rem 1rem;
+  padding: .8rem .6rem;
+  box-shadow: none;
 }
 
 /* ══════════════════════════════════════════════════════════════════
    TOC INTEGRATA A SINISTRA (toc.integrate)
    ══════════════════════════════════════════════════════════════════ */
 
-/* Label "On this page" separator */
+/* "On this page" label */
 .md-nav--primary .md-nav__title[for="__toc"] {
   font-size: .68rem;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .09em;
   text-transform: uppercase;
-  color: #475569;
-  padding: 1.2rem .8rem .3rem;
-  cursor: default;
+  color: var(--md-default-fg-color--lighter);
+  padding: 1.1rem .6rem .25rem;
+  margin-top: .5rem;
+  border-top: 1px solid var(--dnx-border);
   background: transparent;
-  border-top: 1px solid rgba(255,255,255,.07);
-  margin-top: .4rem;
+  box-shadow: none;
+  cursor: default;
 }
 
-/* TOC links — slightly indented, lighter than nav links */
-.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__link {
+/* TOC h2 links */
+.md-nav[data-md-component="toc"] .md-nav__link {
   font-size: .8rem;
   font-weight: 400;
-  color: #94a3b8;
-  padding: .2rem .8rem .2rem 1.1rem;
+  color: var(--md-default-fg-color--light);
+  padding: .22rem .6rem .22rem 1rem;
   border-radius: 4px;
-  transition: background var(--dnx-t), color var(--dnx-t);
+  transition: color var(--dnx-t);
 }
 
-.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__link:hover {
-  color: #e2e8f0;
-  background: rgba(255,255,255,.05);
+.md-nav[data-md-component="toc"] .md-nav__link:hover {
+  color: var(--md-default-fg-color);
+  background: transparent;
 }
 
-.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__link--active {
-  color: var(--dnx-blue-400) !important;
+.md-nav[data-md-component="toc"] .md-nav__link--active {
+  color: var(--dnx-blue-600) !important;
   font-weight: 500;
-  background: rgba(96,165,250,.08) !important;
+  background: transparent !important;
 }
 
-/* h3 sub-items — extra indent, even smaller */
-.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__list .md-nav__link {
+[data-md-color-scheme="slate"] .md-nav[data-md-component="toc"] .md-nav__link--active {
+  color: var(--dnx-blue-400) !important;
+}
+
+/* TOC h3 links — extra indent */
+.md-nav[data-md-component="toc"] .md-nav__list .md-nav__link {
   font-size: .77rem;
-  padding-left: 1.7rem;
-  color: #64748b;
+  padding-left: 1.6rem;
+  color: var(--md-default-fg-color--lighter);
 }
 
 /* Hide h4+ from TOC */
-.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__list .md-nav__list {
-  display: none;
-}
+.md-nav[data-md-component="toc"] .md-nav__list .md-nav__list { display: none; }
 
 /* ══════════════════════════════════════════════════════════════════
    CONTENT — main reading area

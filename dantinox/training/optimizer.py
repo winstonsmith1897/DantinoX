@@ -102,13 +102,13 @@ def build_optimizer(
             "Choose from: adamw, adafactor, lion, adam, muon."
         )
 
-    if _model_has_lora(model):
-        tx = _lora_masked_optimizer(tx, model)
-
     if config.grad_accum > 1:
         tx = optax.MultiSteps(tx, every_k_schedule=config.grad_accum)
 
-    return nnx.Optimizer(model, tx, wrt=nnx.Param)
+    # When LoRA is active, only update LoRAParam variables; base Param weights stay frozen.
+    # This must match the wrt= used in nnx.value_and_grad inside the trainer.
+    wrt = LoRAParam if _model_has_lora(model) else nnx.Param
+    return nnx.Optimizer(model, tx, wrt=wrt)
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -122,21 +122,3 @@ def _model_has_lora(model: nnx.Module) -> bool:
         return len(leaves) > 0
     except Exception:
         return False
-
-
-def _lora_masked_optimizer(
-    tx: optax.GradientTransformation,
-    model: nnx.Module,
-) -> optax.GradientTransformation:
-    """Wrap *tx* so that only LoRAParam variables receive non-zero updates."""
-    import jax
-
-    state = nnx.state(model, nnx.Param)
-    labels = jax.tree_util.tree_map_with_path(
-        lambda path, _: "lora" if any("lora" in str(p).lower() for p in path) else "frozen",
-        state,
-    )
-    return optax.multi_transform(
-        {"lora": tx, "frozen": optax.set_to_zero()},
-        labels,
-    )
