@@ -17,9 +17,10 @@ from flax import nnx
 from tqdm import tqdm
 
 from dantinox.core.config import Config, TrainingConfig
+from dantinox.core.lora import LoRAParam
 from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
 from dantinox.paradigms.base import Paradigm
-from dantinox.training.optimizer import build_optimizer
+from dantinox.training.optimizer import build_optimizer, _model_has_lora
 
 log = logging.getLogger(__name__)
 
@@ -227,12 +228,20 @@ class Trainer:
         # ── JIT-compiled steps ────────────────────────────────────────────────
         has_extras = paradigm.provides_batch_extras
 
+        # When LoRA is active, differentiate only w.r.t. LoRAParam; this must
+        # match the wrt= passed to nnx.Optimizer in build_optimizer.
+        _grad_argnums = (
+            nnx.DiffState(0, LoRAParam) if _model_has_lora(model) else 0
+        )
+
         @nnx.jit
         def _step(model: Any, optimizer: nnx.Optimizer, batch: jnp.ndarray,
                   rng: jax.Array) -> jnp.ndarray:
             def _loss(m):
                 return paradigm.loss_fn(m, batch, rng)
-            (loss, _), grads = nnx.value_and_grad(_loss, has_aux=True)(model)
+            (loss, _), grads = nnx.value_and_grad(
+                _loss, has_aux=True, argnums=_grad_argnums
+            )(model)
             optimizer.update(model, grads)
             return loss
 
@@ -241,7 +250,9 @@ class Trainer:
                          extras: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
             def _loss(m):
                 return paradigm.loss_fn(m, batch, rng, embeddings=extras)
-            (loss, _), grads = nnx.value_and_grad(_loss, has_aux=True)(model)
+            (loss, _), grads = nnx.value_and_grad(
+                _loss, has_aux=True, argnums=_grad_argnums
+            )(model)
             optimizer.update(model, grads)
             return loss
 

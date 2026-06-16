@@ -16,7 +16,12 @@ class T5ContextualEncoder:
     """
 
     def __init__(self, model_name: str = "t5-base") -> None:
-        from transformers import FlaxT5EncoderModel
+        # Try the direct submodule path first — avoids transformers' is_flax_available()
+        # cache hit (e.g. in Colab after a fresh pip install without runtime restart).
+        try:
+            from transformers.models.t5.modeling_flax_t5 import FlaxT5EncoderModel
+        except ImportError:
+            from transformers import FlaxT5EncoderModel
         try:
             self._model = FlaxT5EncoderModel.from_pretrained(model_name)
         except Exception:

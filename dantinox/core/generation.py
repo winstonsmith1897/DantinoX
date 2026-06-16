@@ -195,24 +195,27 @@ def generate(
 
 def diffusion_generate(
     model: nnx.Module,
-    prefix: jnp.ndarray,
+    prefix: jnp.ndarray | None,
     gen_len: int,
     schedule: NoiseSchedule,
     mask_token_id: int,
     seed: int = 42,
     num_sampling_steps: int = 50,
     temperature: float = 1.0,
+    batch_size: int = 1,
 ) -> jnp.ndarray:
     """Simple MDLM reverse-diffusion generation (no block-wise cache).
 
     Runs ``num_sampling_steps`` denoising steps over the full sequence.
     For faster inference use ``fast_dllm_generate``.
+    ``prefix`` may be ``None`` for unconditional generation; in that case
+    ``batch_size`` controls the output batch dimension.
     """
-    B   = prefix.shape[0]
+    B   = prefix.shape[0] if prefix is not None else batch_size
     rng = jax.random.key(seed)
 
     dual_cache: DualCache | None = None
-    if prefix.shape[1] > 0:
+    if prefix is not None and prefix.shape[1] > 0:
         dual_cache = model.compute_prefix_cache(prefix)  # type: ignore[attr-defined]
 
     x_t       = jnp.full((B, gen_len), mask_token_id, dtype=jnp.int32)
