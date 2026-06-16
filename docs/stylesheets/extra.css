@@ -287,24 +287,55 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   RIGHT SIDEBAR — page table of contents (TOC)
+   TOC INTEGRATA A SINISTRA (toc.integrate)
    ══════════════════════════════════════════════════════════════════ */
 
-.md-nav--secondary .md-nav__link {
-  font-size: .82rem;
-  color: var(--md-default-fg-color--light);
-  transition: color var(--dnx-t);
+/* Label "On this page" separator */
+.md-nav--primary .md-nav__title[for="__toc"] {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #475569;
+  padding: 1.2rem .8rem .3rem;
+  cursor: default;
+  background: transparent;
+  border-top: 1px solid rgba(255,255,255,.07);
+  margin-top: .4rem;
 }
 
-.md-nav--secondary .md-nav__link:hover { color: var(--dnx-blue-600); }
-
-.md-nav--secondary .md-nav__link--active {
-  color: var(--dnx-blue-600) !important;
-  font-weight: 600;
+/* TOC links — slightly indented, lighter than nav links */
+.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__link {
+  font-size: .8rem;
+  font-weight: 400;
+  color: #94a3b8;
+  padding: .2rem .8rem .2rem 1.1rem;
+  border-radius: 4px;
+  transition: background var(--dnx-t), color var(--dnx-t);
 }
 
-/* Hide h4 from TOC to avoid clutter */
-.md-nav--secondary .md-nav__list .md-nav__list { display: none; }
+.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__link:hover {
+  color: #e2e8f0;
+  background: rgba(255,255,255,.05);
+}
+
+.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__link--active {
+  color: var(--dnx-blue-400) !important;
+  font-weight: 500;
+  background: rgba(96,165,250,.08) !important;
+}
+
+/* h3 sub-items — extra indent, even smaller */
+.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__list .md-nav__link {
+  font-size: .77rem;
+  padding-left: 1.7rem;
+  color: #64748b;
+}
+
+/* Hide h4+ from TOC */
+.md-nav--primary .md-nav[data-md-component="toc"] .md-nav__list .md-nav__list {
+  display: none;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    CONTENT — main reading area

@@ -43,6 +43,7 @@ theme:
     - content.tabs.link
     - content.tooltips
     - toc.follow
+    - toc.integrate
     - announce.dismiss
   palette:
     - scheme: default

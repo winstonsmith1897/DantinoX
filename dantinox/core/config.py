@@ -446,6 +446,10 @@ class Config:
                 self.attention_type = "mha"
         self.mla = (self.attention_type == "mla")
 
+        # For MHA and MLA, kv_heads == n_heads (GQA grouping is irrelevant)
+        if self.attention_type in ("mha", "mla"):
+            self.kv_heads = self.n_heads
+
         if self.dim != self.n_heads * self.head_size:
             raise ValueError(
                 f"dim ({self.dim}) must equal n_heads * head_size "

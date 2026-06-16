@@ -129,12 +129,14 @@ def _lora_masked_optimizer(
     model: nnx.Module,
 ) -> optax.GradientTransformation:
     """Wrap *tx* so that only LoRAParam variables receive non-zero updates."""
+    import jax
 
-    def _label(path, _leaf):
-        path_str = "/".join(str(p) for p in path)
-        return "lora" if "lora" in path_str.lower() else "frozen"
-
+    state = nnx.state(model, nnx.Param)
+    labels = jax.tree_util.tree_map_with_path(
+        lambda path, _: "lora" if any("lora" in str(p).lower() for p in path) else "frozen",
+        state,
+    )
     return optax.multi_transform(
         {"lora": tx, "frozen": optax.set_to_zero()},
-        _label,
+        labels,
     )
