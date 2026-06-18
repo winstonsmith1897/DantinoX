@@ -30,7 +30,6 @@ theme:
     - navigation.top
     - navigation.indexes
     - navigation.tracking
-    - navigation.sections
     - search.suggest
     - search.highlight
     - search.share
