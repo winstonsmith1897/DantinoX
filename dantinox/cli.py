@@ -72,11 +72,19 @@ def _add_config_overrides(parser: argparse.ArgumentParser) -> None:
 
 def _apply_overrides(config: Config, args: argparse.Namespace) -> Config:
     """Write any non-None CLI overrides onto the config object."""
+    overrides: dict = {}
     for field in dataclasses.fields(Config):
         val = getattr(args, field.name, None)
         if val is not None:
-            setattr(config, field.name, val)
-    return config
+            overrides[field.name] = val
+    if not overrides:
+        return config
+    # mla/kv_heads affect attention_type derivation in __post_init__.
+    # If either is overridden without an explicit attention_type, reset to
+    # "auto" so that __post_init__ re-derives the correct type.
+    if ("mla" in overrides or "kv_heads" in overrides) and "attention_type" not in overrides:
+        overrides["attention_type"] = "auto"
+    return dataclasses.replace(config, **overrides)
 
 
 # ─── subcommand handlers ────────────────────────────────────────────────────
@@ -648,6 +656,124 @@ def _cmd_profile(args: argparse.Namespace) -> None:
     print(f"{'─' * 50}\n")
 
 
+def _cmd_run(args: argparse.Namespace) -> None:
+    """Declarative training run driven by a workflow YAML file.
+
+    Parses the YAML, builds paradigm + TrainingConfig, initialises
+    AutoDataPipeline, optionally attaches WandbCallback, and runs fit()
+    inside an OOM-guard retry loop.
+    """
+    import dataclasses
+    import yaml
+
+    _init_jax_cache()
+
+    with open(args.workflow) as f:
+        wf = yaml.safe_load(f)
+
+    ds    = wf.get("dataset", {})
+    arch  = dict(wf.get("architecture", {}))
+    train = wf.get("training", {})
+    track = wf.get("tracking", {})
+
+    # ── Paradigm ──────────────────────────────────────────────────────────────
+    import dantinox as dx
+
+    model_type   = arch.pop("model_type", "autoregressive")
+    model_fields = {f.name for f in dataclasses.fields(dx.ModelConfig)}
+    elf_fields   = {f.name for f in dataclasses.fields(dx.ELFConfig)}
+    _TYPE_MAP    = {"autoregressive": "ar", "diffusion": "discrete", "elf": "continuous"}
+
+    model_kw = {k: v for k, v in arch.items() if k in model_fields or k in elf_fields}
+    paradigm = dx.build(_TYPE_MAP.get(model_type, model_type), **model_kw)
+    logging.getLogger(__name__).info(
+        "Paradigm: %s  config=%s", type(paradigm).__name__, paradigm.config
+    )
+
+    # ── TrainingConfig ────────────────────────────────────────────────────────
+    train_fields = {f.name for f in dataclasses.fields(dx.TrainingConfig)}
+    train_kw = {k: v for k, v in train.items() if k in train_fields}
+    train_kw.update({
+        "dataset_source":     "huggingface",
+        "dataset_name":       ds.get("name", ""),
+        "dataset_config":     ds.get("subset", ""),
+        "dataset_split":      ds.get("split", "train"),
+        "dataset_text_field": ds.get("text_column", "text"),
+        "streaming":          True,
+    })
+    train_cfg = dx.TrainingConfig(**train_kw)
+
+    # ── AutoDataPipeline ──────────────────────────────────────────────────────
+    # Initialise the streaming pipeline to validate dataset parameters early.
+    # The Trainer's built-in HuggingFace loader (dataset_source="huggingface")
+    # drives the actual data during fit(); AutoDataPipeline is available for
+    # custom training loops or future integration.
+    from dantinox.utils.data_pipeline import AutoDataPipeline
+    from dantinox.utils.tokenizer import get_tokenizer
+
+    _ctx = getattr(getattr(paradigm, "config", None), "max_context", 512)
+    _tok = get_tokenizer(train_cfg.tokenizer_type)
+    data_pipe = AutoDataPipeline(
+        ds.get("name", ""),
+        ds.get("subset", ""),
+        ds.get("split", "train"),
+        ds.get("text_column", "text"),
+        _tok,
+        max_context=_ctx,
+    )
+    logging.getLogger(__name__).info("AutoDataPipeline ready: %s", data_pipe)
+
+    # ── Callbacks ─────────────────────────────────────────────────────────────
+    from dantinox.training.callbacks import WandbCallback
+
+    callbacks = []
+    if track.get("use_wandb", False):
+        wandb_project = track.get("project", "dantinox")
+        callbacks.append(WandbCallback(project=wandb_project))
+        logging.getLogger(__name__).info(
+            "WandbCallback attached (project=%s)", wandb_project
+        )
+
+    # ── OOM-guarded training loop ─────────────────────────────────────────────
+    from dantinox.training.trainer import Trainer
+    from dantinox.training.stability import OOMMitigatedError, with_oom_guard
+
+    run_dir = getattr(args, "run_dir", None)
+    max_retries = 5
+
+    for attempt in range(max_retries):
+        try:
+            with with_oom_guard(train_cfg):
+                trainer = Trainer(paradigm, train_cfg, callbacks=callbacks)
+                run_dir = trainer.fit(run_dir=run_dir)
+            break
+        except OOMMitigatedError as exc:
+            logging.getLogger(__name__).warning(
+                "OOM attempt %d/%d — %s", attempt + 1, max_retries, exc
+            )
+            if attempt == max_retries - 1:
+                raise RuntimeError(
+                    f"OOM persists after {max_retries} retries. "
+                    "Try reducing dim, num_blocks, or max_context in the YAML."
+                ) from exc
+
+    print(f"\nRun saved to: {run_dir}")
+
+
+def _cmd_export(args: argparse.Namespace) -> None:
+    """Export a DantinoX checkpoint to a StableHLO binary."""
+    from dantinox.core.export import export_to_stablehlo
+
+    _init_jax_cache()
+    export_to_stablehlo(
+        checkpoint_path=args.checkpoint,
+        output_path=args.output,
+        batch_size=args.batch_size,
+        seq_len=args.seq_len,
+        seed=args.seed,
+    )
+
+
 def _cmd_eval(args: argparse.Namespace) -> None:
     """Delegate to scripts/test_generation_quality.py via subprocess."""
     import subprocess
@@ -843,6 +969,51 @@ def _build_parser() -> argparse.ArgumentParser:
     p_profile.add_argument("--seq_len", type=int, default=512, help="Sequence length for FLOPs (default 512)")
     p_profile.add_argument("--batch_size", type=int, default=1, help="Batch size for FLOPs (default 1)")
 
+    # ── run ────────────────────────────────────────────────────────────────────
+    p_run = sub.add_parser(
+        "run",
+        help="Declarative training from a workflow YAML",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Train a model from a self-contained workflow YAML file.\n\n"
+            "Expected YAML structure:\n\n"
+            "  dataset:\n"
+            "    name: wikitext\n"
+            "    subset: wikitext-2-raw-v1\n"
+            "    split: train\n"
+            "    text_column: text\n"
+            "  architecture:\n"
+            "    model_type: autoregressive   # autoregressive | diffusion | elf\n"
+            "    dim: 512\n"
+            "    n_heads: 8\n"
+            "    head_size: 64\n"
+            "  training:\n"
+            "    batch_size: 32\n"
+            "    grad_accum: 4\n"
+            "    epochs: 1\n"
+            "  tracking:\n"
+            "    use_wandb: true\n"
+            "    project: dantinox\n"
+        ),
+    )
+    p_run.add_argument("workflow", help="Path to a workflow YAML file")
+    p_run.add_argument("--run_dir", default=None,
+                       help="Output run directory (auto-generated when omitted)")
+
+    # ── export ─────────────────────────────────────────────────────────────────
+    p_export = sub.add_parser(
+        "export",
+        help="Export a checkpoint to a StableHLO binary (Python-free inference)",
+    )
+    p_export.add_argument("checkpoint", help="Run directory containing config.yaml + weights")
+    p_export.add_argument("output", help="Output path for the .stablehlo binary")
+    p_export.add_argument("--batch_size", type=int, default=1,
+                          help="Batch size baked into the export (default: 1)")
+    p_export.add_argument("--seq_len", type=int, default=None,
+                          help="Sequence length (default: cfg.max_context)")
+    p_export.add_argument("--seed", type=int, default=42,
+                          help="PRNG seed for parameter init (default: 42)")
+
     # ── eval ───────────────────────────────────────────────────────────────────
     p_eval = sub.add_parser("eval", help="Evaluate generation quality for a checkpoint")
     p_eval.add_argument("--run_dir", required=True, help="Run directory with checkpoint")
@@ -888,6 +1059,8 @@ def main(argv: list[str] | None = None) -> None:
         "merge-lora": _cmd_merge_lora,
         "profile":    _cmd_profile,
         "eval":       _cmd_eval,
+        "run":        _cmd_run,
+        "export":     _cmd_export,
     }
     dispatch[args.command](args)
 

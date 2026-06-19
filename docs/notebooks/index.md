@@ -55,6 +55,24 @@ All notebooks are self-contained and runnable on **Google Colab** (free GPU tier
     [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/05_lora_fine_tuning.ipynb){ .md-button .md-button--primary }
     [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/05_lora_fine_tuning.ipynb){ .md-button }
 
+-   :material-chart-bar: **06 — Paradigm Profiling**
+
+    ---
+
+    Profile AR, Discrete Diffusion, and ELF side-by-side across all `dantinox.profiling` metrics: latency, throughput, FLOPs, energy, perplexity, and entropy. Includes interactive 3D Plotly surfaces and 2D matplotlib figures.
+
+    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/06_paradigm_profiling.ipynb){ .md-button .md-button--primary }
+    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/06_paradigm_profiling.ipynb){ .md-button }
+
+-   :material-cached: **07 — Diffusion Cache Profiling**
+
+    ---
+
+    Compare diffusion inference under three KV-cache strategies — No Cache, Prefix Cache, and Dual Cache (Fast-dLLM) — across all profiling metrics. Shows how `compute_prefix_cache` and `compute_block_dual_cache` reduce per-step token cost from O(L²) to O(B²).
+
+    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/07_diffusion_cache_profiling.ipynb){ .md-button .md-button--primary }
+    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/07_diffusion_cache_profiling.ipynb){ .md-button }
+
 </div>
 
 ---
@@ -67,7 +85,7 @@ All notebooks install DantinoX from GitHub in the first cell:
 !pip install -q git+https://github.com/winstonsmith1897/DantinoX.git#egg=dantinox[all]
 ```
 
-A **free Colab GPU** (T4) is sufficient for all notebooks. For notebooks 03 and 05, a GPU is recommended but not strictly required.
+A **free Colab GPU** (T4) is sufficient for all notebooks. For notebooks 03, 05, 06, and 07, a GPU is recommended but not strictly required.
 
 ---
 

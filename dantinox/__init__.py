@@ -313,6 +313,66 @@ def load(run_dir: str, paradigm: Paradigm | None = None):
     return Transformer.from_pretrained(run_dir, rngs=nnx.Rngs(0))
 
 
+def sweep(
+    paradigm,
+    sweep_yaml: str,
+    data_source: str | None = None,
+    *,
+    wandb_project: str = "DantinoX",
+    count: int | None = None,
+    training_config: "TrainingConfig | None" = None,
+    **training_kwargs,
+) -> str:
+    """One-call sweep shortcut: build paradigm, create trainer, run W&B sweep.
+
+    Args:
+        paradigm        : Paradigm instance **or** string ``"ar"`` / ``"discrete"``
+                          / ``"continuous"`` (same values as :func:`build`).
+        sweep_yaml      : Path to a W&B sweep YAML file.
+        data_source     : Training corpus (path or HF dataset name).  Optional
+                          when TrainingConfig already specifies a HF dataset.
+        wandb_project   : W&B project name (default ``"DantinoX"``).
+        count           : Max agent runs (unlimited if ``None``).
+        training_config : Base :class:`TrainingConfig`.  Built from
+                          *training_kwargs* when omitted.
+        **training_kwargs : Forwarded to ``TrainingConfig`` (e.g. ``lr``,
+                            ``epochs``, ``batch_size``).
+
+    Returns:
+        The W&B sweep ID string.
+
+    Example::
+
+        import dantinox as dx
+
+        sweep_id = dx.sweep(
+            "ar", "configs/sweep.yaml", "data/wiki.txt",
+            wandb_project="my-project",
+            dim=256, n_heads=4, head_size=64, num_blocks=4, vocab_size=200,
+            epochs=3,
+        )
+    """
+    if isinstance(paradigm, str):
+        from dataclasses import fields as _fields
+        model_fields = {f.name for f in _fields(ModelConfig)}
+        elf_fields   = {f.name for f in _fields(ELFConfig)}
+        train_fields = {f.name for f in _fields(TrainingConfig)}
+        model_kw = {k: v for k, v in training_kwargs.items()
+                    if k in model_fields or k in elf_fields}
+        train_kw = {k: v for k, v in training_kwargs.items() if k in train_fields}
+        paradigm = build(paradigm, **model_kw)
+        training_kwargs = train_kw
+
+    cfg     = training_config or TrainingConfig(**training_kwargs)
+    trainer = Trainer(paradigm, cfg)
+    return trainer.sweep(
+        sweep_yaml,
+        data_source,
+        wandb_project=wandb_project,
+        count=count,
+    )
+
+
 def quick_generate(
     run_dir: str,
     prompt: str,
@@ -423,6 +483,7 @@ __all__ = [
     "build",
     "train",
     "fit",
+    "sweep",
     "profile",
     "load",
     "quick_generate",

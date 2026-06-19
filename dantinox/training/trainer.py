@@ -21,6 +21,7 @@ from dantinox.core.lora import LoRAParam
 from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
 from dantinox.paradigms.base import Paradigm
 from dantinox.training.optimizer import build_optimizer, _model_has_lora
+from dantinox.training.callbacks import BaseCallback
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class Trainer:
         self,
         paradigm: Paradigm | Config,
         config: TrainingConfig | None = None,
+        callbacks: list[BaseCallback] | None = None,
     ) -> None:
         if isinstance(paradigm, Config):
             # Legacy bridge: a monolithic Config carries both the architecture
@@ -92,10 +94,108 @@ class Trainer:
                 "belong to ModelConfig / ELFConfig — TrainingConfig only holds "
                 "optimisation and dataset settings."
             )
-        self.paradigm = paradigm
-        self.config   = config or TrainingConfig()
+        self.paradigm  = paradigm
+        self.config    = config or TrainingConfig()
+        self.callbacks: list[BaseCallback] = list(callbacks or [])
 
     # ── Public API ────────────────────────────────────────────────────────────
+
+    def sweep(
+        self,
+        sweep_yaml: str,
+        data_source: str | None = None,
+        *,
+        wandb_project: str = "DantinoX",
+        count: int | None = None,
+        run_dir_prefix: str = "runs/sweep",
+    ) -> str:
+        """Run a W&B hyperparameter sweep using this trainer's paradigm as the base.
+
+        Pass only the sweep YAML — the trainer provides the base paradigm and
+        config; the sweep samples override them per run.
+
+        Args:
+            sweep_yaml      : Path to a W&B sweep YAML (method/metric/parameters).
+            data_source     : Training corpus path.  May be omitted when the
+                              TrainingConfig already points at a HuggingFace dataset.
+            wandb_project   : W&B project name (default ``"DantinoX"``).
+            count           : Maximum number of agent runs (unlimited if ``None``).
+            run_dir_prefix  : Prefix for per-run directories
+                              (default ``"runs/sweep"``).
+
+        Returns:
+            The W&B sweep ID string.
+
+        Example::
+
+            paradigm = ARParadigm(ModelConfig(dim=256, n_heads=4, head_size=64,
+                                              num_blocks=4, vocab_size=200))
+            trainer  = Trainer(paradigm, TrainingConfig(epochs=3))
+            sweep_id = trainer.sweep("configs/sweep.yaml", "data/corpus.txt",
+                                     wandb_project="my-project", count=20)
+        """
+        try:
+            import wandb
+        except ImportError as exc:
+            raise ImportError(
+                "wandb is required for sweep().  Install it with: pip install wandb"
+            ) from exc
+
+        import dataclasses
+        import yaml
+
+        with open(sweep_yaml) as f:
+            sweep_cfg = yaml.safe_load(f)
+
+        sweep_id = wandb.sweep(sweep_cfg, project=wandb_project)
+        log.info("W&B sweep created — id=%s  project=%s", sweep_id, wandb_project)
+
+        base_training_cfg = self.config
+        base_paradigm     = self.paradigm
+
+        from dantinox.core.config import TrainingConfig as _TrainingConfig
+        train_fields = {f.name for f in dataclasses.fields(_TrainingConfig)}
+
+        def _agent_fn() -> None:
+            run = wandb.init()
+            wc  = dict(run.config)
+
+            train_overrides = {k: v for k, v in wc.items() if k in train_fields}
+            model_overrides = {k: v for k, v in wc.items() if k not in train_fields}
+
+            new_training_cfg = (
+                dataclasses.replace(base_training_cfg, **train_overrides)
+                if train_overrides else base_training_cfg
+            )
+
+            new_paradigm = base_paradigm
+            if model_overrides:
+                model_cfg = _paradigm_config(base_paradigm)
+                valid = {k: v for k, v in model_overrides.items() if hasattr(model_cfg, k)}
+                if valid:
+                    new_model_cfg = dataclasses.replace(model_cfg, **valid)
+                    new_paradigm  = type(base_paradigm)(new_model_cfg)
+
+            import datetime as _dt
+            ts      = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+            run_dir = f"{run_dir_prefix}_{ts}_{run.id}"
+
+            sub_trainer = Trainer(new_paradigm, new_training_cfg)
+            sub_trainer.fit(data_source, run_dir=run_dir)
+
+            log_path = os.path.join(run_dir, new_training_cfg.log_file)
+            if os.path.exists(log_path):
+                import csv as _csv
+                with open(log_path, newline="") as lf:
+                    rows = list(_csv.DictReader(lf))
+                if rows:
+                    best = min(float(r["val_loss"]) for r in rows)
+                    wandb.log({"best_val_loss": best})
+
+            wandb.finish()
+
+        wandb.agent(sweep_id, function=_agent_fn, count=count)
+        return sweep_id
 
     def fit(
         self,
@@ -286,6 +386,7 @@ class Trainer:
 
         # ── Training loop ─────────────────────────────────────────────────────
         base_key = jax.random.PRNGKey(cfg.seed)
+        for cb in self.callbacks: cb.on_train_begin(cfg)  # ① callback hook
         log_rows: list[dict] = []
         log_every = 10  # host syncs for the progress bar, once per N steps
 
@@ -311,6 +412,7 @@ class Trainer:
                     loss = _step(model, optimizer, batch, step_key)
 
                 step_losses.append(loss)
+                for cb in self.callbacks: cb.on_step_end(step, {"train_loss": float(loss)}, epoch)  # ② callback hook
                 if step % log_every == 0:
                     pbar.set_postfix(loss=f"{float(loss):.4f}")
 
@@ -343,6 +445,7 @@ class Trainer:
 
         log.info("Training complete.  Best val loss: %.4f  Run dir: %s",
                  best_loss, run_dir)
+        for cb in self.callbacks: cb.on_train_end()  # ③ callback hook
         return run_dir
 
 

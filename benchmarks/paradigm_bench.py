@@ -224,7 +224,7 @@ def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int, desc: str = "") 
 
 
 def _measured_gflops(fn: Any, model: nnx.Module, *args: Any) -> float:
-    """Measured FLOPs of one call via XLA cost analysis (GFLOPs)."""
+    """FLOPs of one call via XLA cost analysis (GFLOPs). Best-effort; unreliable for ELFTransformer at scale."""
     graphdef, state = nnx.split(model)
 
     def pure(state: Any, *a: Any) -> Any:
@@ -237,9 +237,56 @@ def _measured_gflops(fn: Any, model: nnx.Module, *args: Any) -> float:
         if isinstance(ca, (list, tuple)):
             ca = ca[0]
         return float(ca.get("flops", float("nan"))) / 1e9
-    except Exception as exc:  # noqa: BLE001 — cost analysis is best-effort
+    except Exception as exc:  # noqa: BLE001
         log.info("cost_analysis failed: %s", exc)
         return float("nan")
+
+
+def _analytical_gflops_transformer(
+    B: int, seq_len: int, dim: int, n_heads: int, head_size: int, blocks: int,
+    kv_heads: int | None = None,
+) -> float:
+    """Analytical FLOP estimate for one bidirectional transformer forward pass (GFLOPs).
+
+    Uses the standard 2×matmul accounting (multiply-accumulate = 2 FLOPs).
+    kv_heads defaults to n_heads (MHA). Covers attention + FFN; ignores layer-norm.
+    """
+    kv_h = kv_heads if kv_heads is not None else n_heads
+    ffn_hidden = 4 * dim
+
+    # Attention: Q/K/V projections + attention scores + output projection
+    q_proj   = 2 * B * seq_len * dim * dim
+    kv_proj  = 2 * B * seq_len * dim * (kv_h * head_size) * 2   # K and V
+    attn_qk  = 2 * B * n_heads * seq_len * seq_len * head_size
+    attn_av  = 2 * B * n_heads * seq_len * seq_len * head_size
+    out_proj = 2 * B * seq_len * dim * dim
+    attn_total = q_proj + kv_proj + attn_qk + attn_av + out_proj
+
+    # FFN: two linear layers (no gating)
+    ffn_total = 2 * (2 * B * seq_len * dim * ffn_hidden)
+
+    return blocks * (attn_total + ffn_total) / 1e9
+
+
+def _analytical_gflops_disc_step(exp: dict, cfg: Any) -> float:
+    """Step GFLOPs for one Discrete diffusion denoising step."""
+    B, G = exp["B"], exp["G"]
+    dim, n_heads, head_size, blocks = SIZES[exp["size"]]
+    kv_heads = getattr(cfg, "kv_heads", n_heads)
+    # Bidirectional attention over gen tokens only (prefix KVs are cached)
+    return _analytical_gflops_transformer(B, G, dim, n_heads, head_size, blocks, kv_heads)
+
+
+def _analytical_gflops_elf_step(exp: dict, cfg: Any) -> float:
+    """Step GFLOPs for one ELF (Continuous) Euler ODE step.
+
+    ELFTransformer processes z of shape (B, G, dim) — continuous latents —
+    so seq_len = G and the embedding dimension equals dim.
+    """
+    B, G = exp["B"], exp["G"]
+    dim, n_heads, head_size, blocks = SIZES[exp["size"]]
+    kv_heads = getattr(cfg, "kv_heads", n_heads)
+    return _analytical_gflops_transformer(B, G, dim, n_heads, head_size, blocks, kv_heads)
 
 
 def _count_params(model: nnx.Module) -> tuple[float, float]:
@@ -455,8 +502,10 @@ def run_discrete(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
                 blocks * 2 * P * cfg.kv_heads * head_size * bpp * B / 1e6, 3
             )
 
-        # One denoise step (full bidirectional forward over the G masked tokens)
-        step_gf = _measured_gflops(_disc_step_fn, model, x_mask, dual, key, p_mid)
+        # One denoise step (full bidirectional forward over the G masked tokens).
+        # Use analytical GFLOPs — XLA cost_analysis is unreliable for bidirectional
+        # transformers at larger scales (returns values that don't scale with params).
+        step_gf = _analytical_gflops_disc_step(exp, cfg)
         row["step_gflops"] = round(step_gf, 4)
 
         step_ms = _time_fn(disc_step, model, x_mask, dual, key, p_mid,
@@ -465,7 +514,7 @@ def run_discrete(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
         row["step_ms_p50"] = round(float(np.percentile(step_ms, 50)), 3)
         row["step_ms_p95"] = round(float(np.percentile(step_ms, 95)), 3)
         row["tok_s_steady"] = round(
-            B * G * 1e3 / (steps * float(np.median(step_ms))), 2
+            B * G * 1e3 / (steps * float(np.mean(step_ms))), 2
         )
 
         # End-to-end LLaDA-style reverse diffusion: steps × denoise + final fill
@@ -520,11 +569,15 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
         z      = jax.random.normal(jax.random.key(0), (B, G, dim), dtype=dtype)
         x_prev = jnp.zeros_like(z)
         w      = jnp.ones((B,), dtype=dtype)
-        t_mid  = jnp.float32(0.5)
-        dt     = jnp.float32(dt_np)
+        # Use jnp.array (not jnp.float32 scalar literal) so JAX traces t and dt
+        # as dynamic values — avoids a recompile per step count in the diff_steps sweep.
+        t_mid  = jnp.array(0.5, dtype=jnp.float32)
+        dt     = jnp.array(dt_np, dtype=jnp.float32)
 
-        # One Euler denoise step
-        step_gf = _measured_gflops(_elf_step_fn, model, z, x_prev, t_mid, dt, w)
+        # One Euler denoise step.
+        # Use analytical GFLOPs — XLA cost_analysis returns inconsistent values for
+        # ELFTransformer (e.g. 9x inflated at xxl), while timing data is correct.
+        step_gf = _analytical_gflops_elf_step(exp, cfg)
         row["step_gflops"] = round(step_gf, 4)
 
         step_ms = _time_fn(elf_step, model, z, x_prev, t_mid, dt, w,
@@ -533,28 +586,25 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
         row["step_ms_p50"] = round(float(np.percentile(step_ms, 50)), 3)
         row["step_ms_p95"] = round(float(np.percentile(step_ms, 95)), 3)
         row["tok_s_steady"] = round(
-            B * G * 1e3 / (steps * float(np.median(step_ms))), 2
+            B * G * 1e3 / (steps * float(np.mean(step_ms))), 2
         )
-        decode_gf = _measured_gflops(_elf_decode_fn, model, z, w)
 
         # End-to-end ELF generation: Euler ODE from noise + final decode (t=1)
-        ts = np.linspace(0.0, 1.0, steps + 1)
+        ts     = np.linspace(0.0, 1.0, steps + 1)
+        ts_jax = [jnp.array(t, dtype=jnp.float32) for t in ts]
+        dts    = [jnp.array(ts[i + 1] - ts[i], dtype=jnp.float32) for i in range(steps)]
 
         def _e2e() -> None:
             zz, xp = z, x_prev
             for i in range(steps):
-                zz, xp = elf_step(
-                    model, zz, xp,
-                    jnp.float32(ts[i]), jnp.float32(ts[i + 1] - ts[i]), w,
-                )
+                zz, xp = elf_step(model, zz, xp, ts_jax[i], dts[i], w)
             toks = elf_decode(model, zz, w)
             jax.block_until_ready(toks)
 
         e2e_ms = _median_ms(_e2e, n_e2e, desc=f"e2e {tag}")
         row["ttft_ms"] = round(e2e_ms, 3)   # tokens decoded all at once at t=1
 
-        decode_gf = 0.0 if np.isnan(decode_gf) else decode_gf
-        total_gf  = steps * step_gf + decode_gf
+        total_gf = steps * step_gf
         _finish_row(row, exp, total_gf, e2e_ms)
 
     except Exception as exc:  # noqa: BLE001

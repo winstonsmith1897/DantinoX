@@ -89,6 +89,11 @@ def _load_config(run_path: str) -> Config:
             flat.update(section)
     if not flat:
         flat = raw
+    # Some saved configs have mla:true with attention_type:gqa (config-save bug).
+    # __post_init__ unconditionally overwrites mla from attention_type, so we must
+    # correct attention_type before constructing Config.
+    if flat.get("mla", False):
+        flat["attention_type"] = "mla"
     return Config.from_dict(flat)
 
 

@@ -266,10 +266,10 @@ class ELFTransformer(nnx.Module, pytree=False):
         h    = jnp.concatenate([ctrl, h], axis=1)           # [B, C+L, D]
 
         # 4. Bidirectional transformer
-        use_remat = self.config.gradient_checkpointing and not deterministic
+        use_remat = self.config.gradient_checkpointing
         if use_remat:
             def _block_fn(block: object, hs: jnp.ndarray) -> tuple:
-                return block(hs, deterministic=False)  # type: ignore[call-arg, operator]
+                return block(hs, deterministic=deterministic)  # type: ignore[call-arg, operator]
             _checkpointed = nnx.remat(_block_fn)
         for block in self.blocks:
             if use_remat:

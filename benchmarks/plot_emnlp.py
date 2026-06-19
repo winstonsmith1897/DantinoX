@@ -1,631 +1,565 @@
 #!/usr/bin/env python3
 """
 benchmarks/plot_emnlp.py
-=========================
+========================
+Publication figures for the EMNLP 2026 System Demonstrations paper.
 
-Generate EMNLP 2026 submission-quality figures from DantinoX benchmark CSVs.
+Design rule: each figure asserts EXACTLY ONE claim, stated in the title and
+annotated directly on the data. Four figures cover the full story:
 
-Figures produced
-----------------
-  fig1_attention_paradigm_matrix.pdf/png
-        3×2 grouped bar chart: rows = MHA/GQA/MLA, cols = AR/Diffusion.
-        Each cell shows PPL (from perplexity.csv) and KV-cache MB.
-        Uses the Pareto-optimal run (lowest PPL) for each combination.
+  fig_emnlp_1_pareto    Serving frontier — diffusion is 3-7x faster than AR
+                        at interactive latency; AR recovers at high batch.
+  fig_emnlp_2_quality   Quality-efficiency scatter — diff achieves competitive
+                        bpb at 3-7x the throughput of AR.
+  fig_emnlp_3_attn      Attention orthogonality — GQA/MLA cut KV cache 4-6x
+                        with <0.002 bpb change on masked diffusion.
+  fig_emnlp_4_scaling   Throughput advantage holds from 0.2M to 114M params.
 
-  fig2_pareto_kv_vs_ppl.pdf/png
-        Scatter plot: x = KV-cache MB, y = validation PPL.
-        One marker per (run, attn_variant) coloured by paradigm.
-        Pareto frontier (lowest PPL for each cache budget) highlighted.
-
-  fig3_pareto_kv_vs_toks.pdf/png
-        Scatter plot: x = KV-cache MB, y = throughput (tok/s).
-        Pareto frontier (highest tok/s per cache budget) highlighted.
-
-  fig4_diffusion_steps_gentime.pdf/png
-        Line chart: x = #diffusion steps, y = estimated generation time (ms).
-        One line per attn_variant (from diffusion_ar_sweep.csv group diff_steps).
-
-  fig5_dualcache_speedup.pdf/png
-        Bar/line chart: x = block_size, y = block_speedup vs full-sequence step.
-        From diffusion_ar_sweep.csv group block_size_sweep.
-
-  fig6_confidence_tradeoff.pdf/png
-        Dual-axis line chart: x = τ (threshold) or f (factor),
-        y_left = avg_steps_to_complete (quality proxy, lower = faster),
-        y_right = tok/s throughput.
-        One panel per strategy (threshold / factor).
-
-  fig7_generation_quality_radar.pdf/png
-        Radar / spider chart: distinct_1, distinct_2, 1-rep_4, 1-self_bleu_4.
-        One polygon per (model_type × attn_variant).
-
-  fig8_ablation_table.pdf/png
-        Visual table: rows = ablation conditions (sliding_window, no_sink, moe),
-        cols = PPL / tok/s / KV-MB.  Formatted for inclusion in LaTeX via
-        tikz/pgfplots or as a standalone PNG.
-
-Input CSVs (all optional — missing CSVs are gracefully skipped)
---------------------------------------------------------------
-  --ppl-csv              results/perplexity.csv
-  --trained-csv          results/benchmark_results.csv
-  --diffusion-ar-csv     results/diffusion_ar_sweep.csv
-  --confidence-csv       results/confidence_sweep.csv
-  --gen-quality-csv      results/generation_quality.csv
-
-Usage
------
+Run:
   python benchmarks/plot_emnlp.py
-  python benchmarks/plot_emnlp.py --out-dir results/paper_figures/
-  python benchmarks/plot_emnlp.py --figs 1 2 4 6
-  python benchmarks/plot_emnlp.py --pdf   # save PDF in addition to PNG
+  python benchmarks/plot_emnlp.py --out results/emnlp_figs
+
+Safe to re-run; updates automatically once results/perplexity_ar.csv appears.
 """
 from __future__ import annotations
 
 import argparse
-import logging
-import sys
 from pathlib import Path
-from typing import Any
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
+import pandas as pd
 
-try:
-    import pandas as pd
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as mpatches
-    import matplotlib.ticker as mticker
-    from matplotlib.lines import Line2D
-except ImportError as exc:
-    print(f"Missing dependency: {exc}\nInstall: pip install pandas matplotlib")
-    sys.exit(1)
-
-log = logging.getLogger(__name__)
-
-# ── Style constants ────────────────────────────────────────────────────────────
-
-_ATTN_COLOR  = {"MHA": "#1565C0", "GQA": "#2E7D32", "MLA": "#6A1B9A"}
-_MODEL_COLOR = {"autoregressive": "#1976D2", "AR": "#1976D2",
-                "diffusion": "#E65100",     "Diff": "#E65100"}
-_ATTN_MARKER = {"MHA": "o", "GQA": "s", "MLA": "^"}
-_MODEL_LS    = {"AR": "-", "autoregressive": "-", "Diff": "--", "diffusion": "--"}
-
-# Use LaTeX-compatible fonts
+# ── Global style ──────────────────────────────────────────────────────────────
 plt.rcParams.update({
-    "font.family":        "serif",
-    "font.size":          10,
-    "axes.labelsize":     10,
-    "axes.titlesize":     11,
-    "legend.fontsize":    9,
-    "xtick.labelsize":    9,
-    "ytick.labelsize":    9,
-    "figure.dpi":         150,
-    "axes.grid":          True,
-    "grid.alpha":         0.35,
-    "grid.linestyle":     ":",
-    "axes.spines.top":    False,
-    "axes.spines.right":  False,
+    "font.family":       "sans-serif",
+    "font.size":         9,
+    "axes.titlesize":    10,
+    "axes.titleweight":  "bold",
+    "axes.labelsize":    9,
+    "legend.fontsize":   7.5,
+    "xtick.labelsize":   8,
+    "ytick.labelsize":   8,
+    "figure.dpi":        200,
+    "savefig.dpi":       300,
+    "savefig.bbox":      "tight",
+    "axes.grid":         True,
+    "grid.alpha":        0.20,
+    "grid.linestyle":    ":",
+    "axes.spines.top":   False,
+    "axes.spines.right": False,
 })
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _savefig(fig: plt.Figure, path: Path, pdf: bool = False) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    if pdf:
-        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
-    plt.close(fig)
-    print(f"  saved → {path}")
-
-
-def _attn_legend(ax: plt.Axes) -> None:
-    handles = [
-        mpatches.Patch(color=c, label=a)
-        for a, c in _ATTN_COLOR.items()
-    ]
-    ax.legend(handles=handles, title="Attention", fontsize=8, title_fontsize=8)
-
-
-def _pareto_front(x: np.ndarray, y: np.ndarray, minimize_x: bool = True, minimize_y: bool = True) -> np.ndarray:
-    """Return boolean mask of Pareto-optimal points."""
-    n = len(x)
-    dominated = np.zeros(n, dtype=bool)
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                continue
-            x_better = (x[j] <= x[i]) if minimize_x else (x[j] >= x[i])
-            y_better = (y[j] <= y[i]) if minimize_y else (y[j] >= y[i])
-            x_strict = (x[j] < x[i])  if minimize_x else (x[j] > x[i])
-            y_strict = (y[j] < y[i])  if minimize_y else (y[j] > y[i])
-            if x_better and y_better and (x_strict or y_strict):
-                dominated[i] = True
-                break
-    return ~dominated
-
-
-# ── Figure 1: Attention × Paradigm matrix ────────────────────────────────────
-
-def fig1_attention_paradigm_matrix(
-    trained_csv: Path,
-    ppl_csv: Path,
-    out_dir: Path,
-    pdf: bool,
-) -> None:
-    """Grouped bar chart: rows = attention, cols = paradigm; metrics = PPL + KV-MB."""
-    rows_list: list[dict] = []
-
-    if trained_csv.exists():
-        df_t = pd.read_csv(trained_csv)
-        for _, r in df_t.iterrows():
-            attn = str(r.get("type", "?"))
-            mtype = str(r.get("model_type", "autoregressive"))
-            rows_list.append({
-                "attn": attn,
-                "paradigm": "AR" if "auto" in mtype else "Diff",
-                "val_ppl": float(r.get("val_ppl", np.nan)),
-                "kv_mb":   float(r.get("theoretical_cache_mb", np.nan)),
-                "tok_s":   float(r.get("tok_s", np.nan)),
-            })
-
-    if ppl_csv.exists():
-        df_p = pd.read_csv(ppl_csv)
-        ext  = df_p[df_p["dataset"] != "train_val"]
-        for key, grp in ext.groupby(["attn_variant", "model_type"]):
-            attn_v = str(key[0]) if isinstance(key, tuple) else str(key)
-            mtype  = str(key[1]) if isinstance(key, tuple) else "unknown"
-            mean_ppl = float(grp["ppl"].mean())
-            rows_list.append({
-                "attn": attn_v,
-                "paradigm": "AR" if "auto" in mtype else "Diff",
-                "val_ppl": mean_ppl,
-                "kv_mb":   np.nan,
-                "tok_s":   np.nan,
-            })
-
-    if not rows_list:
-        log.warning("fig1: no data — skipping")
-        return
-
-    df = pd.DataFrame(rows_list)
-    attns     = ["MHA", "GQA", "MLA"]
-    paradigms = ["AR", "Diff"]
-    metrics   = [("val_ppl", "Validation PPL ↓"), ("kv_mb", "KV-cache MB ↓"), ("tok_s", "Throughput (tok/s) ↑")]
-
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
-    x = np.arange(len(attns))
-    w = 0.35
-
-    for ax, (col, ylabel) in zip(axes, metrics):
-        for i, par in enumerate(paradigms):
-            vals = []
-            for attn in attns:
-                sub = df[(df["attn"] == attn) & (df["paradigm"] == par)][col].dropna()
-                vals.append(float(sub.mean()) if len(sub) > 0 else np.nan)
-            offset = (i - 0.5) * w
-            bars = ax.bar(x + offset, vals, width=w,
-                          color=_MODEL_COLOR[par], alpha=0.85,
-                          label=par, edgecolor="white", linewidth=0.5)
-            for bar, v in zip(bars, vals):
-                if not np.isnan(v):
-                    ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() * 1.01,
-                            f"{v:.1f}", ha="center", va="bottom", fontsize=7)
-        ax.set_xticks(x)
-        ax.set_xticklabels(attns)
-        ax.set_ylabel(ylabel)
-        ax.set_title(ylabel.split(" ")[0])
-
-    handles = [mpatches.Patch(color=_MODEL_COLOR[p], label=p) for p in paradigms]
-    axes[0].legend(handles=handles, title="Paradigm", fontsize=8)
-    fig.suptitle("DantinoX: Attention Type × Generation Paradigm", fontweight="bold", y=1.01)
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig1_attention_paradigm_matrix.png", pdf)
-
-
-# ── Figure 2: Pareto frontier KV-MB vs PPL ───────────────────────────────────
-
-def fig2_pareto_kv_ppl(trained_csv: Path, ppl_csv: Path, out_dir: Path, pdf: bool) -> None:
-    if not trained_csv.exists():
-        log.warning("fig2: %s not found — skipping", trained_csv)
-        return
-
-    df = pd.read_csv(trained_csv)
-    if "val_ppl" not in df.columns or "theoretical_cache_mb" not in df.columns:
-        log.warning("fig2: required columns missing — skipping")
-        return
-
-    df = df.dropna(subset=["val_ppl", "theoretical_cache_mb"])
-    if df.empty:
-        log.warning("fig2: empty data — skipping")
-        return
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-    for attn in ["MHA", "GQA", "MLA"]:
-        for mtype, ls in [("autoregressive", "-"), ("diffusion", "--")]:
-            sub = df[(df["type"] == attn) & (df.get("model_type", pd.Series(["autoregressive"] * len(df))) == mtype)]
-            if sub.empty:
-                continue
-            label = f"{attn} / {'AR' if 'auto' in mtype else 'Diff'}"
-            ax.scatter(sub["theoretical_cache_mb"], sub["val_ppl"],
-                       color=_ATTN_COLOR.get(attn, "grey"),
-                       marker=_ATTN_MARKER.get(attn, "o"),
-                       alpha=0.7, s=60, zorder=3, label=label)
-
-    # Pareto frontier across all runs (minimise both KV-MB and PPL)
-    x_all = df["theoretical_cache_mb"].values
-    y_all = df["val_ppl"].values
-    mask  = _pareto_front(x_all, y_all, minimize_x=True, minimize_y=True)
-    if mask.sum() > 1:
-        idx_sorted = np.argsort(x_all[mask])
-        ax.plot(x_all[mask][idx_sorted], y_all[mask][idx_sorted],
-                "k--", linewidth=1.5, label="Pareto frontier", zorder=4)
-        ax.scatter(x_all[mask], y_all[mask], color="black", s=80, zorder=5, marker="*")
-
-    ax.set_xlabel("KV-cache Memory (MB) ↓")
-    ax.set_ylabel("Validation PPL ↓")
-    ax.set_title("Memory–Quality Pareto Frontier")
-    ax.legend(fontsize=7, ncol=2)
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig2_pareto_kv_vs_ppl.png", pdf)
-
-
-# ── Figure 3: Pareto KV-MB vs throughput ─────────────────────────────────────
-
-def fig3_pareto_kv_toks(trained_csv: Path, out_dir: Path, pdf: bool) -> None:
-    if not trained_csv.exists():
-        log.warning("fig3: %s not found — skipping", trained_csv)
-        return
-
-    df = pd.read_csv(trained_csv).dropna(subset=["tok_s", "theoretical_cache_mb"])
-    if df.empty:
-        return
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-    for attn in ["MHA", "GQA", "MLA"]:
-        sub = df[df["type"] == attn]
-        if sub.empty:
-            continue
-        ax.scatter(sub["theoretical_cache_mb"], sub["tok_s"],
-                   color=_ATTN_COLOR.get(attn, "grey"),
-                   marker=_ATTN_MARKER.get(attn, "o"),
-                   s=60, alpha=0.8, label=attn, zorder=3)
-
-    x_all = df["theoretical_cache_mb"].values
-    y_all = df["tok_s"].values
-    mask  = _pareto_front(x_all, y_all, minimize_x=True, minimize_y=False)
-    if mask.sum() > 1:
-        idx = np.argsort(x_all[mask])
-        ax.plot(x_all[mask][idx], y_all[mask][idx], "k--", linewidth=1.5,
-                label="Pareto frontier", zorder=4)
-        ax.scatter(x_all[mask], y_all[mask], color="black", s=80, zorder=5, marker="*")
-
-    ax.set_xlabel("KV-cache Memory (MB) ↓")
-    ax.set_ylabel("Throughput (tok/s) ↑")
-    ax.set_title("Memory–Throughput Pareto Frontier")
-    _attn_legend(ax)
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig3_pareto_kv_vs_toks.png", pdf)
-
-
-# ── Figure 4: Diffusion steps vs generation time ─────────────────────────────
-
-def fig4_diff_steps_gentime(diff_ar_csv: Path, out_dir: Path, pdf: bool) -> None:
-    if not diff_ar_csv.exists():
-        log.warning("fig4: %s not found — skipping", diff_ar_csv)
-        return
-
-    df = pd.read_csv(diff_ar_csv)
-    sub = df[(df["group"] == "diff_steps") & (df["model_type"] == "Diff")].dropna(
-        subset=["diff_n_steps", "diff_step_ms_p50"]
-    )
-    if sub.empty:
-        log.warning("fig4: no diff_steps data — skipping")
-        return
-
-    sub = sub.copy()
-    sub["gen_time_ms"] = sub["diff_n_steps"] * sub["diff_step_ms_p50"]
-
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    for attn in ["MHA", "GQA", "MLA"]:
-        pts = sub[sub["attn_variant"] == attn].sort_values("diff_n_steps")
-        if pts.empty:
-            continue
-        ax.plot(pts["diff_n_steps"], pts["gen_time_ms"],
-                color=_ATTN_COLOR.get(attn, "grey"), marker=_ATTN_MARKER.get(attn, "o"),
-                label=attn, linewidth=2, markersize=6)
-
-    ax.set_xlabel("Denoising Steps")
-    ax.set_ylabel("Estimated Generation Time (ms)")
-    ax.set_title("Diffusion Steps vs. Generation Time")
-    _attn_legend(ax)
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig4_diffusion_steps_gentime.png", pdf)
-
-
-# ── Figure 5: DualCache block-size speedup ───────────────────────────────────
-
-def fig5_dualcache_speedup(diff_ar_csv: Path, out_dir: Path, pdf: bool) -> None:
-    if not diff_ar_csv.exists():
-        log.warning("fig5: %s not found — skipping", diff_ar_csv)
-        return
-
-    df = pd.read_csv(diff_ar_csv)
-    sub = df[df["group"] == "block_size_sweep"].dropna(subset=["block_speedup", "block_size"])
-    if sub.empty:
-        log.warning("fig5: no block_size_sweep data — skipping")
-        return
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
-
-    for attn in ["MHA", "GQA"]:
-        pts = sub[sub["attn_variant"] == attn].sort_values("block_size")
-        if pts.empty:
-            continue
-        axes[0].plot(pts["block_size"], pts["block_speedup"],
-                     color=_ATTN_COLOR.get(attn, "grey"),
-                     marker=_ATTN_MARKER.get(attn, "o"),
-                     label=attn, linewidth=2, markersize=7)
-        axes[1].plot(pts["block_size"], pts["refresh_overhead_x"],
-                     color=_ATTN_COLOR.get(attn, "grey"),
-                     marker=_ATTN_MARKER.get(attn, "o"),
-                     label=attn, linewidth=2, markersize=7)
-
-    axes[0].axhline(1.0, color="grey", linestyle=":", linewidth=1)
-    axes[0].set_xlabel("Block Size (tokens)")
-    axes[0].set_ylabel("Speedup vs Full-Sequence Step  ↑")
-    axes[0].set_title("DualCache Block Speedup")
-    axes[0].legend(fontsize=8)
-
-    axes[1].set_xlabel("Block Size (tokens)")
-    axes[1].set_ylabel("Cache Refresh Overhead (× decode_block)  ↓")
-    axes[1].set_title("Cache Refresh Cost")
-    axes[1].legend(fontsize=8)
-
-    fig.suptitle("Fast-dLLM Block-wise DualCache (DantinoX)", fontweight="bold")
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig5_dualcache_speedup.png", pdf)
-
-
-# ── Figure 6: Confidence threshold tradeoff ──────────────────────────────────
-
-def fig6_confidence_tradeoff(conf_csv: Path, out_dir: Path, pdf: bool) -> None:
-    if not conf_csv.exists():
-        log.warning("fig6: %s not found — skipping", conf_csv)
-        return
-
-    df = pd.read_csv(conf_csv)
-    if df.empty:
-        return
-
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
-    strategy_info = [
-        ("threshold", "τ (confidence threshold)", _THRESHOLD_VALUES),
-        ("factor",    "f (factor parameter)",     _FACTOR_VALUES),
-    ]
-
-    for ax, (strat, xlabel, _) in zip(axes, strategy_info):
-        sub = df[df["strategy"] == strat]
-        ax2 = ax.twinx()
-        for attn in ["MHA", "GQA", "MLA"]:
-            pts = sub[(sub["attn_variant"] == attn) & (sub["seq_len"] == 64)].sort_values("param")
-            if pts.empty:
-                continue
-            c = _ATTN_COLOR.get(attn, "grey")
-            ax.plot(pts["param"], pts["avg_steps_to_complete"],
-                    color=c, linestyle="-",  marker="o", markersize=5,
-                    linewidth=2, label=f"{attn} steps")
-            ax2.plot(pts["param"], pts["tok_s"],
-                     color=c, linestyle="--", marker="s", markersize=5,
-                     linewidth=1.5, alpha=0.7, label=f"{attn} tok/s")
-
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel("Avg Steps to Complete  ↓", color="#333")
-        ax2.set_ylabel("Throughput (tok/s)  ↑", color="#666")
-        ax.set_title(f"Strategy: {strat}")
-        ax.legend(fontsize=7, loc="upper left")
-        ax2.legend(fontsize=7, loc="upper right")
-
-    fig.suptitle("Confidence-Aware Parallel Decoding: Speed vs Quality Proxy",
-                 fontweight="bold")
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig6_confidence_tradeoff.png", pdf)
-
-
-# ── Figure 7: Generation quality radar ───────────────────────────────────────
-
-def fig7_generation_radar(gen_csv: Path, out_dir: Path, pdf: bool) -> None:
-    if not gen_csv.exists():
-        log.warning("fig7: %s not found — skipping", gen_csv)
-        return
-
-    df = pd.read_csv(gen_csv)
-    if df.empty:
-        return
-
-    metrics   = ["distinct_1", "distinct_2", "1-rep_4", "1-self_bleu_4"]
-    raw_cols  = ["distinct_1", "distinct_2", "rep_4",   "self_bleu_4"]
-
-    # Build a version where higher is always better
-    df["1-rep_4"]       = 1.0 - df["rep_4"].clip(0, 1)
-    df["1-self_bleu_4"] = 1.0 - df["self_bleu_4"].clip(0, 1)
-
-    groups = df.groupby(["model_type", "attn_variant"])[metrics].mean()
-    if groups.empty:
-        return
-
-    N   = len(metrics)
-    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
-    angles += angles[:1]
-
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={"projection": "polar"})
-    ax.set_theta_offset(np.pi / 2)
-    ax.set_theta_direction(-1)
-    ax.set_thetagrids(np.degrees(angles[:-1]), metrics)
-
-    for (mtype, attn), row in groups.iterrows():
-        vals   = row[metrics].tolist()
-        vals  += vals[:1]
-        color  = _ATTN_COLOR.get(str(attn), "grey")
-        ls     = _MODEL_LS.get(str(mtype), "-")
-        paradigm = "AR" if "auto" in str(mtype) else "Diff"
-        label  = f"{attn} / {paradigm}"
-        ax.plot(angles, vals, linestyle=ls, color=color, linewidth=2, label=label)
-        ax.fill(angles, vals, color=color, alpha=0.08)
-
-    ax.set_ylim(0, 1)
-    ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1), fontsize=8)
-    ax.set_title("Generation Quality (higher = better)", pad=20, fontweight="bold")
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig7_generation_quality_radar.png", pdf)
-
-
-# ── Figure 8: Summary table ───────────────────────────────────────────────────
-
-def fig8_summary_table(
-    trained_csv: Path, ppl_csv: Path, out_dir: Path, pdf: bool
-) -> None:
-    """Render a visual summary table as a matplotlib figure."""
-    rows_data: list[dict] = []
-
-    if trained_csv.exists():
-        df_t = pd.read_csv(trained_csv)
-        for attn in ["MHA", "GQA", "MLA"]:
-            for mtype in ["autoregressive", "diffusion"]:
-                sub = df_t[(df_t["type"] == attn) &
-                           (df_t.get("model_type", pd.Series(["autoregressive"] * len(df_t))) == mtype)]
-                if sub.empty:
-                    continue
-                row: dict = {
-                    "Attn": attn,
-                    "Paradigm": "AR" if "auto" in mtype else "Diff",
-                    "Val-PPL": f"{sub['val_ppl'].mean():.1f}" if "val_ppl" in sub else "—",
-                    "tok/s":   f"{sub['tok_s'].mean():.0f}"  if "tok_s"  in sub else "—",
-                    "KV-MB":   f"{sub['theoretical_cache_mb'].mean():.1f}" if "theoretical_cache_mb" in sub else "—",
-                    "Params-M": f"{sub['params_m'].mean():.1f}" if "params_m" in sub else "—",
-                }
-                rows_data.append(row)
-
-    if not rows_data:
-        log.warning("fig8: no data for summary table — skipping")
-        return
-
-    df_tbl = pd.DataFrame(rows_data)
-    cols   = list(df_tbl.columns)
-    n_rows = len(df_tbl)
-    n_cols = len(cols)
-
-    fig, ax = plt.subplots(figsize=(n_cols * 1.4, n_rows * 0.5 + 1.2))
-    ax.axis("off")
-
-    table = ax.table(
-        cellText=df_tbl.values.tolist(),
-        colLabels=cols,
-        loc="center",
-        cellLoc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.8)
-
-    for (r, c), cell in table.get_celld().items():
-        if r == 0:
-            cell.set_facecolor("#34495E")
-            cell.set_text_props(color="white", fontweight="bold")
-        elif r % 2 == 0:
-            cell.set_facecolor("#EBF5FB")
-        if r > 0 and c == 0:
-            attn_val = df_tbl.iloc[r - 1]["Attn"]
-            cell.set_text_props(color=_ATTN_COLOR.get(str(attn_val), "black"), fontweight="bold")
-
-    ax.set_title("DantinoX — Attention × Paradigm Summary",
-                 fontsize=12, fontweight="bold", pad=12)
-    plt.tight_layout()
-    _savefig(fig, out_dir / "fig8_summary_table.png", pdf)
-
-
-# ── Main ──────────────────────────────────────────────────────────────────────
-
-_FIGS: dict[int, str] = {
-    1: "Attention × Paradigm matrix",
-    2: "Pareto frontier KV-MB vs PPL",
-    3: "Pareto frontier KV-MB vs tok/s",
-    4: "Diffusion steps vs gen time",
-    5: "DualCache block speedup",
-    6: "Confidence threshold tradeoff",
-    7: "Generation quality radar",
-    8: "Summary table",
+# Colorblind-safe palette (Wong 2011)
+C = {
+    "AR":         "#0072B2",
+    "Discrete":   "#D55E00",
+    "Continuous": "#009E73",
+}
+LIGHT = {
+    "AR":         "#56B4E9",
+    "Discrete":   "#E69F00",
+    "Continuous": "#CC79A7",
+}
+MARKER = {"AR": "o", "Discrete": "s", "Continuous": "^"}
+LABEL  = {
+    "AR":         "Autoregressive",
+    "Discrete":   "Masked Diffusion (LLaDA)",
+    "Continuous": "Continuous Diffusion (ELF)",
 }
 
-# Keep a reference to threshold/factor values needed in fig6
-_THRESHOLD_VALUES = [0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.99]
-_FACTOR_VALUES    = [0.80, 1.00, 1.20, 1.50, 2.00, 3.00, 5.00]
+
+def _save(fig: plt.Figure, out: Path, name: str) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out / f"{name}.pdf")
+    fig.savefig(out / f"{name}.png")
+    plt.close(fig)
+    print(f"  saved  {name}.pdf / .png")
 
 
-def main(argv: list[str] | None = None) -> None:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+# ══════════════════════════════════════════════════════════════════════════════
+# Figure 1 — Serving Pareto frontier
+# Claim: "At interactive latency (<=200 ms), diffusion fits; AR does not.
+#         Discrete S=8 is ~6x faster than AR at B=1."
+# ══════════════════════════════════════════════════════════════════════════════
 
-    parser = argparse.ArgumentParser(
-        description="EMNLP 2026 paper figures for DantinoX.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
-    )
-    parser.add_argument("--out-dir",          default="results/paper_figures/",
-                        help="Output directory (default: results/paper_figures/)")
-    parser.add_argument("--ppl-csv",          default="results/perplexity.csv")
-    parser.add_argument("--trained-csv",      default="results/benchmark_results.csv")
-    parser.add_argument("--diffusion-ar-csv", default="results/diffusion_ar_sweep.csv")
-    parser.add_argument("--confidence-csv",   default="results/confidence_sweep.csv")
-    parser.add_argument("--gen-quality-csv",  default="results/generation_quality.csv")
-    parser.add_argument("--figs", nargs="+", type=int,
-                        help="Figure numbers to generate (default: all). "
-                             f"Available: {list(_FIGS.keys())}")
-    parser.add_argument("--pdf", action="store_true",
-                        help="Also save PDF versions (for LaTeX inclusion)")
-    args = parser.parse_args(argv)
+def fig1_pareto(par_path: Path, out: Path) -> None:
+    if not par_path.exists():
+        print(f"  [SKIP] fig1 — missing {par_path.name}")
+        return
 
-    out_dir      = Path(args.out_dir)
-    ppl_csv      = Path(args.ppl_csv)
-    trained_csv  = Path(args.trained_csv)
-    diff_ar_csv  = Path(args.diffusion_ar_csv)
-    conf_csv     = Path(args.confidence_csv)
-    gen_csv      = Path(args.gen_quality_csv)
+    par = pd.read_csv(par_path)
+    par = par[~par["oom"]].copy()
 
-    figs_to_run = set(args.figs) if args.figs else set(_FIGS.keys())
-
-    print(f"DantinoX EMNLP figures → {out_dir}")
-    for fig_id, label in _FIGS.items():
-        if fig_id not in figs_to_run:
-            continue
-        print(f"  Figure {fig_id}: {label}")
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    print()
-
-    dispatch = {
-        1: lambda: fig1_attention_paradigm_matrix(trained_csv, ppl_csv, out_dir, args.pdf),
-        2: lambda: fig2_pareto_kv_ppl(trained_csv, ppl_csv, out_dir, args.pdf),
-        3: lambda: fig3_pareto_kv_toks(trained_csv, out_dir, args.pdf),
-        4: lambda: fig4_diff_steps_gentime(diff_ar_csv, out_dir, args.pdf),
-        5: lambda: fig5_dualcache_speedup(diff_ar_csv, out_dir, args.pdf),
-        6: lambda: fig6_confidence_tradeoff(conf_csv, out_dir, args.pdf),
-        7: lambda: fig7_generation_radar(gen_csv, out_dir, args.pdf),
-        8: lambda: fig8_summary_table(trained_csv, ppl_csv, out_dir, args.pdf),
+    # Series definition: (paradigm_key, linestyle, linewidth, marker, markersize)
+    SERIES = {
+        "AR (greedy)":     ("AR",         "-",  2.0, "o", 5.5),
+        "Discrete S=32":   ("Discrete",   "-",  1.8, "s", 4.5),
+        "Discrete S=8":    ("Discrete",   "--", 1.4, "s", 4.0),
+        "Continuous S=32": ("Continuous", "-",  1.8, "^", 4.5),
+        "Continuous S=8":  ("Continuous", "--", 1.4, "^", 4.0),
     }
 
-    for fig_id in sorted(figs_to_run):
-        if fig_id not in dispatch:
-            log.warning("Unknown figure ID: %d", fig_id)
-            continue
-        try:
-            dispatch[fig_id]()
-        except Exception as exc:
-            log.warning("Figure %d failed: %s", fig_id, exc)
+    fig, ax = plt.subplots(figsize=(6.8, 4.6))
 
-    from pathlib import Path as _P
-    n_files = len(list(out_dir.glob("fig*.png")))
-    print(f"\nDone — {n_files} figures in {out_dir}")
+    for lbl, (paradigm, ls, lw, mk, ms) in SERIES.items():
+        d = par[par["label"] == lbl].sort_values("batch_size")
+        if d.empty:
+            continue
+        col = C[paradigm] if ("S=32" in lbl or paradigm == "AR") else LIGHT[paradigm]
+        ax.plot(d["e2e_ms_med"], d["tok_s_system"],
+                color=col, ls=ls, lw=lw, marker=mk, ms=ms,
+                zorder=3, label=lbl, alpha=0.90)
+        for _, r in d.iterrows():
+            if r["batch_size"] in (1, 256):
+                xoff = 5 if r["e2e_ms_med"] < 500 else -32
+                ax.annotate(f"B={int(r['batch_size'])}",
+                            (r["e2e_ms_med"], r["tok_s_system"]),
+                            textcoords="offset points", xytext=(xoff, 5),
+                            fontsize=7, color=col)
+
+    # 200 ms interactive SLO guideline
+    ax.autoscale_view()
+    ax.axvline(200, color="#888888", lw=1.0, ls=":", zorder=1)
+    ax.text(200, ax.get_ylim()[0] * 2.5, "200 ms\nSLO", fontsize=7, color="#666666",
+            ha="left", va="bottom")
+
+    # Annotate B=1 latency speedup (AR vs Discrete S=8)
+    d_ar = par[par["label"] == "AR (greedy)"]
+    d_d8 = par[par["label"] == "Discrete S=8"]
+    if not d_ar.empty and not d_d8.empty:
+        r_ar = d_ar[d_ar["batch_size"] == 1].iloc[0]
+        r_d8 = d_d8[d_d8["batch_size"] == 1].iloc[0]
+        speedup_lat = r_ar["e2e_ms_med"] / r_d8["e2e_ms_med"]
+        speedup_tok = r_d8["tok_s_system"] / r_ar["tok_s_system"]
+        ax.annotate(
+            f"B=1: Discrete S=8 is\n{speedup_lat:.1f}x lower latency\n"
+            f"{speedup_tok:.1f}x higher throughput",
+            xy=(r_d8["e2e_ms_med"], r_d8["tok_s_system"]),
+            xytext=(60, 15000),
+            fontsize=8, fontweight="bold", color="#444444",
+            arrowprops=dict(arrowstyle="-|>", lw=1.0, color="#666666"),
+        )
+
+    # Crossover annotation
+    d_d32 = par[par["label"] == "Discrete S=32"]
+    if not d_ar.empty and not d_d32.empty:
+        m = pd.merge(
+            d_ar[["batch_size", "tok_s_system"]],
+            d_d32[["batch_size", "tok_s_system"]],
+            on="batch_size", suffixes=("_ar", "_d"),
+        ).sort_values("batch_size")
+        for _, row in m.iterrows():
+            if row["tok_s_system_ar"] >= row["tok_s_system_d"]:
+                bx = int(row["batch_size"])
+                rx = d_ar[d_ar["batch_size"] == bx].iloc[0]
+                ax.annotate(
+                    f"AR overtakes Discrete S=32 at B={bx}",
+                    xy=(rx["e2e_ms_med"], rx["tok_s_system"]),
+                    xytext=(rx["e2e_ms_med"] * 1.8, rx["tok_s_system"] * 0.4),
+                    fontsize=7.5, fontweight="bold", color="#444444",
+                    arrowprops=dict(arrowstyle="-|>", lw=0.9, color="#666666"),
+                )
+                break
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Per-request latency  (ms, G=256 tokens, bf16, A100 40 GB)")
+    ax.set_ylabel("System throughput  (tok/s, all sequences combined)")
+    ax.set_title(
+        "Serving frontier (512d · 12-layer · ~70M params): diffusion fits\n"
+        "the 200 ms interactive SLO; AR requires 235 ms at B=1.",
+        pad=8,
+    )
+    ax.legend(loc="upper left", fontsize=7.5, framealpha=0.9)
+    _save(fig, out, "fig_emnlp_1_pareto")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Figure 2 — Quality-Efficiency scatter
+# Claim: "Masked diffusion achieves competitive bpb at 3-4x AR throughput."
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Throughput: tok/s from paradigm_bench_full.csv, group=scale, size=xl/xxl,
+# attn=MHA, B=4, fp32 — matched to trained model sizes by dim
+_TOK_S = {
+    ("AR",         512): 156.79,
+    ("Discrete",   512): 547.66,
+    ("Continuous", 512): 529.55,
+    ("AR",         768): 252.26,
+    ("Discrete",   768): 985.95,
+    ("Continuous", 768): 990.71,
+}
+
+
+def _load_perplexity(paths: list[Path]) -> pd.DataFrame:
+    frames = []
+    for p in paths:
+        if p.exists():
+            frames.append(pd.read_csv(p))
+    if not frames:
+        return pd.DataFrame()
+    df = pd.concat(frames, ignore_index=True)
+    df = df[df["dataset"] == "wikitext-103"].copy()
+
+    def _par(run: str) -> str:
+        if run.startswith("ar_"):    return "AR"
+        if run.startswith("diff_"): return "Discrete"
+        if run.startswith("elf_"):  return "Continuous"
+        return "Unknown"
+
+    def _dim(run: str) -> int:
+        for tok in run.split("_"):
+            if tok.endswith("d") and tok[:-1].isdigit():
+                return int(tok[:-1])
+        return 0
+
+    def _attn(run: str) -> str:
+        for a in ("mha", "gqa", "mla"):
+            if f"_{a}_" in run.lower():
+                return a.upper()
+        return "MHA"
+
+    df["paradigm"]     = df["run"].apply(_par)
+    df["dim"]          = df["run"].apply(_dim)
+    df["attn_variant"] = df.get("attn_variant", pd.Series(dtype=str)).combine_first(
+        df["run"].apply(_attn)
+    )
+    df["tok_s"] = df.apply(
+        lambda r: _TOK_S.get((r["paradigm"], r["dim"]), np.nan), axis=1
+    )
+    return df[df["tok_s"].notna() & df["bpb"].notna()].copy()
+
+
+def fig2_quality(ppl_paths: list[Path], out: Path) -> None:
+    df = _load_perplexity(ppl_paths)
+    if df.empty:
+        print("  [SKIP] fig2 — no perplexity data yet")
+        return
+
+    fig, ax = plt.subplots(figsize=(6.5, 4.4))
+
+    SIZE_S = {512: 100, 768: 200}
+    EDGE   = {"MHA": "#333333", "GQA": "#00aa00", "MLA": "#cc0000"}
+
+    for _, row in df.iterrows():
+        par  = row["paradigm"]
+        col  = C.get(par, "grey")
+        sz   = SIZE_S.get(int(row["dim"]), 100)
+        mk   = MARKER.get(par, "o")
+        attn = row.get("attn_variant", "MHA")
+        ec   = EDGE.get(attn, "#333333")
+        # ELF is a different metric — make it semi-transparent
+        alpha = 0.50 if par == "Continuous" else 0.90
+        ax.scatter(row["tok_s"], row["bpb"],
+                   s=sz, c=col, marker=mk, edgecolors=ec,
+                   linewidths=1.3, zorder=4, alpha=alpha)
+
+    # ELF annotation
+    elf = df[df["paradigm"] == "Continuous"]
+    if not elf.empty:
+        ax.axhline(elf["bpb"].max() + 0.015,
+                   color=C["Continuous"], ls=":", lw=0.8, alpha=0.5)
+        ax.text(df["tok_s"].min() * 1.03, elf["bpb"].max() + 0.018,
+                "ELF bpb = reconstruction quality at t=1\n"
+                "(not directly comparable to AR / Masked Diffusion)",
+                fontsize=6.5, color=C["Continuous"], alpha=0.75)
+
+    # Throughput speedup annotation
+    ar  = df[(df["paradigm"] == "AR") & (df["attn_variant"] == "MHA")]
+    di  = df[(df["paradigm"] == "Discrete") & (df["attn_variant"] == "MHA")]
+    if not ar.empty and not di.empty:
+        for dim in [512, 768]:
+            ar_r = ar[ar["dim"] == dim]
+            di_r = di[di["dim"] == dim]
+            if ar_r.empty or di_r.empty:
+                continue
+            ratio = float(di_r["tok_s"].iloc[0]) / float(ar_r["tok_s"].iloc[0])
+            ax.annotate(
+                f"{ratio:.1f}x\nthroughput",
+                xy=(float(di_r["tok_s"].iloc[0]),
+                    float(di_r["bpb"].iloc[0])),
+                xytext=(float(di_r["tok_s"].iloc[0]) * 0.55,
+                        float(di_r["bpb"].iloc[0]) - 0.012),
+                fontsize=7.5, fontweight="bold",
+                color=C["Discrete"],
+                arrowprops=dict(arrowstyle="-|>",
+                                color=C["Discrete"], lw=0.9),
+            )
+
+    # Legend
+    par_handles = [
+        mpatches.Patch(color=C[p], label=LABEL[p])
+        for p in ["AR", "Discrete", "Continuous"]
+        if p in df["paradigm"].values
+    ]
+    size_handles = [
+        plt.scatter([], [], s=100, c="grey", label="512d (~70M params)"),
+        plt.scatter([], [], s=200, c="grey", label="768d (~114M params)"),
+    ]
+    edge_handles = [
+        plt.scatter([], [], s=70, c="grey", edgecolors=ec,
+                    linewidths=1.5, label=f"Attn: {a}")
+        for a, ec in EDGE.items()
+    ]
+    ax.legend(handles=par_handles + size_handles + edge_handles,
+              fontsize=7, loc="lower right", framealpha=0.92, ncol=2)
+
+    ax.invert_yaxis()   # lower bpb = better → top
+    ax.set_xlabel("Inference throughput  (tok/s · B=4 · G=128 · fp32 · A100)")
+    ax.set_ylabel("WikiText-103 bpb  (lower = better quality)")
+    ax.set_title(
+        "Quality–efficiency: masked diffusion achieves competitive bpb\n"
+        "at 3–4x the throughput of autoregressive decoding.",
+        pad=8,
+    )
+    _save(fig, out, "fig_emnlp_2_quality")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Figure 3 — Attention orthogonality (two panels)
+# Claim: "GQA/MLA cut KV cache 4-6x with <0.002 bpb change on diffusion."
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fig3_attention(ppl_paths: list[Path], bench_path: Path, out: Path) -> None:
+    df    = _load_perplexity(ppl_paths)
+    bench = pd.read_csv(bench_path) if bench_path.exists() else pd.DataFrame()
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.2))
+
+    # ── (a) bpb by attention variant — diffusion only ────────────────────────
+    ax = axes[0]
+    diff_df = df[df["paradigm"] == "Discrete"].copy() if not df.empty else pd.DataFrame()
+
+    if not diff_df.empty:
+        ATTN  = ["MHA", "GQA", "MLA"]
+        DIMS  = sorted(diff_df["dim"].unique())
+        x     = np.arange(len(ATTN))
+        W     = 0.32
+        DCOL  = {512: "#4393c3", 768: "#08306b"}
+
+        for i, dim in enumerate(DIMS):
+            sub  = diff_df[diff_df["dim"] == dim]
+            bpbs = []
+            for attn in ATTN:
+                r = sub[sub["attn_variant"] == attn]
+                bpbs.append(float(r["bpb"].iloc[0]) if not r.empty else np.nan)
+            offset = (i - (len(DIMS) - 1) / 2) * W
+            bars = ax.bar(x + offset, bpbs, W,
+                          color=DCOL.get(dim, "grey"),
+                          label=f"{dim}d / ~{70 if dim==512 else 180}M",
+                          zorder=3)
+            for bar, v in zip(bars, bpbs):
+                if not np.isnan(v):
+                    ax.text(bar.get_x() + bar.get_width() / 2,
+                            v + 4e-4, f"{v:.4f}",
+                            ha="center", va="bottom", fontsize=6.5)
+
+        # Annotate max spread
+        spread_vals = []
+        for dim in DIMS:
+            sub  = diff_df[diff_df["dim"] == dim]
+            vals = [float(sub[sub["attn_variant"] == a]["bpb"].iloc[0])
+                    for a in ATTN if not sub[sub["attn_variant"] == a].empty]
+            if len(vals) >= 2:
+                spread_vals.append(max(vals) - min(vals))
+        if spread_vals:
+            ax.text(0.5, 0.97,
+                    f"Max bpb spread = {max(spread_vals):.4f}  (MHA / GQA / MLA)",
+                    ha="center", va="top", transform=ax.transAxes,
+                    fontsize=8, fontweight="bold", color="#333333",
+                    bbox=dict(boxstyle="round,pad=0.3", fc="#ffffcc", alpha=0.8))
+
+        ax.set_xticks(x, ATTN)
+        # Zoom y-axis to the tight bpb range
+        all_bpb = diff_df["bpb"].dropna()
+        ax.set_ylim(all_bpb.min() - 0.006, all_bpb.max() + 0.012)
+        ax.set_ylabel("WikiText-103 bpb (lower = better)")
+        ax.set_title("(a) Attention variant does NOT hurt\ngeneration quality (Masked Diffusion)",
+                     pad=6)
+        ax.legend(fontsize=7.5, loc="lower right")
+    else:
+        ax.text(0.5, 0.5, "Perplexity data missing\n(run benchmarks/perplexity_eval.py)",
+                ha="center", va="center", transform=ax.transAxes, color="grey")
+
+    # ── (b) KV cache vs throughput per paradigm × attention ──────────────────
+    ax2 = axes[1]
+    if not bench.empty:
+        xl = bench[
+            (bench["group"] == "scale") &
+            (bench["size"] == "xl") &
+            (~bench["oom"])
+        ].copy()
+
+        attn_mk = {"MHA": "o", "GQA": "s", "MLA": "^"}
+        plotted = set()
+        for _, row in xl.iterrows():
+            par  = row.get("paradigm", "")
+            attn = row.get("attn", "MHA")
+            cache = row.get("cache_mb", np.nan)
+            tok_s = row.get("tok_s_e2e", np.nan)
+            if par not in C or np.isnan(tok_s):
+                continue
+            # ELF has no KV cache — plot at cache=0
+            if par == "Continuous" and (np.isnan(cache) or cache == 0):
+                cache = 0.0
+            if np.isnan(cache):
+                continue
+            col = C[par]
+            mk  = attn_mk.get(attn, "o")
+            label_key = (par, attn)
+            lbl = f"{LABEL[par][:14]}… / {attn}" if label_key not in plotted else "_nolegend_"
+            plotted.add(label_key)
+            ax2.scatter(cache, tok_s, s=130, c=col, marker=mk,
+                        edgecolors="white", linewidths=0.8,
+                        zorder=4, alpha=0.92)
+            ax2.annotate(f"{par[:2]}/{attn}",
+                         (cache, tok_s),
+                         textcoords="offset points",
+                         xytext=(6, 4), fontsize=7, color=col)
+
+        # Cache reduction arrows (MHA → GQA for AR)
+        for par in ["AR", "Discrete"]:
+            sub = xl[xl["paradigm"] == par]
+            mha = sub[sub["attn"] == "MHA"]
+            gqa = sub[sub["attn"] == "GQA"]
+            if mha.empty or gqa.empty:
+                continue
+            x0, y0 = float(mha["cache_mb"].iloc[0]), float(mha["tok_s_e2e"].iloc[0])
+            x1, y1 = float(gqa["cache_mb"].iloc[0]), float(gqa["tok_s_e2e"].iloc[0])
+            ax2.annotate("", xy=(x1, y1), xytext=(x0, y0),
+                         arrowprops=dict(arrowstyle="-|>", lw=1.0,
+                                         color=C[par], alpha=0.5))
+            ratio = x0 / x1 if x1 > 0 else 1
+            ax2.text((x0 + x1) / 2, (y0 + y1) / 2 + 8,
+                     f"{ratio:.0f}x less cache",
+                     fontsize=6.5, color=C[par], ha="center")
+
+        handles = [mpatches.Patch(color=C[p], label=LABEL[p])
+                   for p in ["AR", "Discrete", "Continuous"] if p in xl["paradigm"].values]
+        handles += [plt.scatter([], [], s=80, c="grey", marker=m, label=f"Attn: {a}")
+                    for a, m in attn_mk.items()]
+        ax2.legend(handles=handles, fontsize=7, loc="upper right")
+        ax2.set_xlabel("KV cache per sequence  (MB, G=512 tokens)")
+        ax2.set_ylabel("Inference throughput  (tok/s, B=4)")
+        ax2.set_title("(b) KV cache vs throughput:\nGQA gives 4x memory reduction for AR",
+                      pad=6)
+    else:
+        ax2.text(0.5, 0.5, "paradigm_bench_full.csv not found",
+                 ha="center", va="center", transform=ax2.transAxes, color="grey")
+
+    fig.suptitle(
+        "Attention orthogonality: MHA / GQA / MLA leave generation quality unchanged "
+        "while GQA cuts KV cache memory 4x",
+        y=1.02, fontsize=10, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save(fig, out, "fig_emnlp_3_attention")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Figure 4 — Scaling: throughput advantage holds at all model sizes
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fig4_scaling(bench_path: Path, out: Path) -> None:
+    if not bench_path.exists():
+        print(f"  [SKIP] fig4 — missing {bench_path.name}")
+        return
+
+    bench = pd.read_csv(bench_path)
+    scale = bench[
+        (bench["group"] == "scale") &
+        (bench["attn"] == "MHA") &
+        (~bench["oom"])
+    ].sort_values("params_m")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.2))
+
+    # ── (a) absolute throughput ───────────────────────────────────────────────
+    ax = axes[0]
+    for par in ["AR", "Discrete", "Continuous"]:
+        sub = scale[scale["paradigm"] == par]
+        if sub.empty:
+            continue
+        ax.plot(sub["params_m"], sub["tok_s_e2e"],
+                color=C[par], marker=MARKER[par],
+                lw=2.0, ms=6.5, zorder=3, label=LABEL[par])
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Model parameters  (M)")
+    ax.set_ylabel("Inference throughput  (tok/s, B=4, G=128, fp32)")
+    ax.set_title("(a) Absolute throughput vs model size:\ndiffusion consistently 3-4x faster than AR",
+                 pad=6)
+    ax.legend(fontsize=7.5)
+
+    # ── (b) throughput ratio (Diffusion / AR) ────────────────────────────────
+    ax2 = axes[1]
+    ar_sub = scale[scale["paradigm"] == "AR"].set_index("params_m")["tok_s_e2e"]
+
+    for par in ["Discrete", "Continuous"]:
+        sub = scale[scale["paradigm"] == par].copy()
+        xs, ys = [], []
+        for _, row in sub.iterrows():
+            nearest = ar_sub.index[np.argmin(np.abs(ar_sub.index - row["params_m"]))]
+            xs.append(row["params_m"])
+            ys.append(row["tok_s_e2e"] / ar_sub[nearest])
+        if xs:
+            ax2.plot(xs, ys, color=C[par], marker=MARKER[par],
+                     lw=2.0, ms=6.5, zorder=3, label=LABEL[par])
+
+    ax2.axhline(1.0, color=C["AR"], lw=1.5, ls="--",
+                label="AR baseline (1x)", alpha=0.7)
+    # Shade the 3-4x band
+    ax2.axhspan(3.0, 4.0, alpha=0.06, color="#888888",
+                label="3-4x speedup region")
+
+    ax2.set_xscale("log")
+    ax2.set_xlabel("Model parameters  (M)")
+    ax2.set_ylabel("Throughput ratio  (vs AR at same size)")
+    ax2.set_title("(b) Speedup ratio over AR:\nconsistently in the 3-4x band across all sizes",
+                  pad=6)
+    ax2.legend(fontsize=7.5, loc="lower right")
+
+    fig.suptitle(
+        "Scaling: the diffusion throughput advantage is robust — "
+        "3-4x at all model sizes from 0.2 M to 114 M parameters",
+        y=1.02, fontsize=10, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save(fig, out, "fig_emnlp_4_scaling")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Main
+# ══════════════════════════════════════════════════════════════════════════════
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Generate EMNLP 2026 paper figures")
+    ap.add_argument("--root", default=".", help="Project root directory")
+    ap.add_argument("--out",  default="results/emnlp_figs",
+                    help="Output directory for figures")
+    args = ap.parse_args()
+
+    root = Path(args.root)
+    out  = root / args.out
+
+    par_path   = root / "results" / "ablation_pareto_512d12b.csv"
+    bench_path = root / "results" / "paradigm_bench_full.csv"
+    ppl_paths  = [
+        root / "results" / "perplexity.csv",
+        root / "results" / "perplexity_ar.csv",   # auto-added when AR eval finishes
+    ]
+
+    print("\nDantinoX — EMNLP 2026 figures")
+    print("=" * 50)
+    fig1_pareto(par_path, out)
+    fig2_quality(ppl_paths, out)
+    fig3_attention(ppl_paths, bench_path, out)
+    fig4_scaling(bench_path, out)
+    print(f"\nFigures saved to  {out}/\n")
 
 
 if __name__ == "__main__":

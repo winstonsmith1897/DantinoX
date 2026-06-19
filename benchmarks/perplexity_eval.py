@@ -24,6 +24,15 @@ Diffusion models (ELBO-bpb)
   and evaluate masked cross-entropy.  Average across timesteps.
   ELBO-bpb is the primary quality metric for Diffusion.
 
+ELF models (decoder_bpb)
+  For each window, the T5 contextual encoder converts token IDs to
+  normalised embeddings, which are fed to the ELF decoder path (t=1,
+  no noise, CFG-scale=1).  Cross-entropy of the predicted logits against
+  the *same* tokens (reconstruction, not next-token prediction) is
+  converted to bpb.  ELF logits[i] predicts inp[i], not inp[i+1];
+  using AR-style shifted targets would give a meaningless metric.
+  The T5 model name is read from the run's config (t5_model_name field).
+
 Tokenisation
   The model's saved tokenizer.json is used.
   Unknown chars → byte-level fallback: each UTF-8 byte is encoded as token
@@ -84,6 +93,9 @@ from benchmarks.trained_analysis import (
 )
 from dantinox.core.config import Config
 from dantinox.core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
+
+# T5 encoder cache: model_name → T5ContextualEncoder (loaded once, shared)
+_T5_ENCODER_CACHE: dict[str, Any] = {}
 
 log = logging.getLogger(__name__)
 
@@ -228,6 +240,18 @@ def _diff_forward(model: nnx.Module, x_t: jnp.ndarray, t: jnp.ndarray) -> jnp.nd
     return out.logits
 
 
+@nnx.jit
+def _elf_decoder_forward(model: nnx.Module, z: jnp.ndarray) -> jnp.ndarray:
+    """ELF decoder path at t=1 (clean embeddings, no noise, CFG scale=1)."""
+    B = z.shape[0]
+    zeros     = jnp.zeros_like(z)
+    t_ones    = jnp.ones(B, dtype=jnp.float32)
+    w_ones    = jnp.ones(B, dtype=jnp.float32)
+    is_decode = jnp.ones(B, dtype=bool)
+    out = model(z, zeros, t_ones, w_ones, is_decode, deterministic=True)
+    return out.logits  # [B, L, vocab_size]
+
+
 # ── Window iterator ───────────────────────────────────────────────────────────
 
 def _windows(
@@ -348,6 +372,83 @@ def _eval_diff_elbo_ppl(
     return elbo_ppl, elbo_bpb, total_toks, n_wins
 
 
+# ── ELF decoder bpb ──────────────────────────────────────────────────────────
+
+def _get_t5_encoder(model_name: str) -> Any:
+    """Load and cache a T5ContextualEncoder by model name."""
+    if model_name not in _T5_ENCODER_CACHE:
+        from dantinox.utils.t5_encoder import T5ContextualEncoder
+        log.info("Loading T5 encoder: %s", model_name)
+        _T5_ENCODER_CACHE[model_name] = T5ContextualEncoder(model_name)
+    return _T5_ENCODER_CACHE[model_name]
+
+
+def _eval_elf_decoder_bpb(
+    model: nnx.Module,
+    ids: list[int],
+    n_bytes: int,
+    config: Config,
+    max_windows: int,
+) -> tuple[float, float, int, int]:
+    """ELF reconstruction quality: decoder CE at t=1 from clean T5 embeddings.
+
+    For each window the T5 encoder converts token IDs to contextual embeddings;
+    the ELF model normalises them and runs its decoder path (t=1, no noise,
+    CFG-scale=1) to predict token logits.  Cross-entropy against the *same*
+    tokens (reconstruction, not next-token prediction) is converted to bpb.
+
+    Note: ELF is a reconstruction model — logits[i] predicts inp[i], not
+    inp[i+1].  Using next-token targets (as in AR evaluation) would give
+    a meaningless metric.
+
+    Returns (decoder_ppl, decoder_bpb, n_tokens, n_windows).
+    """
+    t5_name = getattr(config, "t5_model_name", "t5-base")
+    try:
+        t5_enc = _get_t5_encoder(t5_name)
+    except Exception as exc:
+        log.warning("Could not load T5 encoder (%s): %s", t5_name, exc)
+        return float("nan"), float("nan"), 0, 0
+
+    window = min(config.max_context, 256)
+    # Non-overlapping windows: each token evaluated exactly once.
+    stride = window
+    wins   = _windows(ids, window, stride)[:max_windows]
+    if not wins:
+        return float("nan"), float("nan"), 0, 0
+
+    total_nll  = 0.0
+    total_toks = 0
+    n_wins     = 0
+
+    for inp, _tgt in wins:
+        # inp: token IDs for this window  [L]
+        # _tgt (unused): AR next-token shift — not meaningful for ELF reconstruction
+        x_ids = jnp.array([inp], dtype=jnp.int32)   # [1, L]
+        L     = x_ids.shape[1]
+        try:
+            embs      = t5_enc.encode(x_ids)              # [1, L, embed_dim]
+            norm_embs = model.encode(embs)                 # normalize via ELFEmbedder stats
+            logits    = _elf_decoder_forward(model, norm_embs)  # [1, L, vocab_size]
+            log_p     = jax.nn.log_softmax(logits[0])     # [L, V]
+            # Reconstruction target: predict each token from its own embedding
+            rec_j     = jnp.array(inp, dtype=jnp.int32)
+            nll       = -float(jnp.mean(log_p[jnp.arange(L), rec_j]))
+            total_nll  += nll * L
+            total_toks += L
+            n_wins     += 1
+        except Exception as exc:
+            log.debug("ELF decoder window error: %s", exc)
+
+    if total_toks == 0:
+        return float("nan"), float("nan"), 0, 0
+
+    mean_nll = total_nll / total_toks
+    ppl      = float(np.exp(mean_nll))
+    bpb      = _nll_to_bpb(mean_nll, n_bytes, total_toks)
+    return ppl, bpb, total_toks, n_wins
+
+
 # ── Per-run evaluation ────────────────────────────────────────────────────────
 
 def eval_run(
@@ -375,6 +476,7 @@ def eval_run(
     schedule: NoiseSchedule | None = None
     if config.model_type == "diffusion":
         schedule = make_noise_schedule(config)
+    is_elf = config.model_type == "elf"
 
     # val-PPL from training log (always available if training log exists)
     rows.append({
@@ -401,6 +503,10 @@ def eval_run(
         try:
             if config.model_type == "autoregressive":
                 ppl, bpb, n_tok, n_win = _eval_ar_ppl(model, ids, n_bytes, config, max_windows)
+            elif is_elf:
+                ppl, bpb, n_tok, n_win = _eval_elf_decoder_bpb(
+                    model, ids, n_bytes, config, max_windows
+                )
             else:
                 ppl, bpb, n_tok, n_win = _eval_diff_elbo_ppl(  # type: ignore[arg-type]
                     model, ids, n_bytes, config, schedule, max_windows
@@ -435,9 +541,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--runs-dir",   default="runs")
     parser.add_argument("--runs",       nargs="*")
-    parser.add_argument("--run-prefix", nargs="+", default=["ar_", "diff_"],
+    parser.add_argument("--run-prefix", nargs="+", default=["ar_", "diff_", "elf_"],
                         metavar="PREFIX",
-                        help="Only evaluate runs whose name starts with a prefix (default: ar_ diff_). Pass empty string for all.")
+                        help="Only evaluate runs whose name starts with a prefix (default: ar_ diff_ elf_). Pass empty string for all.")
     parser.add_argument("--datasets",   nargs="+",
                         default=_EMNLP_PRIMARY,
                         choices=_ALL_DATASETS,

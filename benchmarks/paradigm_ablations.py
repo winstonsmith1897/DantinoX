@@ -90,6 +90,7 @@ ARCHS: dict[str, tuple[int, int, int, int]] = {
     "512d12b":  (512,  8,  64, 12),
     "768d16b":  (768,  12, 64, 16),
     "1024d16b": (1024, 16, 64, 16),
+    "1536d24b": (1536, 24, 64, 24),   # ~0.95 B params — run with --tp 4
 }
 
 VOCAB   = 32_128
@@ -103,6 +104,134 @@ def _set_arch(name: str) -> None:
     global DIM, N_HEADS, HEAD_SIZE, BLOCKS, GQA_KV
     DIM, N_HEADS, HEAD_SIZE, BLOCKS = ARCHS[name]
     GQA_KV = max(1, N_HEADS // 4)
+
+
+# ── Tensor parallelism (set by --tp in main) ──────────────────────────────────
+
+MESH = None          # jax Mesh when --tp > 1, else None
+TP_SIZE = 1
+
+
+def _mesh_ctx():
+    """Context manager that activates the TP mesh (no-op without --tp)."""
+    from contextlib import nullcontext
+    if MESH is None:
+        return nullcontext()
+    try:
+        return jax.sharding.use_mesh(MESH)     # JAX ≥ 0.5
+    except AttributeError:
+        return MESH                            # legacy Mesh context manager
+
+
+def _apply_tp(model: nnx.Module) -> None:
+    if MESH is not None:
+        from dantinox.core.sharding import apply_tp_sharding
+        apply_tp_sharding(model, MESH)
+
+
+# ── Statistics: median + bootstrap 95% CI ─────────────────────────────────────
+
+def _time_stats(fn: Any, *args: Any, n_trials: int, desc: str = "") -> dict:
+    """Median and bootstrap 95% CI of wall-clock ms over n_trials calls."""
+    t0 = time.perf_counter()
+    with _mesh_ctx():
+        jax.block_until_ready(fn(*args))
+    if (c := time.perf_counter() - t0) > 2.0:
+        tqdm.write(f"    compile {desc:<52} {c:5.1f}s")
+    # extra steady-state warmup (post-compile autotuning remnants)
+    with _mesh_ctx():
+        jax.block_until_ready(fn(*args))
+        ts = []
+        for _ in range(n_trials):
+            t0 = time.perf_counter()
+            jax.block_until_ready(fn(*args))
+            ts.append((time.perf_counter() - t0) * 1e3)
+    a = np.asarray(ts)
+    boot = np.median(
+        np.random.default_rng(0).choice(a, size=(1000, len(a)), replace=True),
+        axis=1)
+    return {"med": float(np.median(a)),
+            "lo": float(np.percentile(boot, 2.5)),
+            "hi": float(np.percentile(boot, 97.5)),
+            "n": len(a)}
+
+
+# ── Energy: NVML power sampling around a timed section ────────────────────────
+
+class PowerSampler:
+    """Samples GPU power on the visible device(s) every ~25 ms in a thread."""
+
+    def __init__(self) -> None:
+        import threading
+        import pynvml
+        pynvml.nvmlInit()
+        vis = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+        self._handles = [pynvml.nvmlDeviceGetHandleByIndex(int(i))
+                         for i in vis.split(",") if i != ""]
+        self._nv = pynvml
+        self._stop = threading.Event()
+        self._samples: list[tuple[float, float]] = []
+        self._thread: Any = None
+        self._threading = threading
+
+    def _loop(self) -> None:
+        while not self._stop.is_set():
+            w = sum(self._nv.nvmlDeviceGetPowerUsage(h) / 1e3
+                    for h in self._handles)
+            self._samples.append((time.perf_counter(), w))
+            self._stop.wait(0.025)
+
+    def idle_watts(self, secs: float = 0.5) -> float:
+        t0 = time.perf_counter()
+        ws = []
+        while time.perf_counter() - t0 < secs:
+            ws.append(sum(self._nv.nvmlDeviceGetPowerUsage(h) / 1e3
+                          for h in self._handles))
+            time.sleep(0.02)
+        return float(np.mean(ws))
+
+    def __enter__(self) -> "PowerSampler":
+        self._samples = []
+        self._stop.clear()
+        self._thread = self._threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self._stop.set()
+        self._thread.join(timeout=2)
+
+    def joules(self) -> float:
+        if len(self._samples) < 2:
+            return float("nan")
+        t = np.array([s[0] for s in self._samples])
+        w = np.array([s[1] for s in self._samples])
+        trap = getattr(np, "trapezoid", None) or np.trapz
+        return float(trap(w, t))
+
+
+def _energy_of(fn: Any, *args: Any, min_window_s: float = 1.5) -> tuple[float, float]:
+    """(net joules per call, mean watts), idle-subtracted.
+
+    Repeats the call until at least ``min_window_s`` of work is sampled, so
+    the ~25 ms NVML sampling period cannot dominate short kernels."""
+    try:
+        ps = PowerSampler()
+    except Exception:
+        return float("nan"), float("nan")
+    idle = ps.idle_watts()
+    with _mesh_ctx():
+        jax.block_until_ready(fn(*args))         # ensure compiled
+        t0 = time.perf_counter()
+        n_runs = 0
+        with ps:
+            while time.perf_counter() - t0 < min_window_s or n_runs < 3:
+                jax.block_until_ready(fn(*args))
+                n_runs += 1
+        dt = time.perf_counter() - t0
+    gross = ps.joules()
+    net = gross - idle * dt
+    return max(net, 0.0) / n_runs, gross / dt if dt > 0 else float("nan")
 
 # A100 peaks for MFU / roofline
 PEAK = {"fp32": 156e12, "bf16": 312e12}      # TF32 / BF16 tensor cores
@@ -126,11 +255,12 @@ def build_ar(attn: str, max_context: int, bf16: bool) -> tuple[ModelConfig, Tran
     cfg = ModelConfig(
         dim=DIM, n_heads=N_HEADS, head_size=HEAD_SIZE, num_blocks=BLOCKS,
         vocab_size=VOCAB, max_context=max_context, causal=True, dropout=0.0,
-        **_attn_cfg(attn, ar_cache=True),
+        tp_size=TP_SIZE, **_attn_cfg(attn, ar_cache=True),
     )
     model = Transformer(cfg, rngs=nnx.Rngs(42))
     if bf16:
         _cast_bf16(model)
+    _apply_tp(model)
     return cfg, model
 
 
@@ -138,11 +268,12 @@ def build_disc(attn: str, max_context: int, bf16: bool) -> tuple[ModelConfig, Tr
     cfg = ModelConfig(
         dim=DIM, n_heads=N_HEADS, head_size=HEAD_SIZE, num_blocks=BLOCKS,
         vocab_size=VOCAB, max_context=max_context, causal=False, dropout=0.0,
-        mask_token_id=MASK_ID, **_attn_cfg(attn, ar_cache=False),
+        mask_token_id=MASK_ID, tp_size=TP_SIZE, **_attn_cfg(attn, ar_cache=False),
     )
     model = Transformer(cfg, rngs=nnx.Rngs(42))
     if bf16:
         _cast_bf16(model)
+    _apply_tp(model)
     return cfg, model
 
 
@@ -157,6 +288,7 @@ def build_elf(attn: str, G: int, bf16: bool) -> tuple[ELFConfig, ELFTransformer]
     model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
     if bf16:
         _cast_bf16(model)
+    _apply_tp(model)   # weight sharding only; GSPMD propagates inside blocks
     return cfg, model
 
 
@@ -342,113 +474,281 @@ GRID_B, GRID_G = (1, 4, 16, 64), (64, 256, 1024)
 GRID_STEPS, GRID_P = 32, 64
 
 
+def _stats_cols(prefix: str, st: dict) -> dict:
+    return {f"{prefix}_ms_med": round(st["med"], 4),
+            f"{prefix}_ms_lo": round(st["lo"], 4),
+            f"{prefix}_ms_hi": round(st["hi"], 4)}
+
+
+# ── Crash-safe incremental CSV (segfault-tolerant, resumable) ─────────────────
+# Pattern: append a marker row (oom=True) BEFORE attempting a point, and the
+# full row after success.  A hard allocator segfault leaves the marker on
+# disk, so a relaunch skips the lethal point.  Analysis keeps the last row
+# per key.
+
+GRID_FIELDS = [
+    "arch", "paradigm", "batch_size", "gen_len", "prompt_len", "dtype", "tp",
+    "step_ms_med", "step_ms_lo", "step_ms_hi",
+    "e2e_ms_med", "e2e_ms_lo", "e2e_ms_hi",
+    "step_gflops", "step_gbytes", "step_gflops_xla", "gen_gflops",
+    "tok_s_e2e", "joules", "watts", "j_per_tok",
+    "parity_steps", "speedup_at_32", "peak_mem_mb", "oom",
+]
+PARETO_FIELDS = [
+    "arch", "paradigm", "label", "n_steps", "batch_size", "gen_len",
+    "prompt_len", "dtype", "tp",
+    "e2e_ms_med", "e2e_ms_lo", "e2e_ms_hi",
+    "tok_s_system", "joules", "j_per_tok", "watts", "peak_mem_mb", "oom",
+]
+
+
+def _append_row(path: Path, row: dict, fields: list[str]) -> None:
+    import csv as _csv
+    new = not path.exists()
+    with path.open("a", newline="") as fh:
+        w = _csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
+        if new:
+            w.writeheader()
+        w.writerow({k: row.get(k, "") for k in fields})
+        fh.flush()
+
+
+def _load_done(path: Path, key_cols: list[str]) -> dict[tuple, dict]:
+    """Last row per key from an existing CSV (resume support)."""
+    import csv as _csv
+    done: dict[tuple, dict] = {}
+    if not path.exists():
+        return done
+    with path.open() as fh:
+        for r in _csv.DictReader(fh):
+            done[tuple(str(r.get(c, "")) for c in key_cols)] = r
+    return done
+
+
 def run_grid(args: argparse.Namespace) -> list[dict]:
-    rows: list[dict] = []
+    from benchmarks.analytical_cost import CostModel
+    from benchmarks.paradigm_bench import disc_prefix  # jitted
+
+    out_path = Path(args.out or f"results/ablation_grid_{args.arch}.csv")
+    done = _load_done(out_path, ["paradigm", "batch_size", "gen_len"])
+    if getattr(args, "retry_oom", False):
+        done = {k: v for k, v in done.items()
+                if str(v.get("oom", "")).lower() != "true"}
     unmask_ps = _unmask_schedule(GRID_STEPS)
-    dtype_lbl = "bf16"
+
+    def _measure_ar(B: int, G: int, P: int, prompt: jnp.ndarray, cell: dict) -> float:
+        cfg, model = build_ar("mha", P + G, bf16=args.precision == "bf16")
+        cm = CostModel.from_model(model, cfg)
+        init_cache = tuple((None, None) for _ in range(BLOCKS))
+        tok0 = jnp.ones((B, 1), dtype=jnp.int32)
+        with _mesh_ctx():
+            _, cache = ar_prefill(model, prompt, init_cache)
+            jax.block_until_ready(cache)
+        pos = jnp.array(P, dtype=jnp.int32)
+        dec_gf_xla, _ = _cost(_ar_decode_fn, model, tok0, cache, pos)
+        st_step = _time_stats(ar_decode, model, tok0, cache, pos,
+                              n_trials=args.n_trials)
+        del cache
+        st_e2e = _time_stats(ar_gen_fused, model, prompt,
+                             n_trials=args.n_e2e, desc=f"AR e2e B{B} G{G}")
+        joules, watts = _energy_of(ar_gen_fused, model, prompt)
+        e2e = st_e2e["med"]
+        _append_row(out_path, {**cell, "paradigm": "AR",
+                    **_stats_cols("step", st_step), **_stats_cols("e2e", st_e2e),
+                    "step_gflops": round(cm.ar_decode_step(B, P + G), 4),
+                    "step_gbytes": round(cm.ar_decode_bytes(B, P + G), 5),
+                    "step_gflops_xla": round(dec_gf_xla, 4),
+                    "gen_gflops": round(cm.ar_generate(B, P, G), 2),
+                    "tok_s_e2e": round(B * G * 1e3 / e2e, 2),
+                    "joules": round(joules, 3), "watts": round(watts, 1),
+                    "j_per_tok": round(joules / (B * G), 6),
+                    "peak_mem_mb": round(_device_mem_mb(), 1),
+                    "oom": False}, GRID_FIELDS)
+        del model
+        return e2e
+
+    def _measure_diff(paradigm: str, B: int, G: int, P: int,
+                      prompt: jnp.ndarray, cell: dict, ar_e2e: float) -> None:
+        if paradigm == "Discrete":
+            cfg, model = build_disc("mha", P + G, bf16=args.precision == "bf16")
+            cm = CostModel.from_model(model, cfg)
+            x_mask = jnp.full((B, G), MASK_ID, dtype=jnp.int32)
+            with _mesh_ctx():
+                dual = disc_prefix(model, prompt)
+                jax.block_until_ready(dual.prefix_kvs)
+            gf_xla, _ = _cost(_disc_step_fn, model, x_mask, dual,
+                              jax.random.key(0), jnp.float32(0.05))
+            st_step = _time_stats(disc_step, model, x_mask, dual,
+                                  jax.random.key(0), jnp.float32(0.05),
+                                  n_trials=args.n_trials)
+            del dual
+            gen_args = (model, prompt, x_mask, jax.random.key(1), unmask_ps)
+            gen_fn = disc_gen_fused
+            an = dict(step_gflops=round(cm.disc_step(B, G, P), 2),
+                      step_gbytes=round(cm.disc_step_bytes(B, G, P), 4),
+                      gen_gflops=round(cm.disc_generate(B, G, P, GRID_STEPS), 2))
+        else:
+            cfg, model = build_elf("mha", G, bf16=args.precision == "bf16")
+            cm = CostModel.from_model(model, cfg)
+            zdt = jnp.bfloat16 if args.precision == "bf16" else jnp.float32
+            z = jax.random.normal(jax.random.key(0), (B, G, DIM), dtype=zdt)
+            xp = jnp.zeros_like(z)
+            w = jnp.ones((B,), dtype=zdt)
+            gf_xla, _ = _cost(_elf_step_fn, model, z, xp,
+                              jnp.float32(0.5), jnp.float32(1 / GRID_STEPS), w)
+            st_step = _time_stats(elf_step, model, z, xp, jnp.float32(0.5),
+                                  jnp.float32(1 / GRID_STEPS), w,
+                                  n_trials=args.n_trials)
+            ts = jnp.linspace(0.0, 1.0, GRID_STEPS + 1, dtype=jnp.float32)
+            gen_args = (model, z, w, ts)
+            gen_fn = elf_gen_fused
+            an = dict(step_gflops=round(cm.elf_step(B, G), 2),
+                      step_gbytes=round(cm.elf_step_bytes(B, G), 4),
+                      gen_gflops=round(cm.elf_generate(B, G, GRID_STEPS), 2))
+
+        st_e2e = _time_stats(gen_fn, *gen_args, n_trials=args.n_e2e,
+                             desc=f"{paradigm} e2e B{B} G{G}")
+        joules, watts = _energy_of(gen_fn, *gen_args)
+        step_med, e2e = st_step["med"], st_e2e["med"]
+        _append_row(out_path, {**cell, "paradigm": paradigm,
+                    **_stats_cols("step", st_step), **_stats_cols("e2e", st_e2e),
+                    **an, "step_gflops_xla": round(gf_xla, 2),
+                    "tok_s_e2e": round(B * G * 1e3 / e2e, 2),
+                    "joules": round(joules, 3), "watts": round(watts, 1),
+                    "j_per_tok": round(joules / (B * G), 6),
+                    "parity_steps": round(ar_e2e / step_med, 2)
+                        if ar_e2e == ar_e2e and step_med > 0 else NAN,
+                    "speedup_at_32": round(ar_e2e / e2e, 3)
+                        if ar_e2e == ar_e2e else NAN,
+                    "peak_mem_mb": round(_device_mem_mb(), 1),
+                    "oom": False}, GRID_FIELDS)
+        del model
 
     for B, G in tqdm([(b, g) for b in GRID_B for g in GRID_G], desc="grid"):
         P = GRID_P
         prompt = jax.random.randint(jax.random.key(0), (B, P), 5, VOCAB,
                                     dtype=jnp.int32)
-        cell = dict(batch_size=B, gen_len=G, prompt_len=P, dtype=dtype_lbl)
+        cell = dict(arch=args.arch, batch_size=B, gen_len=G, prompt_len=P,
+                    dtype=args.precision, tp=TP_SIZE)
 
-        # ── AR (fused library path) ───────────────────────────────────────
+        # AR — also provides the parity baseline for the diffusion cells
         ar_e2e = NAN
-        try:
-            cfg, model = build_ar("mha", P + G, bf16=True)
-            init_cache = tuple((None, None) for _ in range(BLOCKS))
-            tok0 = jnp.ones((B, 1), dtype=jnp.int32)
-            _, cache = ar_prefill(model, prompt, init_cache)
-            jax.block_until_ready(cache)
-            pos = jnp.array(P, dtype=jnp.int32)
-            dec_gf, dec_gb = _cost(_ar_decode_fn, model, tok0, cache, pos)
-            dec_ms = _time_call(ar_decode, model, tok0, cache, pos,
-                                n_trials=args.n_trials)
-            del cache
-            ar_e2e = _time_call(ar_gen_fused, model, prompt,
-                                n_trials=args.n_e2e, desc=f"AR e2e B{B} G{G}")
-            rows.append({**cell, "paradigm": "AR",
-                         "step_ms_p50": round(dec_ms, 4),
-                         "step_gflops": round(dec_gf, 5),
-                         "step_gbytes": round(dec_gb, 5),
-                         "e2e_ms": round(ar_e2e, 3),
-                         "tok_s_e2e": round(B * G * 1e3 / ar_e2e, 2),
-                         "parity_steps": NAN, "speedup_at_32": NAN,
-                         "peak_mem_mb": round(_device_mem_mb(), 1),
-                         "oom": False})
-            del model
-        except Exception as exc:  # noqa: BLE001
-            log.warning("grid AR B%d G%d: %s", B, G, exc)
-            rows.append({**cell, "paradigm": "AR", "oom": True})
-        gc.collect()
+        key = ("AR", str(B), str(G))
+        if key in done:
+            try:
+                ar_e2e = float(done[key].get("e2e_ms_med") or "nan")
+            except (TypeError, ValueError):
+                pass
+            tqdm.write(f"  skip AR B{B} G{G} (resumed)")
+        else:
+            _append_row(out_path, {**cell, "paradigm": "AR", "oom": True},
+                        GRID_FIELDS)
+            try:
+                ar_e2e = _measure_ar(B, G, P, prompt, cell)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("grid AR B%d G%d: %s", B, G, exc)
+            gc.collect()
 
-        # ── Discrete (fused) ──────────────────────────────────────────────
-        try:
-            cfg, model = build_disc("mha", P + G, bf16=True)
-            x_mask = jnp.full((B, G), MASK_ID, dtype=jnp.int32)
-            from benchmarks.paradigm_bench import disc_prefix  # jitted
-            dual = disc_prefix(model, prompt)
-            jax.block_until_ready(dual.prefix_kvs)
-            gf, gb = _cost(_disc_step_fn, model, x_mask, dual,
-                           jax.random.key(0), jnp.float32(0.05))
-            step_ms = _time_call(disc_step, model, x_mask, dual,
-                                 jax.random.key(0), jnp.float32(0.05),
-                                 n_trials=args.n_trials)
-            del dual
-            e2e = _time_call(disc_gen_fused, model, prompt, x_mask,
-                             jax.random.key(1), unmask_ps,
-                             n_trials=args.n_e2e, desc=f"Disc e2e B{B} G{G}")
-            rows.append({**cell, "paradigm": "Discrete",
-                         "step_ms_p50": round(step_ms, 4),
-                         "step_gflops": round(gf, 5), "step_gbytes": round(gb, 5),
-                         "e2e_ms": round(e2e, 3),
-                         "tok_s_e2e": round(B * G * 1e3 / e2e, 2),
-                         "parity_steps": round(ar_e2e / step_ms, 2)
-                             if ar_e2e == ar_e2e and step_ms > 0 else NAN,
-                         "speedup_at_32": round(ar_e2e / e2e, 3)
-                             if ar_e2e == ar_e2e else NAN,
-                         "peak_mem_mb": round(_device_mem_mb(), 1),
-                         "oom": False})
-            del model
-        except Exception as exc:  # noqa: BLE001
-            log.warning("grid Disc B%d G%d: %s", B, G, exc)
-            rows.append({**cell, "paradigm": "Discrete", "oom": True})
-        gc.collect()
+        for paradigm in ("Discrete", "Continuous"):
+            key = (paradigm, str(B), str(G))
+            if key in done:
+                tqdm.write(f"  skip {paradigm} B{B} G{G} (resumed)")
+                continue
+            _append_row(out_path, {**cell, "paradigm": paradigm, "oom": True},
+                        GRID_FIELDS)
+            try:
+                _measure_diff(paradigm, B, G, P, prompt, cell, ar_e2e)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("grid %s B%d G%d: %s", paradigm, B, G, exc)
+            gc.collect()
 
-        # ── Continuous (fused) ────────────────────────────────────────────
-        try:
-            cfg, model = build_elf("mha", G, bf16=True)
-            z = jax.random.normal(jax.random.key(0), (B, G, DIM),
-                                  dtype=jnp.bfloat16)
-            xp = jnp.zeros_like(z)
-            w = jnp.ones((B,), dtype=jnp.bfloat16)
-            gf, gb = _cost(_elf_step_fn, model, z, xp,
-                           jnp.float32(0.5), jnp.float32(1 / GRID_STEPS), w)
-            step_ms = _time_call(elf_step, model, z, xp, jnp.float32(0.5),
-                                 jnp.float32(1 / GRID_STEPS), w,
-                                 n_trials=args.n_trials)
-            ts = jnp.linspace(0.0, 1.0, GRID_STEPS + 1, dtype=jnp.float32)
-            e2e = _time_call(elf_gen_fused, model, z, w, ts,
-                             n_trials=args.n_e2e, desc=f"Cont e2e B{B} G{G}")
-            rows.append({**cell, "paradigm": "Continuous",
-                         "step_ms_p50": round(step_ms, 4),
-                         "step_gflops": round(gf, 5), "step_gbytes": round(gb, 5),
-                         "e2e_ms": round(e2e, 3),
-                         "tok_s_e2e": round(B * G * 1e3 / e2e, 2),
-                         "parity_steps": round(ar_e2e / step_ms, 2)
-                             if ar_e2e == ar_e2e and step_ms > 0 else NAN,
-                         "speedup_at_32": round(ar_e2e / e2e, 3)
-                             if ar_e2e == ar_e2e else NAN,
-                         "peak_mem_mb": round(_device_mem_mb(), 1),
-                         "oom": False})
-            del model, z, xp
-        except Exception as exc:  # noqa: BLE001
-            log.warning("grid Cont B%d G%d: %s", B, G, exc)
-            rows.append({**cell, "paradigm": "Continuous", "oom": True})
-        gc.collect()
+    # Rows live on disk (incremental, crash-safe).
+    return []
 
-    return rows
+
+# ══ Ablation: serving Pareto (latency per request vs system throughput) ════════
+
+PARETO_B = (1, 2, 4, 8, 16, 32, 64, 128, 256)
+PARETO_G, PARETO_P = 256, 64
+PARETO_STEPS = (8, 32)
+
+
+def run_pareto(args: argparse.Namespace) -> list[dict]:
+    """For each paradigm/setting, sweep batch size and record the
+    (per-request latency, aggregate throughput, energy) frontier.
+    Crash-safe: marker row before each point, full row on success; on
+    relaunch completed points are skipped and a series is abandoned at the
+    smallest batch size that previously OOMed/segfaulted."""
+    out_path = Path(args.out or f"results/ablation_pareto_{args.arch}.csv")
+    done = _load_done(out_path, ["label", "batch_size"])
+    dead_b: dict[str, int] = {}
+    if getattr(args, "retry_oom", False):
+        done = {k: v for k, v in done.items()
+                if str(v.get("oom", "")).lower() != "true"}
+    else:
+        for (lbl, b), r in done.items():
+            if str(r.get("oom", "")).lower() == "true":
+                dead_b[lbl] = min(dead_b.get(lbl, 1 << 30), int(b))
+
+    P, G = PARETO_P, PARETO_G
+    settings: list[tuple[str, str, int | None]] = [("AR", "AR (greedy)", None)]
+    settings += [("Discrete", f"Discrete S={s}", s) for s in PARETO_STEPS]
+    settings += [("Continuous", f"Continuous S={s}", s) for s in PARETO_STEPS]
+
+    for paradigm, label, S in settings:
+        for B in tqdm(PARETO_B, desc=f"pareto {label}", unit="B"):
+            key = (label, str(B))
+            if key in done and str(done[key].get("oom", "")).lower() != "true":
+                tqdm.write(f"  skip {label} B{B} (resumed)")
+                continue
+            if label in dead_b and B >= dead_b[label]:
+                tqdm.write(f"  skip {label} B{B} (series OOM at B={dead_b[label]})")
+                continue
+            meta = dict(arch=args.arch, paradigm=paradigm, label=label,
+                        n_steps=S or G, batch_size=B, gen_len=G, prompt_len=P,
+                        dtype=args.precision, tp=TP_SIZE)
+            _append_row(out_path, {**meta, "oom": True}, PARETO_FIELDS)
+            try:
+                prompt = jax.random.randint(jax.random.key(0), (B, P), 5,
+                                            VOCAB, dtype=jnp.int32)
+                if paradigm == "AR":
+                    _, model = build_ar("mha", P + G,
+                                        bf16=args.precision == "bf16")
+                    fn, fargs = ar_gen_fused, (model, prompt)
+                elif paradigm == "Discrete":
+                    _, model = build_disc("mha", P + G,
+                                          bf16=args.precision == "bf16")
+                    x_mask = jnp.full((B, G), MASK_ID, dtype=jnp.int32)
+                    fn = disc_gen_fused
+                    fargs = (model, prompt, x_mask, jax.random.key(1),
+                             _unmask_schedule(S))
+                else:
+                    _, model = build_elf("mha", G,
+                                         bf16=args.precision == "bf16")
+                    zdt = jnp.bfloat16 if args.precision == "bf16" else jnp.float32
+                    z = jax.random.normal(jax.random.key(0), (B, G, DIM),
+                                          dtype=zdt)
+                    w = jnp.ones((B,), dtype=zdt)
+                    ts = jnp.linspace(0.0, 1.0, S + 1, dtype=jnp.float32)
+                    fn, fargs = elf_gen_fused, (model, z, w, ts)
+
+                st = _time_stats(fn, *fargs, n_trials=args.n_e2e,
+                                 desc=f"pareto {label} B{B}")
+                joules, watts = _energy_of(fn, *fargs)
+                _append_row(out_path, {**meta, **_stats_cols("e2e", st),
+                            "tok_s_system": round(B * G * 1e3 / st["med"], 2),
+                            "joules": round(joules, 3),
+                            "j_per_tok": round(joules / (B * G), 6),
+                            "watts": round(watts, 1),
+                            "peak_mem_mb": round(_device_mem_mb(), 1),
+                            "oom": False}, PARETO_FIELDS)
+                del model
+            except Exception as exc:  # noqa: BLE001
+                log.warning("pareto %s B%d: %s", label, B, exc)
+                gc.collect()
+                break          # larger B will also OOM — stop this series
+            gc.collect()
+    return []
 
 
 # ══ Ablation 3: serving-stack waterfall ════════════════════════════════════════
@@ -647,8 +947,19 @@ def run_ceiling(args: argparse.Namespace) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("ablation", choices=["grid", "stack", "ceiling"])
+    parser.add_argument("ablation", choices=["grid", "stack", "ceiling", "pareto"])
     parser.add_argument("--arch", default="512d12b", choices=list(ARCHS))
+    parser.add_argument("--precision", default="bf16",
+                        choices=["f32", "tf32", "bf16"],
+                        help="f32 = true fp32 matmuls; tf32 = TF32 tensor cores "
+                             "(JAX default on A100); bf16 = bf16 weights+activations.")
+    parser.add_argument("--retry-oom", action="store_true",
+                        help="Re-attempt points whose last CSV row is an OOM "
+                             "marker (run this on a fully free GPU); completed "
+                             "points are still skipped.")
+    parser.add_argument("--tp", type=int, default=1,
+                        help="Tensor-parallel degree (Megatron-style sharding "
+                             "across the first N visible GPUs).")
     parser.add_argument("--series", default=None,
                         help="Ceiling only: probe a single 'Paradigm:attn' "
                              "combination (e.g. 'AR:mha') — crash isolation.")
@@ -661,12 +972,30 @@ def main() -> None:
     if args.device:
         os.environ["CUDA_VISIBLE_DEVICES"] = args.device
     _set_arch(args.arch)
+
+    # Explicit matmul precision: on A100 JAX's default fp32 path uses TF32,
+    # so "fp32" must be requested explicitly to mean true fp32.
+    if args.precision == "f32":
+        jax.config.update("jax_default_matmul_precision", "float32")
+    elif args.precision == "tf32":
+        jax.config.update("jax_default_matmul_precision", "tensorfloat32")
+
+    global MESH, TP_SIZE
+    if args.tp > 1:
+        from dantinox.core.sharding import make_tp_mesh
+        if len(jax.devices()) < args.tp:
+            parser.error(f"--tp {args.tp} but only {len(jax.devices())} devices visible")
+        MESH = make_tp_mesh(args.tp)
+        TP_SIZE = args.tp
+
     out = Path(args.out or f"results/ablation_{args.ablation}_{args.arch}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Paradigm ablation '{args.ablation}' on arch {args.arch} "
-          f"({DIM}d × {BLOCKS}b, vocab {VOCAB})  [{jax.devices()[0].device_kind}]")
-    runner = {"grid": run_grid, "stack": run_stack, "ceiling": run_ceiling}[args.ablation]
+          f"({DIM}d × {BLOCKS}b, vocab {VOCAB})  precision={args.precision}  "
+          f"tp={TP_SIZE}  [{jax.devices()[0].device_kind} × {len(jax.devices())}]")
+    runner = {"grid": run_grid, "stack": run_stack,
+              "ceiling": run_ceiling, "pareto": run_pareto}[args.ablation]
     rows = runner(args)
 
     if not rows:           # ceiling writes its probes incrementally
