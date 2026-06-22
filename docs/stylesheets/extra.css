@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════
-   DantinoX — sphinx_book_theme style
-   Header = body background (zero visual chrome), flat sidebar
+   DantinoX — sphinx-book-theme / PyData Sphinx Theme aesthetic
+   Primary #176de8 (light) · #528fe4 (dark) · Secondary #e89217
+   Background #ffffff (light) · #121212 (dark) · Sidebar #f8f9fa
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Tokens ──────────────────────────────────────────────────────── */
@@ -12,99 +13,109 @@
 [data-md-color-scheme="default"] {
   /* Header = white body → invisible bar */
   --md-primary-fg-color:             #ffffff;
-  --md-primary-fg-color--light:      #f4f6f8;
-  --md-primary-fg-color--dark:       #eaecef;
-  --md-primary-bg-color:             #1e3a5f;
-  --md-primary-bg-color--light:      rgba(30,58,95,.65);
+  --md-primary-fg-color--light:      #f8f9fa;
+  --md-primary-fg-color--dark:       #e9ecef;
+  --md-primary-bg-color:             #176de8;
+  --md-primary-bg-color--light:      rgba(23,109,232,.65);
 
-  --md-accent-fg-color:              #2563eb;
-  --md-accent-fg-color--transparent: rgba(37,99,235,.08);
+  --md-accent-fg-color:              #176de8;
+  --md-accent-fg-color--transparent: rgba(23,109,232,.1);
   --md-accent-bg-color:              #ffffff;
 
   --md-default-bg-color:             #ffffff;
-  --md-default-fg-color:             #1e293b;
-  --md-default-fg-color--light:      #4a5568;
-  --md-default-fg-color--lighter:    #718096;
-  --md-default-fg-color--lightest:   #a0aec0;
+  --md-default-fg-color:             #212529;
+  --md-default-fg-color--light:      #6c757d;
+  --md-default-fg-color--lighter:    #adb5bd;
+  --md-default-fg-color--lightest:   #e9ecef;
 
-  --md-code-fg-color:                #1e293b;
-  --md-code-bg-color:                #f1f5f9;
+  --md-code-fg-color:                #212529;
+  --md-code-bg-color:                #f8f9fa;
 
-  --dnx-border:    #e2e8f0;
-  --dnx-code-bg:   #f1f5f9;
-  --dnx-link:      #2563eb;
+  --dnx-border:      #dee2e6;
+  --dnx-code-bg:     #f8f9fa;
+  --dnx-link:        #176de8;
+  --dnx-sidebar-bg:  #f8f9fa;
 }
 
-/* ── Dark mode — navy bg, header IDENTICAL to body ───────────────── */
+/* ── Dark mode ───────────────────────────────────────────────────── */
 [data-md-color-scheme="slate"] {
-  /* header color = body color → header disappears */
-  --md-primary-fg-color:             #0f172a;
-  --md-primary-fg-color--light:      #141f36;
-  --md-primary-fg-color--dark:       #080e1c;
-  --md-primary-bg-color:             #bfcfe8;
-  --md-primary-bg-color--light:      rgba(191,207,232,.65);
+  --md-primary-fg-color:             #1a1a2e;
+  --md-primary-fg-color--light:      #212121;
+  --md-primary-fg-color--dark:       #121212;
+  --md-primary-bg-color:             #9ec5fe;
+  --md-primary-bg-color--light:      rgba(158,197,254,.65);
 
-  --md-accent-fg-color:              #5bc0de;
-  --md-accent-fg-color--transparent: rgba(91,192,222,.1);
+  --md-accent-fg-color:              #528fe4;
+  --md-accent-fg-color--transparent: rgba(82,143,228,.1);
 
-  /* DantinoX navy blue — same as header */
-  --md-default-bg-color:             #0f172a;
-  --md-default-fg-color:             #d4d6d8;
-  --md-default-fg-color--light:      #8899aa;
-  --md-default-fg-color--lighter:    #4a5d70;
-  --md-default-fg-color--lightest:   #243040;
+  --md-default-bg-color:             #121212;
+  --md-default-fg-color:             #dee2e6;
+  --md-default-fg-color--light:      #adb5bd;
+  --md-default-fg-color--lighter:    #6c757d;
+  --md-default-fg-color--lightest:   #343a40;
 
-  --md-code-fg-color:                #d4d6d8;
-  --md-code-bg-color:                #1c2b3c;
+  --md-code-fg-color:                #dee2e6;
+  --md-code-bg-color:                #1e1e1e;
 
-  --dnx-border:    rgba(255,255,255,.08);
-  --dnx-code-bg:   #1c2b3c;
-  --dnx-link:      #5bc0de;   /* ← teal, come Tunix */
+  --dnx-border:      rgba(255,255,255,.1);
+  --dnx-code-bg:     #1e1e1e;
+  --dnx-link:        #528fe4;
+  --dnx-sidebar-bg:  #1a1a2e;
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   HEADER — completely invisible (same color as body)
+   HEADER — white (light mode) / dark (dark mode), thin border
    ══════════════════════════════════════════════════════════════════ */
 
 .md-header {
   background: var(--md-primary-fg-color);
   box-shadow: none;
-  /* light mode only: thin separator since both bg are white */
   border-bottom: 1px solid var(--dnx-border);
 }
 
-/* dark mode: remove even the subtle border → true invisible header */
 [data-md-color-scheme="slate"] .md-header {
-  border-bottom: none;
+  border-bottom: 1px solid var(--dnx-border);
 }
 
-/* logo in light mode needs to be dark (transparent PNG is white) */
+/* logo: dark blue tint for white background */
 [data-md-color-scheme="default"] .md-header__button.md-logo img,
 [data-md-color-scheme="default"] .md-nav__button.md-logo img {
   filter: brightness(0) saturate(100%)
-          invert(17%) sepia(45%) saturate(550%) hue-rotate(195deg) brightness(88%);
+          invert(31%) sepia(87%) saturate(800%) hue-rotate(200deg) brightness(90%);
 }
 
 .md-header__title {
   font-size: .87rem;
   font-weight: 600;
+  color: var(--md-default-fg-color);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   SIDEBAR — transparent, teal links, sphinx_book_theme style
+   SIDEBAR — #f8f9fa (light) / #1a1a2e (dark), right-border separator
    ══════════════════════════════════════════════════════════════════ */
 
-.md-sidebar--primary  .md-sidebar__scrollwrap,
-.md-sidebar--secondary .md-sidebar__scrollwrap,
 .md-sidebar--primary,
-.md-sidebar--secondary {
+.md-sidebar--primary .md-sidebar__scrollwrap {
+  background: var(--dnx-sidebar-bg);
+}
+
+.md-sidebar--secondary,
+.md-sidebar--secondary .md-sidebar__scrollwrap {
   background: transparent;
 }
 
-/* Nav links — teal color like Tunix */
+[data-md-color-scheme="default"] .md-sidebar--primary {
+  border-right: 1px solid var(--dnx-border);
+}
+
+[data-md-color-scheme="slate"] .md-sidebar--primary {
+  border-right: 1px solid var(--dnx-border);
+}
+
+/* Nav links — blue, like PyData/sphinx-book-theme */
 .md-nav--primary .md-nav__link {
-  font-size: .84rem;
-  line-height: 1.55;
+  font-size: .875rem;
+  line-height: 1.5;
   color: var(--dnx-link);
   padding: .22rem .5rem;
   border-radius: 0;
@@ -119,14 +130,14 @@
 }
 
 .md-nav--primary .md-nav__link--active {
-  color: var(--md-default-fg-color) !important;
+  color: var(--dnx-link) !important;
   font-weight: 600;
   background: none !important;
 }
 
-/* Section headers — bold white, small square icon, like "Reference" in Tunix */
+/* Section headers — bold, normal case, no decorative icon */
 .md-nav--primary .md-nav__item--section > .md-nav__link {
-  font-size: .84rem;
+  font-size: .875rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -135,23 +146,13 @@
   padding-bottom: .22rem;
   cursor: default;
   pointer-events: none;
-  display: flex;
-  align-items: center;
-  gap: .45rem;
 }
 
-/* □ icon before each section header */
 .md-nav--primary .md-nav__item--section > .md-nav__link::before {
-  content: '';
-  display: inline-block;
-  width: .65em;
-  height: .65em;
-  border: 1.5px solid var(--md-default-fg-color);
-  border-radius: 1px;
-  flex-shrink: 0;
+  display: none;
 }
 
-.md-nav--primary .md-nav__icon  { color: var(--md-default-fg-color--lighter); }
+.md-nav--primary .md-nav__icon  { color: var(--md-default-fg-color--light); }
 
 .md-nav--primary .md-nav__title {
   background: transparent;
@@ -162,12 +163,11 @@
   color: var(--md-default-fg-color);
 }
 
-/* Sub-items: minimal indentation, same teal link color */
 .md-nav--primary .md-nav__item--nested > .md-nav__list {
   padding-left: .7rem;
 }
 
-/* TOC right sidebar — muted, not teal */
+/* TOC right sidebar — muted */
 .md-sidebar--secondary .md-nav__link {
   font-size: .8rem;
   color: var(--md-default-fg-color--light);
@@ -178,7 +178,7 @@
 .md-sidebar--secondary .md-nav__link--active      { color: var(--dnx-link) !important; font-weight: 500; }
 
 /* ══════════════════════════════════════════════════════════════════
-   CONTENT — narrow, book proportions
+   CONTENT — white, book proportions
    ══════════════════════════════════════════════════════════════════ */
 
 .md-content { background: var(--md-default-bg-color); }
@@ -189,16 +189,16 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   TYPOGRAPHY — large, clean, no decorative rules
+   TYPOGRAPHY — system-ui, sphinx-book-theme proportions
    ══════════════════════════════════════════════════════════════════ */
 
 .md-typeset {
-  font-size: .96rem;
-  line-height: 1.8;
+  font-size: 1rem;
+  line-height: 1.65;
 }
 
 .md-typeset h1 {
-  font-size: 2.1rem;
+  font-size: 2rem;
   font-weight: 700;
   letter-spacing: -.02em;
   line-height: 1.22;
@@ -206,29 +206,28 @@
   border: none;
 }
 
-/* No border on h2 — sphinx_book_theme style */
+/* h2: bottom border underline like sphinx-book-theme */
 .md-typeset h2 {
-  font-size: 1.42rem;
+  font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: -.01em;
   margin: 2.2rem 0 .45rem;
-  padding: 0;
+  padding-bottom: .3rem;
   border: none;
+  border-bottom: 1px solid var(--dnx-border);
 }
 
 .md-typeset h3 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 600;
   margin: 1.7rem 0 .35rem;
   border: none;
 }
 
 .md-typeset h4 {
-  font-size: .8rem;
+  font-size: .95rem;
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--md-default-fg-color--light);
+  color: var(--md-default-fg-color);
   margin: 1.3rem 0 .3rem;
   border: none;
 }
@@ -254,7 +253,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   CODE — flat, no shadow
+   CODE — flat, no shadow, #f8f9fa background
    ══════════════════════════════════════════════════════════════════ */
 
 .md-typeset .highlight {
@@ -275,7 +274,7 @@
   padding: .85rem 1rem;
   max-height: 500px;
   overflow: auto;
-  font-size: .85rem;
+  font-size: .875rem;
   line-height: 1.65;
 }
 
@@ -363,7 +362,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   GRID CARDS — flat, no shadow, no lift
+   GRID CARDS — flat, no shadow
    ══════════════════════════════════════════════════════════════════ */
 
 .md-typeset .grid.cards > ul,
@@ -445,34 +444,43 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   HERO — flat navy block, DantinoX style
+   HERO — light blue tint (light mode) / dark (dark mode)
    ══════════════════════════════════════════════════════════════════ */
 
 .dnx-hero {
-  background: #0c1829;
-  border: 1px solid rgba(121,175,209,.15);
+  background: #e8f0fb;
+  border: 1px solid #c2d4f5;
   border-radius: 5px;
   padding: 2.4rem 2.4rem 1.9rem;
   margin: 0 0 2rem;
 }
 
-[data-md-color-scheme="default"] .dnx-hero {
-  background: #1e3a5f;
+[data-md-color-scheme="slate"] .dnx-hero {
+  background: #0d1b2a;
+  border-color: rgba(82,143,228,.2);
 }
 
 .dnx-hero h1 {
   font-size: 1.9rem !important;
   font-weight: 700 !important;
   letter-spacing: -.02em !important;
-  color: #eef2f8 !important;
-  -webkit-text-fill-color: #eef2f8 !important;
+  color: #1a3352 !important;
+  -webkit-text-fill-color: #1a3352 !important;
   line-height: 1.25 !important;
   margin-bottom: .55rem !important;
   border: none !important;
 }
 
-.dnx-hero p       { color: #7a95b0; font-size: .94rem; line-height: 1.7; max-width: 560px; margin: 0; }
-.dnx-hero strong  { color: #a8c4de; }
+[data-md-color-scheme="slate"] .dnx-hero h1 {
+  color: #eef2f8 !important;
+  -webkit-text-fill-color: #eef2f8 !important;
+}
+
+.dnx-hero p      { color: #3d5a80; font-size: .94rem; line-height: 1.7; max-width: 560px; margin: 0; }
+.dnx-hero strong { color: #176de8; }
+
+[data-md-color-scheme="slate"] .dnx-hero p      { color: #7a95b0; }
+[data-md-color-scheme="slate"] .dnx-hero strong { color: #528fe4; }
 
 .dnx-hero-inner   { display: flex; align-items: center; gap: 2rem; }
 .dnx-hero-logo    { flex-shrink: 0; width: 108px; }
@@ -483,7 +491,7 @@
   display: flex; flex-wrap: wrap; gap: .3rem;
   margin-top: 1.1rem; align-items: center;
 }
-.dnx-hero .hero-badges img { height: 18px; opacity: .65; transition: opacity var(--dnx-t); }
+.dnx-hero .hero-badges img { height: 18px; opacity: .85; transition: opacity var(--dnx-t); }
 .dnx-hero .hero-badges img:hover { opacity: 1; }
 
 .dnx-hero .md-button {
@@ -496,24 +504,37 @@
   transition: background var(--dnx-t), border-color var(--dnx-t);
 }
 .dnx-hero .md-button--primary {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
+  background: #176de8 !important;
+  border-color: #176de8 !important;
   color: #fff !important;
 }
 .dnx-hero .md-button--primary:hover {
-  background: #1d4ed8 !important;
-  border-color: #1d4ed8 !important;
+  background: #1056b5 !important;
+  border-color: #1056b5 !important;
   text-decoration: none;
 }
 .dnx-hero .md-button:not(.md-button--primary) {
   background: transparent !important;
-  border-color: rgba(122,149,176,.35) !important;
-  color: #7a95b0 !important;
+  border-color: rgba(23,109,232,.4) !important;
+  color: #176de8 !important;
 }
 .dnx-hero .md-button:not(.md-button--primary):hover {
-  border-color: rgba(122,149,176,.7) !important;
-  color: #d4d6d8 !important;
+  border-color: #176de8 !important;
+  color: #0d4b9e !important;
   text-decoration: none;
+}
+
+[data-md-color-scheme="slate"] .dnx-hero .md-button--primary {
+  background: #528fe4 !important;
+  border-color: #528fe4 !important;
+}
+[data-md-color-scheme="slate"] .dnx-hero .md-button--primary:hover {
+  background: #3a75c4 !important;
+  border-color: #3a75c4 !important;
+}
+[data-md-color-scheme="slate"] .dnx-hero .md-button:not(.md-button--primary) {
+  border-color: rgba(82,143,228,.4) !important;
+  color: #528fe4 !important;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -521,7 +542,7 @@
    ══════════════════════════════════════════════════════════════════ */
 
 .md-typeset blockquote {
-  border-left: 3px solid var(--dnx-border);
+  border-left: 3px solid var(--dnx-link);
   margin: 1rem 0;
   padding: .5rem .9rem;
   color: var(--md-default-fg-color--light);
@@ -556,9 +577,13 @@
 .md-typeset ol.dnx-steps > li::before  {
   content: counter(steps);
   flex-shrink: 0; width: 1.5rem; height: 1.5rem; border-radius: 50%;
-  background: #2563eb; color: #fff;
+  background: #176de8; color: #fff;
   font-size: .72rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center; margin-top: .18rem;
+}
+
+[data-md-color-scheme="slate"] .md-typeset ol.dnx-steps > li::before {
+  background: #528fe4;
 }
 
 .md-typeset table.dnx-compact td,

@@ -91,8 +91,8 @@ check_disk() {
     free_kb=$(df -k "${ROOT}" | awk 'NR==2 {print $4}')
     free_gb=$(( free_kb / 1024 / 1024 ))
     echo "  Disk check OK: ${free_gb} GB free"
-    if (( free_gb < 15 )); then
-        echo "ERROR: only ${free_gb} GB free — need 15 GB." >&2
+    if (( free_gb < 13 )); then
+        echo "ERROR: only ${free_gb} GB free — need 13 GB." >&2
         exit 1
     fi
 }

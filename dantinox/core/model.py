@@ -395,8 +395,19 @@ class Transformer(nnx.Module, pytree=False):
 
         model = cls(config, rngs=rngs)
 
-        weights_path = os.path.join(run_dir, "best_model_weights.msgpack")
-        if not best or not os.path.exists(weights_path):
+        _WEIGHT_FILENAMES = (
+            "checkpoint_best.msgpack",
+            "checkpoint_latest.msgpack",
+            "best_model_weights.msgpack",
+            "model_weights.msgpack",
+        )
+        weights_path = None
+        for fname in _WEIGHT_FILENAMES:
+            candidate = os.path.join(run_dir, fname)
+            if os.path.exists(candidate) and (best or fname != "checkpoint_best.msgpack"):
+                weights_path = candidate
+                break
+        if weights_path is None:
             weights_path = os.path.join(run_dir, "model_weights.msgpack")
 
         _ext_hook: object = None

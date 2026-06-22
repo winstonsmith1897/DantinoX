@@ -191,16 +191,26 @@ def _load_model_for_export(cfg: Any, run_dir: str, seed: int) -> tuple[Any, str]
 
 def _serialize(exported: Any, output_path: str) -> bytes:
     """Serialise *exported* to bytes, with a graceful fallback for older JAX."""
-    # Exported.serialize() was added in JAX 0.4.28.
+    # Exported.serialize() was added in JAX 0.4.28 and requires the
+    # `flatbuffers` package.  Try it first; fall back to MLIR bytecode when
+    # the method is absent (JAX < 0.4.28) or when `flatbuffers` is missing.
     if hasattr(exported, "serialize"):
-        return exported.serialize()
+        try:
+            return exported.serialize()
+        except ModuleNotFoundError as exc:
+            if "flatbuffers" not in str(exc):
+                raise
+            log.warning(
+                "flatbuffers is not installed — cannot use "
+                "jax.export.Exported.serialize().  "
+                "Falling back to raw MLIR bytecode.  "
+                "Install with: pip install flatbuffers"
+            )
 
-    # Fallback: save the raw MLIR bytecode (less portable but functional).
     log.warning(
-        "jax.export.Exported.serialize() not available (JAX < 0.4.28). "
-        "Saving raw MLIR bytecode instead.  "
-        "Upgrade JAX for the portable StableHLO format."
+        "jax.export.Exported.serialize() not available (JAX < 0.4.28 or "
+        "flatbuffers missing).  Saving raw MLIR bytecode instead.  "
+        "Upgrade JAX and install flatbuffers for the portable StableHLO format."
     )
     mlir_module = exported.mlir_module()
-    # get_asm(binary=True) returns bytes of the MLIR bytecode.
     return mlir_module.operation.get_asm(binary=True)
