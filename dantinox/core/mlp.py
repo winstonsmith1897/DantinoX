@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jax.sharding import PartitionSpec as P
 
 from .config import Config
-from .lora import LoRALinear
+from .lora import LoRALinear, call_linear
 
 
 class Activation(nnx.Module):
@@ -44,9 +44,9 @@ class MLP(nnx.Module):
         self.tp_size: int = getattr(config, "tp_size", 1)
 
     def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> tuple[jnp.ndarray, float]:
-        x = self.up_proj(x)
+        x = call_linear(self.up_proj, x, deterministic=deterministic)
         x = self.activation(x)
-        x = self.down_proj(x)
+        x = call_linear(self.down_proj, x, deterministic=deterministic)
         # All-reduce partial sums from row-parallel down_proj across TP devices.
         # with_sharding_constraint tells XLA the output must be fully replicated,
         # which triggers an all-reduce over the model-parallel axis.

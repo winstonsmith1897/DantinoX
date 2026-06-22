@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from jax.sharding import PartitionSpec as P
 
 from .config import Config
-from .lora import LoRALinear
+from .lora import LoRALinear, call_linear
 
 
 # ── Abstract base ─────────────────────────────────────────────────────────────
@@ -281,7 +281,7 @@ class _StandardAttention(BaseAttention):
         B, T, _ = x.shape
         q_size  = self.dim
         kv_size = self.kv_heads * self.head_size
-        q, k, v = jax.lax.split(self.qkv(x), (q_size, kv_size, kv_size), axis=-1)
+        q, k, v = jax.lax.split(call_linear(self.qkv, x, deterministic=True), (q_size, kv_size, kv_size), axis=-1)
         q, k, v = self.reshape_head(B, T, q, k, v)
         if self.use_rotary:
             k = self._apply_rope_grouped(k, cache_index)
@@ -302,10 +302,10 @@ class _StandardAttention(BaseAttention):
         B, T, _ = x.shape
         q_size  = self.dim
         kv_size = self.kv_heads * self.head_size
-        q, k, v = jax.lax.split(self.qkv(x), (q_size, kv_size, kv_size), axis=-1)
+        q, k, v = jax.lax.split(call_linear(self.qkv, x, deterministic=deterministic), (q_size, kv_size, kv_size), axis=-1)
 
         if self.differential:
-            q2, k2  = jax.lax.split(self.q2k2(x), (q_size, kv_size), axis=-1)
+            q2, k2  = jax.lax.split(call_linear(self.q2k2, x, deterministic=deterministic), (q_size, kv_size), axis=-1)
         # Flash Attention fast path (causal training, no cache, no prefix injection)
         if (
             not use_cache
@@ -348,7 +348,7 @@ class _StandardAttention(BaseAttention):
 
             y   = y.reshape(B, T, self.dim)
             y   = self._apply_gate(y, x)
-            out = self.o_proj(y)
+            out = call_linear(self.o_proj, y, deterministic=deterministic)
             # All-reduce partial sums from row-parallel o_proj across TP devices.
             if self.tp_size > 1:
                 out = jax.lax.with_sharding_constraint(out, P(None, None, None))
@@ -399,7 +399,7 @@ class _StandardAttention(BaseAttention):
             y = self.diff_norm(y) * (1.0 - self.lambda_init)
         y   = y.reshape(B, T, self.dim)
         y   = self._apply_gate(y, x)
-        out = self.o_proj(y)
+        out = call_linear(self.o_proj, y, deterministic=deterministic)
         if self.tp_size > 1:
             out = jax.lax.with_sharding_constraint(out, P(None, None, None))
         return self.resid_dropout(out, deterministic=deterministic), kv_cache
@@ -542,7 +542,7 @@ class MLAAttention(BaseAttention):
                 y_heads = jnp.einsum("bngtd, dnh -> bngth", L, W_v)
                 y   = jnp.transpose(y_heads, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
                 y   = self._apply_gate(y, x)
-                out = self.o_proj(y)
+                out = call_linear(self.o_proj, y, deterministic=deterministic)
             else:
                 W_o  = self.o_proj.kernel.reshape(  # type: ignore[union-attr]
                     self.kv_heads, self.n_heads // self.kv_heads, self.head_size, self.dim
@@ -553,7 +553,7 @@ class MLAAttention(BaseAttention):
             y   = attn @ v
             y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
             y   = self._apply_gate(y, x)
-            out = self.o_proj(y)
+            out = call_linear(self.o_proj, y, deterministic=deterministic)
 
         return self.resid_dropout(out, deterministic=deterministic), kv_cache
 

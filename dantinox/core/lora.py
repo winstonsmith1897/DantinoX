@@ -47,7 +47,7 @@ class LoRALinear(nnx.Module):
             nnx.Dropout(dropout_rate, rngs=rngs) if dropout_rate > 0.0 else None
         )
 
-    def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> jnp.ndarray:
+    def __call__(self, x: jnp.ndarray, deterministic: bool = True) -> jnp.ndarray:
         out = self.base(x)
         delta = x @ self.lora_A[...]
         if self.dropout is not None:
@@ -57,6 +57,18 @@ class LoRALinear(nnx.Module):
     def merge_weights(self) -> jnp.ndarray:
         """Return fused kernel W + (alpha/r) * A @ B for export or deployment."""
         return self.base.kernel[...] + self.scale * (self.lora_A[...] @ self.lora_B[...])
+
+
+def call_linear(
+    layer: nnx.Linear | "LoRALinear",
+    x: jnp.ndarray,
+    *,
+    deterministic: bool = True,
+) -> jnp.ndarray:
+    """Call Linear or LoRALinear, forwarding deterministic to LoRALinear."""
+    if isinstance(layer, LoRALinear):
+        return layer(x, deterministic=deterministic)
+    return layer(x)  # type: ignore[arg-type]
 
 
 def merge_lora(model: Any) -> Any:
