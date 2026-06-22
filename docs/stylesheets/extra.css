@@ -91,7 +91,8 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   SIDEBAR — #f8f9fa (light) / #1a1a2e (dark), right-border separator
+   SIDEBAR — book TOC style (sphinx-book-theme)
+   Backgrounds, thin right separator, dark neutral text
    ══════════════════════════════════════════════════════════════════ */
 
 .md-sidebar--primary,
@@ -104,46 +105,46 @@
   background: transparent;
 }
 
-[data-md-color-scheme="default"] .md-sidebar--primary {
+.md-sidebar--primary {
   border-right: 1px solid var(--dnx-border);
 }
 
-[data-md-color-scheme="slate"] .md-sidebar--primary {
-  border-right: 1px solid var(--dnx-border);
-}
-
-/* Nav links — blue, like PyData/sphinx-book-theme */
+/* ── Nav links: dark neutral text, blue left-border on active ──── */
 .md-nav--primary .md-nav__link {
-  font-size: .875rem;
+  font-size: .84rem;
   line-height: 1.5;
-  color: var(--dnx-link);
-  padding: .22rem .5rem;
+  color: var(--md-default-fg-color--light);
+  padding: .18rem .5rem .18rem .65rem;
+  border-left: 2px solid transparent;
   border-radius: 0;
-  transition: color var(--dnx-t);
+  transition: color var(--dnx-t), border-color var(--dnx-t);
   background: none;
 }
 
 .md-nav--primary .md-nav__link:hover {
-  color: var(--md-default-fg-color);
+  color: var(--dnx-link);
   background: none;
   text-decoration: none;
+  border-left-color: transparent;
 }
 
 .md-nav--primary .md-nav__link--active {
   color: var(--dnx-link) !important;
   font-weight: 600;
   background: none !important;
+  border-left-color: var(--dnx-link) !important;
 }
 
-/* Section headers — bold, normal case, no decorative icon */
+/* ── Section labels: uppercase small-caps, very muted ─────────── */
 .md-nav--primary .md-nav__item--section > .md-nav__link {
-  font-size: .875rem;
+  font-size: .68rem;
   font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--md-default-fg-color);
-  padding-top: 1.1rem;
-  padding-bottom: .22rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--lighter);
+  padding-top: 1.15rem;
+  padding-bottom: .25rem;
+  border-left: none !important;
   cursor: default;
   pointer-events: none;
 }
@@ -152,26 +153,27 @@
   display: none;
 }
 
-.md-nav--primary .md-nav__icon  { color: var(--md-default-fg-color--light); }
+.md-nav--primary .md-nav__icon { color: var(--md-default-fg-color--lighter); }
 
 .md-nav--primary .md-nav__title {
   background: transparent;
   box-shadow: none;
-  font-size: .87rem;
+  font-size: .84rem;
   font-weight: 600;
-  padding: .7rem .5rem;
+  padding: .7rem .5rem .7rem .65rem;
   color: var(--md-default-fg-color);
 }
 
+/* Sub-items: tighter indentation */
 .md-nav--primary .md-nav__item--nested > .md-nav__list {
-  padding-left: .7rem;
+  padding-left: .6rem;
 }
 
-/* TOC right sidebar — muted */
+/* ── TOC right sidebar: muted, same book feel ──────────────────── */
 .md-sidebar--secondary .md-nav__link {
-  font-size: .8rem;
+  font-size: .79rem;
   color: var(--md-default-fg-color--light);
-  padding: .2rem .5rem;
+  padding: .18rem .5rem;
   background: none;
 }
 .md-sidebar--secondary .md-nav__link:hover        { color: var(--md-default-fg-color); }
