@@ -1,5 +1,5 @@
 # .readthedocs.yaml
-# ReadTheDocs configuration for DantinoX documentation.
+# ReadTheDocs build configuration for DantinoX.
 # Full reference: https://docs.readthedocs.io/en/stable/config-file/v2.html
 
 version: 2
@@ -9,11 +9,16 @@ build:
   tools:
     python: "3.12"
 
-# Build with MkDocs (Material theme)
-mkdocs:
-  configuration: mkdocs.yml
+# Build with Sphinx (sphinx_rtd_theme — classic Read the Docs layout)
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: false
 
-# Install documentation dependencies
+# Install the docs dependencies and the package itself (needed by autodoc)
 python:
   install:
     - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - dev
