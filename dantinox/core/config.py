@@ -820,6 +820,15 @@ class ELFConfig:
     elf_n_steps:   int   = 32    # number of flow-matching integration steps
     elf_cfg_scale: float = 1.5   # default CFG guidance scale for generation
 
+    # ── FFN / MoE ─────────────────────────────────────────────────────────────
+    ffn:              str   = "mlp"   # "mlp" | "moe"
+    n_experts:        int   = 4
+    top_k:            int   = 2
+    expansion:        int   = 4
+    moe_balance_coeff: float = 0.1
+    moe_latent:       bool  = False
+    moe_latent_dim:   int   = 64
+
     # ── Pretrained embedder ───────────────────────────────────────────────────
     # T5 variant used as the frozen embedding oracle (ELF §3.1).
     # vocab_size and embed_dim must match the chosen variant:
@@ -841,6 +850,12 @@ class ELFConfig:
             )
         if self.norm not in ("rmsnorm", "layernorm"):
             raise ValueError(f"norm must be 'rmsnorm' or 'layernorm'; got {self.norm!r}")
+        if self.ffn not in ("mlp", "moe"):
+            raise ValueError(f"ffn must be 'mlp' or 'moe'; got {self.ffn!r}")
+        if self.moe_latent and not (0 < self.moe_latent_dim < self.model_dim):
+            raise ValueError(
+                f"moe_latent_dim ({self.moe_latent_dim}) must be in (0, model_dim={self.model_dim})"
+            )
 
     @property
     def num_ctrl(self) -> int:
@@ -861,7 +876,13 @@ class ELFConfig:
             down_dim_q=self.down_dim_q,
             down_dim_kv=self.down_dim_kv,
             rope_dim=self.rope_dim,
-            ffn="mlp",
+            ffn=self.ffn,
+            n_experts=self.n_experts,
+            top_k=self.top_k,
+            expansion=self.expansion,
+            moe_balance_coeff=self.moe_balance_coeff,
+            moe_latent=self.moe_latent,
+            moe_latent_dim=self.moe_latent_dim,
             norm=self.norm,
             pos_encoding=self.pos_encoding,
             causal=False,
