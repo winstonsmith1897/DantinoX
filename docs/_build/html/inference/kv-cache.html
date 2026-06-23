@@ -1,0 +1,441 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KV-Cache Mechanics &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorials" href="../tutorials/index.html" />
+    <link rel="prev" title="Diffusion Generation" href="diffusion.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">KV-Cache Mechanics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ar-static-kv-cache">AR Static KV-Cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory-formula">Memory Formula</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#reference-table-12-layers-head-size-32-bfloat16">Reference table (12 layers, head_size=32, bfloat16)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#batch-size-calculator">Batch size calculator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#mha-vs-gqa-vs-mla-comparison">MHA vs GQA vs MLA Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#diffusion-dualcache">Diffusion DualCache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cache-memory-vs-throughput">Cache Memory vs Throughput</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#disabling-the-cache">Disabling the Cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cache-warmup">Cache Warmup</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">KV-Cache Mechanics</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/inference/kv-cache.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="kv-cache-mechanics">
+<h1>KV-Cache Mechanics<a class="headerlink" href="#kv-cache-mechanics" title="Link to this heading"></a></h1>
+<p>DantinoX uses three distinct caching strategies depending on the model type and generation paradigm.</p>
+<hr class="docutils" />
+<section id="ar-static-kv-cache">
+<h2>AR Static KV-Cache<a class="headerlink" href="#ar-static-kv-cache" title="Link to this heading"></a></h2>
+<p>The autoregressive KV-cache is <strong>statically pre-allocated</strong> at model construction:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">shape</span><span class="p">:</span> <span class="p">[</span><span class="n">B</span><span class="p">,</span> <span class="n">H_kv</span><span class="p">,</span> <span class="n">max_context</span><span class="p">,</span> <span class="n">head_size</span><span class="p">]</span>  <span class="n">per</span> <span class="n">layer</span>
+</pre></div>
+</div>
+<p>Static allocation means <strong>no dynamic shapes</strong> and <strong>no XLA recompilation</strong> between decode steps.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Prefill — full forward pass fills the cache</span>
+<span class="n">logits</span><span class="p">,</span> <span class="n">kv_cache</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span>
+    <span class="n">prompt_ids</span><span class="p">,</span>
+    <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">kv_caches</span><span class="o">=</span><span class="n">init_cache</span><span class="p">,</span> <span class="n">cache_index</span><span class="o">=</span><span class="mi">0</span>
+<span class="p">)</span>
+
+<span class="c1"># Decode — each step processes a single new token</span>
+<span class="n">logits</span><span class="p">,</span> <span class="n">kv_cache</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span>
+    <span class="n">next_token</span><span class="p">,</span>
+    <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">kv_caches</span><span class="o">=</span><span class="n">kv_cache</span><span class="p">,</span> <span class="n">cache_index</span><span class="o">=</span><span class="n">T_prompt</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="memory-formula">
+<h2>Memory Formula<a class="headerlink" href="#memory-formula" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight">
+\[
+\text{KV-MB} = L \times 2 \times S \times H_{kv} \times d_h \times \text{bytes\_per\_element}
+\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(L\)</span> = number of layers</p></li>
+<li><p><span class="math notranslate nohighlight">\(S\)</span> = sequence length (tokens)</p></li>
+<li><p><span class="math notranslate nohighlight">\(H_{kv}\)</span> = number of KV heads</p></li>
+<li><p><span class="math notranslate nohighlight">\(d_h\)</span> = head dimension</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bytes_per_element</span></code> = 2 for bfloat16, 4 for float32</p></li>
+</ul>
+<section id="reference-table-12-layers-head-size-32-bfloat16">
+<h3>Reference table (12 layers, head_size=32, bfloat16)<a class="headerlink" href="#reference-table-12-layers-head-size-32-bfloat16" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attention</p></th>
+<th class="head"><p><span class="math notranslate nohighlight">\(H_{kv}\)</span></p></th>
+<th class="head"><p>KV-MB &#64; 512 tok</p></th>
+<th class="head"><p>KV-MB &#64; 1024 tok</p></th>
+<th class="head"><p>KV-MB &#64; 4096 tok</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>MHA (<span class="math notranslate nohighlight">\(H=8\)</span>)</p></td>
+<td><p>8</p></td>
+<td><p>0.375 MB</p></td>
+<td><p>0.750 MB</p></td>
+<td><p>3.0 MB</p></td>
+</tr>
+<tr class="row-odd"><td><p>GQA (<span class="math notranslate nohighlight">\(H_{kv}=H/4=2\)</span>)</p></td>
+<td><p>2</p></td>
+<td><p>0.094 MB</p></td>
+<td><p>0.188 MB</p></td>
+<td><p>0.75 MB</p></td>
+</tr>
+<tr class="row-even"><td><p>GQA (<span class="math notranslate nohighlight">\(H_{kv}=H/8=1\)</span>)</p></td>
+<td><p>1</p></td>
+<td><p>0.047 MB</p></td>
+<td><p>0.094 MB</p></td>
+<td><p>0.375 MB</p></td>
+</tr>
+<tr class="row-odd"><td><p>MLA (<span class="math notranslate nohighlight">\(d_c^{KV}=96\)</span>)</p></td>
+<td><p>—</p></td>
+<td><p>~0.027 MB</p></td>
+<td><p>~0.054 MB</p></td>
+<td><p>~0.216 MB</p></td>
+</tr>
+</tbody>
+</table>
+<p>MLA stores a compressed latent vector per token instead of full K/V tensors, then decompresses on the fly during attention.</p>
+</section>
+<section id="batch-size-calculator">
+<h3>Batch size calculator<a class="headerlink" href="#batch-size-calculator" title="Link to this heading"></a></h3>
+<p>For a single A100 40 GB, estimate the maximum batch size:</p>
+<div class="math notranslate nohighlight">
+\[
+\text{Max BS} \approx \frac{\text{VRAM}_\text{available} - \text{Weights MB}}{\text{KV-MB per sequence}}
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attention</p></th>
+<th class="head"><p>Weights (256d 12b)</p></th>
+<th class="head"><p>KV/seq &#64; 512 tok</p></th>
+<th class="head"><p>Max BS &#64; 40 GB</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>MHA</p></td>
+<td><p>~32 MB</p></td>
+<td><p>0.375 MB</p></td>
+<td><p>~100</p></td>
+</tr>
+<tr class="row-odd"><td><p>GQA (×4)</p></td>
+<td><p>~30 MB</p></td>
+<td><p>0.094 MB</p></td>
+<td><p>~400</p></td>
+</tr>
+<tr class="row-even"><td><p>MLA</p></td>
+<td><p>~32 MB</p></td>
+<td><p>~0.027 MB</p></td>
+<td><p>~1500</p></td>
+</tr>
+</tbody>
+</table>
+<p>!!! note
+These are rough estimates. Actual VRAM usage depends on activations, intermediate buffers, and JAX XLA padding. Use <code class="docutils literal notranslate"><span class="pre">jax.devices()[0].memory_stats()</span></code> for real measurements.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="mha-vs-gqa-vs-mla-comparison">
+<h2>MHA vs GQA vs MLA Comparison<a class="headerlink" href="#mha-vs-gqa-vs-mla-comparison" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>MHA</p></th>
+<th class="head"><p>GQA</p></th>
+<th class="head"><p>MLA</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>KV heads</p></td>
+<td><p><span class="math notranslate nohighlight">\(H\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H / r\)</span></p></td>
+<td><p>compressed latent</p></td>
+</tr>
+<tr class="row-odd"><td><p>KV cache size</p></td>
+<td><p><span class="math notranslate nohighlight">\(L \cdot 2 \cdot S \cdot H \cdot d_h\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L \cdot 2 \cdot S \cdot (H/r) \cdot d_h\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L \cdot S \cdot d_c^{KV}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Decode throughput</p></td>
+<td><p>baseline</p></td>
+<td><p>~1.0× (similar)</p></td>
+<td><p>~0.8× (absorb overhead)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Prefill speed</p></td>
+<td><p>baseline</p></td>
+<td><p>~same</p></td>
+<td><p>~10–30% slower</p></td>
+</tr>
+<tr class="row-even"><td><p>Cache at 512 tok, 12L, bf16</p></td>
+<td><p>0.375 MB</p></td>
+<td><p>0.094 MB (r=4)</p></td>
+<td><p>~0.027 MB</p></td>
+</tr>
+<tr class="row-odd"><td><p>Max batch &#64; 40 GB</p></td>
+<td><p>~100</p></td>
+<td><p>~400</p></td>
+<td><p>~1500</p></td>
+</tr>
+<tr class="row-even"><td><p>Config flag</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">attention=&quot;mha&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">attention=&quot;gqa&quot;,</span> <span class="pre">kv_heads=2</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">attention=&quot;mla&quot;</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>MLA’s slower per-step latency is offset by fitting more sequences in VRAM simultaneously, making it the highest-throughput option at large batch sizes.</p>
+</section>
+<hr class="docutils" />
+<section id="diffusion-dualcache">
+<h2>Diffusion DualCache<a class="headerlink" href="#diffusion-dualcache" title="Link to this heading"></a></h2>
+<p>For diffusion, the cache consists of two parts:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DualCache</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+    <span class="n">prefix_kvs</span><span class="p">:</span> <span class="nb">tuple</span>   <span class="c1"># per-layer (k, v) for the prompt — computed once</span>
+    <span class="n">suffix_kvs</span><span class="p">:</span> <span class="nb">tuple</span>   <span class="c1"># per-layer (k, v) for remaining MASK tokens — refreshed per block</span>
+</pre></div>
+</div>
+<p>The suffix KV adds overhead proportional to the number of remaining MASK blocks. Averaged over a full generation this adds approximately <strong>20–40%</strong> to the peak cache size vs. the static AR cache.</p>
+<p>See <a class="reference internal" href="../paradigms/fast-dllm.html"><span class="std std-doc">Fast-dLLM DualCache</span></a> for the full architecture description.</p>
+</section>
+<hr class="docutils" />
+<section id="cache-memory-vs-throughput">
+<h2>Cache Memory vs Throughput<a class="headerlink" href="#cache-memory-vs-throughput" title="Link to this heading"></a></h2>
+<p>At large batch sizes, the cache footprint determines how many sequences fit in VRAM simultaneously.</p>
+<p>Measured throughput on A100 40 GB, 256d 12-layer model, bfloat16, <code class="docutils literal notranslate"><span class="pre">seq_len=512</span></code>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attention</p></th>
+<th class="head"><p>Decode tok/s (BS=1)</p></th>
+<th class="head"><p>Decode tok/s (BS=8)</p></th>
+<th class="head"><p>Max BS</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>MHA</p></td>
+<td><p>89</p></td>
+<td><p>~540</p></td>
+<td><p>~100</p></td>
+</tr>
+<tr class="row-odd"><td><p>GQA (×4)</p></td>
+<td><p>90</p></td>
+<td><p>~600</p></td>
+<td><p>~400</p></td>
+</tr>
+<tr class="row-even"><td><p>MLA</p></td>
+<td><p>70</p></td>
+<td><p>~650</p></td>
+<td><p>~1500</p></td>
+</tr>
+</tbody>
+</table>
+<p>GQA and MHA have similar single-sequence throughput; MLA pays a per-step overhead (~20%) but excels when many sequences are batched together because more of them fit in cache.</p>
+</section>
+<hr class="docutils" />
+<section id="disabling-the-cache">
+<h2>Disabling the Cache<a class="headerlink" href="#disabling-the-cache" title="Link to this heading"></a></h2>
+<p>Disable the KV cache for debugging or for short sequences where re-allocation overhead is negligible:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Python</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="n">generate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">prompt_ids</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># CLI</span>
+<span class="n">dantinox</span> <span class="n">generate</span> <span class="o">--</span><span class="n">run_dir</span> <span class="n">runs</span><span class="o">/</span><span class="n">my_run</span> <span class="o">--</span><span class="n">no_cache</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="cache-warmup">
+<h2>Cache Warmup<a class="headerlink" href="#cache-warmup" title="Link to this heading"></a></h2>
+<p>JAX JIT-compiles the decode step on first call. The second call (and all subsequent) use the compiled kernel. DantinoX’s <code class="docutils literal notranslate"><span class="pre">Generator</span></code> class does one warmup forward automatically:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gen</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">(</span><span class="s2">&quot;runs/my_run&quot;</span><span class="p">)</span>
+<span class="c1"># First call triggers JIT compilation (slow)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s2">&quot;warmup&quot;</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="c1"># Second call uses cached compilation</span>
+<span class="n">text</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s2">&quot;Real prompt&quot;</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The XLA compilation cache (stored in <code class="docutils literal notranslate"><span class="pre">~/.cache/jax_xla/dantinox</span></code>) persists across processes, so the overhead is only paid once per unique model architecture.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="diffusion.html" class="btn btn-neutral float-left" title="Diffusion Generation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../tutorials/index.html" class="btn btn-neutral float-right" title="Tutorials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

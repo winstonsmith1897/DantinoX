@@ -1,0 +1,293 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="_static/dantinox.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=6c02275b"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="FAQ &amp; Troubleshooting" href="faq.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            DantinoX
+              <img src="_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">[0.3.0] — 2026-06-07</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#added">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fixed">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">0.2.0 — 2026-06-05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#changed">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">0.1.0 — 2026-01-15</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id6">Added</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Changelog</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/changelog.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading"></a></h1>
+<p>All notable changes to DantinoX are documented here.
+The format follows <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>.
+DantinoX uses <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<hr class="docutils" />
+<section id="id1">
+<h2>[0.3.0] — 2026-06-07<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Experiments &amp; Results documentation</strong> — <code class="docutils literal notranslate"><span class="pre">docs/paper.md</span></code> page with research questions, experimental design (180-checkpoint training matrix), full evaluation pipeline (B1–B3, E1–E4, F1–F3), and reproducibility instructions</p></li>
+<li><p><strong>Full Training Suite docs</strong> — <code class="docutils literal notranslate"><span class="pre">docs/training/emnlp-suite.md</span></code> documenting the Part A size × attention × FFN matrix and Part B ablation suite with all flag derivations and progress-monitoring commands</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">docs/paradigms/comparison.md</span></code> improvements</strong> — Research Design section explaining the controlled experimental conditions; expanded placeholder tables for quality (WikiText-103/PTB/LAMBADA/C4 bpb), throughput (AR vs Diffusion simple vs DualCache), and generation quality (Distinct-1/2, Self-BLEU, Rep-4, MAUVE); “When to Use” section</p></li>
+<li><p><strong>ReadTheDocs migration</strong> — documentation now served from <code class="docutils literal notranslate"><span class="pre">dantinox.readthedocs.io</span></code>; GitHub Pages workflow replaced with a CI-only <code class="docutils literal notranslate"><span class="pre">mkdocs</span> <span class="pre">build</span> <span class="pre">--strict</span></code> validation step; <code class="docutils literal notranslate"><span class="pre">site_url</span></code> added to <code class="docutils literal notranslate"><span class="pre">mkdocs.yml</span></code></p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">train_ar_suite.sh</span></code> and <code class="docutils literal notranslate"><span class="pre">train_diffusion_suite.sh</span></code> now pass <code class="docutils literal notranslate"><span class="pre">--gradient_checkpointing</span> <span class="pre">true</span></code> (was <code class="docutils literal notranslate"><span class="pre">false</span></code>). Without checkpointing, JAX’s <code class="docutils literal notranslate"><span class="pre">&#64;nnx.jit</span></code> fully unrolls the <code class="docutils literal notranslate"><span class="pre">grad_accum=4</span></code> loop, causing a ~29 GiB peak XLA allocation that OOMs the A100 40 GB on 512d/16-block models</p></li>
+<li><p>VRAM estimator in <code class="docutils literal notranslate"><span class="pre">dantinox/trainer.py</span></code> now correctly accounts for <code class="docutils literal notranslate"><span class="pre">grad_accum</span></code> loop unrolling and uses <code class="docutils literal notranslate"><span class="pre">micro_bs</span></code> (not <code class="docutils literal notranslate"><span class="pre">batch_size</span></code>) for the activation estimate</p></li>
+<li><p>FAQ updated with accurate OOM diagnostics and gradient checkpointing guidance</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2><a class="reference external" href="https://github.com/winstonsmith1897/DantinoX/compare/v0.1.0...v0.2.0">0.2.0</a> — 2026-06-05<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>Added<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Masked Diffusion Language Model</strong> — <code class="docutils literal notranslate"><span class="pre">DiffusionTransformer</span></code>, <code class="docutils literal notranslate"><span class="pre">DiffusionBlock</span></code>, <code class="docutils literal notranslate"><span class="pre">AdaLayerNorm</span></code>, cosine/linear/sqrt noise schedules, masked cross-entropy loss (<code class="docutils literal notranslate"><span class="pre">core/diffusion.py</span></code>)</p></li>
+<li><p><strong>Fast-dLLM DualCache</strong> — block-wise denoising with a prefix KV-cache and suffix KV-cache, reducing diffusion decode latency by ~2.1× over the naive sampler</p></li>
+<li><p><strong>Confidence-Aware Decoding</strong> — token-unmasking strategies based on per-position confidence thresholds and linear/exponential factor schedules</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">model_type</span></code> config field</strong> — <code class="docutils literal notranslate"><span class="pre">&quot;autoregressive&quot;</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">&quot;diffusion&quot;</span></code>; a single YAML change switches the full training and inference pipeline</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">attention_type</span></code> config field</strong> — explicit <code class="docutils literal notranslate"><span class="pre">&quot;mha&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;gqa&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;mla&quot;</span></code> selector; resolves automatically from legacy <code class="docutils literal notranslate"><span class="pre">mla</span></code> and <code class="docutils literal notranslate"><span class="pre">kv_heads</span></code> flags for backward compatibility</p></li>
+<li><p><strong>Three noise schedules</strong> — <code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code> (default), <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;sqrt&quot;</span></code> configurable via <code class="docutils literal notranslate"><span class="pre">noise_schedule</span></code></p></li>
+<li><p><strong>Diffusion training docs</strong> — <code class="docutils literal notranslate"><span class="pre">docs/training/diffusion.md</span></code>, <code class="docutils literal notranslate"><span class="pre">docs/paradigms/diffusion.md</span></code>, <code class="docutils literal notranslate"><span class="pre">docs/paradigms/fast-dllm.md</span></code>, <code class="docutils literal notranslate"><span class="pre">docs/paradigms/confidence.md</span></code></p></li>
+<li><p><strong>Tutorial section</strong> — four step-by-step guides: Training Your First Model, LoRA Fine-Tuning, Masked Diffusion LM, Pushing to HuggingFace Hub</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Transformer.from_pretrained</span></code> now accepts both local paths and HuggingFace Hub repository IDs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Generator</span></code> constructor accepts a <code class="docutils literal notranslate"><span class="pre">token</span></code> argument for private HuggingFace Hub repositories</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Config.__post_init__</span></code> validates <code class="docutils literal notranslate"><span class="pre">model_type</span></code> and <code class="docutils literal notranslate"><span class="pre">attention_type</span></code>; raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> on unknown values</p></li>
+<li><p>Benchmark suite extended to cover AR vs. Diffusion throughput comparison</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Static KV-cache initialisation now correctly handles <code class="docutils literal notranslate"><span class="pre">batch_size</span> <span class="pre">&gt;</span> <span class="pre">1</span></code> in MLA mode</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">find-lr</span></code> no longer overwrites an existing run directory when <code class="docutils literal notranslate"><span class="pre">--run_dir</span></code> is specified</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2><a class="reference external" href="https://github.com/winstonsmith1897/DantinoX/releases/tag/v0.1.0">0.1.0</a> — 2026-01-15<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>Added<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Core Transformer</strong> (<code class="docutils literal notranslate"><span class="pre">core/model.py</span></code>) — Autoregressive Transformer with MHA, GQA, and Multi-Head Latent Attention (MLA)</p></li>
+<li><p><strong>MLA</strong> — latent KV compression, decoupled RoPE, weight absorption at decode time (DeepSeek-V2 style)</p></li>
+<li><p><strong>Static KV-cache</strong> — <code class="docutils literal notranslate"><span class="pre">jax.lax.dynamic_update_slice</span></code> for O(1) writes; zero recompilation across decode steps</p></li>
+<li><p><strong>Flash Attention</strong> — opt-in <code class="docutils literal notranslate"><span class="pre">jax.nn.dot_product_attention</span></code> fast path for MHA/GQA training (JAX ≥ 0.4.25)</p></li>
+<li><p><strong>Sparse MoE</strong> — top-K router with load-balancing auxiliary loss (<code class="docutils literal notranslate"><span class="pre">alpha_balance</span></code>)</p></li>
+<li><p><strong>LoRA fine-tuning</strong> — <code class="docutils literal notranslate"><span class="pre">LoRALinear</span></code>, <code class="docutils literal notranslate"><span class="pre">LoRAParam</span></code> type-level freezing, <code class="docutils literal notranslate"><span class="pre">merge_weights()</span></code> for deployment</p></li>
+<li><p><strong>NTK-aware RoPE scaling</strong> — <code class="docutils literal notranslate"><span class="pre">rope_scale_factor</span></code> compresses base frequency for long-context extrapolation</p></li>
+<li><p><strong>Sliding Window Attention</strong> — local causal window via <code class="docutils literal notranslate"><span class="pre">context_window</span></code> config field</p></li>
+<li><p><strong>Attention gating</strong> (<code class="docutils literal notranslate"><span class="pre">no_sink</span></code>) — sigmoid gate on attention output to prevent attention sink patterns</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">Trainer</span></code></strong> — full training loop: bfloat16, gradient accumulation, gradient clipping, early stopping, LR finder, W&amp;B logging, resume from checkpoint</p></li>
+<li><p><strong>Four LR schedules</strong> — <code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;constant&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;wsd&quot;</span></code> (warmup → stable → cosine decay)</p></li>
+<li><p><strong>Three optimisers</strong> — AdamW, Adafactor, Lion via Optax</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">Generator</span></code></strong> — single, batched, and streaming autoregressive generation with top-k, top-p, temperature sampling</p></li>
+<li><p><strong>Multi-GPU SPMD</strong> — data-parallel training via <code class="docutils literal notranslate"><span class="pre">jax.sharding.Mesh</span></code>; set <code class="docutils literal notranslate"><span class="pre">n_devices=N</span></code></p></li>
+<li><p><strong>HuggingFace Hub integration</strong> — <code class="docutils literal notranslate"><span class="pre">push()</span></code> / <code class="docutils literal notranslate"><span class="pre">pull()</span></code> in <code class="docutils literal notranslate"><span class="pre">dantinox/hub.py</span></code>; <code class="docutils literal notranslate"><span class="pre">Generator(&quot;owner/repo&quot;)</span></code> direct loading</p></li>
+<li><p><strong>CLI</strong> — <code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">train</span></code>, <code class="docutils literal notranslate"><span class="pre">generate</span></code>, <code class="docutils literal notranslate"><span class="pre">find-lr</span></code>, <code class="docutils literal notranslate"><span class="pre">sweep</span></code>, <code class="docutils literal notranslate"><span class="pre">benchmark</span></code>, <code class="docutils literal notranslate"><span class="pre">push</span></code>, <code class="docutils literal notranslate"><span class="pre">pull</span></code>, <code class="docutils literal notranslate"><span class="pre">plot</span></code></p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">BenchmarkRunner</span></code></strong> — throughput, FLOPs, KV-cache profiling across attention types</p></li>
+<li><p><strong>CharTokenizer</strong> and <strong>BPETokenizer</strong> — <code class="docutils literal notranslate"><span class="pre">tokenizer_type:</span> <span class="pre">&quot;char&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;bpe&quot;</span></code> in config</p></li>
+<li><p><strong>Gradient checkpointing</strong> — <code class="docutils literal notranslate"><span class="pre">nnx.remat</span></code> for activation recomputation (disabled automatically during inference)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ModelOutput</span></code> NamedTuple</strong> — named access to <code class="docutils literal notranslate"><span class="pre">logits</span></code>, <code class="docutils literal notranslate"><span class="pre">kv_caches</span></code>, <code class="docutils literal notranslate"><span class="pre">aux_loss</span></code>; backward-compatible with positional unpacking</p></li>
+<li><p><strong>86 pytest tests</strong> — unit and integration coverage; mypy clean, ruff clean</p></li>
+<li><p><strong>ReadTheDocs</strong> — MkDocs Material documentation with full API reference, architecture docs, and benchmark results</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="faq.html" class="btn btn-neutral float-left" title="FAQ &amp; Troubleshooting" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

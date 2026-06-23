@@ -1,0 +1,411 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast-dLLM Block-wise DualCache &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Confidence-Aware Parallel Decoding" href="confidence.html" />
+    <link rel="prev" title="ELF — Continuous Flow-Matching" href="elf.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fast-dLLM Block-wise DualCache</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#motivation">Motivation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#block-wise-generation">Block-wise Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dualcache-data-structure">DualCache Data Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-api">Python API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#effect-of-block-size">Effect of Block Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#suffix-cache-refresh">Suffix Cache Refresh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-dual-cache-manually">Building the Dual Cache Manually</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#speedup-summary">Speedup Summary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Fast-dLLM Block-wise DualCache</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/paradigms/fast-dllm.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="fast-dllm-block-wise-dualcache">
+<h1>Fast-dLLM Block-wise DualCache<a class="headerlink" href="#fast-dllm-block-wise-dualcache" title="Link to this heading"></a></h1>
+<p>DantinoX integrates the <strong>DualCache</strong> inference optimisation from
+<em>Fast-dLLM: Training-free Acceleration of Diffusion LLM Inference via Causal KV Cache</em>
+(Wu et al., arXiv:2505.22618).</p>
+<p>DualCache reduces the per-step cost of diffusion generation from
+<span class="math notranslate nohighlight">\(O(T_{\text{total}}^2)\)</span> to roughly <span class="math notranslate nohighlight">\(O(B \cdot T_{\text{total}})\)</span> per inner step,
+where <span class="math notranslate nohighlight">\(B\)</span> is the block size and <span class="math notranslate nohighlight">\(T_{\text{total}}\)</span> is the total sequence length.</p>
+<hr class="docutils" />
+<section id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Link to this heading"></a></h2>
+<p>A naïve diffusion sampler runs the full-sequence model at every denoising step:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>for t in T → 0:
+    logits = model([prompt | x_t])   # O((T_prefix + T_gen)²) attention
+    x_t    = unmask(logits, x_t)
+</pre></div>
+</div>
+<p>With <span class="math notranslate nohighlight">\(T_{\text{gen}} = 256\)</span> and <span class="math notranslate nohighlight">\(T_{\text{prefix}} = 64\)</span>, every step processes
+320 tokens through bidirectional attention — expensive even with KV-cache.</p>
+</section>
+<hr class="docutils" />
+<section id="block-wise-generation">
+<h2>Block-wise Generation<a class="headerlink" href="#block-wise-generation" title="Link to this heading"></a></h2>
+<p>Fast-dLLM divides the generated region into <span class="math notranslate nohighlight">\(K\)</span> non-overlapping blocks of size <span class="math notranslate nohighlight">\(B\)</span>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[  prompt  |  block 0  |  block 1  |  …  |  block K-1  ]
+</pre></div>
+</div>
+<p>For each block <span class="math notranslate nohighlight">\(k\)</span>, an <strong>inner loop</strong> of <code class="docutils literal notranslate"><span class="pre">steps_per_block</span></code> denoising steps
+operates only on that block’s tokens.  The model attends to:</p>
+<ol class="arabic simple">
+<li><p><strong>Prefix KV</strong> — cached from the static prompt (computed once, never recomputed).</p></li>
+<li><p><strong>Fresh block KV</strong> — recomputed each inner step from the current block tokens.</p></li>
+<li><p><strong>Suffix KV</strong> — cached from the remaining all-<code class="docutils literal notranslate"><span class="pre">[MASK]</span></code> blocks after block <span class="math notranslate nohighlight">\(k\)</span>.</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Inner</span> <span class="n">step</span> <span class="n">on</span> <span class="n">block</span> <span class="n">k</span><span class="p">:</span>
+  <span class="n">context</span> <span class="o">=</span> <span class="p">[</span><span class="n">prefix_KV</span> <span class="o">|</span> <span class="n">fresh_block_KV</span> <span class="o">|</span> <span class="n">suffix_KV</span><span class="p">]</span>
+  <span class="n">logits</span>  <span class="o">=</span> <span class="n">model_on_block_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">s</span><span class="p">:</span><span class="n">e</span><span class="p">],</span> <span class="n">context</span><span class="p">)</span>
+  <span class="n">x</span><span class="p">[</span><span class="n">s</span><span class="p">:</span><span class="n">e</span><span class="p">]</span>  <span class="o">=</span> <span class="n">confidence_unmask</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="n">s</span><span class="p">:</span><span class="n">e</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The suffix KV barely changes within a single block’s inner loop
+(cosine similarity &gt; 0.99 between adjacent steps in Fast-dLLM §3.2),
+so it is safely reused and refreshed only at each block boundary.</p>
+</section>
+<hr class="docutils" />
+<section id="dualcache-data-structure">
+<h2>DualCache Data Structure<a class="headerlink" href="#dualcache-data-structure" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DualCache</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+    <span class="n">prefix_kvs</span><span class="p">:</span> <span class="nb">tuple</span>   <span class="c1"># per-layer (k, v) for the prompt</span>
+    <span class="n">suffix_kvs</span><span class="p">:</span> <span class="nb">tuple</span>   <span class="c1"># per-layer (k, v) for remaining MASK blocks</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Shape</p></th>
+<th class="head"><p>Refresh</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">prefix_kvs[l]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">H_kv,</span> <span class="pre">1,</span> <span class="pre">T_prefix,</span> <span class="pre">d_h]</span></code></p></td>
+<td><p>Once, before all blocks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">suffix_kvs[l]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">H_kv,</span> <span class="pre">1,</span> <span class="pre">T_suffix,</span> <span class="pre">d_h]</span></code></p></td>
+<td><p>Once per block boundary</p></td>
+</tr>
+</tbody>
+</table>
+<p>For MLA the KV tensors use the compressed latent dimension <span class="math notranslate nohighlight">\(d_c^{KV}\)</span>;
+<code class="docutils literal notranslate"><span class="pre">suffix_kvs</span></code> is set to <code class="docutils literal notranslate"><span class="pre">None</span></code> when using prefix-only caching.</p>
+</section>
+<hr class="docutils" />
+<section id="python-api">
+<h2>Python API<a class="headerlink" href="#python-api" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.generation</span><span class="w"> </span><span class="kn">import</span> <span class="n">fast_dllm_generate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.diffusion</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_noise_schedule</span>
+
+<span class="n">schedule</span> <span class="o">=</span> <span class="n">make_noise_schedule</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="n">tokens</span> <span class="o">=</span> <span class="n">fast_dllm_generate</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="p">,</span>                    <span class="c1"># [B, T_prefix]  — empty OK</span>
+    <span class="n">gen_len</span>   <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
+    <span class="n">schedule</span>  <span class="o">=</span> <span class="n">schedule</span><span class="p">,</span>
+    <span class="n">mask_token_id</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+
+    <span class="c1"># Block-wise parameters</span>
+    <span class="n">block_size</span>        <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>    <span class="c1"># tokens per block  (default: 32)</span>
+    <span class="n">steps_per_block</span>   <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>    <span class="c1"># denoising steps per block</span>
+
+    <span class="c1"># Confidence-aware unmasking</span>
+    <span class="n">decoding_strategy</span> <span class="o">=</span> <span class="s2">&quot;threshold&quot;</span><span class="p">,</span>   <span class="c1"># &quot;threshold&quot; | &quot;factor&quot;</span>
+    <span class="n">confidence_threshold</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span>
+    <span class="n">factor</span>               <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span>
+
+    <span class="c1"># Cache mode</span>
+    <span class="n">use_dual_cache</span>    <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># False → prefix-only (slower)</span>
+    <span class="n">refresh_interval</span>  <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># None = refresh at block boundary only</span>
+    <span class="n">seed</span>              <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># tokens: [B, gen_len]</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="effect-of-block-size">
+<h2>Effect of Block Size<a class="headerlink" href="#effect-of-block-size" title="Link to this heading"></a></h2>
+<p>Larger blocks amortise the cache-refresh cost but introduce more approximation:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Block size <span class="math notranslate nohighlight">\(B\)</span></p></th>
+<th class="head"><p>Inner steps saved</p></th>
+<th class="head"><p>Approximation error</p></th>
+<th class="head"><p>Net speedup</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>4</p></td>
+<td><p>low</p></td>
+<td><p>very low</p></td>
+<td><p>~1.1×</p></td>
+</tr>
+<tr class="row-odd"><td><p>16</p></td>
+<td><p>medium</p></td>
+<td><p>low</p></td>
+<td><p>~1.5×</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>32</strong> (default)</p></td>
+<td><p>high</p></td>
+<td><p>low</p></td>
+<td><p><strong>~1.8×</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>64</p></td>
+<td><p>high</p></td>
+<td><p>medium</p></td>
+<td><p>~1.6×</p></td>
+</tr>
+<tr class="row-even"><td><p>128</p></td>
+<td><p>max</p></td>
+<td><p>high</p></td>
+<td><p>~1.3×</p></td>
+</tr>
+</tbody>
+</table>
+<p>DualCache delivers 1.4–2.1× speedup over prefix-only caching across model sizes
+(see <a class="reference internal" href="../paper.html"><span class="std std-doc">Experiments &amp; Results</span></a>).</p>
+</section>
+<hr class="docutils" />
+<section id="suffix-cache-refresh">
+<h2>Suffix Cache Refresh<a class="headerlink" href="#suffix-cache-refresh" title="Link to this heading"></a></h2>
+<p>By default, the suffix KV is refreshed once per block boundary.
+Pass <code class="docutils literal notranslate"><span class="pre">refresh_interval=r</span></code> to refresh every <span class="math notranslate nohighlight">\(r\)</span> inner steps for higher accuracy:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tokens</span> <span class="o">=</span> <span class="n">fast_dllm_generate</span><span class="p">(</span>
+    <span class="o">...</span><span class="p">,</span>
+    <span class="n">refresh_interval</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>   <span class="c1"># refresh suffix KV every 5 inner steps</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Lower <code class="docutils literal notranslate"><span class="pre">refresh_interval</span></code> → less approximation error, higher wall-clock time.</p>
+</section>
+<hr class="docutils" />
+<section id="building-the-dual-cache-manually">
+<h2>Building the Dual Cache Manually<a class="headerlink" href="#building-the-dual-cache-manually" title="Link to this heading"></a></h2>
+<p>For fine-grained control, use the <code class="docutils literal notranslate"><span class="pre">DiffusionTransformer</span></code> methods directly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build or refresh the dual cache for block k</span>
+<span class="n">dual_cache</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">compute_block_dual_cache</span><span class="p">(</span>
+    <span class="n">x_full</span><span class="p">,</span>      <span class="c1"># [B, T_total] — full sequence including MASK blocks</span>
+    <span class="n">t</span><span class="p">,</span>           <span class="c1"># [B] — current timestep</span>
+    <span class="n">block_start</span><span class="p">,</span> <span class="c1"># absolute token index of block start</span>
+    <span class="n">block_end</span><span class="p">,</span>   <span class="c1"># absolute token index of block end</span>
+<span class="p">)</span>
+
+<span class="c1"># Inner loop: run only on the current block</span>
+<span class="n">logits</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">decode_block</span><span class="p">(</span>
+    <span class="n">x_block</span><span class="p">,</span>      <span class="c1"># [B, block_size]</span>
+    <span class="n">t</span><span class="p">,</span>
+    <span class="n">dual_cache</span><span class="p">,</span>
+    <span class="n">block_start</span><span class="p">,</span>  <span class="c1"># for correct RoPE offset</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="speedup-summary">
+<h2>Speedup Summary<a class="headerlink" href="#speedup-summary" title="Link to this heading"></a></h2>
+<p>Measured on a 256-dim, 12-layer model, <code class="docutils literal notranslate"><span class="pre">gen_len=256</span></code>, <code class="docutils literal notranslate"><span class="pre">block_size=32</span></code>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>tok/s (BS=1)</p></th>
+<th class="head"><p>tok/s (BS=8)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Naïve (no cache)</p></td>
+<td><p>baseline</p></td>
+<td><p>baseline</p></td>
+</tr>
+<tr class="row-odd"><td><p>PrefixCache only</p></td>
+<td><p>~1.4×</p></td>
+<td><p>~1.4×</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>DualCache</strong> (default)</p></td>
+<td><p><strong>~2.1×</strong></p></td>
+<td><p><strong>~1.9×</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="elf.html" class="btn btn-neutral float-left" title="ELF — Continuous Flow-Matching" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="confidence.html" class="btn btn-neutral float-right" title="Confidence-Aware Parallel Decoding" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

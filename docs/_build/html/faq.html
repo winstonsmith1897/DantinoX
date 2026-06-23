@@ -1,0 +1,372 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQ &amp; Troubleshooting &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="_static/dantinox.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=6c02275b"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Changelog" href="changelog.html" />
+    <link rel="prev" title="Contributing" href="contributing.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            DantinoX
+              <img src="_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">FAQ &amp; Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#training">Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inference">Inference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mla-attention">MLA / Attention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#huggingface-hub">HuggingFace Hub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#further-help">Further Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">FAQ &amp; Troubleshooting</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/faq.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="faq-troubleshooting">
+<h1>FAQ &amp; Troubleshooting<a class="headerlink" href="#faq-troubleshooting" title="Link to this heading"></a></h1>
+<hr class="docutils" />
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p><strong><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;jax[cuda12]&quot;</span></code> fails — which version of CUDA do I need?</strong></p>
+<p>JAX requires CUDA 12.x and cuDNN 8.9+. Check your driver and toolkit versions:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nvidia-smi<span class="w">          </span><span class="c1"># shows driver version and maximum supported CUDA</span>
+nvcc<span class="w"> </span>--version<span class="w">      </span><span class="c1"># shows installed CUDA toolkit version</span>
+</pre></div>
+</div>
+<p>If your driver supports CUDA 11 only, install <code class="docutils literal notranslate"><span class="pre">jax[cuda11_pip]</span></code> instead. See the <a class="reference external" href="https://jax.readthedocs.io/en/latest/installation.html">JAX installation guide</a> for the full compatibility matrix.</p>
+<hr class="docutils" />
+<p><strong><code class="docutils literal notranslate"><span class="pre">jax.devices()</span></code> returns only CPU even after installing <code class="docutils literal notranslate"><span class="pre">jax[cuda12]</span></code>.</strong></p>
+<p>This usually means JAX cannot find the CUDA libraries at runtime. Try:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Verify the JAX CUDA plugin is installed</span>
+pip<span class="w"> </span>show<span class="w"> </span>jaxlib<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>Location
+ls<span class="w"> </span><span class="k">$(</span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import jaxlib; print(jaxlib.__file__.rsplit(&#39;/&#39;,1)[0])&quot;</span><span class="k">)</span>/cuda*
+
+<span class="c1"># Force GPU selection</span>
+<span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import jax; print(jax.devices())&quot;</span>
+</pre></div>
+</div>
+<p>If running inside a container, ensure the container has access to the GPU (<code class="docutils literal notranslate"><span class="pre">--gpus</span> <span class="pre">all</span></code> for Docker).</p>
+</section>
+<hr class="docutils" />
+<section id="training">
+<h2>Training<a class="headerlink" href="#training" title="Link to this heading"></a></h2>
+<p><strong><code class="docutils literal notranslate"><span class="pre">ValueError:</span> <span class="pre">dim</span> <span class="pre">(512)</span> <span class="pre">must</span> <span class="pre">equal</span> <span class="pre">n_heads</span> <span class="pre">*</span> <span class="pre">head_size</span></code></strong></p>
+<p>The constraint <code class="docutils literal notranslate"><span class="pre">dim</span> <span class="pre">=</span> <span class="pre">n_heads</span> <span class="pre">×</span> <span class="pre">head_size</span></code> is always enforced. For example:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">dim</span></code></p></th>
+<th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">n_heads</span></code></p></th>
+<th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">head_size</span></code></p></th>
+<th class="head text-left"><p>Valid</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>512</p></td>
+<td class="text-left"><p>16</p></td>
+<td class="text-left"><p>32</p></td>
+<td class="text-left"><p>✓</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>512</p></td>
+<td class="text-left"><p>8</p></td>
+<td class="text-left"><p>64</p></td>
+<td class="text-left"><p>✓</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>512</p></td>
+<td class="text-left"><p>12</p></td>
+<td class="text-left"><p>32</p></td>
+<td class="text-left"><p>✗ (12 × 32 = 384 ≠ 512)</p></td>
+</tr>
+</tbody>
+</table>
+<hr class="docutils" />
+<p><strong><code class="docutils literal notranslate"><span class="pre">ValueError:</span> <span class="pre">n_heads</span> <span class="pre">must</span> <span class="pre">be</span> <span class="pre">divisible</span> <span class="pre">by</span> <span class="pre">kv_heads</span></code></strong></p>
+<p>For GQA, <code class="docutils literal notranslate"><span class="pre">n_heads</span></code> must be an integer multiple of <code class="docutils literal notranslate"><span class="pre">kv_heads</span></code>. Common valid combinations:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">n_heads</span></code></p></th>
+<th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">kv_heads</span></code></p></th>
+<th class="head text-left"><p>Ratio</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>16</p></td>
+<td class="text-left"><p>4</p></td>
+<td class="text-left"><p>4×</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>16</p></td>
+<td class="text-left"><p>8</p></td>
+<td class="text-left"><p>2×</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>16</p></td>
+<td class="text-left"><p>1</p></td>
+<td class="text-left"><p>16×</p></td>
+</tr>
+</tbody>
+</table>
+<p>Set <code class="docutils literal notranslate"><span class="pre">kv_heads</span> <span class="pre">=</span> <span class="pre">n_heads</span></code> for standard MHA.</p>
+<hr class="docutils" />
+<p><strong>Training loss diverges or becomes NaN.</strong></p>
+<p>Most common causes:</p>
+<ol class="arabic simple">
+<li><p><strong>Learning rate too high</strong> — run <code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">find-lr</span></code> first and pick the LR just before the minimum.</p></li>
+<li><p><strong>No gradient clipping</strong> — set <code class="docutils literal notranslate"><span class="pre">grad_clip:</span> <span class="pre">1.0</span></code> in the config (enabled by default).</p></li>
+<li><p><strong>bfloat16 overflow</strong> — bfloat16 has a smaller dynamic range than float32; lower the LR by 2–4× when enabling <code class="docutils literal notranslate"><span class="pre">use_bf16:</span> <span class="pre">true</span></code>.</p></li>
+<li><p><strong>Dataset encoding issue</strong> — ensure the corpus is UTF-8 encoded and not empty.</p></li>
+</ol>
+<hr class="docutils" />
+<p><strong>Training is much slower than expected.</strong></p>
+<ul class="simple">
+<li><p><strong>XLA compilation</strong> — the first few steps are slow because JAX is tracing and compiling the computation graph. This is expected. Subsequent steps use the cached XLA executable.</p></li>
+<li><p><strong>Set <code class="docutils literal notranslate"><span class="pre">JAX_COMPILATION_CACHE_DIR</span></code></strong> to persist XLA compilations across runs: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">JAX_COMPILATION_CACHE_DIR=~/.jax_cache</span></code></p></li>
+<li><p><strong>Flash Attention</strong> — enable <code class="docutils literal notranslate"><span class="pre">use_flash_attention:</span> <span class="pre">true</span></code> (MHA/GQA only, JAX ≥ 0.4.25). This fuses the attention kernel and reduces memory bandwidth pressure.</p></li>
+<li><p><strong>Gradient checkpointing</strong> — <code class="docutils literal notranslate"><span class="pre">gradient_checkpointing:</span> <span class="pre">true</span></code> trades compute for memory; disable it if you have enough VRAM.</p></li>
+<li><p><strong>n_devices</strong> — set <code class="docutils literal notranslate"><span class="pre">n_devices:</span> <span class="pre">0</span></code> to use all available GPUs automatically.</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong><code class="docutils literal notranslate"><span class="pre">OOM</span></code> (out of memory) on GPU.</strong></p>
+<p>Try these in order:</p>
+<ol class="arabic simple">
+<li><p>Ensure <code class="docutils literal notranslate"><span class="pre">gradient_checkpointing:</span> <span class="pre">true</span></code> is set — this is the most impactful option. The training suite scripts expose <code class="docutils literal notranslate"><span class="pre">--gradient_checkpointing</span> <span class="pre">true</span></code> which <strong>must not be overridden to <code class="docutils literal notranslate"><span class="pre">false</span></code></strong> for large models. Without it, JAX’s <code class="docutils literal notranslate"><span class="pre">&#64;nnx.jit</span></code> unrolls the <code class="docutils literal notranslate"><span class="pre">grad_accum</span></code> loop fully, materialising all intermediate activations for every micro-batch simultaneously (4× the memory for <code class="docutils literal notranslate"><span class="pre">grad_accum=4</span></code>).</p></li>
+<li><p>Reduce <code class="docutils literal notranslate"><span class="pre">batch_size</span></code> and increase <code class="docutils literal notranslate"><span class="pre">grad_accum</span></code> proportionally (effective batch is unchanged).</p></li>
+<li><p>Enable <code class="docutils literal notranslate"><span class="pre">use_bf16:</span> <span class="pre">true</span></code> — halves parameter memory.</p></li>
+<li><p>Reduce <code class="docutils literal notranslate"><span class="pre">max_context</span></code> — KV-cache size scales linearly with sequence length.</p></li>
+<li><p>Switch to GQA (<code class="docutils literal notranslate"><span class="pre">kv_heads</span> <span class="pre">&lt;</span> <span class="pre">n_heads</span></code>) or MLA (<code class="docutils literal notranslate"><span class="pre">attention_type:</span> <span class="pre">mla</span></code>) — both reduce KV-cache memory significantly.</p></li>
+</ol>
+<p>!!! warning “Training suite OOM root cause”
+The <code class="docutils literal notranslate"><span class="pre">train_ar_suite.sh</span></code> and <code class="docutils literal notranslate"><span class="pre">train_diffusion_suite.sh</span></code> scripts pass <code class="docutils literal notranslate"><span class="pre">--gradient_checkpointing</span> <span class="pre">true</span></code> (default). If you see a 28+ GiB allocation failure at step 1 on A100 40 GB for a 512d/16-block model, it means gradient checkpointing was accidentally disabled. The VRAM estimator shown at startup reflects the <em>peak XLA allocation</em> from the fully-unrolled <code class="docutils literal notranslate"><span class="pre">grad_accum</span></code> loop — not just static parameter memory — and is inaccurate when <code class="docutils literal notranslate"><span class="pre">gradient_checkpointing=false</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="inference">
+<h2>Inference<a class="headerlink" href="#inference" title="Link to this heading"></a></h2>
+<p><strong><code class="docutils literal notranslate"><span class="pre">Generator</span></code> is slow on the first call.</strong></p>
+<p>The first call triggers XLA JIT compilation of the generation graph. Subsequent calls use the cached executable and are fast. Compilation time scales with model size and sequence length; for a 256d/12-layer model it takes ~30 seconds on the first call.</p>
+<p>To amortise this across processes:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">JAX_COMPILATION_CACHE_DIR</span><span class="o">=</span>~/.jax_cache
+</pre></div>
+</div>
+<hr class="docutils" />
+<p><strong>Streaming generation (<code class="docutils literal notranslate"><span class="pre">Generator.stream()</span></code>) produces tokens with variable latency.</strong></p>
+<p>This is expected: XLA compiles a single-step function that runs at constant latency, but Python overhead from yielding tokens and printing to the terminal adds variability. For throughput measurement, use <code class="docutils literal notranslate"><span class="pre">generate_batch</span></code> instead.</p>
+<hr class="docutils" />
+<p><strong><code class="docutils literal notranslate"><span class="pre">Generator.from_pretrained</span></code> raises <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code>.</strong></p>
+<p>Ensure the run directory contains all three required files: <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>, <code class="docutils literal notranslate"><span class="pre">weights.msgpack</span></code>, and <code class="docutils literal notranslate"><span class="pre">tokenizer.json</span></code>. If any is missing, re-run training or <code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">pull</span></code> to restore the checkpoint.</p>
+</section>
+<hr class="docutils" />
+<section id="mla-attention">
+<h2>MLA / Attention<a class="headerlink" href="#mla-attention" title="Link to this heading"></a></h2>
+<p><strong>What is the difference between <code class="docutils literal notranslate"><span class="pre">mla:</span> <span class="pre">true</span></code> and <code class="docutils literal notranslate"><span class="pre">attention_type:</span> <span class="pre">mla</span></code>?</strong></p>
+<p>They are equivalent. <code class="docutils literal notranslate"><span class="pre">attention_type:</span> <span class="pre">mla</span></code> is the newer, explicit field. <code class="docutils literal notranslate"><span class="pre">mla:</span> <span class="pre">true</span></code> is the legacy boolean flag maintained for backward compatibility. <code class="docutils literal notranslate"><span class="pre">Config.__post_init__</span></code> synchronises them automatically: setting either one updates the other.</p>
+<hr class="docutils" />
+<p><strong>When should I set <code class="docutils literal notranslate"><span class="pre">inference:</span> <span class="pre">true</span></code> in the MLA config?</strong></p>
+<p>Only when running generation (not training). <code class="docutils literal notranslate"><span class="pre">inference:</span> <span class="pre">true</span></code> activates weight absorption — pre-fusing <span class="math notranslate nohighlight">\(W_{UQ}^\top W_{UK}\)</span> and <span class="math notranslate nohighlight">\(W_{UV} W_O\)</span> so that the full multi-head <span class="math notranslate nohighlight">\(K\)</span>/<span class="math notranslate nohighlight">\(V\)</span> tensors are never materialised. The saved weights are identical; only the computation graph changes.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Training config</span>
+<span class="nt">mla</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">inference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">   </span><span class="c1"># ← default; use during training</span>
+
+<span class="c1"># Inference config (reload the same weights.msgpack)</span>
+<span class="nt">mla</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">inference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># ← activates weight absorption</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="huggingface-hub">
+<h2>HuggingFace Hub<a class="headerlink" href="#huggingface-hub" title="Link to this heading"></a></h2>
+<p><strong><code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">push</span></code> fails with <code class="docutils literal notranslate"><span class="pre">401</span> <span class="pre">Unauthorized</span></code>.</strong></p>
+<p>Your token has expired or lacks <code class="docutils literal notranslate"><span class="pre">write</span></code> scope. Re-authenticate:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>huggingface-cli<span class="w"> </span>login
+</pre></div>
+</div>
+<p>Or pass the token explicitly:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>push<span class="w"> </span>--run_dir<span class="w"> </span>runs/my_run<span class="w"> </span>--repo<span class="w"> </span>my-org/model<span class="w"> </span>--token<span class="w"> </span>hf_...
+</pre></div>
+</div>
+<hr class="docutils" />
+<p><strong>The repository does not appear in my HuggingFace profile after <code class="docutils literal notranslate"><span class="pre">push</span></code>.</strong></p>
+<p>By default <code class="docutils literal notranslate"><span class="pre">push</span></code> creates a <strong>public</strong> repository. If you passed <code class="docutils literal notranslate"><span class="pre">--private</span> <span class="pre">true</span></code>, the repository exists but is only visible when logged in. Check <a class="reference external" href="https://huggingface.co/my-org">huggingface.co/my-org</a> while authenticated.</p>
+</section>
+<hr class="docutils" />
+<section id="further-help">
+<h2>Further Help<a class="headerlink" href="#further-help" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>GitHub Issues</strong>: <a class="reference external" href="https://github.com/winstonsmith1897/DantinoX/issues">github.com/winstonsmith1897/DantinoX/issues</a></p></li>
+<li><p><strong>Changelog</strong>: <a class="reference internal" href="changelog.html"><span class="std std-doc">What changed in the latest release</span></a></p></li>
+<li><p><strong>API Reference</strong>: <span class="xref myst">Full API documentation</span></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="contributing.html" class="btn btn-neutral float-left" title="Contributing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

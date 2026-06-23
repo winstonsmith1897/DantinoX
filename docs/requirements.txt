@@ -1,10 +1,17 @@
-# Documentation build dependencies for ReadTheDocs and local mkdocs serve.
+# Documentation build dependencies — Sphinx + Read the Docs theme.
 # Install with: pip install -r docs/requirements.txt
 
-mkdocs>=1.6
-mkdocs-material>=9.5
-mkdocstrings[python]>=0.25
-mkdocs-glightbox>=0.4
-mkdocs-minify-plugin>=0.8
-pymdown-extensions>=10.7
-black>=24.0          # used by mkdocstrings to format API signatures
+# Core Sphinx
+sphinx>=7.3
+
+# Classic Read the Docs HTML theme
+sphinx-rtd-theme>=2.0
+
+# Markdown support (MyST-Parser replaces the MkDocs markdown pipeline)
+myst-parser>=3.0
+
+# Type-hint rendering in autodoc signatures
+sphinx-autodoc-typehints>=1.25
+
+# Nice copy-button on code blocks (RTD-compatible)
+sphinx-copybutton>=0.5

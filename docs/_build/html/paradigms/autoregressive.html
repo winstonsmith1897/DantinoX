@@ -1,0 +1,564 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autoregressive (AR) Generation &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Masked Discrete Diffusion (LLaDA)" href="diffusion.html" />
+    <link rel="prev" title="Generation Paradigms" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Generation Paradigms</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Autoregressive (AR) Generation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#how-it-works-the-core-idea">How it works — the core idea</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#architecture">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#training-objective">Training objective</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#training-configuration">Training configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#kv-cache-how-it-works-and-why-it-matters">KV-Cache — how it works and why it matters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#prefill-phase-the-prompt">Prefill phase (the prompt)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#decode-phase-one-token-at-a-time">Decode phase (one token at a time)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cache-memory-usage">Cache memory usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#generation-python-api">Generation — Python API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#generate-function"><code class="docutils literal notranslate"><span class="pre">generate</span></code> function</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#generator-class-high-level"><code class="docutils literal notranslate"><span class="pre">Generator</span></code> class (high-level)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#generation-cli">Generation — CLI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sampling-strategies-explained">Sampling strategies explained</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#greedy-decoding">Greedy decoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#temperature-scaling">Temperature scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nucleus-top-p-sampling">Nucleus (top-p) sampling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#top-k-sampling">Top-k sampling</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-gpu-data-parallel-training">Multi-GPU data-parallel training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#weight-tying">Weight tying</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Autoregressive (AR) Generation</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/paradigms/autoregressive.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="autoregressive-ar-generation">
+<h1>Autoregressive (AR) Generation<a class="headerlink" href="#autoregressive-ar-generation" title="Link to this heading"></a></h1>
+<p>The autoregressive paradigm is the classical approach to language modelling: the model generates one token at a time, reading all previously generated tokens to predict the next one. It is the simplest paradigm to train and often the fastest to run at inference, thanks to the KV-cache.</p>
+<hr class="docutils" />
+<section id="how-it-works-the-core-idea">
+<h2>How it works — the core idea<a class="headerlink" href="#how-it-works-the-core-idea" title="Link to this heading"></a></h2>
+<p>Given an input sequence of tokens <span class="math notranslate nohighlight">\(x_1, x_2, \ldots, x_t\)</span>, the model predicts the probability distribution over the next token <span class="math notranslate nohighlight">\(x_{t+1}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[
+p_\theta(x_{t+1} \mid x_1, x_2, \ldots, x_t)
+\]</div>
+<p>To generate a full sequence of length <span class="math notranslate nohighlight">\(N\)</span>, this prediction is applied repeatedly:</p>
+<ol class="arabic simple">
+<li><p>Feed the prompt tokens to the model → get distribution over <span class="math notranslate nohighlight">\(x_{t+1}\)</span></p></li>
+<li><p>Sample (or take the argmax) of <span class="math notranslate nohighlight">\(x_{t+1}\)</span></p></li>
+<li><p>Append <span class="math notranslate nohighlight">\(x_{t+1}\)</span> to the context</p></li>
+<li><p>Feed the new context → get distribution over <span class="math notranslate nohighlight">\(x_{t+2}\)</span></p></li>
+<li><p>Repeat until <code class="docutils literal notranslate"><span class="pre">max_new_tokens</span></code> tokens are generated or an EOS token appears</p></li>
+</ol>
+<p>This is called <strong>autoregressive decoding</strong> because each output token is conditioned on all previously generated tokens.</p>
+</section>
+<hr class="docutils" />
+<section id="architecture">
+<h2>Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Input tokens  x₁  x₂  …  xₜ
+       │
+       ▼
+  Token Embedding  [vocab_size → dim]
+       │  (weight-tied to the LM head projection)
+       ▼
+  + Positional Encoding  (RoPE / Sinusoidal / Learned)
+       │
+       ▼
+  Dropout  (only during training; disabled at inference)
+       │
+ ┌─────────────────────────────────────────┐
+ │  Transformer Block  ×  num_blocks       │
+ │                                         │
+ │  ┌─ Pre-Norm (LayerNorm or RMSNorm) ────┤
+ │  │                                      │
+ │  ├─ Attention (MHA / GQA / MLA)        │
+ │  │   └─ Causal mask: position i can    │
+ │  │      only attend to positions ≤ i   │
+ │  │                                      │
+ │  ├─ Residual connection                 │
+ │  │                                      │
+ │  ├─ Pre-Norm (LayerNorm or RMSNorm) ────┤
+ │  │                                      │
+ │  └─ Feed-Forward (Dense MLP or MoE)    │
+ └─────────────────────────────────────────┘
+       │
+       ▼
+  Final LayerNorm
+       │
+       ▼
+  LM Head  [dim → vocab_size]
+       │  (shares weights with Token Embedding if weight_tying=true)
+       ▼
+  Logits  [batch_size, seq_len, vocab_size]
+</pre></div>
+</div>
+<p>The causal mask is what makes the model “autoregressive”: token at position <span class="math notranslate nohighlight">\(i\)</span> can only see tokens at positions <span class="math notranslate nohighlight">\(0, 1, \ldots, i\)</span>. This is implemented as a lower-triangular boolean mask applied to the attention weights before softmax.</p>
+</section>
+<hr class="docutils" />
+<section id="training-objective">
+<h2>Training objective<a class="headerlink" href="#training-objective" title="Link to this heading"></a></h2>
+<p>Training uses <strong>teacher-forcing</strong>: the entire ground-truth sequence is fed as input, and the model predicts every next token simultaneously. This avoids the slow left-to-right generation at training time.</p>
+<p><strong>Loss function:</strong></p>
+<div class="math notranslate nohighlight">
+\[
+\mathcal{L}_{AR} = -\frac{1}{T} \sum_{t=1}^{T} \log p_\theta(x_t \mid x_{&lt;t})
+\]</div>
+<p>This is the average cross-entropy loss across all positions in the sequence. The causal mask ensures the model never “cheats” by looking at future tokens during training.</p>
+<p><strong>What “teacher-forcing” means:</strong> instead of using the model’s own predictions as the next input (which would accumulate errors), we always feed the ground-truth token as input. This makes training much faster and more stable, though it creates a slight train/inference discrepancy (the model never sees its own errors during training).</p>
+<section id="training-configuration">
+<h3>Training configuration<a class="headerlink" href="#training-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Architecture</span>
+<span class="nt">model_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;autoregressive&quot;</span>
+<span class="nt">dim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+<span class="nt">n_heads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="nt">head_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span><span class="w">           </span><span class="c1"># dim = n_heads × head_size  ← strict constraint</span>
+<span class="nt">num_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span>
+<span class="nt">max_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span><span class="w">       </span><span class="c1"># maximum sequence length</span>
+<span class="nt">vocab_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">32000</span>
+
+<span class="c1"># Attention variant</span>
+<span class="nt">attention_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mha&quot;</span><span class="w">   </span><span class="c1"># &quot;mha&quot; | &quot;gqa&quot; | &quot;mla&quot;</span>
+<span class="nt">kv_heads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">             </span><span class="c1"># used only for GQA (n_heads &gt; kv_heads)</span>
+
+<span class="c1"># FFN</span>
+<span class="nt">use_swiglu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># SwiGLU activation (recommended)</span>
+<span class="nt">use_moe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># sparse Mixture of Experts (off by default)</span>
+
+<span class="c1"># Normalisation</span>
+<span class="nt">norm_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;rmsnorm&quot;</span><span class="w">    </span><span class="c1"># &quot;rmsnorm&quot; | &quot;layernorm&quot;</span>
+
+<span class="c1"># Positional encoding</span>
+<span class="nt">use_rotary_pos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># RoPE (recommended)</span>
+
+<span class="c1"># Regularisation</span>
+<span class="nt">dropout_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">       </span><span class="c1"># 0 = disabled (common for LLMs)</span>
+<span class="nt">weight_tying</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">      </span><span class="c1"># tie embedding ↔ LM head (saves vocab_size × dim params)</span>
+
+<span class="c1"># Training</span>
+<span class="nt">lr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3e-4</span>
+<span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span>
+<span class="nt">grad_accum</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="nt">epochs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="nt">optimizer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;adamw&quot;</span>
+<span class="nt">lr_schedule</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cosine&quot;</span>
+<span class="nt">warmup_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">400</span>
+<span class="nt">grad_clip</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="nt">use_bf16</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="kv-cache-how-it-works-and-why-it-matters">
+<h2>KV-Cache — how it works and why it matters<a class="headerlink" href="#kv-cache-how-it-works-and-why-it-matters" title="Link to this heading"></a></h2>
+<p>Without a KV-cache, generating token <span class="math notranslate nohighlight">\(t+1\)</span> would require recomputing the attention keys and values for tokens <span class="math notranslate nohighlight">\(1, \ldots, t\)</span> from scratch. This is O(T²) work per token. With the KV-cache, those keys and values are computed once and reused.</p>
+<section id="prefill-phase-the-prompt">
+<h3>Prefill phase (the prompt)<a class="headerlink" href="#prefill-phase-the-prompt" title="Link to this heading"></a></h3>
+<p>When the prompt is fed to the model, all positions are computed in a single forward pass. The keys and values for every prompt token are stored in the cache:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">K</span><span class="o">-</span><span class="n">cache</span><span class="p">[</span><span class="n">layer</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">:</span><span class="n">T_prompt</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">K_prompt</span>    <span class="c1"># shape: [B, H_kv, T_prompt, d_h]</span>
+<span class="n">V</span><span class="o">-</span><span class="n">cache</span><span class="p">[</span><span class="n">layer</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">:</span><span class="n">T_prompt</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">V_prompt</span>
+<span class="n">cache_index</span> <span class="o">=</span> <span class="n">T_prompt</span>                           <span class="c1"># write pointer</span>
+</pre></div>
+</div>
+</section>
+<section id="decode-phase-one-token-at-a-time">
+<h3>Decode phase (one token at a time)<a class="headerlink" href="#decode-phase-one-token-at-a-time" title="Link to this heading"></a></h3>
+<p>For each new token, only a single forward pass of the query is needed. The new key and value are written at <code class="docutils literal notranslate"><span class="pre">cache_index</span></code> and all previous entries are read:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Inside the attention layer, decode step:</span>
+<span class="n">k_cache</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">dynamic_update_slice</span><span class="p">(</span><span class="n">k_cache</span><span class="p">,</span> <span class="n">k_new</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cache_index</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">v_cache</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">dynamic_update_slice</span><span class="p">(</span><span class="n">v_cache</span><span class="p">,</span> <span class="n">v_new</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cache_index</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="c1"># Attention over all past + current tokens</span>
+<span class="n">attn</span> <span class="o">=</span> <span class="n">query</span> <span class="o">@</span> <span class="n">k_cache</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">cache_index</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># O(T) not O(T²)</span>
+</pre></div>
+</div>
+<p>This brings inference from O(T²) per token down to O(T) per token.</p>
+</section>
+<section id="cache-memory-usage">
+<h3>Cache memory usage<a class="headerlink" href="#cache-memory-usage" title="Link to this heading"></a></h3>
+<p>The cache size depends on the attention variant:</p>
+<div class="math notranslate nohighlight">
+\[
+\text{KV-MB} = L \times 2 \times S \times H_{kv} \times d_h \times \text{bytes per value}
+\]</div>
+<p>where <span class="math notranslate nohighlight">\(L\)</span> = num_blocks, <span class="math notranslate nohighlight">\(S\)</span> = sequence length, <span class="math notranslate nohighlight">\(H_{kv}\)</span> = number of KV heads.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Variant</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(H_{kv}\)</span></p></th>
+<th class="head text-center"><p>Cache at 1024 tok, 12 blocks, fp32</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>MHA (H=8)</p></td>
+<td class="text-center"><p>8</p></td>
+<td class="text-center"><p>768 KB</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>GQA (H_kv=2)</p></td>
+<td class="text-center"><p>2</p></td>
+<td class="text-center"><p>192 KB</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>MLA</p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(d_c^{KV}/d_h\)</span> ≈ 1</p></td>
+<td class="text-center"><p>~48 KB</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="generation-python-api">
+<h2>Generation — Python API<a class="headerlink" href="#generation-python-api" title="Link to this heading"></a></h2>
+<section id="generate-function">
+<h3><code class="docutils literal notranslate"><span class="pre">generate</span></code> function<a class="headerlink" href="#generate-function" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.generation</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+
+<span class="n">cfg</span>   <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;runs/ar_512d/config.yaml&quot;</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">Transformer</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+<span class="c1"># ... load weights ...</span>
+
+<span class="n">tokens</span> <span class="o">=</span> <span class="n">generate</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">prompt_ids</span><span class="p">,</span>            <span class="c1"># int32 array of shape [B, T_prompt]</span>
+    <span class="n">max_generations</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>   <span class="c1"># how many new tokens to generate</span>
+    <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>        <span class="c1"># use KV-cache (strongly recommended for speed)</span>
+    <span class="n">top_p</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>             <span class="c1"># nucleus sampling: keep tokens summing to 90% prob</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>       <span class="c1"># 1.0 = unchanged, &lt;1.0 = sharper, &gt;1.0 = flatter</span>
+    <span class="n">top_k</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>            <span class="c1"># if set, keep only top-k tokens before sampling</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>               <span class="c1"># random seed for reproducibility</span>
+<span class="p">)</span>
+<span class="c1"># tokens: int32 array of shape [B, T_prompt + max_generations]</span>
+</pre></div>
+</div>
+<p><strong>Parameters explained:</strong></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Parameter</p></th>
+<th class="head text-left"><p>Effect</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">top_p</span></code> (nucleus)</p></td>
+<td class="text-left"><p>Sort tokens by probability, keep the smallest set whose cumulative probability ≥ p, sample from it. <code class="docutils literal notranslate"><span class="pre">top_p=1.0</span></code> = no filtering.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">temperature</span></code></p></td>
+<td class="text-left"><p>Divide logits by temperature before softmax. Low value (e.g. 0.3) makes the model very focused. High value (e.g. 1.5) makes it more creative/random.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">top_k</span></code></p></td>
+<td class="text-left"><p>Keep only the k most probable tokens. Often combined with temperature.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>Greedy</p></td>
+<td class="text-left"><p>Set <code class="docutils literal notranslate"><span class="pre">top_p=None,</span> <span class="pre">top_k=1,</span> <span class="pre">temperature=1.0</span></code> to always pick the most probable token.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="generator-class-high-level">
+<h3><code class="docutils literal notranslate"><span class="pre">Generator</span></code> class (high-level)<a class="headerlink" href="#generator-class-high-level" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generator</span>
+
+<span class="n">gen</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">(</span><span class="s2">&quot;runs/ar_512d_12b&quot;</span><span class="p">)</span>  <span class="c1"># loads config + weights automatically</span>
+
+<span class="c1"># Standard generation</span>
+<span class="n">text</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span>
+    <span class="s2">&quot;In the beginning&quot;</span><span class="p">,</span>
+    <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">top_p</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+<span class="c1"># Streaming (print tokens as they are produced)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">gen</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;Chapter 1:&quot;</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="mf">0.95</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">Generator</span></code> class handles:</p>
+<ol class="arabic simple">
+<li><p>Loading <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> from the run directory</p></li>
+<li><p>Instantiating the correct model class based on <code class="docutils literal notranslate"><span class="pre">model_type</span></code></p></li>
+<li><p>Loading <code class="docutils literal notranslate"><span class="pre">best_model_weights.msgpack</span></code> into the model</p></li>
+<li><p>Running the tokenizer for encoding prompts and decoding outputs</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="generation-cli">
+<h2>Generation — CLI<a class="headerlink" href="#generation-cli" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Basic generation</span>
+dantinox<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--run_dir<span class="w"> </span>runs/ar_512d_12b<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--prompt<span class="w"> </span><span class="s2">&quot;In the beginning&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--max_new_tokens<span class="w"> </span><span class="m">200</span>
+
+<span class="c1"># Streaming with nucleus sampling</span>
+dantinox<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--run_dir<span class="w"> </span>runs/ar_512d_12b<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--prompt<span class="w"> </span><span class="s2">&quot;Once upon a time&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--top_p<span class="w"> </span><span class="m">0</span>.9<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--temperature<span class="w"> </span><span class="m">0</span>.8<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--stream
+
+<span class="c1"># Greedy decoding (deterministic)</span>
+dantinox<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--run_dir<span class="w"> </span>runs/ar_512d_12b<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--prompt<span class="w"> </span><span class="s2">&quot;The capital of France is&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--greedy
+
+<span class="c1"># Disable KV-cache (for debugging; much slower)</span>
+dantinox<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--run_dir<span class="w"> </span>runs/ar_512d_12b<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--prompt<span class="w"> </span><span class="s2">&quot;Hello&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--no_cache
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="sampling-strategies-explained">
+<h2>Sampling strategies explained<a class="headerlink" href="#sampling-strategies-explained" title="Link to this heading"></a></h2>
+<section id="greedy-decoding">
+<h3>Greedy decoding<a class="headerlink" href="#greedy-decoding" title="Link to this heading"></a></h3>
+<p>Always picks <span class="math notranslate nohighlight">\(\arg\max_v p_\theta(v \mid x_{&lt;t})\)</span>. Fast and deterministic but tends to produce repetitive, boring output.</p>
+</section>
+<section id="temperature-scaling">
+<h3>Temperature scaling<a class="headerlink" href="#temperature-scaling" title="Link to this heading"></a></h3>
+<p>Divides logits by <span class="math notranslate nohighlight">\(T\)</span> before softmax:
+$<span class="math notranslate nohighlight">\(p'_v = \frac{\exp(\ell_v / T)}{\sum_u \exp(\ell_u / T)}\)</span>$</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(T &lt; 1\)</span>: sharpens the distribution (model is more confident, less creative)</p></li>
+<li><p><span class="math notranslate nohighlight">\(T = 1\)</span>: standard softmax</p></li>
+<li><p><span class="math notranslate nohighlight">\(T &gt; 1\)</span>: flattens the distribution (more random, more diverse)</p></li>
+</ul>
+</section>
+<section id="nucleus-top-p-sampling">
+<h3>Nucleus (top-p) sampling<a class="headerlink" href="#nucleus-top-p-sampling" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Sort tokens by probability (descending)</p></li>
+<li><p>Keep the smallest prefix of tokens whose cumulative probability ≥ p</p></li>
+<li><p>Renormalise and sample
+This avoids selecting very unlikely tokens while keeping diversity. Recommended value: <code class="docutils literal notranslate"><span class="pre">top_p=0.9</span></code> or <code class="docutils literal notranslate"><span class="pre">top_p=0.95</span></code>.</p></li>
+</ol>
+</section>
+<section id="top-k-sampling">
+<h3>Top-k sampling<a class="headerlink" href="#top-k-sampling" title="Link to this heading"></a></h3>
+<p>Keep only the k highest-probability tokens, renormalise, sample. <code class="docutils literal notranslate"><span class="pre">top_k=50</span></code> is a common default.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="multi-gpu-data-parallel-training">
+<h2>Multi-GPU data-parallel training<a class="headerlink" href="#multi-gpu-data-parallel-training" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">n_devices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="nt">use_bf16</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">256</span><span class="w">    </span><span class="c1"># total batch split across 4 GPUs → 64 per device</span>
+<span class="nt">grad_accum</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</pre></div>
+</div>
+<p>!!! warning “Batch size divisibility”
+<code class="docutils literal notranslate"><span class="pre">batch_size</span></code> must be divisible by <code class="docutils literal notranslate"><span class="pre">n_devices</span></code>.
+With 4 GPUs and <code class="docutils literal notranslate"><span class="pre">batch_size=256</span></code>, each device gets 64 samples.</p>
+<p>DantinoX uses JAX’s <strong>SPMD data parallelism</strong>: the model is replicated on every device, and each device processes a different shard of the batch. Gradients are averaged across devices automatically via <code class="docutils literal notranslate"><span class="pre">jax.lax.pmean</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="weight-tying">
+<h2>Weight tying<a class="headerlink" href="#weight-tying" title="Link to this heading"></a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">weight_tying:</span> <span class="pre">true</span></code> (default), the token embedding matrix and the LM head projection share the same weights. This saves <code class="docutils literal notranslate"><span class="pre">vocab_size</span> <span class="pre">×</span> <span class="pre">dim</span></code> parameters — for a 32K vocabulary and dim=512, that’s 16M fewer parameters. It also tends to improve perplexity because the model learns to encode and decode tokens in the same space.</p>
+</section>
+<hr class="docutils" />
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../inference/kv-cache.html"><span class="std std-doc">KV-Cache Mechanics</span></a> — memory formulas, batch size calculator</p></li>
+<li><p><a class="reference internal" href="../training/index.html"><span class="std std-doc">Training Guide</span></a> — optimisers, schedules, gradient accumulation</p></li>
+<li><p><a class="reference internal" href="../configuration.html"><span class="std std-doc">Configuration Reference</span></a> — all fields for <code class="docutils literal notranslate"><span class="pre">ModelConfig</span></code></p></li>
+<li><p><a class="reference internal" href="../benchmarks.html"><span class="std std-doc">Benchmarks</span></a> — throughput numbers for MHA vs GQA vs MLA</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Generation Paradigms" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="diffusion.html" class="btn btn-neutral float-right" title="Masked Discrete Diffusion (LLaDA)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

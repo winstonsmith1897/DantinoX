@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tutorial: Benchmarking a Model &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Pushing to HuggingFace Hub" href="hub.html" />
+    <link rel="prev" title="LoRA Fine-Tuning" href="lora-fine-tuning.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial: Benchmarking a Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-1-analytical-flops">Step 1: Analytical FLOPs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-2-wall-clock-latency">Step 2: Wall-clock latency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-3-full-benchmark-suite">Step 3: Full benchmark suite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-4-custom-benchmark-config">Step 4: Custom benchmark config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-5-visualize-results">Step 5: Visualize results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-6-compare-multiple-models">Step 6: Compare multiple models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Tutorial: Benchmarking a Model</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/tutorials/benchmarking.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="tutorial-benchmarking-a-model">
+<h1>Tutorial: Benchmarking a Model<a class="headerlink" href="#tutorial-benchmarking-a-model" title="Link to this heading"></a></h1>
+<p>This tutorial covers the complete benchmarking workflow: profiling FLOPs, measuring latency, evaluating perplexity, and visualizing results.</p>
+<p><a class="reference external" href="https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/03_benchmarking.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
+<hr class="docutils" />
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dantinox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+
+<span class="c1"># Build a small AR model for demonstration</span>
+<span class="n">cfg</span>      <span class="o">=</span> <span class="n">dx</span><span class="o">.</span><span class="n">ModelConfig</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">n_heads</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">head_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">num_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                           <span class="n">vocab_size</span><span class="o">=</span><span class="mi">8_000</span><span class="p">,</span> <span class="n">causal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">paradigm</span> <span class="o">=</span> <span class="n">dx</span><span class="o">.</span><span class="n">ARParadigm</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<span class="n">model</span>    <span class="o">=</span> <span class="n">paradigm</span><span class="o">.</span><span class="n">build_model</span><span class="p">(</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameters: </span><span class="si">{</span><span class="n">paradigm</span><span class="o">.</span><span class="n">num_parameters</span><span class="p">(</span><span class="n">model</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="step-1-analytical-flops">
+<h2>Step 1: Analytical FLOPs<a class="headerlink" href="#step-1-analytical-flops" title="Link to this heading"></a></h2>
+<p>No model warmup or GPU required — just the config:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">flops</span> <span class="o">=</span> <span class="n">dx</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">flops</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FLOPs</span> <span class="n">breakdown</span><span class="p">:</span>
+  <span class="n">attention</span> <span class="p">:</span> <span class="mf">1.34</span> <span class="n">GFLOPs</span>
+  <span class="n">ffn</span>       <span class="p">:</span> <span class="mf">2.68</span> <span class="n">GFLOPs</span>
+  <span class="n">embedding</span> <span class="p">:</span> <span class="mf">0.02</span> <span class="n">GFLOPs</span>
+  <span class="n">total</span>     <span class="p">:</span> <span class="mf">4.04</span> <span class="n">GFLOPs</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="step-2-wall-clock-latency">
+<h2>Step 2: Wall-clock latency<a class="headerlink" href="#step-2-wall-clock-latency" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.profiling</span><span class="w"> </span><span class="kn">import</span> <span class="n">LatencyTracker</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+
+<span class="n">tracker</span> <span class="o">=</span> <span class="n">LatencyTracker</span><span class="p">()</span>
+<span class="n">x</span>       <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">512</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">8_000</span><span class="p">)</span>
+
+<span class="c1"># Warmup (important — first call triggers XLA compilation)</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># Measure</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">tracker</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">n_tokens</span><span class="o">=</span><span class="mi">4</span> <span class="o">*</span> <span class="mi">512</span><span class="p">):</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Profiling</span> <span class="p">(</span><span class="mi">20</span> <span class="n">samples</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span><span class="mi">960</span> <span class="n">tokens</span><span class="p">):</span>
+  <span class="n">latency</span> <span class="n">mean</span> <span class="p">:</span> <span class="mf">12.4</span> <span class="n">ms</span>
+  <span class="n">latency</span> <span class="n">p50</span>  <span class="p">:</span> <span class="mf">12.1</span> <span class="n">ms</span>
+  <span class="n">latency</span> <span class="n">p99</span>  <span class="p">:</span> <span class="mf">14.8</span> <span class="n">ms</span>
+  <span class="n">throughput</span>   <span class="p">:</span> <span class="mi">330</span><span class="p">,</span><span class="mi">000</span> <span class="n">tokens</span><span class="o">/</span><span class="n">s</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="step-3-full-benchmark-suite">
+<h2>Step 3: Full benchmark suite<a class="headerlink" href="#step-3-full-benchmark-suite" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.benchmarking</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkSuite</span>
+
+<span class="n">report</span> <span class="o">=</span> <span class="n">BenchmarkSuite</span><span class="o">.</span><span class="n">default</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">paradigm</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">save_csv</span><span class="o">=</span><span class="s2">&quot;benchmark.csv&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The default suite runs:</p>
+<ol class="arabic simple">
+<li><p><strong>ThroughputTask</strong> — tok/s vs sequence length (batch=1) and batch size (fixed length)</p></li>
+<li><p><strong>LatencyTask</strong> — prefill latency (all paradigms) + decode latency (AR only)</p></li>
+<li><p><strong>PerplexityTask</strong> — cross-entropy loss over random token batches</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="step-4-custom-benchmark-config">
+<h2>Step 4: Custom benchmark config<a class="headerlink" href="#step-4-custom-benchmark-config" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.benchmarking</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkConfig</span><span class="p">,</span> <span class="n">BenchmarkSuite</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">BenchmarkConfig</span><span class="p">(</span>
+    <span class="n">seq_lens</span>    <span class="o">=</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">1024</span><span class="p">],</span>
+    <span class="n">batch_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
+    <span class="n">n_warmup</span>    <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">n_measure</span>   <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">eval_batches</span><span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">BenchmarkSuite</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">paradigm</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="step-5-visualize-results">
+<h2>Step 5: Visualize results<a class="headerlink" href="#step-5-visualize-results" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.visualization</span><span class="w"> </span><span class="kn">import</span> <span class="n">Visualizer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;benchmark.csv&quot;</span><span class="p">)</span>
+<span class="n">paths</span> <span class="o">=</span> <span class="n">Visualizer</span><span class="p">()</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="s2">&quot;plots/&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span><span class="si">}</span><span class="s2"> figures&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or via CLI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>plot<span class="w"> </span>--in_csv<span class="w"> </span>benchmark.csv<span class="w"> </span>--out_dir<span class="w"> </span>plots/<span class="w"> </span>--groups<span class="w"> </span>perf<span class="w"> </span>insights
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="step-6-compare-multiple-models">
+<h2>Step 6: Compare multiple models<a class="headerlink" href="#step-6-compare-multiple-models" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.visualization</span><span class="w"> </span><span class="kn">import</span> <span class="n">Visualizer</span>
+
+<span class="c1"># Collect results from multiple runs</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">]:</span>
+    <span class="n">cfg_i</span>    <span class="o">=</span> <span class="n">dx</span><span class="o">.</span><span class="n">ModelConfig</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">n_heads</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">head_size</span><span class="o">=</span><span class="n">dim</span> <span class="o">//</span> <span class="mi">4</span><span class="p">,</span>
+                               <span class="n">num_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">vocab_size</span><span class="o">=</span><span class="mi">8_000</span><span class="p">,</span> <span class="n">causal</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">par_i</span>    <span class="o">=</span> <span class="n">dx</span><span class="o">.</span><span class="n">ARParadigm</span><span class="p">(</span><span class="n">cfg_i</span><span class="p">)</span>
+    <span class="n">model_i</span>  <span class="o">=</span> <span class="n">par_i</span><span class="o">.</span><span class="n">build_model</span><span class="p">(</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">report_i</span> <span class="o">=</span> <span class="n">BenchmarkSuite</span><span class="o">.</span><span class="n">throughput_only</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">par_i</span><span class="p">,</span> <span class="n">model_i</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">report_i</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="n">dim</span><span class="p">,</span> <span class="o">**</span><span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">})</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+<span class="n">Visualizer</span><span class="p">()</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">charts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;throughput&quot;</span><span class="p">],</span> <span class="n">out_dir</span><span class="o">=</span><span class="s2">&quot;comparison_plots/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api/benchmarking.html"><span class="std std-doc">API Reference: Benchmarking</span></a> — full API documentation</p></li>
+<li><p><a class="reference internal" href="../architecture/profiling.html"><span class="std std-doc">Architecture: Profiling &amp; Benchmarking</span></a> — system design</p></li>
+<li><p><a class="reference internal" href="../guides/new-benchmark.html"><span class="std std-doc">Developer Guide: Custom Task</span></a> — add your own metrics</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="lora-fine-tuning.html" class="btn btn-neutral float-left" title="LoRA Fine-Tuning" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="hub.html" class="btn btn-neutral float-right" title="Pushing to HuggingFace Hub" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

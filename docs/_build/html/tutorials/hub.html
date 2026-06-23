@@ -1,0 +1,380 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pushing to HuggingFace Hub &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Benchmarks" href="../benchmarks.html" />
+    <link rel="prev" title="Tutorial: Benchmarking a Model" href="benchmarking.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pushing to HuggingFace Hub</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#authentication">1. Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#push-a-checkpoint">2. Push a Checkpoint</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cli">CLI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#python-api">Python API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#load-from-the-hub">3. Load from the Hub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pull-a-checkpoint-locally">4. Pull a Checkpoint Locally</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#versioning">5. Versioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#writing-a-good-model-card">6. Writing a Good Model Card</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Pushing to HuggingFace Hub</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/tutorials/hub.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="pushing-to-huggingface-hub">
+<h1>Pushing to HuggingFace Hub<a class="headerlink" href="#pushing-to-huggingface-hub" title="Link to this heading"></a></h1>
+<p>This tutorial covers publishing a trained DantinoX checkpoint to the HuggingFace Hub, loading it on any machine, and loading it directly into <code class="docutils literal notranslate"><span class="pre">Generator</span></code> by repository name.</p>
+<p><strong>Prerequisites:</strong> a trained checkpoint (see <a class="reference internal" href="first-model.html"><span class="std std-doc">Training Your First Model</span></a>) and a HuggingFace account.</p>
+<hr class="docutils" />
+<section id="authentication">
+<h2>1. Authentication<a class="headerlink" href="#authentication" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>huggingface_hub
+huggingface-cli<span class="w"> </span>login
+</pre></div>
+</div>
+<p>Enter your HuggingFace access token when prompted. Tokens can be created at <a class="reference external" href="https://huggingface.co/settings/tokens">huggingface.co/settings/tokens</a> with <code class="docutils literal notranslate"><span class="pre">write</span></code> scope.</p>
+</section>
+<hr class="docutils" />
+<section id="push-a-checkpoint">
+<h2>2. Push a Checkpoint<a class="headerlink" href="#push-a-checkpoint" title="Link to this heading"></a></h2>
+<section id="cli">
+<h3>CLI<a class="headerlink" href="#cli" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>push<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--run_dir<span class="w"> </span>runs/run_20260101_120000<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo<span class="w"> </span>my-org/dantinox-shakespeare<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--private<span class="w"> </span><span class="nb">false</span>
+</pre></div>
+</div>
+</section>
+<section id="python-api">
+<h3>Python API<a class="headerlink" href="#python-api" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.hub</span><span class="w"> </span><span class="kn">import</span> <span class="n">push</span>
+
+<span class="n">push</span><span class="p">(</span>
+    <span class="n">run_dir</span><span class="o">=</span><span class="s2">&quot;runs/run_20260101_120000&quot;</span><span class="p">,</span>
+    <span class="n">repo_id</span><span class="o">=</span><span class="s2">&quot;my-org/dantinox-shakespeare&quot;</span><span class="p">,</span>
+    <span class="n">private</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>   <span class="c1"># uses the token from `huggingface-cli login`</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The following files are uploaded:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>File</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">config.yaml</span></code></p></td>
+<td class="text-left"><p>Full model and training configuration</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">weights.msgpack</span></code></p></td>
+<td class="text-left"><p>Model weights (Flax serialization)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">tokenizer.json</span></code></p></td>
+<td class="text-left"><p>Fitted tokenizer (char-level or BPE)</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">model_summary.json</span></code></p></td>
+<td class="text-left"><p>Parameter count, FLOPs, architecture summary</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">training_log.csv</span></code></p></td>
+<td class="text-left"><p>Per-epoch train/val loss history</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="load-from-the-hub">
+<h2>3. Load from the Hub<a class="headerlink" href="#load-from-the-hub" title="Link to this heading"></a></h2>
+<p>Once uploaded, the checkpoint is immediately loadable on any machine:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generator</span>
+
+<span class="c1"># Public repository</span>
+<span class="n">gen</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">(</span><span class="s2">&quot;my-org/dantinox-shakespeare&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s2">&quot;To be, or not to be,&quot;</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">200</span><span class="p">))</span>
+
+<span class="c1"># Private repository</span>
+<span class="n">gen_private</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">(</span><span class="s2">&quot;my-org/private-model&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;hf_...&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Generator</span></code> downloads the checkpoint to a local cache the first time it is called and reuses it on subsequent calls.</p>
+</section>
+<hr class="docutils" />
+<section id="pull-a-checkpoint-locally">
+<h2>4. Pull a Checkpoint Locally<a class="headerlink" href="#pull-a-checkpoint-locally" title="Link to this heading"></a></h2>
+<p>To download the checkpoint to a specific directory (for fine-tuning, benchmarking, etc.):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>pull<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo<span class="w"> </span>my-org/dantinox-shakespeare<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--local_dir<span class="w"> </span>runs/pulled
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.hub</span><span class="w"> </span><span class="kn">import</span> <span class="n">pull</span>
+
+<span class="n">local_dir</span> <span class="o">=</span> <span class="n">pull</span><span class="p">(</span>
+    <span class="n">repo_id</span><span class="o">=</span><span class="s2">&quot;my-org/dantinox-shakespeare&quot;</span><span class="p">,</span>
+    <span class="n">local_dir</span><span class="o">=</span><span class="s2">&quot;runs/pulled&quot;</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The downloaded directory has the same structure as a local run directory and can be passed directly to <code class="docutils literal notranslate"><span class="pre">Trainer</span></code>, <code class="docutils literal notranslate"><span class="pre">Generator</span></code>, or <code class="docutils literal notranslate"><span class="pre">Transformer.from_pretrained</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="versioning">
+<h2>5. Versioning<a class="headerlink" href="#versioning" title="Link to this heading"></a></h2>
+<p>HuggingFace Hub uses git under the hood. Every <code class="docutils literal notranslate"><span class="pre">push</span></code> call creates a new commit. To load a specific version:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gen</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">(</span><span class="s2">&quot;my-org/dantinox-shakespeare&quot;</span><span class="p">,</span> <span class="n">revision</span><span class="o">=</span><span class="s2">&quot;v1.0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Tag a release on the Hub web interface or via:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">huggingface_hub</span><span class="w"> </span><span class="kn">import</span> <span class="n">HfApi</span>
+<span class="n">HfApi</span><span class="p">()</span><span class="o">.</span><span class="n">create_tag</span><span class="p">(</span><span class="s2">&quot;my-org/dantinox-shakespeare&quot;</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;v1.0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="writing-a-good-model-card">
+<h2>6. Writing a Good Model Card<a class="headerlink" href="#writing-a-good-model-card" title="Link to this heading"></a></h2>
+<p>HuggingFace Hub repositories display a <code class="docutils literal notranslate"><span class="pre">README.md</span></code> as a model card. A well-written model card improves discoverability and reproducibility. A minimal template:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>---
+language: en
+license: mit
+tags:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>jax
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>transformer
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>language-model
+<span class="gu">  - dantinox</span>
+<span class="gu">---</span>
+
+<span class="gh"># my-org/dantinox-shakespeare</span>
+
+A DantinoX GQA Transformer trained on TinyShakespeare.
+
+<span class="gu">## Model details</span>
+
+| | |
+|---|---|
+| Architecture | GQA Transformer (dim=256, layers=6, heads=8) |
+| Parameters | ~8 M |
+| Training data | TinyShakespeare (~1 M tokens) |
+| Context length | 256 tokens |
+
+<span class="gu">## Usage</span>
+
+\```python
+from dantinox.generator import Generator
+
+gen = Generator(&quot;my-org/dantinox-shakespeare&quot;)
+print(gen.generate(&quot;To be, or not to be,&quot;, max_new_tokens=200))
+\```
+
+<span class="gu">## Training</span>
+
+Trained with DantinoX using the <span class="sb">`wsd`</span> LR schedule and bfloat16 mixed precision.
+See <span class="sb">`config.yaml`</span> for full hyperparameters.
+</pre></div>
+</div>
+<p>Create the file at <code class="docutils literal notranslate"><span class="pre">runs/run_20260101_120000/README.md</span></code> before calling <code class="docutils literal notranslate"><span class="pre">push</span></code> — it will be uploaded alongside the weights.</p>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Goal</p></th>
+<th class="head text-left"><p>Reference</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>Adapt the pushed model to a new domain</p></td>
+<td class="text-left"><p><a class="reference internal" href="lora-fine-tuning.html"><span class="std std-doc">LoRA Fine-Tuning</span></a></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>Benchmark the pushed model</p></td>
+<td class="text-left"><p><a class="reference internal" href="../benchmarks.html"><span class="std std-doc">Benchmarks</span></a></p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>Full Hub API reference</p></td>
+<td class="text-left"><p><span class="xref myst">API Reference — Hub</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="benchmarking.html" class="btn btn-neutral float-left" title="Tutorial: Benchmarking a Model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../benchmarks.html" class="btn btn-neutral float-right" title="Benchmarks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

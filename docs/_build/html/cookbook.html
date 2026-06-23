@@ -1,0 +1,677 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cookbook &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="_static/dantinox.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=6c02275b"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Interactive Notebooks" href="notebooks/index.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            DantinoX
+              <img src="_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Cookbook</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#train-an-ar-model-on-a-local-file">1. Train an AR model on a local file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#train-a-masked-diffusion-llada-model">2. Train a Masked Diffusion (LLaDA) model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#train-an-elf-continuous-flow-model">3. Train an ELF (continuous flow) model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#resume-interrupted-training">4. Resume interrupted training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generate-text-from-ar">5. Generate text from AR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generate-text-from-diffusion">6. Generate text from Diffusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lora-fine-tuning">7. LoRA fine-tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#load-a-model-for-inference">8. Load a model for inference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#push-pull-to-huggingface-hub">9. Push / pull to HuggingFace Hub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#find-the-optimal-learning-rate">10. Find the optimal learning rate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#benchmark-trained-checkpoints">11. Benchmark trained checkpoints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameter-count-and-flops">12. Parameter count and FLOPs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-gpu-training">13. Multi-GPU training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#convert-between-config-apis">14. Convert between config APIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Cookbook</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/cookbook.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="cookbook">
+<h1>Cookbook<a class="headerlink" href="#cookbook" title="Link to this heading"></a></h1>
+<p>Short, copy-paste recipes for the most common DantinoX patterns.</p>
+<div class="grid cards" markdown>
+<ul class="simple">
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-play-circle<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#train-an-ar-model-on-a-local-file">Train AR model</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-blur<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#train-a-masked-diffusion-llada-model">Train Diffusion model</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-wave<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#train-an-elf-continuous-flow-model">Train ELF model</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-restore<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#resume-interrupted-training">Resume training</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-text-box-outline<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#generate-text-from-ar">Generate (AR)</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-blur-radial<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#generate-text-from-diffusion">Generate (Diffusion)</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-tune<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#lora-fine-tuning">LoRA fine-tuning</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-code-braces<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#load-a-model-for-inference">Load for inference</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-cloud-upload<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#push-pull-to-huggingface-hub">Hub push/pull</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-magnify<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#find-the-optimal-learning-rate">LR range test</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-chart-bar<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#benchmark-trained-checkpoints">Benchmark</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-counter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#parameter-count-and-flops">Parameter count &amp; FLOPs</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-server-network<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#multi-gpu-training">Multi-GPU training</a></p>
+</dd>
+</dl>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-swap-horizontal<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#convert-between-config-apis">Convert configs</a></p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<hr class="docutils" />
+<section id="train-an-ar-model-on-a-local-file">
+<h2>1. Train an AR model on a local file<a class="headerlink" href="#train-an-ar-model-on-a-local-file" title="Link to this heading"></a></h2>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+import dantinox as dx
+
+run_dir = dx.fit(
+    &quot;ar&quot;,
+    &quot;data/corpus.txt&quot;,
+    dim=256, n_heads=8, head_size=32, num_blocks=6,
+    vocab_size=200, max_context=512,
+    lr=3e-4, epochs=10, batch_size=32,
+)
+print(&quot;Checkpoint:&quot;, run_dir)
+```
+</pre></div>
+</div>
+<p>=== “CLI”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/default_config.yaml \
+    --data_path data/corpus.txt
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="train-a-masked-diffusion-llada-model">
+<h2>2. Train a Masked Diffusion (LLaDA) model<a class="headerlink" href="#train-a-masked-diffusion-llada-model" title="Link to this heading"></a></h2>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+import dantinox as dx
+
+run_dir = dx.fit(
+    &quot;diffusion&quot;,
+    &quot;data/corpus.txt&quot;,
+    dim=256, n_heads=8, head_size=32, num_blocks=6,
+    vocab_size=32000, max_context=512,
+    model_type=&quot;diffusion&quot;,
+    diffusion_steps=1000,
+    noise_schedule=&quot;cosine&quot;,
+    tokenizer_type=&quot;bpe&quot;,
+    tokenizer_path=&quot;t5-base&quot;,
+    lr=1e-4, epochs=20, batch_size=16,
+)
+```
+</pre></div>
+</div>
+<p>=== “CLI”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/diffusion_base.yaml \
+    --data_path wiki.txt \
+    --model_type diffusion \
+    --noise_schedule cosine \
+    --tokenizer_type bpe
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="train-an-elf-continuous-flow-model">
+<h2>3. Train an ELF (continuous flow) model<a class="headerlink" href="#train-an-elf-continuous-flow-model" title="Link to this heading"></a></h2>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+import dantinox as dx
+
+run_dir = dx.fit(
+    &quot;elf&quot;,
+    &quot;data/corpus.txt&quot;,
+    model_type=&quot;elf&quot;,
+    dim=256, n_heads=8, head_size=32, num_blocks=6,
+    vocab_size=32000, max_context=256,
+    embed_dim=256, bottleneck_dim=64,
+    elf_n_steps=64, elf_cfg_scale=1.5,
+    tokenizer_type=&quot;bpe&quot;, tokenizer_path=&quot;t5-base&quot;,
+    lr=1e-4, epochs=30,
+)
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="resume-interrupted-training">
+<h2>4. Resume interrupted training<a class="headerlink" href="#resume-interrupted-training" title="Link to this heading"></a></h2>
+<p>=== “CLI”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/default_config.yaml \
+    --data_path wiki.txt \
+    --run_dir runs/ar_mha_512d_12b \
+    --resume
+```
+</pre></div>
+</div>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+from dantinox.trainer import Trainer
+from dantinox.core.config import Config
+
+cfg     = Config.from_yaml(&quot;runs/ar_mha_512d_12b/config.yaml&quot;)
+trainer = Trainer(cfg)
+trainer.fit(&quot;wiki.txt&quot;, run_dir=&quot;runs/ar_mha_512d_12b&quot;, resume=True)
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="generate-text-from-ar">
+<h2>5. Generate text from AR<a class="headerlink" href="#generate-text-from-ar" title="Link to this heading"></a></h2>
+<p>=== “CLI — streaming”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox generate \
+    --run_dir runs/ar_mha_512d_12b \
+    --prompt &quot;In the beginning&quot; \
+    --stream --top_p 0.9
+```
+</pre></div>
+</div>
+<p>=== “CLI — batch”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox generate \
+    --run_dir runs/ar_mha_512d_12b \
+    --prompt &quot;In the beginning&quot; \
+    --top_p 0.9 --temperature 0.8 \
+    --max_new_tokens 300
+```
+</pre></div>
+</div>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+from dantinox.generator import Generator
+
+gen  = Generator(&quot;runs/ar_mha_512d_12b&quot;)
+text = gen.generate(&quot;In the beginning&quot;, max_new_tokens=200, top_p=0.9)
+print(text)
+
+# Token-by-token streaming
+for chunk in gen.stream(&quot;In the beginning&quot;, max_new_tokens=200):
+    print(chunk, end=&quot;&quot;, flush=True)
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="generate-text-from-diffusion">
+<h2>6. Generate text from Diffusion<a class="headerlink" href="#generate-text-from-diffusion" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span><span class="o">,</span><span class="w"> </span><span class="nn">msgpack</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax.serialization</span><span class="w"> </span><span class="kn">import</span> <span class="n">_msgpack_ext_unpack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiffusionTransformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.generation</span><span class="w"> </span><span class="kn">import</span> <span class="n">diffusion_generate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.diffusion</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_noise_schedule</span>
+
+<span class="c1"># Load config and model</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;runs/diff_mha_512d/config.yaml&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">DiffusionTransformer</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">42</span><span class="p">))</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;runs/diff_mha_512d/best_model_weights.msgpack&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">msgpack</span><span class="o">.</span><span class="n">unpackb</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">ext_hook</span><span class="o">=</span><span class="n">_msgpack_ext_unpack</span><span class="p">,</span> <span class="n">strict_map_key</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">nnx</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+
+<span class="c1"># Generate (iterative unmasking)</span>
+<span class="n">schedule</span> <span class="o">=</span> <span class="n">make_noise_schedule</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<span class="n">prefix</span>   <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>    <span class="c1"># empty prefix = unconditional</span>
+<span class="n">tokens</span>   <span class="o">=</span> <span class="n">diffusion_generate</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span>
+    <span class="n">gen_len</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+    <span class="n">schedule</span><span class="o">=</span><span class="n">schedule</span><span class="p">,</span>
+    <span class="n">mask_token_id</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">mask_token_id</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>!!! tip “Fast-dLLM DualCache”
+For 1.4–2.1× faster generation, use <code class="docutils literal notranslate"><span class="pre">fast_dllm_generate</span></code> with <code class="docutils literal notranslate"><span class="pre">block_size=32</span></code>. See <a class="reference internal" href="paradigms/fast-dllm.html"><span class="std std-doc">Fast-dLLM DualCache</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="lora-fine-tuning">
+<h2>7. LoRA fine-tuning<a class="headerlink" href="#lora-fine-tuning" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">msgpack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax.serialization</span><span class="w"> </span><span class="kn">import</span> <span class="n">_msgpack_ext_unpack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trainer</span>
+
+<span class="c1"># Load the base checkpoint config and inject LoRA</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;runs/ar_base/config.yaml&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+<span class="n">lora_cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+    <span class="o">**</span><span class="n">raw</span><span class="p">,</span>
+    <span class="s2">&quot;use_lora&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s2">&quot;lora_rank&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s2">&quot;lora_alpha&quot;</span><span class="p">:</span> <span class="mf">16.0</span><span class="p">,</span>
+    <span class="s2">&quot;lora_targets&quot;</span><span class="p">:</span> <span class="s2">&quot;attention&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>    <span class="c1"># higher LR fine for adapters — base weights are frozen</span>
+    <span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="c1"># Build model and load pretrained weights</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">Transformer</span><span class="p">(</span><span class="n">lora_cfg</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">42</span><span class="p">))</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;runs/ar_base/best_model_weights.msgpack&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">msgpack</span><span class="o">.</span><span class="n">unpackb</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">ext_hook</span><span class="o">=</span><span class="n">_msgpack_ext_unpack</span><span class="p">,</span> <span class="n">strict_map_key</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">nnx</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+
+<span class="c1"># Fine-tune — only LoRA adapters are updated</span>
+<span class="n">ft_run</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span><span class="n">lora_cfg</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="s2">&quot;data/new_domain.txt&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Merge adapters into base weights before deployment:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.lora</span><span class="w"> </span><span class="kn">import</span> <span class="n">merge_lora</span>
+<span class="n">merged</span> <span class="o">=</span> <span class="n">merge_lora</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>    <span class="c1"># pure base architecture, no LoRA overhead</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="load-a-model-for-inference">
+<h2>8. Load a model for inference<a class="headerlink" href="#load-a-model-for-inference" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span><span class="o">,</span><span class="w"> </span><span class="nn">msgpack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax.serialization</span><span class="w"> </span><span class="kn">import</span> <span class="n">_msgpack_ext_unpack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_model</span><span class="p">(</span><span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">/config.yaml&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Transformer</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">42</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;best_model_weights.msgpack&quot;</span><span class="p">,</span> <span class="s2">&quot;model_weights.msgpack&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="n">msgpack</span><span class="o">.</span><span class="n">unpackb</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">ext_hook</span><span class="o">=</span><span class="n">_msgpack_ext_unpack</span><span class="p">,</span> <span class="n">strict_map_key</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">nnx</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="n">cfg</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="k">continue</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No weights found in </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">model</span><span class="p">,</span> <span class="n">cfg</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="s2">&quot;runs/ar_mha_512d_12b&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="push-pull-to-huggingface-hub">
+<h2>9. Push / pull to HuggingFace Hub<a class="headerlink" href="#push-pull-to-huggingface-hub" title="Link to this heading"></a></h2>
+<p>=== “CLI”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+# Upload
+dantinox push \
+    --run_dir runs/ar_mha_512d \
+    --repo my-org/dantinox-ar-medium \
+    --private
+
+# Download
+dantinox pull \
+    --repo my-org/dantinox-ar-medium \
+    --local_dir runs/ar_from_hub
+```
+</pre></div>
+</div>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+from dantinox.hub import push, pull
+
+push(&quot;runs/ar_mha_512d&quot;, &quot;my-org/dantinox-ar-medium&quot;, private=True)
+pull(&quot;my-org/dantinox-ar-medium&quot;, local_dir=&quot;runs/ar_from_hub&quot;)
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="find-the-optimal-learning-rate">
+<h2>10. Find the optimal learning rate<a class="headerlink" href="#find-the-optimal-learning-rate" title="Link to this heading"></a></h2>
+<p>=== “CLI”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox find-lr \
+    --config configs/default_config.yaml \
+    --data_path wiki.txt \
+    --plot
+# → Suggested learning rate: 3.47e-04
+# → Plot saved to: lr_finder.png
+```
+</pre></div>
+</div>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+from dantinox.trainer import Trainer
+from dantinox.core.config import Config
+
+cfg  = Config.from_yaml(&quot;configs/default_config.yaml&quot;)
+t    = Trainer(cfg)
+lr, _, _ = t.find_lr(&quot;wiki.txt&quot;, min_lr=1e-7, max_lr=1.0, num_steps=150)
+print(f&quot;Suggested LR: {lr:.2e}&quot;)
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="benchmark-trained-checkpoints">
+<h2>11. Benchmark trained checkpoints<a class="headerlink" href="#benchmark-trained-checkpoints" title="Link to this heading"></a></h2>
+<p>=== “All runs”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox infbench \
+    --trained \
+    --runs-dir runs \
+    --trained-csv results/my_benchmark.csv \
+    --n-trials 20
+```
+</pre></div>
+</div>
+<p>=== “Selected runs only”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox benchmark \
+    --runs_dir runs \
+    --runs ar_mha_512d diff_mha_512d \
+    --out_csv results/comparison.csv
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="parameter-count-and-flops">
+<h2>12. Parameter count and FLOPs<a class="headerlink" href="#parameter-count-and-flops" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.profiling</span><span class="w"> </span><span class="kn">import</span> <span class="n">count_flops</span>
+
+<span class="n">cfg</span>    <span class="o">=</span> <span class="n">ModelConfig</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">n_heads</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">head_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">num_blocks</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">vocab_size</span><span class="o">=</span><span class="mi">32000</span><span class="p">)</span>
+<span class="n">model</span>  <span class="o">=</span> <span class="n">Transformer</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="n">params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree_util</span><span class="o">.</span><span class="n">tree_leaves</span><span class="p">(</span><span class="n">nnx</span><span class="o">.</span><span class="n">state</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Param</span><span class="p">)))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameters: </span><span class="si">{</span><span class="n">params</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">M&quot;</span><span class="p">)</span>
+
+<span class="n">flops</span> <span class="o">=</span> <span class="n">count_flops</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FLOPs (seq=512): </span><span class="si">{</span><span class="n">flops</span><span class="o">.</span><span class="n">total</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GFLOPs&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="multi-gpu-training">
+<h2>13. Multi-GPU training<a class="headerlink" href="#multi-gpu-training" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>train<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/large.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>wiki.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n_devices<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--grad_accum<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--batch_size<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--use_bf16<span class="w"> </span><span class="nb">true</span>
+</pre></div>
+</div>
+<p>!!! info “Effective batch size”
+With the flags above: <code class="docutils literal notranslate"><span class="pre">32</span> <span class="pre">×</span> <span class="pre">8</span> <span class="pre">×</span> <span class="pre">4</span> <span class="pre">=</span> <span class="pre">1024</span></code> tokens per step. JAX SPMD replicates the model on all 4 devices and reduces gradients automatically — no code changes needed.</p>
+</section>
+<hr class="docutils" />
+<section id="convert-between-config-apis">
+<h2>14. Convert between config APIs<a class="headerlink" href="#convert-between-config-apis" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;configs/default_config.yaml&quot;</span><span class="p">)</span>
+
+<span class="c1"># To the new split API</span>
+<span class="n">model_cfg</span>    <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">to_model_config</span><span class="p">()</span>   <span class="c1"># → ModelConfig</span>
+<span class="n">elf_cfg</span>      <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">to_elf_config</span><span class="p">()</span>     <span class="c1"># → ELFConfig (when model_type=&quot;elf&quot;)</span>
+
+<span class="c1"># Use with Paradigm API</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.paradigms.ar</span><span class="w"> </span><span class="kn">import</span> <span class="n">ARParadigm</span>
+<span class="n">paradigm</span> <span class="o">=</span> <span class="n">ARParadigm</span><span class="p">(</span><span class="n">model_cfg</span><span class="p">)</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+<p>!!! tip “More examples”
+See the <a class="reference internal" href="notebooks/index.html"><span class="std std-doc">Notebooks</span></a> for interactive, runnable versions of these recipes on Google Colab.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="notebooks/index.html" class="btn btn-neutral float-right" title="Interactive Notebooks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

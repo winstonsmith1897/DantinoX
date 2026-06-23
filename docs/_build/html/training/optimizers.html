@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optimizers &amp; Schedules &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Hyperparameter Sweeps" href="sweeps.html" />
+    <link rel="prev" title="Diffusion Model Training" href="diffusion.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Optimizers &amp; Schedules</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#optimizers">Optimizers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#muon-notes">Muon notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#lr-schedules">LR schedules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cosine-cosine">Cosine (<code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#linear-linear">Linear (<code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#constant-constant">Constant (<code class="docutils literal notranslate"><span class="pre">&quot;constant&quot;</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wsd-warm-stable-decay-wsd">WSD — Warm-Stable-Decay (<code class="docutils literal notranslate"><span class="pre">&quot;wsd&quot;</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#lora-aware-optimization">LoRA-aware optimization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#cli">CLI</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Optimizers &amp; Schedules</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/training/optimizers.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="optimizers-schedules">
+<h1>Optimizers &amp; Schedules<a class="headerlink" href="#optimizers-schedules" title="Link to this heading"></a></h1>
+<p>DantinoX ships five optimizers and four LR schedules, all configurable from <code class="docutils literal notranslate"><span class="pre">TrainingConfig</span></code>. The optimizer is built by <code class="docutils literal notranslate"><span class="pre">build_optimizer(model,</span> <span class="pre">config,</span> <span class="pre">total_steps)</span></code> which returns an <code class="docutils literal notranslate"><span class="pre">nnx.Optimizer</span></code> ready for use in the training loop.</p>
+<hr class="docutils" />
+<section id="optimizers">
+<h2>Optimizers<a class="headerlink" href="#optimizers" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">config.optimizer</span></code></p></th>
+<th class="head text-left"><p>Algorithm</p></th>
+<th class="head text-left"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;adamw&quot;</span></code></p></td>
+<td class="text-left"><p>AdamW</p></td>
+<td class="text-left"><p>Default. <code class="docutils literal notranslate"><span class="pre">weight_decay=0.1</span></code>. Good all-around baseline.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;adafactor&quot;</span></code></p></td>
+<td class="text-left"><p>Adafactor</p></td>
+<td class="text-left"><p>Memory-efficient: no second-moment state. Use for large models on tight VRAM.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;lion&quot;</span></code></p></td>
+<td class="text-left"><p>Lion</p></td>
+<td class="text-left"><p>Sign-gradient update. Typically needs 3–10× lower LR than AdamW.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;adam&quot;</span></code></p></td>
+<td class="text-left"><p>Adam</p></td>
+<td class="text-left"><p>No weight decay. Useful for fine-tuning when decay hurts.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;muon&quot;</span></code></p></td>
+<td class="text-left"><p>Muon</p></td>
+<td class="text-left"><p>Newton-Schulz orthogonalization for 2D weights. Strong empirical results on LM pre-training.</p></td>
+</tr>
+</tbody>
+</table>
+<section id="muon-notes">
+<h3>Muon notes<a class="headerlink" href="#muon-notes" title="Link to this heading"></a></h3>
+<p>Muon (<code class="docutils literal notranslate"><span class="pre">optax.contrib.muon</span></code>) applies Newton-Schulz iterations to orthogonalize 2D parameter updates before applying them. This is equivalent to computing the unitary factor of the polar decomposition and has been shown to improve training stability and convergence speed on language model pre-training.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Muon skips the outer grad-clip chain — it handles normalization internally.</span>
+<span class="c1"># All other optimizers:  optax.chain(clip_by_global_norm, base_optimizer)</span>
+<span class="c1"># Muon:                  optax.contrib.muon(lr_schedule)  (no chain)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="lr-schedules">
+<h2>LR schedules<a class="headerlink" href="#lr-schedules" title="Link to this heading"></a></h2>
+<section id="cosine-cosine">
+<h3>Cosine (<code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code>)<a class="headerlink" href="#cosine-cosine" title="Link to this heading"></a></h3>
+<p>Linear warmup → cosine decay to 1 % of peak.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>lr
+▲
+│    ████
+│  ██    ██
+│ █        ██
+│█           ████████
+└──────────────────────► step
+   warmup   decay
+</pre></div>
+</div>
+</section>
+<section id="linear-linear">
+<h3>Linear (<code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>)<a class="headerlink" href="#linear-linear" title="Link to this heading"></a></h3>
+<p>Linear warmup → linear decay to 1 % of peak.</p>
+</section>
+<section id="constant-constant">
+<h3>Constant (<code class="docutils literal notranslate"><span class="pre">&quot;constant&quot;</span></code>)<a class="headerlink" href="#constant-constant" title="Link to this heading"></a></h3>
+<p>Linear warmup → flat plateau at peak LR.</p>
+</section>
+<section id="wsd-warm-stable-decay-wsd">
+<h3>WSD — Warm-Stable-Decay (<code class="docutils literal notranslate"><span class="pre">&quot;wsd&quot;</span></code>)<a class="headerlink" href="#wsd-warm-stable-decay-wsd" title="Link to this heading"></a></h3>
+<p>Three phases: linear warmup → 40 % stable plateau → cosine decay.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>lr
+▲
+│    ████████████████
+│  ██               ████
+│ █                     ████████
+│█
+└──────────────────────────────► step
+   warmup    stable      decay
+</pre></div>
+</div>
+<p>!!! tip “WSD for long runs”
+WSD tends to outperform cosine on long pre-training runs (&gt;100 K steps) because the stable phase allows the optimizer to settle before the final decay.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.training.optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_optimizer</span><span class="p">,</span> <span class="n">build_schedule</span>
+
+<span class="n">cfg</span> <span class="o">=</span> <span class="n">TrainingConfig</span><span class="p">(</span>
+    <span class="n">lr</span><span class="o">=</span><span class="mf">3e-4</span><span class="p">,</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="s2">&quot;muon&quot;</span><span class="p">,</span>
+    <span class="n">lr_schedule</span><span class="o">=</span><span class="s2">&quot;wsd&quot;</span><span class="p">,</span>
+    <span class="n">grad_clip</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">build_optimizer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="mi">50_000</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="lora-aware-optimization">
+<h3>LoRA-aware optimization<a class="headerlink" href="#lora-aware-optimization" title="Link to this heading"></a></h3>
+<p>When the model contains <code class="docutils literal notranslate"><span class="pre">LoRAParam</span></code> variables, <code class="docutils literal notranslate"><span class="pre">build_optimizer</span></code> automatically applies <code class="docutils literal notranslate"><span class="pre">optax.multi_transform</span></code> so that only adapter parameters receive gradient updates. Base <code class="docutils literal notranslate"><span class="pre">nnx.Param</span></code> weights are frozen at the type level — no manual masking required.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Verified by build_optimizer internals:</span>
+<span class="c1"># if _model_has_lora(model):</span>
+<span class="c1">#     tx = optax.multi_transform(</span>
+<span class="c1">#         {&quot;lora&quot;: base_optimizer, &quot;frozen&quot;: optax.set_to_zero()},</span>
+<span class="c1">#         label_fn,</span>
+<span class="c1">#     )</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="cli">
+<h2>CLI<a class="headerlink" href="#cli" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>train<span class="w"> </span>--config<span class="w"> </span>configs/default_config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--optimizer<span class="w"> </span>muon<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--lr_schedule<span class="w"> </span>wsd<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--lr<span class="w"> </span>1e-4
+</pre></div>
+</div>
+<p>Any <code class="docutils literal notranslate"><span class="pre">TrainingConfig</span></code> field can be overridden via CLI flags. Config YAML values are the base; CLI flags override on top.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="diffusion.html" class="btn btn-neutral float-left" title="Diffusion Model Training" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="sweeps.html" class="btn btn-neutral float-right" title="Hyperparameter Sweeps" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

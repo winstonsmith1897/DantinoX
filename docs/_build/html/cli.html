@@ -1,0 +1,1227 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLI Reference &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="_static/dantinox.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=6c02275b"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contributing" href="contributing.html" />
+    <link rel="prev" title="Configuration Reference" href="configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            DantinoX
+              <img src="_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CLI Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#commands-at-a-glance">Commands at a glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#train">train</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#arguments">Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#output-structure">Output structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#generate">generate</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#sweep">sweep</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#benchmark">benchmark</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#infbench">infbench</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pipeline-stages">Pipeline stages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#find-lr">find-lr</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id7">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#push">push</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id8">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pull">pull</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id9">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#plot">plot</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id10">Arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#merge-lora">merge-lora</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id11">Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#profile">profile</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id13">Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#output-example">Output example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#eval">eval</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id15">Arguments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#metrics">Metrics</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">CLI Reference</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/cli.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="cli-reference">
+<h1>CLI Reference<a class="headerlink" href="#cli-reference" title="Link to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">dantinox</span></code> command is installed automatically by <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">dantinox</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>&lt;subcommand&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+dantinox<span class="w"> </span>--version
+</pre></div>
+</div>
+<hr class="docutils" />
+<section id="commands-at-a-glance">
+<h2>Commands at a glance<a class="headerlink" href="#commands-at-a-glance" title="Link to this heading"></a></h2>
+<div class="grid cards" markdown>
+<ul>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-school<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>train</strong></p>
+</dd>
+</dl>
+<p>Train a model from a YAML config file and a text corpus.</p>
+<p><a class="reference internal" href="#train">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-text-box-outline<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>generate</strong></p>
+</dd>
+</dl>
+<p>Generate text from a trained checkpoint. Supports AR, Diffusion, and ELF.</p>
+<p><a class="reference internal" href="#generate">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-chart-scatter-plot<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sweep</strong></p>
+</dd>
+</dl>
+<p>Launch a W&amp;B Bayesian hyperparameter sweep.</p>
+<p><a class="reference internal" href="#sweep">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-speedometer<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>benchmark</strong></p>
+</dd>
+</dl>
+<p>Benchmark all (or selected) trained run directories.</p>
+<p><a class="reference internal" href="#benchmark">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-chart-bar<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>infbench</strong></p>
+</dd>
+</dl>
+<p>Full 4-stage inference benchmark suite (random-model sweep + trained pipeline).</p>
+<p><a class="reference internal" href="#infbench">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-magnify-scan<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>find-lr</strong></p>
+</dd>
+</dl>
+<p>Run the LR range test and suggest an optimal learning rate.</p>
+<p><a class="reference internal" href="#find-lr">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-upload<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>push</strong></p>
+</dd>
+</dl>
+<p>Upload a trained checkpoint to the HuggingFace Hub.</p>
+<p><a class="reference internal" href="#push">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-download<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>pull</strong></p>
+</dd>
+</dl>
+<p>Download a checkpoint from the HuggingFace Hub.</p>
+<p><a class="reference internal" href="#pull">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-image-multiple<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plot</strong></p>
+</dd>
+</dl>
+<p>Re-generate benchmark plots from an existing results CSV.</p>
+<p><a class="reference internal" href="#plot">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-merge<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>merge-lora</strong></p>
+</dd>
+</dl>
+<p>Fold LoRA adapters into base weights and save a standalone checkpoint.</p>
+<p><a class="reference internal" href="#merge-lora">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-cpu-64-bit<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>profile</strong></p>
+</dd>
+</dl>
+<p>Print parameter count and FLOPs for a config or checkpoint.</p>
+<p><a class="reference internal" href="#profile">Details →</a></p>
+</li>
+<li><dl class="myst field-list simple">
+<dt class="field-odd">material-clipboard-check-outline<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eval</strong></p>
+</dd>
+</dl>
+<p>Evaluate generation quality (distinct-N, repetition, MAUVE) on a checkpoint.</p>
+<p><a class="reference internal" href="#eval">Details →</a></p>
+</li>
+</ul>
+</div>
+</section>
+<hr class="docutils" />
+<section id="train">
+<h2>train<a class="headerlink" href="#train" title="Link to this heading"></a></h2>
+<p>Train a model from a YAML config file. Any <code class="docutils literal notranslate"><span class="pre">Config</span></code> field can be overridden directly on the command line.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>train<span class="w"> </span>--config<span class="w"> </span>configs/default_config.yaml<span class="w"> </span>--data_path<span class="w"> </span>data/wiki.txt
+</pre></div>
+</div>
+<section id="arguments">
+<h3>Arguments<a class="headerlink" href="#arguments" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--config</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">configs/default_config.yaml</span></code></p></td>
+<td class="text-left"><p>Path to the YAML config file.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--data_path</span></code></p></td>
+<td class="text-center"><p>—</p></td>
+<td class="text-left"><p>Training corpus <code class="docutils literal notranslate"><span class="pre">.txt</span></code> file, or HF dataset identifier when using <code class="docutils literal notranslate"><span class="pre">--dataset_source</span> <span class="pre">huggingface</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--run_dir</span></code></p></td>
+<td class="text-center"><p>auto-generated</p></td>
+<td class="text-left"><p>Output directory for checkpoints and logs. Auto-generates a timestamped directory under <code class="docutils literal notranslate"><span class="pre">runs/</span></code> if omitted.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--wandb_project</span></code></p></td>
+<td class="text-center"><p>—</p></td>
+<td class="text-left"><p>W&amp;B project name. Enables Weights &amp; Biases logging.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--resume</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Resume training from the latest checkpoint in <code class="docutils literal notranslate"><span class="pre">--run_dir</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--&lt;config_field&gt;</span></code></p></td>
+<td class="text-center"><p>—</p></td>
+<td class="text-left"><p>Override any <code class="docutils literal notranslate"><span class="pre">Config</span></code> field (e.g. <code class="docutils literal notranslate"><span class="pre">--lr</span> <span class="pre">1e-4</span> <span class="pre">--model_type</span> <span class="pre">diffusion</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="output-structure">
+<h3>Output structure<a class="headerlink" href="#output-structure" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>runs/
+└── &lt;run_name&gt;/
+    ├── config.yaml               ← saved config (reproducible)
+    ├── best_model_weights.msgpack
+    ├── training_log.csv
+    └── model_summary.json
+</pre></div>
+</div>
+</section>
+<section id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h3>
+<p>=== “Basic AR training”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/default_config.yaml \
+    --data_path wiki.txt
+```
+</pre></div>
+</div>
+<p>=== “Diffusion model”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/diffusion_base.yaml \
+    --data_path wiki.txt \
+    --model_type diffusion \
+    --noise_schedule cosine \
+    --lr 3e-4
+```
+</pre></div>
+</div>
+<p>=== “Multi-GPU + bfloat16”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/large.yaml \
+    --data_path wiki.txt \
+    --n_devices 4 \
+    --grad_accum 8 \
+    --batch_size 32 \
+    --use_bf16 true
+```
+</pre></div>
+</div>
+<p>=== “Resume from checkpoint”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox train \
+    --config configs/default_config.yaml \
+    --data_path wiki.txt \
+    --run_dir runs/ar_mha_512d_12b \
+    --resume
+```
+</pre></div>
+</div>
+<p>!!! tip “Effective batch size”
+Effective batch size = <code class="docutils literal notranslate"><span class="pre">batch_size</span> <span class="pre">×</span> <span class="pre">grad_accum</span> <span class="pre">×</span> <span class="pre">n_devices</span></code>. Tune <code class="docutils literal notranslate"><span class="pre">grad_accum</span></code> to reach your target without exceeding VRAM.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="generate">
+<h2>generate<a class="headerlink" href="#generate" title="Link to this heading"></a></h2>
+<p>Generate text from a trained checkpoint.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>generate<span class="w"> </span>--run_dir<span class="w"> </span>runs/ar_mha_512d_12b<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Once upon a time&quot;</span>
+</pre></div>
+</div>
+<p>The subcommand auto-detects the model type from <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> and routes to the correct generation function — no manual flag required.</p>
+<section id="id1">
+<h3>Arguments<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--run_dir</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Run directory containing <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">best_model_weights.msgpack</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--prompt</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;Nel</span> <span class="pre">mezzo</span> <span class="pre">del</span> <span class="pre">cammin</span> <span class="pre">&quot;</span></code></p></td>
+<td class="text-left"><p>Input text prompt.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--max_new_tokens</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">150</span></code></p></td>
+<td class="text-left"><p>Tokens to generate beyond the prompt.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--greedy</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Greedy decoding (argmax). Overrides sampling parameters.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--top_k</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Keep only the <code class="docutils literal notranslate"><span class="pre">k</span></code> highest-probability tokens.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--top_p</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Nucleus sampling — keep the smallest set with cumulative probability ≥ <code class="docutils literal notranslate"><span class="pre">p</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--temperature</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td class="text-left"><p>Sampling temperature. Lower = more focused, higher = more random.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--no_cache</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Disable KV cache (slower; useful for debugging). AR only.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--stream</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Stream tokens to stdout as they are produced. AR only.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--seed</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">42</span></code></p></td>
+<td class="text-left"><p>Random seed for sampling.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--n_steps</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td class="text-left"><p>Denoising steps. Diffusion and ELF models only.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--block_size</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">32</span></code></p></td>
+<td class="text-left"><p>Token block size for Fast-dLLM DualCache. Diffusion only.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--use_dual_cache</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td class="text-left"><p>Enable Fast-dLLM DualCache for ~1.8× speedup. Diffusion only.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--confidence_threshold</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">0.9</span></code></p></td>
+<td class="text-left"><p>Confidence threshold for early token commitment. Diffusion only.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--cfg_scale</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1.5</span></code></p></td>
+<td class="text-left"><p>Classifier-free guidance scale. ELF only.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id2">
+<h3>Examples<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>=== “Nucleus sampling”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox generate \
+    --run_dir runs/ar_mha_512d \
+    --prompt &quot;In the beginning&quot; \
+    --top_p 0.9 --temperature 0.8 \
+    --max_new_tokens 300
+```
+</pre></div>
+</div>
+<p>=== “Streaming output”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox generate \
+    --run_dir runs/ar_mha_512d \
+    --prompt &quot;Chapter 1:&quot; \
+    --stream --top_p 0.95
+```
+</pre></div>
+</div>
+<p>=== “Greedy / deterministic”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox generate \
+    --run_dir runs/ar_mha_512d \
+    --prompt &quot;The capital of France is&quot; \
+    --greedy
+```
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="sweep">
+<h2>sweep<a class="headerlink" href="#sweep" title="Link to this heading"></a></h2>
+<p>Launch a W&amp;B hyperparameter sweep over your training config.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>sweep<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sweep_config<span class="w"> </span>configs/sweep.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>wiki.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--wandb_project<span class="w"> </span>DantinoX
+</pre></div>
+</div>
+<section id="id3">
+<h3>Arguments<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--sweep_config</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">configs/sweep.yaml</span></code></p></td>
+<td class="text-left"><p>W&amp;B sweep YAML (defines method, metric, parameter grid).</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--config</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">configs/default_config.yaml</span></code></p></td>
+<td class="text-left"><p>Base model config — overridden by sweep parameters.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--data_path</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Training corpus.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--wandb_project</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;DantinoX&quot;</span></code></p></td>
+<td class="text-left"><p>W&amp;B project name.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--count</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Maximum number of sweep runs (default: unlimited).</p></td>
+</tr>
+</tbody>
+</table>
+<p>??? example “Sweep YAML example”
+<code class="docutils literal notranslate"><span class="pre">yaml</span> <span class="pre">title=&quot;configs/sweep.yaml&quot;</span>&#160;&#160;&#160;&#160; <span class="pre">method:</span> <span class="pre">bayes</span>&#160;&#160;&#160;&#160; <span class="pre">metric:</span>&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">name:</span> <span class="pre">val_loss</span>&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">goal:</span> <span class="pre">minimize</span>&#160;&#160;&#160;&#160; <span class="pre">parameters:</span>&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">lr:</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">distribution:</span> <span class="pre">log_uniform_values</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">min:</span> <span class="pre">1e-5</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">max:</span> <span class="pre">1e-2</span>&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">batch_size:</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">values:</span> <span class="pre">[32,</span> <span class="pre">64,</span> <span class="pre">128]</span>&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">num_blocks:</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">values:</span> <span class="pre">[6,</span> <span class="pre">12,</span> <span class="pre">18]</span>&#160;&#160;&#160;&#160; </code></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="benchmark">
+<h2>benchmark<a class="headerlink" href="#benchmark" title="Link to this heading"></a></h2>
+<p>Benchmark all (or selected) trained run directories and write a results CSV.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>benchmark<span class="w"> </span>--runs_dir<span class="w"> </span>runs<span class="w"> </span>--out_csv<span class="w"> </span>results/benchmark.csv
+</pre></div>
+</div>
+<section id="id4">
+<h3>Arguments<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--runs_dir</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">runs</span></code></p></td>
+<td class="text-left"><p>Directory containing run sub-directories.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--runs</span></code></p></td>
+<td class="text-center"><p>all</p></td>
+<td class="text-left"><p>Specific run names to benchmark (space-separated list).</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--out_csv</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Write results to this CSV file.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="infbench">
+<h2>infbench<a class="headerlink" href="#infbench" title="Link to this heading"></a></h2>
+<p>Full 4-stage inference benchmark suite. Runs random-model sweeps, plots, and optionally trained-model analysis.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>infbench<span class="w">               </span><span class="c1"># random-model sweep only</span>
+dantinox<span class="w"> </span>infbench<span class="w"> </span>--trained<span class="w">     </span><span class="c1"># add trained-model analysis</span>
+dantinox<span class="w"> </span>infbench<span class="w"> </span>--eval<span class="w">        </span><span class="c1"># add quality evaluation (PPL, gen quality)</span>
+</pre></div>
+</div>
+<section id="pipeline-stages">
+<h3>Pipeline stages<a class="headerlink" href="#pipeline-stages" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Stage</p></th>
+<th class="head text-left"><p>Script</p></th>
+<th class="head text-left"><p>Output</p></th>
+<th class="head text-left"><p>Requires</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>1</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">benchmarks/inference_sweep.py</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">inference_sweep.csv</span></code></p></td>
+<td class="text-left"><p>always</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>2</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">benchmarks/plot_inference.py</span></code></p></td>
+<td class="text-left"><p>21 PNG plots</p></td>
+<td class="text-left"><p>always</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>3</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">benchmarks/trained_analysis.py</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">benchmark_results.csv</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--trained</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>4</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">benchmarks/trained_batch_sweep.py</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">batch_sweep_results.csv</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--trained</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>Arguments<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--out-csv</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">results/inference_sweep.csv</span></code></p></td>
+<td class="text-left"><p>Sweep output CSV.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--out-dir</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">results/plots/</span></code></p></td>
+<td class="text-left"><p>Plot output directory.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--groups</span></code></p></td>
+<td class="text-center"><p>all 13</p></td>
+<td class="text-left"><p>Restrict sweep to specific groups (e.g. <code class="docutils literal notranslate"><span class="pre">attention_type</span> <span class="pre">scale</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--n-warmup</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">3</span></code></p></td>
+<td class="text-left"><p>Warmup repetitions per experiment.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--n-trials</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+<td class="text-left"><p>Measured repetitions per experiment.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--device</span></code></p></td>
+<td class="text-center"><p>env</p></td>
+<td class="text-left"><p>CUDA device index (<code class="docutils literal notranslate"><span class="pre">CUDA_VISIBLE_DEVICES</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--sweep-only</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Run sweep only, skip plotting.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--plot-only</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Skip sweep, re-plot existing <code class="docutils literal notranslate"><span class="pre">--out-csv</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Print per-experiment metrics.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--trained</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Run trained-model analysis (stages 3–4).</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--diff-ar</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Run the AR vs. Diffusion sweep.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--eval</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Run quality evaluation (PPL + generation quality). Implies <code class="docutils literal notranslate"><span class="pre">--trained</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--inference-off</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Skip inference pipeline. Requires at least one of <code class="docutils literal notranslate"><span class="pre">--trained</span></code>/<code class="docutils literal notranslate"><span class="pre">--diff-ar</span></code>/<code class="docutils literal notranslate"><span class="pre">--eval</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--no-mla</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Skip MLA experiments.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--pdf</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Save figures as PDF in addition to PNG.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--runs-dir</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">runs</span></code></p></td>
+<td class="text-left"><p>Trained run sub-directories.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--batch-sizes</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">2</span> <span class="pre">4</span> <span class="pre">8</span> <span class="pre">16</span> <span class="pre">32</span> <span class="pre">64</span></code></p></td>
+<td class="text-left"><p>Batch sizes for the batch sweep.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--batch-seq-len</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">512</span></code></p></td>
+<td class="text-left"><p>Sequence length for the batch sweep.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h3>Examples<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>=== “Quick sweep”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox infbench --groups attention_type --n-trials 30 --verbose
+```
+</pre></div>
+</div>
+<p>=== “Full pipeline”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox infbench --trained --diff-ar --eval
+```
+</pre></div>
+</div>
+<p>=== “Re-plot from existing CSV”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox infbench --plot-only --out-csv results/inference_sweep.csv
+```
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="find-lr">
+<h2>find-lr<a class="headerlink" href="#find-lr" title="Link to this heading"></a></h2>
+<p>Run the LR range test to find a good learning rate before full training.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>find-lr<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/default_config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>wiki.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--plot
+</pre></div>
+</div>
+<section id="id7">
+<h3>Arguments<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--config</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">configs/default_config.yaml</span></code></p></td>
+<td class="text-left"><p>YAML config file.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--data_path</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Training corpus.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--min_lr</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1e-7</span></code></p></td>
+<td class="text-left"><p>Starting learning rate.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--max_lr</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td class="text-left"><p>Maximum learning rate.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--num_steps</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">100</span></code></p></td>
+<td class="text-left"><p>Steps in the exponential sweep.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--plot</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Save a loss-vs-LR PNG.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--plot_out</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">lr_finder.png</span></code></p></td>
+<td class="text-left"><p>Output PNG path.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--&lt;config_field&gt;</span></code></p></td>
+<td class="text-center"><p>—</p></td>
+<td class="text-left"><p>Override any <code class="docutils literal notranslate"><span class="pre">Config</span></code> field.</p></td>
+</tr>
+</tbody>
+</table>
+<p>!!! tip
+Run <code class="docutils literal notranslate"><span class="pre">find-lr</span></code> before any new architecture — the optimal LR can vary 10–100× across model sizes and optimizers.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="push">
+<h2>push<a class="headerlink" href="#push" title="Link to this heading"></a></h2>
+<p>Upload a trained checkpoint to HuggingFace Hub.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>push<span class="w"> </span>--run_dir<span class="w"> </span>runs/ar_mha_512d<span class="w"> </span>--repo<span class="w"> </span>my-org/my-model
+</pre></div>
+</div>
+<section id="id8">
+<h3>Arguments<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--run_dir</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Local run directory to upload.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--repo</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Hub repository ID (e.g. <code class="docutils literal notranslate"><span class="pre">my-org/my-model</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--private</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Create a private repository.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--token</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>HuggingFace access token. Falls back to <code class="docutils literal notranslate"><span class="pre">HF_TOKEN</span></code> env var.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--message</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Commit message for the Hub upload.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="pull">
+<h2>pull<a class="headerlink" href="#pull" title="Link to this heading"></a></h2>
+<p>Download a checkpoint from HuggingFace Hub.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>pull<span class="w"> </span>--repo<span class="w"> </span>my-org/my-model<span class="w"> </span>--local_dir<span class="w"> </span>runs/my-model
+</pre></div>
+</div>
+<section id="id9">
+<h3>Arguments<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--repo</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Hub repository ID.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--local_dir</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Where to save files. Defaults to <code class="docutils literal notranslate"><span class="pre">runs/&lt;repo-name&gt;</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--token</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>HuggingFace access token.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--revision</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Branch, tag, or commit SHA to download.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="plot">
+<h2>plot<a class="headerlink" href="#plot" title="Link to this heading"></a></h2>
+<p>Generate benchmark plots from an existing results CSV.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>plot<span class="w"> </span>--in_csv<span class="w"> </span>results/benchmark.csv<span class="w"> </span>--out_dir<span class="w"> </span>results/plots/
+</pre></div>
+</div>
+<section id="id10">
+<h3>Arguments<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--in_csv</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">benchmark_results.csv</span></code></p></td>
+<td class="text-left"><p>Input CSV produced by <code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">benchmark</span></code> or <code class="docutils literal notranslate"><span class="pre">dantinox</span> <span class="pre">infbench</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--out_dir</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">plots/</span></code></p></td>
+<td class="text-left"><p>Output directory for PNG files.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--batch_csv</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Optional batch sweep CSV for the throughput-vs-batch-size figure.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--groups</span></code></p></td>
+<td class="text-center"><p>all</p></td>
+<td class="text-left"><p>Plot groups: <code class="docutils literal notranslate"><span class="pre">perf</span></code> · <code class="docutils literal notranslate"><span class="pre">insights</span></code> · <code class="docutils literal notranslate"><span class="pre">3d</span></code> · <code class="docutils literal notranslate"><span class="pre">3d_dkv</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Group</p></th>
+<th class="head text-left"><p>Charts</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">perf</span></code></p></td>
+<td class="text-left"><p>Throughput, throughput-vs-batch-size, prefill latency</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">insights</span></code></p></td>
+<td class="text-left"><p>Pareto frontier (quality vs. speed)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">3d</span></code></p></td>
+<td class="text-left"><p>3D parameter / quality / throughput surface</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">3d_dkv</span></code></p></td>
+<td class="text-left"><p>3D KV-cache / throughput surface</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="merge-lora">
+<h2>merge-lora<a class="headerlink" href="#merge-lora" title="Link to this heading"></a></h2>
+<p>Fold trained LoRA adapters back into the base model weights to produce a standalone checkpoint with no LoRA overhead.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>merge-lora<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--run_dir<span class="w"> </span>runs/lora_finetune<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--out_dir<span class="w"> </span>runs/lora_merged
+</pre></div>
+</div>
+<section id="id11">
+<h3>Arguments<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--run_dir</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Run directory containing a LoRA checkpoint and <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--out_dir</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Output directory. Receives <code class="docutils literal notranslate"><span class="pre">best_model_weights.msgpack</span></code> + <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--overwrite</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td class="text-left"><p>Overwrite <code class="docutils literal notranslate"><span class="pre">--out_dir</span></code> if it already exists.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id12">
+<h3>Examples<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p>=== “Merge and verify”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox merge-lora \
+    --run_dir runs/ar_lora_rank8 \
+    --out_dir runs/ar_lora_merged
+
+# Verify merged model generates correctly
+dantinox generate \
+    --run_dir runs/ar_lora_merged \
+    --prompt &quot;In the beginning&quot;
+```
+</pre></div>
+</div>
+<p>=== “Overwrite existing output”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox merge-lora \
+    --run_dir runs/ar_lora_rank8 \
+    --out_dir runs/ar_lora_merged \
+    --overwrite
+```
+</pre></div>
+</div>
+<p>!!! tip
+After merging, <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> in <code class="docutils literal notranslate"><span class="pre">--out_dir</span></code> has <code class="docutils literal notranslate"><span class="pre">use_lora:</span> <span class="pre">false</span></code>. The merged weights are identical in size to the base model and can be pushed to the Hub directly.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="profile">
+<h2>profile<a class="headerlink" href="#profile" title="Link to this heading"></a></h2>
+<p>Print parameter count and estimated FLOPs for a model config or checkpoint. Works from a saved run directory or a raw YAML config file.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>profile<span class="w"> </span>--run_dir<span class="w"> </span>runs/ar_mha_512d
+</pre></div>
+</div>
+<section id="id13">
+<h3>Arguments<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--run_dir</span></code></p></td>
+<td class="text-center"><p>—</p></td>
+<td class="text-left"><p>Run directory (reads <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>). Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--config</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--config</span></code></p></td>
+<td class="text-center"><p>—</p></td>
+<td class="text-left"><p>Path to a YAML config file. Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--run_dir</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--seq_len</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">512</span></code></p></td>
+<td class="text-left"><p>Sequence length for FLOPs estimation.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--batch_size</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td class="text-left"><p>Batch size for FLOPs estimation.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id14">
+<h3>Examples<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p>=== “From a run directory”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox profile --run_dir runs/diffusion_512d_28k
+```
+</pre></div>
+</div>
+<p>=== “From a config file”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox profile \
+    --config configs/large.yaml \
+    --seq_len 1024 \
+    --batch_size 4
+```
+</pre></div>
+</div>
+</section>
+<section id="output-example">
+<h3>Output example<a class="headerlink" href="#output-example" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Model: DiffusionTransformer (diffusion · MHA)
+──────────────────────────────────────────────
+Parameters:   48,234,496  (48.2 M)
+Embedding:     8,192,000
+Backbone:     39,845,376
+LM head:         197,120
+
+FLOPs per forward pass (seq=512, batch=1)
+  Total:    12.3 GFLOPs
+  Attention: 4.1 GFLOPs   (33.3 %)
+  FFN:       8.2 GFLOPs   (66.7 %)
+──────────────────────────────────────────────
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="eval">
+<h2>eval<a class="headerlink" href="#eval" title="Link to this heading"></a></h2>
+<p>Evaluate generation quality for a checkpoint by generating samples and computing diversity and repetition metrics (distinct-1, distinct-2, rep-4, and optionally MAUVE).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--run_dir<span class="w"> </span>runs/diffusion_512d_28k
+</pre></div>
+</div>
+<section id="id15">
+<h3>Arguments<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--run_dir</span></code></p></td>
+<td class="text-center"><p><strong>required</strong></p></td>
+<td class="text-left"><p>Run directory with checkpoint and <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--n_samples</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td class="text-left"><p>Number of samples to generate for evaluation.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--gen_len</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">128</span></code></p></td>
+<td class="text-left"><p>Generation length in tokens per sample.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--seed</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">42</span></code></p></td>
+<td class="text-left"><p>Random seed.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--out_csv</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td class="text-left"><p>Save metrics row to this CSV file (appends if exists).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id16">
+<h3>Examples<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<p>=== “Quick quality check”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox eval \
+    --run_dir runs/ar_mha_512d \
+    --n_samples 50 \
+    --gen_len 128
+```
+</pre></div>
+</div>
+<p>=== “Compare two checkpoints”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+dantinox eval --run_dir runs/ar_mha_512d   --out_csv quality.csv
+dantinox eval --run_dir runs/diff_mha_512d  --out_csv quality.csv
+```
+</pre></div>
+</div>
+</section>
+<section id="metrics">
+<h3>Metrics<a class="headerlink" href="#metrics" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Metric</p></th>
+<th class="head text-center"><p>Range</p></th>
+<th class="head text-left"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">distinct_1</span></code></p></td>
+<td class="text-center"><p>0–1</p></td>
+<td class="text-left"><p>Fraction of unique unigrams across all samples (higher = more diverse)</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">distinct_2</span></code></p></td>
+<td class="text-center"><p>0–1</p></td>
+<td class="text-left"><p>Fraction of unique bigrams (higher = more diverse)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">rep_4</span></code></p></td>
+<td class="text-center"><p>0–1</p></td>
+<td class="text-left"><p>Fraction of 4-grams repeated within the same sample (lower = less repetitive)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="configuration.html"><span class="std std-doc">Configuration Reference</span></a> — all <code class="docutils literal notranslate"><span class="pre">Config</span></code> fields and valid values</p></li>
+<li><p><a class="reference internal" href="cookbook.html"><span class="std std-doc">Cookbook</span></a> — end-to-end CLI recipes</p></li>
+<li><p><a class="reference internal" href="paper.html"><span class="std std-doc">Experiments &amp; Results</span></a> — running the full benchmark pipeline</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="contributing.html" class="btn btn-neutral float-right" title="Contributing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

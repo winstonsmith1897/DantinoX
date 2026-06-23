@@ -1,0 +1,606 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Benchmarks &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="_static/dantinox.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=6c02275b"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Ablation Studies" href="ablation_studies.html" />
+    <link rel="prev" title="Pushing to HuggingFace Hub" href="tutorials/hub.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            DantinoX
+              <img src="_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Benchmarks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-benchmarks">Running Benchmarks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#full-inference-pipeline">Full inference pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#trained-model-pipeline">Trained-model pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pipeline-stages">Pipeline stages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#inference-sweep">Inference Sweep</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#attention-type">Attention Type</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scale">Scale</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#batch-size">Batch Size</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#context-length">Context Length</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dtype">Dtype</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kv-cache">KV Cache</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moe-vs-dense">MoE vs. Dense</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#activation-function">Activation Function</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#positional-encoding">Positional Encoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gqa-heads-vs-cache">GQA Heads vs. Cache</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scale-dtype">Scale × Dtype</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#batch-attention">Batch × Attention</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sampling-strategy">Sampling Strategy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-relationships">3D Relationships</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#params-sequence-latency">Params × Sequence → Latency</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#d-projections-params-seq-latency">2D Projections — Params × Seq → Latency</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#batch-seq-kv-cache">Batch × Seq → KV Cache</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#d-projections-batch-seq-kv-cache">2D Projections — Batch × Seq → KV Cache</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#flops-latency-throughput">FLOPs × Latency → Throughput</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#d-projections-flops-latency-throughput">2D Projections — FLOPs × Latency → Throughput</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#params-batch-throughput">Params × Batch → Throughput</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#d-projections-params-batch-throughput">2D Projections — Params × Batch → Throughput</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#core-comparison">Core Comparison</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#quality-vs-kv-cache-pareto">Quality vs. KV-Cache Pareto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vram-normalised-serving-throughput">VRAM-Normalised Serving Throughput</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mla-compression-dial">MLA Compression Dial</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-analysis">Performance Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#kv-cache-size-by-architecture">KV-Cache Size by Architecture</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#decode-throughput-vs-sequence-length">Decode Throughput vs. Sequence Length</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analytical-flops-vs-kv-cache">Analytical FLOPs vs. KV-Cache</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#batch-throughput-sweep">Batch Throughput Sweep</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prefill-latency-cache-extrapolation">Prefill Latency &amp; Cache Extrapolation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#d-cache-surfaces">3D Cache Surfaces</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#kv-cache-vs-params-vs-sequence-length">KV-Cache vs. Params vs. Sequence Length</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#quality-params-cache-cube">Quality — Params — Cache Cube</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#efficiency-cube">Efficiency Cube</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vram-budget-seq-len-serving-surface">VRAM Budget × Seq-Len Serving Surface</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#down-dim-kv-deep-dive">down_dim_kv Deep Dive</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cache-vs-down-dim-kv-vs-sequence-length">Cache vs. down_dim_kv vs. Sequence Length</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kv-dimension-decoupling">KV-Dimension Decoupling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mla-quality-surface">MLA Quality Surface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cache-vs-down-dim-kv-vs-depth">Cache vs. down_dim_kv vs. Depth</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Benchmarks</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/benchmarks.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="benchmarks">
+<h1>Benchmarks<a class="headerlink" href="#benchmarks" title="Link to this heading"></a></h1>
+<p>DantinoX ships two complementary benchmark suites that together cover the full
+lifecycle of a model — from raw inference primitives on randomly-initialised
+networks to end-to-end quality/throughput measurements on real trained
+checkpoints.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Suite</p></th>
+<th class="head"><p>What it measures</p></th>
+<th class="head"><p>Entry point</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Inference sweep</strong></p></td>
+<td><p>Latency, throughput, KV-cache, FLOPs across 13 sweep groups and 3 attention variants (MHA / GQA / MLA) on randomly-initialised models</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">infbench</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Trained-model analysis</strong></p></td>
+<td><p>Decode throughput, prefill latency, measured VRAM, XLA FLOPs, and validation loss on real trained checkpoints</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">trained-bench</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<hr class="docutils" />
+<section id="running-benchmarks">
+<h2>Running Benchmarks<a class="headerlink" href="#running-benchmarks" title="Link to this heading"></a></h2>
+<section id="full-inference-pipeline">
+<h3>Full inference pipeline<a class="headerlink" href="#full-inference-pipeline" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sweep + 21 plots (default)</span>
+make<span class="w"> </span>infbench
+
+<span class="c1"># Quick smoke-test (fewer warm-up / trial iterations)</span>
+python<span class="w"> </span>benchmarks/run_all.py<span class="w"> </span>--n-warmup<span class="w"> </span><span class="m">1</span><span class="w"> </span>--n-trials<span class="w"> </span><span class="m">3</span>
+
+<span class="c1"># Restrict to a subset of sweep groups</span>
+python<span class="w"> </span>benchmarks/run_all.py<span class="w"> </span>--groups<span class="w"> </span>attention_type<span class="w"> </span>scale<span class="w"> </span>batch_size
+
+<span class="c1"># Re-plot from an existing CSV without re-running the sweep</span>
+python<span class="w"> </span>benchmarks/run_all.py<span class="w"> </span>--plot-only
+
+<span class="c1"># Via the CLI</span>
+dantinox<span class="w"> </span>infbench<span class="w"> </span>--groups<span class="w"> </span>scale<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">5</span><span class="w"> </span>--device<span class="w"> </span><span class="m">1</span>
+</pre></div>
+</div>
+</section>
+<section id="trained-model-pipeline">
+<h3>Trained-model pipeline<a class="headerlink" href="#trained-model-pipeline" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run analysis + batch sweep on checkpoints in runs/</span>
+make<span class="w"> </span>trained-bench
+
+<span class="c1"># Both pipelines in one command</span>
+python<span class="w"> </span>benchmarks/run_all.py<span class="w"> </span>--trained
+
+<span class="c1"># Trained pipeline only (skip inference sweep)</span>
+python<span class="w"> </span>benchmarks/run_all.py<span class="w"> </span>--trained<span class="w"> </span>--inference-off
+
+<span class="c1"># Via the CLI</span>
+dantinox<span class="w"> </span>infbench<span class="w"> </span>--trained<span class="w"> </span>--runs-dir<span class="w"> </span>runs/
+</pre></div>
+</div>
+</section>
+<section id="pipeline-stages">
+<h3>Pipeline stages<a class="headerlink" href="#pipeline-stages" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Stage 1  benchmarks/inference_sweep.py    →  results/inference_sweep.csv
+Stage 2  benchmarks/plot_inference.py     →  results/plots/*.png   (21 figures)
+Stage 3  benchmarks/trained_analysis.py   →  results/benchmark_results.csv
+Stage 4  benchmarks/trained_batch_sweep.py→  results/batch_sweep_results.csv
+</pre></div>
+</div>
+<p>Each stage runs in its own subprocess so JAX state and compiled functions
+never conflict between stages. Stages 3–4 only execute when <code class="docutils literal notranslate"><span class="pre">--trained</span></code> is
+passed.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="inference-sweep">
+<h2>Inference Sweep<a class="headerlink" href="#inference-sweep" title="Link to this heading"></a></h2>
+<p>Systematic performance comparison of <strong>MHA</strong>, <strong>GQA</strong>, and <strong>MLA</strong> attention
+variants across 13 orthogonal sweep groups. All models are randomly initialised
+— results are pure infrastructure benchmarks, independent of training quality.</p>
+<p>Figures are produced by <code class="docutils literal notranslate"><span class="pre">benchmarks/plot_inference.py</span></code>. Each panel shows the
+three attention variants as grouped bars (or scatter points) so crossover
+effects are immediately visible.</p>
+<section id="attention-type">
+<h3>Attention Type<a class="headerlink" href="#attention-type" title="Link to this heading"></a></h3>
+<p>Overall latency and throughput comparison across the three attention families at
+fixed model size. MLA’s extra projection steps (<code class="docutils literal notranslate"><span class="pre">W_DKV</span></code>, <code class="docutils literal notranslate"><span class="pre">W_UV</span></code>, <code class="docutils literal notranslate"><span class="pre">W_UK</span></code>)
+produce higher prefill latency but a proportionally smaller KV cache.</p>
+<p><img alt="01 Attention Type" src="_images/01_attention_type.png" /></p>
+</section>
+<section id="scale">
+<h3>Scale<a class="headerlink" href="#scale" title="Link to this heading"></a></h3>
+<p>Prefill latency and decode throughput as model dimension (<code class="docutils literal notranslate"><span class="pre">dim</span></code>) and depth
+(<code class="docutils literal notranslate"><span class="pre">num_blocks</span></code>) scale from small to large. MLA latency grows faster than MHA/GQA
+because its low-rank projections add compute that is not amortised across heads.</p>
+<p><img alt="02 Scale" src="_images/02_scale.png" /></p>
+</section>
+<section id="batch-size">
+<h3>Batch Size<a class="headerlink" href="#batch-size" title="Link to this heading"></a></h3>
+<p>Throughput (tok/s) at batch sizes 1 → 32. At small batch sizes all three
+variants are weight-bandwidth-bound and behave similarly. At large batches the
+KV-cache bottleneck surfaces: MLA’s compact cache keeps VRAM pressure lower.</p>
+<p><img alt="03 Batch Size" src="_images/03_batch_size.png" /></p>
+</section>
+<section id="context-length">
+<h3>Context Length<a class="headerlink" href="#context-length" title="Link to this heading"></a></h3>
+<p>Latency and cache growth across prompt lengths 64 → 2048. The quadratic
+attention cost is visible for all variants; MLA’s cache slope is 5–10× flatter
+than MHA.</p>
+<p><img alt="04 Context Length" src="_images/04_context_len.png" /></p>
+</section>
+<section id="dtype">
+<h3>Dtype<a class="headerlink" href="#dtype" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">float32</span></code> vs <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> latency and memory. <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> halves activation memory
+and accelerates matrix operations, giving a consistent 30–50% latency reduction
+without quality loss in practice.</p>
+<p><img alt="05 Dtype" src="_images/05_dtype.png" /></p>
+</section>
+<section id="kv-cache">
+<h3>KV Cache<a class="headerlink" href="#kv-cache" title="Link to this heading"></a></h3>
+<p>Theoretical KV cache footprint (MB) per variant at different model sizes.
+MLA’s <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> dimension directly controls cache independent of model
+width — the only variant where cache and model size are decoupled.</p>
+<p><img alt="06 KV Cache" src="_images/06_kv_cache.png" /></p>
+</section>
+<section id="moe-vs-dense">
+<h3>MoE vs. Dense<a class="headerlink" href="#moe-vs-dense" title="Link to this heading"></a></h3>
+<p>Mixture-of-Experts (<code class="docutils literal notranslate"><span class="pre">use_moe=True</span></code>) vs. Dense FFN at matched parameter counts.
+MoE adds routing overhead but keeps active FLOPs constant, making it
+particularly attractive paired with MLA’s compact cache.</p>
+<p><img alt="07 MoE" src="_images/07_moe.png" /></p>
+</section>
+<section id="activation-function">
+<h3>Activation Function<a class="headerlink" href="#activation-function" title="Link to this heading"></a></h3>
+<p>SwiGLU vs. GELU latency. SwiGLU requires an extra gate projection but the
+fused kernel keeps overhead minimal; the difference is negligible vs. attention
+cost at long sequences.</p>
+<p><img alt="08 Activation" src="_images/08_activation.png" /></p>
+</section>
+<section id="positional-encoding">
+<h3>Positional Encoding<a class="headerlink" href="#positional-encoding" title="Link to this heading"></a></h3>
+<p>RoPE vs. ALiBi vs. learned positional biases. RoPE adds negligible overhead;
+ALiBi’s per-head slope arithmetic is marginal at the sequence lengths tested.</p>
+<p><img alt="09 Positional Encoding" src="_images/09_pos_encoding.png" /></p>
+</section>
+<section id="gqa-heads-vs-cache">
+<h3>GQA Heads vs. Cache<a class="headerlink" href="#gqa-heads-vs-cache" title="Link to this heading"></a></h3>
+<p>GQA key/value head count (<code class="docutils literal notranslate"><span class="pre">kv_heads</span></code>) sweep: <code class="docutils literal notranslate"><span class="pre">n_heads/8</span></code> → <code class="docutils literal notranslate"><span class="pre">n_heads</span></code>. Shows
+the continuous cache–quality trade-off. At <code class="docutils literal notranslate"><span class="pre">kv_heads</span> <span class="pre">=</span> <span class="pre">n_heads</span></code> GQA degenerates
+to MHA; MLA achieves lower cache at any GQA grouping ratio.</p>
+<p><img alt="10 GQA vs Cache" src="_images/10_gqa_vs_cache.png" /></p>
+</section>
+<section id="scale-dtype">
+<h3>Scale × Dtype<a class="headerlink" href="#scale-dtype" title="Link to this heading"></a></h3>
+<p>Joint effect of model scale and dtype on throughput. <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> advantage is
+largest for big models where memory bandwidth is the dominant bottleneck.</p>
+<p><img alt="11 Scale × Dtype" src="_images/11_scale_dtype.png" /></p>
+</section>
+<section id="batch-attention">
+<h3>Batch × Attention<a class="headerlink" href="#batch-attention" title="Link to this heading"></a></h3>
+<p>Throughput heatmap over batch size × attention type. The crossover where MLA
+starts matching or exceeding MHA/GQA throughput moves to smaller batch sizes
+as model size grows.</p>
+<p><img alt="12 Batch × Attention" src="_images/12_batch_attn.png" /></p>
+</section>
+<section id="sampling-strategy">
+<h3>Sampling Strategy<a class="headerlink" href="#sampling-strategy" title="Link to this heading"></a></h3>
+<p>Greedy vs. top-k vs. top-p sampling latency. Sampling overhead is dominated
+by the softmax and argmax operations, which are identical across attention
+variants; per-step latency differences reflect pure attention cost.</p>
+<p><img alt="13 Sampling" src="_images/13_sampling.png" /></p>
+</section>
+<hr class="docutils" />
+<section id="d-relationships">
+<h3>3D Relationships<a class="headerlink" href="#d-relationships" title="Link to this heading"></a></h3>
+<p>Three-dimensional visualisations linking FLOPs, latency, throughput, batch
+size, params, sequence length, and KV-cache across the three attention variants.</p>
+<section id="params-sequence-latency">
+<h4>Params × Sequence → Latency<a class="headerlink" href="#params-sequence-latency" title="Link to this heading"></a></h4>
+<p>How prefill latency scales jointly with model parameters and sequence length.
+The MLA surface sits highest because its extra projections add a constant
+per-step cost on top of the quadratic attention term.</p>
+<p><img alt="14 3D Params × Seq → Latency" src="_images/14_3d_params_seq_latency.png" /></p>
+</section>
+<section id="d-projections-params-seq-latency">
+<h4>2D Projections — Params × Seq → Latency<a class="headerlink" href="#d-projections-params-seq-latency" title="Link to this heading"></a></h4>
+<p>Pairwise scatter projections of the above 3D surface: Params vs. Latency,
+Sequence vs. Latency, and Params vs. Sequence (size ∝ latency).</p>
+<p><img alt="18 2D Params × Seq → Latency" src="_images/18_2d_params_seq_latency.png" /></p>
+</section>
+<section id="batch-seq-kv-cache">
+<h4>Batch × Seq → KV Cache<a class="headerlink" href="#batch-seq-kv-cache" title="Link to this heading"></a></h4>
+<p>KV-cache footprint as a function of batch size and sequence length. MLA’s
+compressed cache keeps the surface an order of magnitude lower than MHA at
+all (batch, seq) combinations.</p>
+<p><img alt="15 3D Batch × Seq → KV Cache" src="_images/15_3d_batch_seq_kvcache.png" /></p>
+</section>
+<section id="d-projections-batch-seq-kv-cache">
+<h4>2D Projections — Batch × Seq → KV Cache<a class="headerlink" href="#d-projections-batch-seq-kv-cache" title="Link to this heading"></a></h4>
+<p><img alt="19 2D Batch × Seq → KV Cache" src="_images/19_2d_batch_seq_kvcache.png" /></p>
+</section>
+<section id="flops-latency-throughput">
+<h4>FLOPs × Latency → Throughput<a class="headerlink" href="#flops-latency-throughput" title="Link to this heading"></a></h4>
+<p>Analytical FLOPs vs. measured latency coloured by throughput. MLA sits in the
+high-FLOPs / low-latency quadrant at small sequences because XLA’s JIT fuses
+the low-rank projections efficiently; at long sequences the quadratic attention
+cost dominates for all variants.</p>
+<p><img alt="16 3D FLOPs × Latency → Throughput" src="_images/16_3d_flops_latency_throughput.png" /></p>
+</section>
+<section id="d-projections-flops-latency-throughput">
+<h4>2D Projections — FLOPs × Latency → Throughput<a class="headerlink" href="#d-projections-flops-latency-throughput" title="Link to this heading"></a></h4>
+<p><img alt="20 2D FLOPs × Latency → Throughput" src="_images/20_2d_flops_latency_throughput.png" /></p>
+</section>
+<section id="params-batch-throughput">
+<h4>Params × Batch → Throughput<a class="headerlink" href="#params-batch-throughput" title="Link to this heading"></a></h4>
+<p>Aggregate throughput as a function of model scale and batch size. The
+throughput gap between attention variants narrows as batch size grows because
+memory bandwidth increasingly dominates over compute.</p>
+<p><img alt="17 3D Params × Batch → Throughput" src="_images/17_3d_params_batch_throughput.png" /></p>
+</section>
+<section id="d-projections-params-batch-throughput">
+<h4>2D Projections — Params × Batch → Throughput<a class="headerlink" href="#d-projections-params-batch-throughput" title="Link to this heading"></a></h4>
+<p><img alt="21 2D Params × Batch → Throughput" src="_images/21_2d_params_batch_throughput.png" /></p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="core-comparison">
+<h2>Core Comparison<a class="headerlink" href="#core-comparison" title="Link to this heading"></a></h2>
+<p>High-level trade-offs between attention types on real trained checkpoints:
+quality vs. KV-cache Pareto front, VRAM-normalised serving throughput, and the
+MLA <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> compression dial.</p>
+<section id="quality-vs-kv-cache-pareto">
+<h3>Quality vs. KV-Cache Pareto<a class="headerlink" href="#quality-vs-kv-cache-pareto" title="Link to this heading"></a></h3>
+<p>Scatter of validation loss vs. theoretical KV cache per token. Points on the
+lower-left Pareto front dominate in both quality <em>and</em> memory. MLA models
+cluster on or near the front at a fraction of the cache cost of equivalent
+MHA/GQA models.</p>
+<p><img alt="Quality vs KV-Cache Pareto" src="_images/insight_1_pareto.png" /></p>
+</section>
+<section id="vram-normalised-serving-throughput">
+<h3>VRAM-Normalised Serving Throughput<a class="headerlink" href="#vram-normalised-serving-throughput" title="Link to this heading"></a></h3>
+<p>Aggregate tokens/s as a function of total VRAM budget (500 MB – 80 GB).
+Because MLA’s smaller KV cache fits more concurrent sequences, it achieves
+<strong>3× the throughput of MHA</strong> and ~20% more than GQA at 80 GB.</p>
+<p><img alt="VRAM-Normalised Serving Throughput" src="_images/insight_2_serving.png" /></p>
+</section>
+<section id="mla-compression-dial">
+<h3>MLA Compression Dial<a class="headerlink" href="#mla-compression-dial" title="Link to this heading"></a></h3>
+<p>Effect of <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> on quality and cache. Left: validation loss vs.
+<code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> with MHA/GQA reference bands. Right: cache MB vs. <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code>
+with crossover annotations. A value around 64–96 gives the best
+quality/cache trade-off.</p>
+<p><img alt="MLA Compression Dial" src="_images/insight_3_mla_dial.png" /></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="performance-analysis">
+<h2>Performance Analysis<a class="headerlink" href="#performance-analysis" title="Link to this heading"></a></h2>
+<p>Detailed throughput, FLOPs, and latency breakdowns on trained checkpoints.</p>
+<section id="kv-cache-size-by-architecture">
+<h3>KV-Cache Size by Architecture<a class="headerlink" href="#kv-cache-size-by-architecture" title="Link to this heading"></a></h3>
+<p>Absolute KV cache footprint (MB) vs. model params, grouped by depth
+(<code class="docutils literal notranslate"><span class="pre">num_blocks</span></code>). MLA achieves a 5–10× cache reduction relative to MHA at the
+same parameter count.</p>
+<p><img alt="KV-Cache Breakdown" src="_images/perf_1_cache_breakdown.png" /></p>
+</section>
+<section id="decode-throughput-vs-sequence-length">
+<h3>Decode Throughput vs. Sequence Length<a class="headerlink" href="#decode-throughput-vs-sequence-length" title="Link to this heading"></a></h3>
+<p>Tokens per second at context lengths 64 / 128 / 256 / 512. MHA/GQA advantage
+at short sequences narrows as context grows.</p>
+<p><img alt="Decode Throughput vs Sequence Length" src="_images/perf_2_seqlen_throughput.png" /></p>
+</section>
+<section id="analytical-flops-vs-kv-cache">
+<h3>Analytical FLOPs vs. KV-Cache<a class="headerlink" href="#analytical-flops-vs-kv-cache" title="Link to this heading"></a></h3>
+<p>Decode FLOPs per step vs. theoretical KV cache (Pareto view). MLA sits in the
+high-FLOPs / low-cache quadrant because weight–weight products add ~9× extra
+compute relative to MHA at bs=1, while shrinking cache 5–10×.</p>
+<p><img alt="Analytical FLOPs vs KV-Cache" src="_images/perf_3_flops_vs_cache.png" /></p>
+</section>
+<section id="batch-throughput-sweep">
+<h3>Batch Throughput Sweep<a class="headerlink" href="#batch-throughput-sweep" title="Link to this heading"></a></h3>
+<p>Measured tokens/s across batch sizes 1 – 64 for representative 256-d and 512-d
+models. The crossover point where MLA’s smaller cache enables fitting more
+sequences only becomes significant at 7B+ scale.</p>
+<p><img alt="Batch Throughput Sweep" src="_images/perf_4_batch_throughput.png" /></p>
+</section>
+<section id="prefill-latency-cache-extrapolation">
+<h3>Prefill Latency &amp; Cache Extrapolation<a class="headerlink" href="#prefill-latency-cache-extrapolation" title="Link to this heading"></a></h3>
+<p>Left: prefill latency vs. model parameters. Right: theoretical KV cache size
+extrapolated from 512 to 128 k tokens — MLA’s linear-but-low slope vs. MHA’s
+steep growth.</p>
+<p><img alt="Prefill Latency and Cache Extrapolation" src="_images/perf_5_prefill.png" /></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="d-cache-surfaces">
+<h2>3D Cache Surfaces<a class="headerlink" href="#d-cache-surfaces" title="Link to this heading"></a></h2>
+<p>Three-dimensional views of how KV cache, model quality, and throughput jointly
+vary across architecture axes on trained checkpoints.</p>
+<section id="kv-cache-vs-params-vs-sequence-length">
+<h3>KV-Cache vs. Params vs. Sequence Length<a class="headerlink" href="#kv-cache-vs-params-vs-sequence-length" title="Link to this heading"></a></h3>
+<p>Separate surfaces for MHA, GQA, and MLA. Floor contours and VRAM-limit planes
+(24 GB / 80 GB) highlight feasibility regions.</p>
+<p><img alt="KV-Cache Surface: Params × Sequence Length" src="_images/3d_1_cache_surface.png" /></p>
+</section>
+<section id="quality-params-cache-cube">
+<h3>Quality — Params — Cache Cube<a class="headerlink" href="#quality-params-cache-cube" title="Link to this heading"></a></h3>
+<p>3D scatter of validation loss × model parameters × KV cache (MB). The
+Pareto-optimal cluster is dominated by MLA models.</p>
+<p><img alt="Quality–Params–Cache Cube" src="_images/3d_2_quality_cube.png" /></p>
+</section>
+<section id="efficiency-cube">
+<h3>Efficiency Cube<a class="headerlink" href="#efficiency-cube" title="Link to this heading"></a></h3>
+<p>Three axes all oriented higher-is-better: tokens/s × throughput-per-cache-MB ×
+inverse validation loss. MLA models occupy the upper-right-front corner.</p>
+<p><img alt="Efficiency Cube" src="_images/3d_3_efficiency_cube.png" /></p>
+</section>
+<section id="vram-budget-seq-len-serving-surface">
+<h3>VRAM Budget × Seq-Len Serving Surface<a class="headerlink" href="#vram-budget-seq-len-serving-surface" title="Link to this heading"></a></h3>
+<p>Aggregate serving throughput (k-tok/s) as a function of VRAM budget and
+sequence length. The MLA surface consistently sits above MHA/GQA.</p>
+<p><img alt="Serving Surface: VRAM × Seq-Len" src="_images/3d_4_serving_surface.png" /></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="down-dim-kv-deep-dive">
+<h2>down_dim_kv Deep Dive<a class="headerlink" href="#down-dim-kv-deep-dive" title="Link to this heading"></a></h2>
+<p>MLA’s key hyperparameter <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> controls the latent KV dimension.</p>
+<section id="cache-vs-down-dim-kv-vs-sequence-length">
+<h3>Cache vs. down_dim_kv vs. Sequence Length<a class="headerlink" href="#cache-vs-down-dim-kv-vs-sequence-length" title="Link to this heading"></a></h3>
+<p>MLA surface: <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> × seq-len → cache (GB). GQA and MHA appear as
+horizontal reference planes at their fixed cache levels.</p>
+<p><img alt="Cache vs down_dim_kv vs Sequence Length" src="_images/3d_5_dkv_cache_seqlen.png" /></p>
+</section>
+<section id="kv-dimension-decoupling">
+<h3>KV-Dimension Decoupling<a class="headerlink" href="#kv-dimension-decoupling" title="Link to this heading"></a></h3>
+<p>MHA/GQA have a steep dim-proportional cache slope; MLA is flat — its cache is
+set by <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> independently of model width.</p>
+<p><img alt="KV-Dimension Decoupling" src="_images/3d_6_kv_decoupling.png" /></p>
+</section>
+<section id="mla-quality-surface">
+<h3>MLA Quality Surface<a class="headerlink" href="#mla-quality-surface" title="Link to this heading"></a></h3>
+<p>Interpolated surface of validation loss over the (<code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code>, params) plane.
+Quality plateaus above <code class="docutils literal notranslate"><span class="pre">down_dim_kv</span></code> ≈ 64.</p>
+<p><img alt="MLA Quality Surface" src="_images/3d_7_mla_quality.png" /></p>
+</section>
+<section id="cache-vs-down-dim-kv-vs-depth">
+<h3>Cache vs. down_dim_kv vs. Depth<a class="headerlink" href="#cache-vs-down-dim-kv-vs-depth" title="Link to this heading"></a></h3>
+<p>Four subplots at fixed sequence lengths (512 / 4 k / 32 k / 128 k tokens).
+Deeper models hit the 80 GB wall at shorter contexts.</p>
+<p><img alt="Cache vs down_dim_kv vs Depth" src="_images/3d_8_dkv_num_blocks.png" /></p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tutorials/hub.html" class="btn btn-neutral float-left" title="Pushing to HuggingFace Hub" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ablation_studies.html" class="btn btn-neutral float-right" title="Ablation Studies" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

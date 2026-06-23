@@ -1,0 +1,335 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profiling &amp; Benchmarking Architecture &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Reference" href="../api/index.html" />
+    <link rel="prev" title="Experiments &amp; Results" href="../paper.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Profiling &amp; Benchmarking Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#count-flops-analytical-flops"><code class="docutils literal notranslate"><span class="pre">count_flops</span></code> — analytical FLOPs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#latencytracker-wall-clock-timing"><code class="docutils literal notranslate"><span class="pre">LatencyTracker</span></code> — wall-clock timing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#benchmarking">Benchmarking</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#benchmarktask-the-plugin-interface"><code class="docutils literal notranslate"><span class="pre">BenchmarkTask</span></code> — the plugin interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#benchmarksuite-orchestrator"><code class="docutils literal notranslate"><span class="pre">BenchmarkSuite</span></code> — orchestrator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#built-in-tasks">Built-in tasks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#suitereport-the-result-type"><code class="docutils literal notranslate"><span class="pre">SuiteReport</span></code> — the result type</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#visualization">Visualization</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Profiling &amp; Benchmarking Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/architecture/profiling.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="profiling-benchmarking-architecture">
+<h1>Profiling &amp; Benchmarking Architecture<a class="headerlink" href="#profiling-benchmarking-architecture" title="Link to this heading"></a></h1>
+<p>This page explains how <code class="docutils literal notranslate"><span class="pre">dantinox/profiling/</span></code> and <code class="docutils literal notranslate"><span class="pre">dantinox/benchmarking/</span></code> are designed and how they interact.</p>
+<hr class="docutils" />
+<section id="profiling">
+<h2>Profiling<a class="headerlink" href="#profiling" title="Link to this heading"></a></h2>
+<p>The profiling layer has two standalone components with no dependencies on training or paradigms.</p>
+<section id="count-flops-analytical-flops">
+<h3><code class="docutils literal notranslate"><span class="pre">count_flops</span></code> — analytical FLOPs<a class="headerlink" href="#count-flops-analytical-flops" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.profiling</span><span class="w"> </span><span class="kn">import</span> <span class="n">count_flops</span><span class="p">,</span> <span class="n">FLOPsBreakdown</span>
+
+<span class="n">flops</span> <span class="o">=</span> <span class="n">count_flops</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="c1"># FLOPsBreakdown(attention=..., ffn=..., embedding=..., total=...)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">flops</span><span class="p">)</span>   <span class="c1"># human-readable with GFLOPs / TFLOPs scaling</span>
+</pre></div>
+</div>
+<p>No JAX, no model instance. Pure arithmetic on <code class="docutils literal notranslate"><span class="pre">ModelConfig</span></code> fields.</p>
+<p><strong>Formulas</strong> (per forward pass):</p>
+<div class="math notranslate nohighlight">
+\[\text{Attention} = \left(4 \cdot 2BTD^2 + 2BT^2D\right) \cdot L\]</div>
+<div class="math notranslate nohighlight">
+\[\text{FFN} = \left(2BT \cdot D \cdot (E \cdot D) \cdot s_\text{swiglu} + 2BT \cdot (E \cdot D) \cdot D\right) \cdot L\]</div>
+<div class="math notranslate nohighlight">
+\[\text{Embedding} = 2BT \cdot V \cdot D\]</div>
+<p>where <span class="math notranslate nohighlight">\(s_\text{swiglu} = 2\)</span> if <code class="docutils literal notranslate"><span class="pre">use_swiglu</span></code> else <span class="math notranslate nohighlight">\(1\)</span>.</p>
+</section>
+<section id="latencytracker-wall-clock-timing">
+<h3><code class="docutils literal notranslate"><span class="pre">LatencyTracker</span></code> — wall-clock timing<a class="headerlink" href="#latencytracker-wall-clock-timing" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">LatencyTracker</span></code> uses <code class="docutils literal notranslate"><span class="pre">jax.effects_barrier()</span></code> to block until all pending JAX operations flush before starting and stopping the timer. This gives accurate wall-clock measurements, not XLA dispatch latency.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tracker</span> <span class="o">=</span> <span class="n">LatencyTracker</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">10_000</span><span class="p">)</span>  <span class="c1"># rolling window of last N samples</span>
+
+<span class="k">with</span> <span class="n">tracker</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">n_tokens</span><span class="o">=</span><span class="n">batch</span> <span class="o">*</span> <span class="n">seq_len</span><span class="p">):</span>
+    <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">tracker</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="c1"># ProfilingResult: mean_ms, p50_ms, p99_ms, throughput_tps, n_samples</span>
+</pre></div>
+</div>
+<p><strong>Functional wrapper:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.profiling</span><span class="w"> </span><span class="kn">import</span> <span class="n">profile_fn</span>
+
+<span class="n">fast_generate</span> <span class="o">=</span> <span class="n">profile_fn</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">,</span> <span class="n">tracker</span><span class="p">,</span> <span class="n">n_tokens</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">fast_generate</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>  <span class="c1"># records one sample automatically</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="benchmarking">
+<h2>Benchmarking<a class="headerlink" href="#benchmarking" title="Link to this heading"></a></h2>
+<p>The benchmarking system is a plugin framework: tasks are independent classes, the suite orchestrates them.</p>
+<section id="benchmarktask-the-plugin-interface">
+<h3><code class="docutils literal notranslate"><span class="pre">BenchmarkTask</span></code> — the plugin interface<a class="headerlink" href="#benchmarktask-the-plugin-interface" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.benchmarking</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkTask</span><span class="p">,</span> <span class="n">BenchmarkResult</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyTask</span><span class="p">(</span><span class="n">BenchmarkTask</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;my_task&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paradigm</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BenchmarkResult</span><span class="p">:</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="n">evaluate_something</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">BenchmarkResult</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">score</span><span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="benchmarksuite-orchestrator">
+<h3><code class="docutils literal notranslate"><span class="pre">BenchmarkSuite</span></code> — orchestrator<a class="headerlink" href="#benchmarksuite-orchestrator" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.benchmarking</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkSuite</span><span class="p">,</span> <span class="n">BenchmarkConfig</span>
+
+<span class="n">suite</span> <span class="o">=</span> <span class="n">BenchmarkSuite</span><span class="p">(</span>
+    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="n">ThroughputTask</span><span class="p">(),</span> <span class="n">LatencyTask</span><span class="p">(),</span> <span class="n">MyTask</span><span class="p">()],</span>
+    <span class="n">config</span><span class="o">=</span><span class="n">BenchmarkConfig</span><span class="p">(</span><span class="n">seq_lens</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">],</span> <span class="n">n_measure</span><span class="o">=</span><span class="mi">30</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">suite</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">paradigm</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">save_csv</span><span class="o">=</span><span class="s2">&quot;results.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">BenchmarkSuite.default()</span></code> — returns <code class="docutils literal notranslate"><span class="pre">[ThroughputTask,</span> <span class="pre">LatencyTask,</span> <span class="pre">PerplexityTask]</span></code>.
+<code class="docutils literal notranslate"><span class="pre">BenchmarkSuite.throughput_only()</span></code> — single-task variant for quick hardware checks.</p>
+</section>
+<section id="built-in-tasks">
+<h3>Built-in tasks<a class="headerlink" href="#built-in-tasks" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Task</p></th>
+<th class="head text-left"><p>What it measures</p></th>
+<th class="head text-left"><p>Key metrics</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ThroughputTask</span></code></p></td>
+<td class="text-left"><p>tok/s vs seq-len sweep + batch-size sweep</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">tps_seq{L}</span></code>, <code class="docutils literal notranslate"><span class="pre">peak_tps</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">LatencyTask</span></code></p></td>
+<td class="text-left"><p>Prefill latency + AR decode latency</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">prefill_mean_ms</span></code>, <code class="docutils literal notranslate"><span class="pre">prefill_p99_ms</span></code>, <code class="docutils literal notranslate"><span class="pre">decode_tps</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">PerplexityTask</span></code></p></td>
+<td class="text-left"><p>Cross-entropy loss on validation data</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">perplexity</span></code>, <code class="docutils literal notranslate"><span class="pre">eval_loss</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="suitereport-the-result-type">
+<h3><code class="docutils literal notranslate"><span class="pre">SuiteReport</span></code> — the result type<a class="headerlink" href="#suitereport-the-result-type" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>          <span class="c1"># human-readable string</span>
+<span class="n">report</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>     <span class="c1"># pandas DataFrame — one row per task</span>
+<span class="n">report</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out.csv&quot;</span><span class="p">)</span>    <span class="c1"># CSV export</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
+<p>Charts are registered class-globally and auto-discovered by <code class="docutils literal notranslate"><span class="pre">Visualizer</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@Visualizer</span><span class="o">.</span><span class="n">register</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyChart</span><span class="p">(</span><span class="n">Chart</span><span class="p">):</span>
+    <span class="n">name</span>    <span class="o">=</span> <span class="s2">&quot;my_chart&quot;</span>
+    <span class="n">accepts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_render_mpl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="n">Visualizer</span><span class="p">()</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">charts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;my_chart&quot;</span><span class="p">],</span> <span class="n">out_dir</span><span class="o">=</span><span class="s2">&quot;plots/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">RenderConfig</span></code> controls backend (<code class="docutils literal notranslate"><span class="pre">&quot;matplotlib&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;plotly&quot;</span></code>), format (<code class="docutils literal notranslate"><span class="pre">&quot;png&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;pdf&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;svg&quot;</span></code>), resolution, size, and style preset (<code class="docutils literal notranslate"><span class="pre">&quot;publication&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;dark&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;minimal&quot;</span></code>).</p>
+<p>Built-in charts: <code class="docutils literal notranslate"><span class="pre">TrainingCurveChart</span></code>, <code class="docutils literal notranslate"><span class="pre">ThroughputChart</span></code>, <code class="docutils literal notranslate"><span class="pre">ThroughputBatchChart</span></code>, <code class="docutils literal notranslate"><span class="pre">LatencyChart</span></code>, <code class="docutils literal notranslate"><span class="pre">ParetoChart</span></code>, <code class="docutils literal notranslate"><span class="pre">RadarChart</span></code>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../paper.html" class="btn btn-neutral float-left" title="Experiments &amp; Results" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../api/index.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

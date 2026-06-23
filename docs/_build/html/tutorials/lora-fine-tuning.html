@@ -1,0 +1,410 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoRA Fine-Tuning &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorial: Benchmarking a Model" href="benchmarking.html" />
+    <link rel="prev" title="Masked Diffusion Language Model" href="diffusion-lm.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../training/index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training/emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">LoRA Fine-Tuning</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#background">Background</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prepare-the-fine-tuning-dataset">1. Prepare the Fine-Tuning Dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#create-a-fine-tuning-config">2. Create a Fine-Tuning Config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#understanding-lora-targets">3. Understanding <code class="docutils literal notranslate"><span class="pre">lora_targets</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#monitor-training">4. Monitor Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generate-with-the-fine-tuned-model">5. Generate with the Fine-Tuned Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#merging-lora-weights-for-deployment">6. Merging LoRA Weights for Deployment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#choosing-the-rank">7. Choosing the Rank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">LoRA Fine-Tuning</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/tutorials/lora-fine-tuning.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="lora-fine-tuning">
+<h1>LoRA Fine-Tuning<a class="headerlink" href="#lora-fine-tuning" title="Link to this heading"></a></h1>
+<p>This tutorial fine-tunes a pretrained DantinoX checkpoint on a new text corpus using Low-Rank Adaptation (LoRA). LoRA freezes the base model and trains only a small set of rank-decomposed adapter weights — approximately <strong>0.2 % of total parameters</strong> — making it practical on a single GPU.</p>
+<p><strong>Prerequisites:</strong> a trained checkpoint from the <a class="reference internal" href="first-model.html"><span class="std std-doc">Training Your First Model</span></a> tutorial, or any DantinoX run directory.</p>
+<hr class="docutils" />
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Link to this heading"></a></h2>
+<p>LoRA (Hu et al., 2022) inserts a trainable low-rank delta alongside each frozen linear projection:</p>
+<div class="math notranslate nohighlight">
+\[W_{\text{eff}} = W_{\text{base}} + \frac{\alpha}{r} \cdot AB\]</div>
+<p>where <span class="math notranslate nohighlight">\(A \in \mathbb{R}^{d \times r}\)</span> is initialised with scaled Gaussian noise and <span class="math notranslate nohighlight">\(B \in \mathbb{R}^{r \times k}\)</span> is zero-initialised. At the start of fine-tuning the adapter contributes nothing (<span class="math notranslate nohighlight">\(B = 0\)</span>), so training starts from the exact pretrained behaviour.</p>
+<p>DantinoX implements freezing at the <strong>type level</strong> via a custom <code class="docutils literal notranslate"><span class="pre">LoRAParam(nnx.Variable)</span></code> subclass. Base weights are registered as <code class="docutils literal notranslate"><span class="pre">nnx.Param</span></code>; adapters as <code class="docutils literal notranslate"><span class="pre">LoRAParam</span></code>. The optimizer is constructed with <code class="docutils literal notranslate"><span class="pre">wrt=LoRAParam</span></code>, so only adapter weights receive gradient updates — no manual masking or <code class="docutils literal notranslate"><span class="pre">stop_gradient</span></code> required.</p>
+</section>
+<hr class="docutils" />
+<section id="prepare-the-fine-tuning-dataset">
+<h2>1. Prepare the Fine-Tuning Dataset<a class="headerlink" href="#prepare-the-fine-tuning-dataset" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: fine-tune on Italian poetry (vs. the English Shakespeare used in pre-training)</span>
+wget<span class="w"> </span>-O<span class="w"> </span>data/finetune.txt<span class="w"> </span>https://raw.githubusercontent.com/BrunoSilvestrini/Datasets/main/divina_commedia.txt
+</pre></div>
+</div>
+<p>Any plain-text file works. The tokenizer fitted during pre-training is reused automatically — the vocabulary does not change.</p>
+</section>
+<hr class="docutils" />
+<section id="create-a-fine-tuning-config">
+<h2>2. Create a Fine-Tuning Config<a class="headerlink" href="#create-a-fine-tuning-config" title="Link to this heading"></a></h2>
+<p>Load the pretrained config and enable LoRA:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># finetune.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trainer</span>
+
+<span class="c1"># Load the exact config the pretrained model was trained with</span>
+<span class="n">run_dir</span> <span class="o">=</span> <span class="s2">&quot;runs/run_20260101_120000&quot;</span>   <span class="c1"># your pretrained checkpoint</span>
+<span class="n">config</span>  <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">/config.yaml&quot;</span><span class="p">)</span>
+
+<span class="c1"># ── LoRA settings ─────────────────────────────────────────────────────────────</span>
+<span class="n">config</span><span class="o">.</span><span class="n">use_lora</span>     <span class="o">=</span> <span class="kc">True</span>
+<span class="n">config</span><span class="o">.</span><span class="n">lora_rank</span>    <span class="o">=</span> <span class="mi">8</span>       <span class="c1"># adapter rank r — larger = more capacity, more params</span>
+<span class="n">config</span><span class="o">.</span><span class="n">lora_alpha</span>   <span class="o">=</span> <span class="mf">16.0</span>    <span class="c1"># scaling constant α (effective scale = α / r = 2.0)</span>
+<span class="n">config</span><span class="o">.</span><span class="n">lora_dropout</span> <span class="o">=</span> <span class="mf">0.05</span>    <span class="c1"># dropout on the LoRA delta path (0 = disabled)</span>
+<span class="n">config</span><span class="o">.</span><span class="n">lora_targets</span> <span class="o">=</span> <span class="s2">&quot;attention&quot;</span>   <span class="c1"># which layers to adapt: &quot;attention&quot; | &quot;mlp&quot; | &quot;all&quot;</span>
+
+<span class="c1"># ── Fine-tuning hyperparameters ────────────────────────────────────────────────</span>
+<span class="n">config</span><span class="o">.</span><span class="n">lr</span>           <span class="o">=</span> <span class="mf">1e-4</span>    <span class="c1"># lower LR than pre-training</span>
+<span class="n">config</span><span class="o">.</span><span class="n">lr_schedule</span>  <span class="o">=</span> <span class="s2">&quot;cosine&quot;</span>
+<span class="n">config</span><span class="o">.</span><span class="n">warmup_steps</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">config</span><span class="o">.</span><span class="n">epochs</span>       <span class="o">=</span> <span class="mi">3</span>
+<span class="n">config</span><span class="o">.</span><span class="n">patience</span>     <span class="o">=</span> <span class="mi">3</span>
+
+<span class="n">ft_run_dir</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">data_path</span><span class="o">=</span><span class="s2">&quot;data/finetune.txt&quot;</span><span class="p">,</span>
+    <span class="n">run_dir</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">/lora_ft&quot;</span><span class="p">,</span>   <span class="c1"># save inside the base checkpoint directory</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fine-tuned checkpoint: </span><span class="si">{</span><span class="n">ft_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or equivalently via the CLI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>train<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>runs/run_20260101_120000/config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data_path<span class="w"> </span>data/finetune.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--use_lora<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lora_rank<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lora_alpha<span class="w"> </span><span class="m">16</span>.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lora_targets<span class="w"> </span>attention<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lr<span class="w"> </span>1e-4<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--epochs<span class="w"> </span><span class="m">3</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="understanding-lora-targets">
+<h2>3. Understanding <code class="docutils literal notranslate"><span class="pre">lora_targets</span></code><a class="headerlink" href="#understanding-lora-targets" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p><code class="docutils literal notranslate"><span class="pre">lora_targets</span></code></p></th>
+<th class="head text-left"><p>Adapted layers</p></th>
+<th class="head text-left"><p>Parameters (rank=8, dim=256)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;attention&quot;</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">qkv</span></code>, <code class="docutils literal notranslate"><span class="pre">o_proj</span></code> in every Attention block</p></td>
+<td class="text-left"><p>~0.2 %</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;mlp&quot;</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">up_proj</span></code>, <code class="docutils literal notranslate"><span class="pre">down_proj</span></code> in every MLP block</p></td>
+<td class="text-left"><p>~0.4 %</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code></p></td>
+<td class="text-left"><p>All of the above</p></td>
+<td class="text-left"><p>~0.6 %</p></td>
+</tr>
+</tbody>
+</table>
+<p>For most domain-adaptation tasks, <code class="docutils literal notranslate"><span class="pre">&quot;attention&quot;</span></code> is sufficient and cheapest. Use <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> if you need to also adapt the feed-forward knowledge.</p>
+</section>
+<hr class="docutils" />
+<section id="monitor-training">
+<h2>4. Monitor Training<a class="headerlink" href="#monitor-training" title="Link to this heading"></a></h2>
+<p>The fine-tuning run logs to the same <code class="docutils literal notranslate"><span class="pre">training_log.csv</span></code> format. You can compare loss curves between pre-training and fine-tuning:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">base</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;runs/run_20260101_120000/training_log.csv&quot;</span><span class="p">)</span>
+<span class="n">ft</span>   <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;runs/run_20260101_120000/lora_ft/training_log.csv&quot;</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s2">&quot;val_loss&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Pre-training val loss&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ft</span><span class="p">[</span><span class="s2">&quot;val_loss&quot;</span><span class="p">],</span>   <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fine-tuning val loss&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">);</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;lora_comparison.pdf&quot;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="generate-with-the-fine-tuned-model">
+<h2>5. Generate with the Fine-Tuned Model<a class="headerlink" href="#generate-with-the-fine-tuned-model" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Generator</span>
+
+<span class="n">gen</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">(</span><span class="s2">&quot;runs/run_20260101_120000/lora_ft&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s2">&quot;Nel mezzo del cammin di nostra vita&quot;</span><span class="p">,</span> <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">200</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">Generator</span></code> loads the LoRA adapters automatically. The base weights remain unchanged in <code class="docutils literal notranslate"><span class="pre">weights.msgpack</span></code>; the adapters are stored as a separate key in the same file.</p>
+</section>
+<hr class="docutils" />
+<section id="merging-lora-weights-for-deployment">
+<h2>6. Merging LoRA Weights for Deployment<a class="headerlink" href="#merging-lora-weights-for-deployment" title="Link to this heading"></a></h2>
+<p>Once fine-tuning is complete you can merge the adapters into the base weights to eliminate the LoRA overhead at inference time:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.lora</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoRALinear</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dantinox.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">flax.serialization</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;runs/run_20260101_120000/lora_ft/config.yaml&quot;</span><span class="p">)</span>
+<span class="n">model</span>  <span class="o">=</span> <span class="n">Transformer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;runs/run_20260101_120000/lora_ft&quot;</span><span class="p">)</span>
+
+<span class="c1"># Merge every LoRALinear layer in-place</span>
+<span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">iter_modules</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">LoRALinear</span><span class="p">):</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">merge_weights</span><span class="p">()</span>   <span class="c1"># W_base + (α/r) · A·B</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">merged</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">lora_A</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">lora_B</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Save merged weights to a new directory</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">out_dir</span> <span class="o">=</span> <span class="s2">&quot;runs/run_20260101_120000/lora_merged&quot;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">config</span><span class="o">.</span><span class="n">use_lora</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">config</span><span class="o">.</span><span class="n">to_yaml</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">out_dir</span><span class="si">}</span><span class="s2">/config.yaml&quot;</span><span class="p">)</span>
+<span class="n">flax</span><span class="o">.</span><span class="n">serialization</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>   <span class="c1"># or use dantinox push directly</span>
+</pre></div>
+</div>
+<p>!!! note
+Merged checkpoints are identical in size to the original base model and have zero inference overhead. Use them when you want to deploy without any LoRA machinery.</p>
+</section>
+<hr class="docutils" />
+<section id="choosing-the-rank">
+<h2>7. Choosing the Rank<a class="headerlink" href="#choosing-the-rank" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Rank</p></th>
+<th class="head text-left"><p>Parameters</p></th>
+<th class="head text-left"><p>Use case</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>4</p></td>
+<td class="text-left"><p>~0.1 %</p></td>
+<td class="text-left"><p>Style transfer, minimal domain shift</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>8</p></td>
+<td class="text-left"><p>~0.2 %</p></td>
+<td class="text-left"><p>Standard domain adaptation (recommended starting point)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>16</p></td>
+<td class="text-left"><p>~0.4 %</p></td>
+<td class="text-left"><p>Significant distribution shift</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>32</p></td>
+<td class="text-left"><p>~0.8 %</p></td>
+<td class="text-left"><p>Near full fine-tuning quality; diminishing returns</p></td>
+</tr>
+</tbody>
+</table>
+<p>A higher rank increases adapter expressiveness but also the risk of overfitting on small datasets. Start with <code class="docutils literal notranslate"><span class="pre">rank=8</span></code> and adjust based on validation loss.</p>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Goal</p></th>
+<th class="head text-left"><p>Reference</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>Understand the LoRA math and type system</p></td>
+<td class="text-left"><p><a class="reference internal" href="../architecture.html#lora-fine-tuning"><span class="std std-ref">Architecture — LoRA Fine-Tuning</span></a></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>Push the fine-tuned model to HuggingFace Hub</p></td>
+<td class="text-left"><p><a class="reference internal" href="hub.html"><span class="std std-doc">Pushing to HuggingFace Hub</span></a></p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>Fine-tune a diffusion model</p></td>
+<td class="text-left"><p><a class="reference internal" href="diffusion-lm.html"><span class="std std-doc">Masked Diffusion LM</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="diffusion-lm.html" class="btn btn-neutral float-left" title="Masked Diffusion Language Model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="benchmarking.html" class="btn btn-neutral float-right" title="Tutorial: Benchmarking a Model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

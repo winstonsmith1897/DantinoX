@@ -1,0 +1,744 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training Guide &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Autoregressive Training" href="autoregressive.html" />
+    <link rel="prev" title="Autoregressive vs Masked Diffusion — Head-to-Head" href="../paradigms/comparison.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Training Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#training-configuration-fields">Training configuration fields</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#learning-rate">Learning rate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#batch-size-and-gradient-accumulation">Batch size and gradient accumulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#optimisers">Optimisers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#schedules">Schedules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gradient-clipping">Gradient clipping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#precision">Precision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multi-gpu">Multi-GPU</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#regularisation">Regularisation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dataset">Dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#checkpointing">Checkpointing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-training-loop-what-happens-at-every-step">The training loop — what happens at every step</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-directory-structure">Run directory structure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#model-summary-json-memory-breakdown"><code class="docutils literal notranslate"><span class="pre">model_summary.json</span></code> — memory breakdown</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dataset-tokenisation-cache">Dataset tokenisation cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#find-lr-auto-detect-the-optimal-learning-rate-find-lr">Find-LR — auto-detect the optimal learning rate {#find-lr}</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#resuming-training">Resuming training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#w-b-logging">W&amp;B logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pages-in-this-section">Pages in this section</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="emnlp-suite.html">Full Training Suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Training Guide</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/training/index.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="training-guide">
+<h1>Training Guide<a class="headerlink" href="#training-guide" title="Link to this heading"></a></h1>
+<p>DantinoX uses a single <code class="docutils literal notranslate"><span class="pre">Trainer</span></code> class for all three paradigms (AR, Diffusion, ELF). This page explains every training option, what it does, and when to change it.</p>
+<hr class="docutils" />
+<section id="quick-start">
+<h2>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<p>=== “CLI”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+# Autoregressive
+dantinox train \
+    --config configs/default_config.yaml \
+    --data_path data/wiki.txt
+
+# Diffusion
+dantinox train \
+    --config configs/diffusion_base.yaml \
+    --data_path data/wiki.txt \
+    --use_bf16 true \
+    --n_devices 2
+
+# Override any field inline
+dantinox train \
+    --config configs/default_config.yaml \
+    --data_path data/wiki.txt \
+    --lr 1e-4 \
+    --batch_size 128 \
+    --optimizer muon
+```
+</pre></div>
+</div>
+<p>=== “Python”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+from dantinox import Trainer
+from dantinox.core.config import Config
+
+config  = Config.from_yaml(&quot;configs/default_config.yaml&quot;)
+run_dir = Trainer(config).fit(&quot;data/wiki.txt&quot;)
+# run_dir is e.g. &quot;runs/run_20260611_142301&quot;
+```
+</pre></div>
+</div>
+<p>=== “One-liner”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```python
+import dantinox as dx
+
+run_dir = dx.fit(
+    &quot;ar&quot;,                    # paradigm
+    &quot;data/wiki.txt&quot;,         # data
+    dim=512, n_heads=8, head_size=64,
+    num_blocks=12, vocab_size=32_000,
+    lr=3e-4, epochs=5,
+)
+```
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="training-configuration-fields">
+<h2>Training configuration fields<a class="headerlink" href="#training-configuration-fields" title="Link to this heading"></a></h2>
+<p>Every field below can be set in a YAML config or overridden on the CLI with <code class="docutils literal notranslate"><span class="pre">--field</span> <span class="pre">value</span></code>.</p>
+<section id="learning-rate">
+<h3>Learning rate<a class="headerlink" href="#learning-rate" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">lr</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">0.001</span></code></p></td>
+<td class="text-left"><p><strong>Peak learning rate.</strong> The highest LR reached after warmup. Typical range: <code class="docutils literal notranslate"><span class="pre">1e-5</span></code> (fine-tuning) to <code class="docutils literal notranslate"><span class="pre">3e-3</span></code> (training from scratch). See <a class="reference internal" href="#find-lr"><span class="xref myst">find-lr</span></a> to auto-detect.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">lr_schedule</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;cosine&quot;</span></code></p></td>
+<td class="text-left"><p>Schedule applied after warmup. See <a class="reference internal" href="#schedules">Schedules</a>.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">warmup_steps</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">420</span></code></p></td>
+<td class="text-left"><p>Linear warmup from LR=0 to <code class="docutils literal notranslate"><span class="pre">lr</span></code> over this many steps. A common rule is 1–5% of total training steps.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="batch-size-and-gradient-accumulation">
+<h3>Batch size and gradient accumulation<a class="headerlink" href="#batch-size-and-gradient-accumulation" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">batch_size</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">64</span></code></p></td>
+<td class="text-left"><p>Total number of sequences per optimiser update. This is the <strong>effective</strong> batch size: <code class="docutils literal notranslate"><span class="pre">batch_size</span> <span class="pre">=</span> <span class="pre">micro_batch_size</span> <span class="pre">×</span> <span class="pre">grad_accum</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">grad_accum</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">4</span></code></p></td>
+<td class="text-left"><p>Number of gradient accumulation micro-steps. Allows simulating a large batch when GPU memory is limited.</p></td>
+</tr>
+</tbody>
+</table>
+<p>!!! note “Effective batch size”
+<strong>Effective batch size</strong> = <code class="docutils literal notranslate"><span class="pre">batch_size</span> <span class="pre">×</span> <span class="pre">n_devices</span></code>.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>`batch_size` is the total size summed across all accumulation steps. The micro-batch fed to each step is `batch_size / grad_accum`.
+
+Example: `batch_size=256, grad_accum=4, n_devices=2` → micro-batch per step = 256/4 = 64, total effective batch = 256 × 2 = 512.
+</pre></div>
+</div>
+</section>
+<section id="optimisers">
+<h3>Optimisers<a class="headerlink" href="#optimisers" title="Link to this heading"></a></h3>
+<p>Set via <code class="docutils literal notranslate"><span class="pre">optimizer:</span> <span class="pre">&quot;...&quot;</span></code>:</p>
+<p>=== “AdamW (default)”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+optimizer: &quot;adamw&quot;
+```
+
+Adam with decoupled weight decay. The standard choice for most transformer training. Reliable across architectures and scales. Uses per-parameter adaptive learning rates and momentum.
+
+**When to use:** default for everything. Start here.
+</pre></div>
+</div>
+<p>=== “Lion”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+optimizer: &quot;lion&quot;
+```
+
+Sign-based gradient update. Uses less memory than AdamW (stores only momentum, not variance) and often trains faster. From the paper *&quot;Symbolic Discovery of Optimization Algorithms&quot;* (Chen et al., 2023).
+
+**When to use:** when memory is tight, or when you want to experiment with faster convergence. May need a lower LR than AdamW (divide your AdamW LR by ~3–10).
+</pre></div>
+</div>
+<p>=== “Muon”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+optimizer: &quot;muon&quot;
+```
+
+Momentum Orthogonalized by Newton-Schulz. Applies Newton-Schulz orthogonalization to 2D weight gradients, which makes the update geometry-aware. Falls back to Adam for biases and norms. From optax &gt;= 0.2.6.
+
+**When to use:** state-of-the-art for transformer pre-training. Often achieves lower loss than AdamW at equivalent compute. Recommended for research runs.
+</pre></div>
+</div>
+<p>=== “Adafactor”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+optimizer: &quot;adafactor&quot;
+```
+
+Memory-efficient approximation of Adam. Factorises the second-moment matrix instead of storing it per-parameter, saving O(√(m×n)) vs O(m×n) memory per matrix.
+
+**When to use:** when training very large models (billions of parameters) where AdamW&#39;s optimizer state would not fit in memory.
+</pre></div>
+</div>
+<p>=== “Adam”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+optimizer: &quot;adam&quot;
+```
+
+Classic Adam without weight decay. Avoid for training from scratch (weight decay is important). Useful for final fine-tuning steps.
+</pre></div>
+</div>
+</section>
+<section id="schedules">
+<h3>Schedules<a class="headerlink" href="#schedules" title="Link to this heading"></a></h3>
+<p>Set via <code class="docutils literal notranslate"><span class="pre">lr_schedule:</span> <span class="pre">&quot;...&quot;</span></code>. All schedules include a linear warmup from 0 to peak LR:</p>
+<p>=== “cosine (default)”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+lr_schedule: &quot;cosine&quot;
+```
+
+After warmup, the LR follows a half-cosine decay from `lr` to `lr × 0.01`.
+
+```
+LR
+▲
+│      ╭───╮
+│    ╭─╯   ╰─╮
+│  ╭─╯       ╰───────────
+└──────────────────────── step
+  warmup  decay
+```
+
+Best default. Smooth decay avoids abrupt LR changes near the end of training.
+</pre></div>
+</div>
+<p>=== “linear”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+lr_schedule: &quot;linear&quot;
+```
+
+After warmup, the LR decreases linearly from `lr` to `lr × 0.01`. Simpler than cosine.
+</pre></div>
+</div>
+<p>=== “constant”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+lr_schedule: &quot;constant&quot;
+```
+
+After warmup, the LR stays at `lr` until training ends. Useful for fine-tuning on small datasets or as a baseline.
+</pre></div>
+</div>
+<p>=== “wsd (warmup-stable-decay)”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```yaml
+lr_schedule: &quot;wsd&quot;
+```
+
+Three phases: (1) linear warmup → (2) stable plateau at peak LR for 40% of budget → (3) cosine decay to `lr × 0.01`. Shown to work well for very long training runs (Hu et al., 2024).
+
+```
+LR
+▲
+│      ╭───────────╮
+│    ╭─╯           ╰─╮
+│  ╭─╯               ╰────
+└──────────────────────── step
+  warmup  stable   decay
+```
+</pre></div>
+</div>
+</section>
+<section id="gradient-clipping">
+<h3>Gradient clipping<a class="headerlink" href="#gradient-clipping" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">grad_clip</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td class="text-left"><p>Maximum global gradient norm. Gradients are rescaled if their global L2 norm exceeds this value. Set to <code class="docutils literal notranslate"><span class="pre">0</span></code> to disable.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Gradient clipping prevents “exploding gradients” — rare but catastrophic events where a single bad batch causes the gradient to be huge, blowing up the weights. A value of 1.0 is safe for most cases.</p>
+</section>
+<section id="precision">
+<h3>Precision<a class="headerlink" href="#precision" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">use_bf16</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td class="text-left"><p>If true, model parameters are cast to <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> before training. Halves memory usage with minimal quality loss. Requires a GPU with BF16 support (Ampere A100/H100 or newer).</p></td>
+</tr>
+</tbody>
+</table>
+<p>BFloat16 (bfloat16) has the same exponent range as float32 but fewer mantissa bits. Unlike float16, it rarely causes numerical overflow/underflow in transformer training.</p>
+</section>
+<section id="multi-gpu">
+<h3>Multi-GPU<a class="headerlink" href="#multi-gpu" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">n_devices</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td class="text-left"><p>Number of GPUs to use. <code class="docutils literal notranslate"><span class="pre">0</span></code> = auto-detect and use all available. <code class="docutils literal notranslate"><span class="pre">1</span></code> = single GPU. Must divide <code class="docutils literal notranslate"><span class="pre">batch_size</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p>DantinoX uses <strong>JAX SPMD data parallelism</strong>: the model is replicated on all devices, the batch is sharded (split) across devices, and gradients are reduced (averaged) automatically.</p>
+</section>
+<section id="regularisation">
+<h3>Regularisation<a class="headerlink" href="#regularisation" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dropout_rate</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
+<td class="text-left"><p>Dropout applied inside attention and FFN. <code class="docutils literal notranslate"><span class="pre">0.0</span></code> = disabled (standard for LLMs trained on large corpora). Use <code class="docutils literal notranslate"><span class="pre">0.1</span></code>–<code class="docutils literal notranslate"><span class="pre">0.3</span></code> only for small models or fine-tuning.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">patience</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td class="text-left"><p>Early stopping: stop training if validation loss has not improved for this many evaluation intervals (each 500 steps). <code class="docutils literal notranslate"><span class="pre">0</span></code> = disabled.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="dataset">
+<h3>Dataset<a class="headerlink" href="#dataset" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dataset_source</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code> = read from <code class="docutils literal notranslate"><span class="pre">data_path</span></code> file; <code class="docutils literal notranslate"><span class="pre">&quot;huggingface&quot;</span></code> = load from HuggingFace datasets.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dataset_name</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code></p></td>
+<td class="text-left"><p>HF dataset identifier (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;wikitext&quot;</span></code>) or local file path fallback.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dataset_config</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code></p></td>
+<td class="text-left"><p>HF dataset config (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;wikitext-103-raw-v1&quot;</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dataset_split</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;train&quot;</span></code></p></td>
+<td class="text-left"><p>HF dataset split to use.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dataset_text_field</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;text&quot;</span></code></p></td>
+<td class="text-left"><p>Column name containing the text in a HF dataset.</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">max_train_tokens</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">10_000_000</span></code></p></td>
+<td class="text-left"><p>Cap the number of tokens used for training. Useful to run a fixed compute budget regardless of corpus size. Set to <code class="docutils literal notranslate"><span class="pre">0</span></code> to use the full corpus.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">tokenizer_type</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">&quot;char&quot;</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">&quot;char&quot;</span></code> = character-level tokenizer (simple, built-in); <code class="docutils literal notranslate"><span class="pre">&quot;bpe&quot;</span></code> = Byte-Pair Encoding (requires training); <code class="docutils literal notranslate"><span class="pre">&quot;t5&quot;</span></code> = T5 pre-trained SentencePiece tokenizer.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="checkpointing">
+<h3>Checkpointing<a class="headerlink" href="#checkpointing" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-center"><p>Default</p></th>
+<th class="head text-left"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">checkpoint_every</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">2000</span></code></p></td>
+<td class="text-left"><p>Save a resumable checkpoint every N steps (in addition to the best-val checkpoint).</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">eval_iters</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+<td class="text-left"><p>Number of batches averaged for each validation loss estimate.</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td class="text-center"><p><code class="docutils literal notranslate"><span class="pre">42</span></code></p></td>
+<td class="text-left"><p>Random seed for data sampling and model initialisation. Set for reproducibility.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="the-training-loop-what-happens-at-every-step">
+<h2>The training loop — what happens at every step<a class="headerlink" href="#the-training-loop-what-happens-at-every-step" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Sample a micro-batch</strong> of <code class="docutils literal notranslate"><span class="pre">batch_size</span> <span class="pre">/</span> <span class="pre">grad_accum</span></code> sequences from the training corpus</p></li>
+<li><p><strong>Forward pass</strong>: feed the batch through the model, compute the loss</p></li>
+<li><p><strong>Backward pass</strong>: compute gradients with <code class="docutils literal notranslate"><span class="pre">nnx.value_and_grad</span></code></p></li>
+<li><p><strong>Accumulate</strong>: add scaled gradients (<code class="docutils literal notranslate"><span class="pre">/</span> <span class="pre">grad_accum</span></code>) to the accumulator</p></li>
+<li><p><strong>Repeat</strong> steps 1–4 <code class="docutils literal notranslate"><span class="pre">grad_accum</span></code> times</p></li>
+<li><p><strong>Clip gradients</strong> (if <code class="docutils literal notranslate"><span class="pre">grad_clip</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>)</p></li>
+<li><p><strong>Update parameters</strong> with the optimiser</p></li>
+<li><p>Every 500 steps: <strong>evaluate</strong> on a validation subset, log to CSV, save best checkpoint</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="run-directory-structure">
+<h2>Run directory structure<a class="headerlink" href="#run-directory-structure" title="Link to this heading"></a></h2>
+<p>Every training run saves its artifacts to an isolated directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>runs/
+└── run_20260611_142301/
+    ├── config.yaml                ← complete config snapshot (use to reproduce!)
+    ├── tokenizer.json             ← tokenizer vocabulary
+    ├── best_model_weights.msgpack ← checkpoint with lowest validation loss
+    ├── model_weights.msgpack      ← latest resume checkpoint (deleted on completion)
+    ├── training_cursor.json       ← resume pointer (step number, deleted on completion)
+    ├── model_summary.json         ← parameter count and memory breakdown
+    └── training_log.csv           ← step, train_loss, val_loss, ms/step
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">model_weights.msgpack</span></code> and <code class="docutils literal notranslate"><span class="pre">training_cursor.json</span></code> files exist only during training. When training completes normally, the cursor is deleted. This lets you distinguish a completed run from an interrupted one.</p>
+<section id="model-summary-json-memory-breakdown">
+<h3><code class="docutils literal notranslate"><span class="pre">model_summary.json</span></code> — memory breakdown<a class="headerlink" href="#model-summary-json-memory-breakdown" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total_params_M&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">48.23</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;dtype&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bfloat16&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;weights_mem_MB&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">96.47</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;optimizer_mem_MB&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">96.47</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;est_activations_MB&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3276.8</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Field</p></th>
+<th class="head text-left"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">total_params_M</span></code></p></td>
+<td class="text-left"><p>Total trainable parameters in millions</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">dtype</span></code></p></td>
+<td class="text-left"><p>Floating-point type of stored weights</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">weights_mem_MB</span></code></p></td>
+<td class="text-left"><p>Approximate VRAM for model weights</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">optimizer_mem_MB</span></code></p></td>
+<td class="text-left"><p>VRAM for optimiser state (AdamW stores m+v → 2× weights)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">est_activations_MB</span></code></p></td>
+<td class="text-left"><p>Estimated VRAM for activations during the backward pass</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="dataset-tokenisation-cache">
+<h2>Dataset tokenisation cache<a class="headerlink" href="#dataset-tokenisation-cache" title="Link to this heading"></a></h2>
+<p>The first training run for a given dataset tokenises the corpus and saves:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>data/&lt;dataset&gt;_&lt;config&gt;_&lt;tokenizer_type&gt;.npy    ← token ID array (int32)
+data/&lt;dataset&gt;_&lt;config&gt;_&lt;tokenizer_type&gt;.json   ← shared tokenizer vocab
+</pre></div>
+</div>
+<p>All subsequent runs with the same <code class="docutils literal notranslate"><span class="pre">(dataset_name,</span> <span class="pre">dataset_config,</span> <span class="pre">tokenizer_type)</span></code> load directly from these files — no re-download, no re-tokenisation. This reduces per-run startup from ~60s to ~2s.</p>
+</section>
+<hr class="docutils" />
+<section id="find-lr-auto-detect-the-optimal-learning-rate-find-lr">
+<h2>Find-LR — auto-detect the optimal learning rate {#find-lr}<a class="headerlink" href="#find-lr-auto-detect-the-optimal-learning-rate-find-lr" title="Link to this heading"></a></h2>
+<p>Before committing to a full training run, use the LR range test to find a good starting LR:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>find-lr<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/default_config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>data/wiki.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--min_lr<span class="w"> </span>1e-7<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--max_lr<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--num_steps<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--plot<span class="w">                </span><span class="c1"># save lr_finder.png</span>
+</pre></div>
+</div>
+<p><strong>How it works (Smith 2015):</strong></p>
+<ol class="arabic simple">
+<li><p>Start with LR = <code class="docutils literal notranslate"><span class="pre">min_lr</span></code></p></li>
+<li><p>Train for one step, measure loss</p></li>
+<li><p>Multiply LR by a constant factor (exponential sweep)</p></li>
+<li><p>Repeat for <code class="docutils literal notranslate"><span class="pre">num_steps</span></code> steps</p></li>
+<li><p>Plot smoothed loss vs LR</p></li>
+<li><p>Find the LR at the steepest downward slope — this is the suggested LR</p></li>
+<li><p>If the loss diverges (&gt; 4× best loss), stop early</p></li>
+</ol>
+<p><strong>Rule of thumb:</strong> use a LR that is 3–10× smaller than the LR where loss starts exploding.</p>
+</section>
+<hr class="docutils" />
+<section id="resuming-training">
+<h2>Resuming training<a class="headerlink" href="#resuming-training" title="Link to this heading"></a></h2>
+<p>If a run is interrupted, resume it from the last saved checkpoint:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>train<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/default_config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>data/wiki.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--run_dir<span class="w"> </span>runs/run_20260611_142301<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--resume
+</pre></div>
+</div>
+<p>The trainer will:</p>
+<ol class="arabic simple">
+<li><p>Read <code class="docutils literal notranslate"><span class="pre">training_cursor.json</span></code> to find the last completed step</p></li>
+<li><p>Load <code class="docutils literal notranslate"><span class="pre">model_weights.msgpack</span></code> into the model</p></li>
+<li><p>Continue training from <code class="docutils literal notranslate"><span class="pre">start_step</span> <span class="pre">+</span> <span class="pre">1</span></code></p></li>
+</ol>
+<p>!!! warning “Optimizer state is not restored”
+When resuming, the optimiser state (momentum, variance) is re-initialised from zero. This causes a brief spike in loss for the first few hundred steps until the optimiser re-warms.</p>
+</section>
+<hr class="docutils" />
+<section id="w-b-logging">
+<h2>W&amp;B logging<a class="headerlink" href="#w-b-logging" title="Link to this heading"></a></h2>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">--wandb_project</span> <span class="pre">MyProject</span></code> to log to Weights &amp; Biases:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dantinox<span class="w"> </span>train<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/default_config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>data/wiki.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--wandb_project<span class="w"> </span>DantinoX_experiments
+</pre></div>
+</div>
+<p>Logged metrics: <code class="docutils literal notranslate"><span class="pre">train_loss</span></code>, <code class="docutils literal notranslate"><span class="pre">val_loss</span></code>, <code class="docutils literal notranslate"><span class="pre">step</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="pages-in-this-section">
+<h2>Pages in this section<a class="headerlink" href="#pages-in-this-section" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Page</p></th>
+<th class="head text-left"><p>What it covers</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><a class="reference internal" href="autoregressive.html"><span class="std std-doc">Autoregressive Training</span></a></p></td>
+<td class="text-left"><p>AR-specific details: causal mask, teacher-forcing, cross-entropy loss</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><a class="reference internal" href="diffusion.html"><span class="std std-doc">Diffusion Training</span></a></p></td>
+<td class="text-left"><p>Masked diffusion: ELBO loss, noise schedules, continuous t, 1/t weighting</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><a class="reference internal" href="optimizers.html"><span class="std std-doc">Optimisers &amp; Schedules</span></a></p></td>
+<td class="text-left"><p>Deep dive into AdamW, Lion, Muon, Adafactor, WSD</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><a class="reference internal" href="sweeps.html"><span class="std std-doc">Hyperparameter Sweeps</span></a></p></td>
+<td class="text-left"><p>Bayesian W&amp;B sweeps, sweep YAML format</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><a class="reference internal" href="multi-gpu.html"><span class="std std-doc">Multi-GPU</span></a></p></td>
+<td class="text-left"><p>SPMD data parallelism, mesh sharding, batch divisibility</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><a class="reference internal" href="emnlp-suite.html"><span class="std std-doc">Full Training Suite</span></a></p></td>
+<td class="text-left"><p>Reproducing the benchmark results</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../paradigms/comparison.html" class="btn btn-neutral float-left" title="Autoregressive vs Masked Diffusion — Head-to-Head" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="autoregressive.html" class="btn btn-neutral float-right" title="Autoregressive Training" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

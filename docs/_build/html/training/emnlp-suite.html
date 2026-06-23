@@ -1,0 +1,790 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full Training Suite &mdash; DantinoX 0.4.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=95275274" />
+
+  
+    <link rel="shortcut icon" href="../_static/dantinox.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=6c02275b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Inference &amp; Generation" href="../inference/index.html" />
+    <link rel="prev" title="Multi-GPU Data-Parallel Training" href="multi-gpu.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            DantinoX
+              <img src="../_static/dantinox-transparent.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/index.html">Interactive Notebooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vs-transformers.html">DantinoX vs HuggingFace Transformers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/core.html">Core Layers — Deep Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/paradigm-system.html">Paradigm System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/index.html">Generation Paradigms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/autoregressive.html">Autoregressive (AR) Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/diffusion.html">Masked Discrete Diffusion (LLaDA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/elf.html">ELF — Continuous Flow-Matching</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/fast-dllm.html">Fast-dLLM Block-wise DualCache</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/confidence.html">Confidence-Aware Parallel Decoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paradigms/comparison.html">Autoregressive vs Masked Diffusion — Head-to-Head</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Training</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Training Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autoregressive.html">Autoregressive Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimizers.html">Optimizers &amp; Schedules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sweeps.html">Hyperparameter Sweeps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi-gpu.html">Multi-GPU Data-Parallel Training</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Full Training Suite</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#part-a-size-attention-ffn-matrix">Part A — Size × Attention × FFN Matrix</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dense-configurations">Dense Configurations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#moe-configurations">MoE Configurations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#attention-type-parameterisation">Attention Type Parameterisation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#part-b-architecture-ablations">Part B — Architecture Ablations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#shared-ablations-ar-and-diffusion">Shared Ablations (AR and Diffusion)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#diffusion-specific-ablations">Diffusion-Specific Ablations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#run-directory-naming-convention">Run Directory Naming Convention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-training-flags">Common Training Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#progress-monitoring">Progress Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#live-log-tailing">Live log tailing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#training-csv">Training CSV</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#suite-progress-summary">Suite progress summary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#w-b-integration">W&amp;B integration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#resuming-failed-runs">Resuming Failed Runs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#partial-suite-execution">Partial Suite Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hardware-requirements">Hardware Requirements</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Inference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../inference/index.html">Inference &amp; Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/autoregressive.html">Autoregressive Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/diffusion.html">Diffusion Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../inference/kv-cache.html">KV-Cache Mechanics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/first-model.html">Training Your First Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/diffusion-lm.html">Masked Diffusion Language Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/lora-fine-tuning.html">LoRA Fine-Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/benchmarking.html">Tutorial: Benchmarking a Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/hub.html">Pushing to HuggingFace Hub</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Benchmarks</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmarks.html">Benchmarks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ablation_studies.html">Ablation Studies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../paper.html">Experiments &amp; Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/profiling.html">Profiling &amp; Benchmarking Architecture</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/dantinox.html"><code class="docutils literal notranslate"><span class="pre">dantinox</span></code> — Top-Level API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/paradigms.html"><code class="docutils literal notranslate"><span class="pre">dantinox.paradigms</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/training.html"><code class="docutils literal notranslate"><span class="pre">dantinox.trainer</span></code> — Training API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/profiling.html"><code class="docutils literal notranslate"><span class="pre">dantinox.profiling</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarking.html"><code class="docutils literal notranslate"><span class="pre">dantinox.benchmarking</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/visualization.html"><code class="docutils literal notranslate"><span class="pre">dantinox.visualization</span></code></a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-layer.html">Adding a Core Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-paradigm.html">Custom Paradigm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-benchmark.html">Custom Benchmark Task</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/new-chart.html">Custom Chart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ &amp; Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">DantinoX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Full Training Suite</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/winstonsmith1897/DantinoX/blob/main/docs/training/emnlp-suite.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="full-training-suite">
+<h1>Full Training Suite<a class="headerlink" href="#full-training-suite" title="Link to this heading"></a></h1>
+<p>This page documents the systematic training suite built into DantinoX. The suite comprises two symmetric shell scripts — <code class="docutils literal notranslate"><span class="pre">scripts/train_ar_suite.sh</span></code> and <code class="docutils literal notranslate"><span class="pre">scripts/train_diffusion_suite.sh</span></code> — that together train approximately 180 checkpoints under a controlled experimental design. Both scripts are orchestrated by the top-level pipeline driver <code class="docutils literal notranslate"><span class="pre">scripts/run_full_emnlp.sh</span></code>.</p>
+<hr class="docutils" />
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The training suite is designed around a single overarching principle: <strong>the only variable between any AR and Diffusion comparison point is <code class="docutils literal notranslate"><span class="pre">model_type</span></code></strong>. Architecture dimensions, attention hyperparameters, optimiser settings, dataset, tokeniser, precision, and hardware configuration are kept strictly identical across paradigms. This ensures that any observed difference in perplexity, throughput, or generation quality is attributable to the generation paradigm rather than to confounding training choices.</p>
+<p>The suite is divided into two parts:</p>
+<ul class="simple">
+<li><p><strong>Part A</strong> establishes the primary scaling comparison: a full crossing of model size, attention type (MHA, GQA, MLA), and feed-forward network type (Dense, MoE). This produces 48 checkpoints per paradigm.</p></li>
+<li><p><strong>Part B</strong> isolates the effect of individual hyperparameter axes via controlled ablations, all anchored to the canonical 256-dimensional, 12-block, Dense baseline. This produces an additional 36 checkpoints per paradigm for AR (12 ablations × 3 attention types) and up to 42 for diffusion (which adds diffusion-specific noise schedule and time embedding ablations).</p></li>
+</ul>
+<p>All runs are <strong>idempotent</strong>: if a checkpoint already exists in <code class="docutils literal notranslate"><span class="pre">runs/&lt;tag&gt;/</span></code>, the run is silently skipped. This makes it safe to interrupt and restart the suite at any point, and to add new ablations to the scripts without re-running completed work.</p>
+</section>
+<hr class="docutils" />
+<section id="part-a-size-attention-ffn-matrix">
+<h2>Part A — Size × Attention × FFN Matrix<a class="headerlink" href="#part-a-size-attention-ffn-matrix" title="Link to this heading"></a></h2>
+<section id="dense-configurations">
+<h3>Dense Configurations<a class="headerlink" href="#dense-configurations" title="Link to this heading"></a></h3>
+<p>The following ten model sizes are trained for all three attention types in Dense FFN mode. The learning rate and optimiser were selected by a prior sweep to be appropriate for each width.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">dim</span></code></p></th>
+<th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">n_heads</span></code></p></th>
+<th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">head_size</span></code></p></th>
+<th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">num_blocks</span></code></p></th>
+<th class="head"><p>LR</p></th>
+<th class="head"><p>Optimiser</p></th>
+<th class="head text-left"><p>Run tag pattern</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-right"><p>128</p></td>
+<td class="text-right"><p>4</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>1.2e-3</p></td>
+<td><p>Lion</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_128d_12b_Dense</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>192</p></td>
+<td class="text-right"><p>6</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>1.2e-3</p></td>
+<td><p>Lion</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_192d_12b_Dense</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-right"><p>256</p></td>
+<td class="text-right"><p>8</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>8</p></td>
+<td><p>1.2e-3</p></td>
+<td><p>Lion</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_256d_8b_Dense</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>256</p></td>
+<td class="text-right"><p>8</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>1.2e-3</p></td>
+<td><p>Lion</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_256d_12b_Dense</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-right"><p>256</p></td>
+<td class="text-right"><p>8</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>16</p></td>
+<td><p>1.0e-3</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_256d_16b_Dense</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>384</p></td>
+<td class="text-right"><p>12</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>1.0e-3</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_384d_12b_Dense</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-right"><p>512</p></td>
+<td class="text-right"><p>16</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>8</p></td>
+<td><p>8.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_512d_8b_Dense</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>512</p></td>
+<td class="text-right"><p>16</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>8.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_512d_12b_Dense</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-right"><p>512</p></td>
+<td class="text-right"><p>16</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>16</p></td>
+<td><p>6.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_512d_16b_Dense</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>768</p></td>
+<td class="text-right"><p>12</p></td>
+<td class="text-right"><p>64</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>6.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_768d_12b_Dense</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">{attn}</span></code> is one of <code class="docutils literal notranslate"><span class="pre">mha</span></code>, <code class="docutils literal notranslate"><span class="pre">gqa</span></code>, or <code class="docutils literal notranslate"><span class="pre">mla</span></code>. For diffusion runs, replace the <code class="docutils literal notranslate"><span class="pre">ar_</span></code> prefix with <code class="docutils literal notranslate"><span class="pre">diff_</span></code>. The full set of Dense runs is therefore <strong>10 sizes × 3 attention types × 2 paradigms = 60 checkpoints</strong>.</p>
+</section>
+<section id="moe-configurations">
+<h3>MoE Configurations<a class="headerlink" href="#moe-configurations" title="Link to this heading"></a></h3>
+<p>MoE variants are trained at the 256 and 512 width points, across all three depth configurations available at those widths, giving six MoE configurations per paradigm:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">dim</span></code></p></th>
+<th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">n_heads</span></code></p></th>
+<th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">head_size</span></code></p></th>
+<th class="head text-right"><p><code class="docutils literal notranslate"><span class="pre">num_blocks</span></code></p></th>
+<th class="head"><p>LR</p></th>
+<th class="head"><p>Optimiser</p></th>
+<th class="head text-left"><p>Run tag pattern</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-right"><p>256</p></td>
+<td class="text-right"><p>8</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>8</p></td>
+<td><p>1.2e-3</p></td>
+<td><p>Lion</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_256d_8b_MoE</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>256</p></td>
+<td class="text-right"><p>8</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>1.2e-3</p></td>
+<td><p>Lion</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_256d_12b_MoE</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-right"><p>256</p></td>
+<td class="text-right"><p>8</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>16</p></td>
+<td><p>1.0e-3</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_256d_16b_MoE</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>512</p></td>
+<td class="text-right"><p>16</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>8</p></td>
+<td><p>8.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_512d_8b_MoE</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-right"><p>512</p></td>
+<td class="text-right"><p>16</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>12</p></td>
+<td><p>8.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_512d_12b_MoE</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-right"><p>512</p></td>
+<td class="text-right"><p>16</p></td>
+<td class="text-right"><p>32</p></td>
+<td class="text-right"><p>16</p></td>
+<td><p>6.0e-4</p></td>
+<td><p>AdamW</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar_{attn}_512d_16b_MoE</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>All MoE runs use <code class="docutils literal notranslate"><span class="pre">n_experts=6</span></code>, <code class="docutils literal notranslate"><span class="pre">top_k_mlp=2</span></code>. <strong>Total MoE runs: 6 configs × 3 attention types × 2 paradigms = 36 checkpoints.</strong></p>
+</section>
+<section id="attention-type-parameterisation">
+<h3>Attention Type Parameterisation<a class="headerlink" href="#attention-type-parameterisation" title="Link to this heading"></a></h3>
+<p>Each attention type has a fixed parameterisation derived from the base <code class="docutils literal notranslate"><span class="pre">n_heads</span></code> and <code class="docutils literal notranslate"><span class="pre">head_size</span></code> of the size configuration:</p>
+<p>=== “MHA (Multi-Head Attention)”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+--kv_heads {n_heads} --mla false
+```
+
+Standard multi-head attention with one KV head per query head.
+</pre></div>
+</div>
+<p>=== “GQA (Grouped-Query Attention)”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+--kv_heads {n_heads // 4} --mla false
+```
+
+Groups of 4 query heads share a single KV head pair, reducing the KV cache by 4×.
+</pre></div>
+</div>
+<p>=== “MLA (Multi-head Latent Attention)”</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>```bash
+--kv_heads {n_heads} --mla true --inference false \
+--down_dim_kv {min(head_size * 3, 256)} \
+--down_dim_q  {min(head_size * 6, 256)} \
+--rope_dim    {max(head_size // 2, 16)}
+```
+
+Decoupled RoPE with compressed KV latent space. Weight absorption is disabled during training (`--inference false`) and enabled at inference time. The latent dimension grows with head size but is capped at 256 to prevent oversized projections at the 768d configuration.
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="part-b-architecture-ablations">
+<h2>Part B — Architecture Ablations<a class="headerlink" href="#part-b-architecture-ablations" title="Link to this heading"></a></h2>
+<p>All Part B ablations are anchored to the canonical 256-dimensional, 12-block, Dense baseline:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dim</span><span class="o">=</span><span class="mi">256</span>  <span class="n">n_heads</span><span class="o">=</span><span class="mi">8</span>  <span class="n">head_size</span><span class="o">=</span><span class="mi">32</span>  <span class="n">num_blocks</span><span class="o">=</span><span class="mi">12</span>  <span class="n">lr</span><span class="o">=</span><span class="mf">1.2e-3</span>  <span class="n">optimizer</span><span class="o">=</span><span class="n">lion</span>  <span class="n">use_moe</span><span class="o">=</span><span class="n">false</span>
+</pre></div>
+</div>
+<p>Each ablation modifies exactly one axis relative to this baseline and is replicated across all three attention types, giving 12 ablations × 3 attention types = 36 run tags per paradigm for the shared ablations. The diffusion suite adds diffusion-specific ablations (noise schedule, time embedding) which do not have AR equivalents.</p>
+<section id="shared-ablations-ar-and-diffusion">
+<h3>Shared Ablations (AR and Diffusion)<a class="headerlink" href="#shared-ablations-ar-and-diffusion" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Label</p></th>
+<th class="head text-left"><p>What changes</p></th>
+<th class="head text-left"><p>Flag(s)</p></th>
+<th class="head text-left"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">RMSNorm</span></code></p></td>
+<td class="text-left"><p>Normalisation type</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--norm_type</span> <span class="pre">rmsnorm</span></code></p></td>
+<td class="text-left"><p>RMSNorm vs. LayerNorm effect on convergence and final loss</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">Drop0</span></code></p></td>
+<td class="text-left"><p>Dropout rate</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dropout_rate</span> <span class="pre">0.0</span></code></p></td>
+<td class="text-left"><p>No regularisation vs. 15% baseline</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">Drop20</span></code></p></td>
+<td class="text-left"><p>Dropout rate</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dropout_rate</span> <span class="pre">0.20</span></code></p></td>
+<td class="text-left"><p>Heavier regularisation</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">GELU</span></code></p></td>
+<td class="text-left"><p>FFN activation</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--use_swiglu</span> <span class="pre">false</span></code></p></td>
+<td class="text-left"><p>Standard GELU FFN vs. SwiGLU gated FFN</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">SlidingWin64</span></code></p></td>
+<td class="text-left"><p>Attention span</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--sliding_window</span> <span class="pre">true</span> <span class="pre">--context_window</span> <span class="pre">64</span></code></p></td>
+<td class="text-left"><p>Local-only attention with 64-token window vs. full context</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">NoSink</span></code></p></td>
+<td class="text-left"><p>Sink token</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--no_sink</span> <span class="pre">true</span></code></p></td>
+<td class="text-left"><p>Effect of removing the sink (first-position) attention token</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">SchedWSD</span></code></p></td>
+<td class="text-left"><p>LR schedule</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--lr_schedule</span> <span class="pre">wsd</span></code></p></td>
+<td class="text-left"><p>Warmup-stable-decay schedule vs. cosine annealing</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">OptLion</span></code></p></td>
+<td class="text-left"><p>Optimiser</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--optimizer</span> <span class="pre">lion</span> <span class="pre">--lr</span> <span class="pre">3e-4</span></code></p></td>
+<td class="text-left"><p>Lion optimiser (adjusted LR) vs. AdamW baseline</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">MoE8exp</span></code></p></td>
+<td class="text-left"><p>FFN type</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--use_moe</span> <span class="pre">true</span> <span class="pre">--n_experts</span> <span class="pre">8</span> <span class="pre">--top_k_mlp</span> <span class="pre">2</span></code></p></td>
+<td class="text-left"><p>MoE with 8 experts on the 256d baseline (cf. 6-expert Part A)</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">BS128</span></code></p></td>
+<td class="text-left"><p>Batch size</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--batch_size</span> <span class="pre">128</span> <span class="pre">--grad_accum</span> <span class="pre">8</span></code></p></td>
+<td class="text-left"><p>2× larger effective batch size (128 × 8 = 1024 tokens per step)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">Ctx256</span></code></p></td>
+<td class="text-left"><p>Context length</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--max_context</span> <span class="pre">256</span></code></p></td>
+<td class="text-left"><p>Half the default 512-token context window</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">Ctx1024</span></code></p></td>
+<td class="text-left"><p>Context length</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--max_context</span> <span class="pre">1024</span></code></p></td>
+<td class="text-left"><p>Double the default context window</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="diffusion-specific-ablations">
+<h3>Diffusion-Specific Ablations<a class="headerlink" href="#diffusion-specific-ablations" title="Link to this heading"></a></h3>
+<p>The following ablations apply only to the diffusion training suite (<code class="docutils literal notranslate"><span class="pre">train_diffusion_suite.sh</span></code>) and do not have corresponding AR runs:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Label</p></th>
+<th class="head text-left"><p>What changes</p></th>
+<th class="head text-left"><p>Flag(s)</p></th>
+<th class="head text-left"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">SchedLinear</span></code></p></td>
+<td class="text-left"><p>Noise schedule</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--noise_schedule</span> <span class="pre">linear</span></code></p></td>
+<td class="text-left"><p>Linear corruption schedule vs. cosine</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">SchedSqrt</span></code></p></td>
+<td class="text-left"><p>Noise schedule</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--noise_schedule</span> <span class="pre">sqrt</span></code></p></td>
+<td class="text-left"><p>Square-root corruption schedule</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">T500</span></code></p></td>
+<td class="text-left"><p>Diffusion steps</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--diffusion_steps</span> <span class="pre">500</span></code></p></td>
+<td class="text-left"><p>Coarser timestep grid (500 vs. 1000 steps)</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">TimeEmb128</span></code></p></td>
+<td class="text-left"><p>Time embedding dim</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--time_emb_dim</span> <span class="pre">128</span></code></p></td>
+<td class="text-left"><p>Smaller time conditioning MLP (128 vs. 256 dims)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="run-directory-naming-convention">
+<h2>Run Directory Naming Convention<a class="headerlink" href="#run-directory-naming-convention" title="Link to this heading"></a></h2>
+<p>Every training run produces a self-contained directory under <code class="docutils literal notranslate"><span class="pre">runs/</span></code>. The naming convention encodes all variable axes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">runs</span><span class="o">/</span><span class="p">{</span><span class="n">paradigm</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">attn</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">dim</span><span class="p">}</span><span class="n">d_</span><span class="p">{</span><span class="n">blocks</span><span class="p">}</span><span class="n">b_</span><span class="p">{</span><span class="n">variant</span><span class="p">}</span><span class="o">/</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Component</p></th>
+<th class="head text-left"><p>Values</p></th>
+<th class="head text-left"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">{paradigm}</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar</span></code>, <code class="docutils literal notranslate"><span class="pre">diff</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">ar</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">{attn}</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">mha</span></code>, <code class="docutils literal notranslate"><span class="pre">gqa</span></code>, <code class="docutils literal notranslate"><span class="pre">mla</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">mla</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">{dim}d</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">128d</span></code>–<code class="docutils literal notranslate"><span class="pre">768d</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">256d</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">{blocks}b</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">8b</span></code>–<code class="docutils literal notranslate"><span class="pre">16b</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">12b</span></code></p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">{variant}</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">Dense</span></code>, <code class="docutils literal notranslate"><span class="pre">MoE</span></code>, ablation label</p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">Dense</span></code>, <code class="docutils literal notranslate"><span class="pre">RMSNorm</span></code>, <code class="docutils literal notranslate"><span class="pre">BS128</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Full examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">runs</span><span class="o">/</span><span class="n">ar_mha_256d_12b_Dense</span><span class="o">/</span>          <span class="c1"># AR, MHA, 256d, 12 blocks, Dense FFN</span>
+<span class="n">runs</span><span class="o">/</span><span class="n">diff_mla_512d_16b_MoE</span><span class="o">/</span>          <span class="c1"># Diffusion, MLA, 512d, 16 blocks, MoE FFN</span>
+<span class="n">runs</span><span class="o">/</span><span class="n">ar_gqa_256d_12b_SlidingWin64</span><span class="o">/</span>   <span class="c1"># AR, GQA, 256d, 12 blocks, sliding-window ablation</span>
+<span class="n">runs</span><span class="o">/</span><span class="n">diff_mha_256d_12b_T500</span><span class="o">/</span>         <span class="c1"># Diffusion, MHA, 256d, 12 blocks, 500-step ablation</span>
+</pre></div>
+</div>
+<p>Each run directory contains:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>runs/&lt;tag&gt;/
+├── config.yaml                  # complete config snapshot for this run
+├── tokenizer.json               # character-level tokenizer (shared across runs)
+├── model_weights.msgpack        # latest checkpoint
+├── best_model_weights.msgpack   # checkpoint with lowest validation loss
+├── training_cursor.json         # resume pointer (step, epoch, best loss)
+├── model_summary.json           # parameter count and VRAM estimate
+└── training_log.csv             # step-by-step train_loss, val_loss, ms/step
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="common-training-flags">
+<h2>Common Training Flags<a class="headerlink" href="#common-training-flags" title="Link to this heading"></a></h2>
+<p>The following flags are fixed across all runs in both suites and are not varied as ablations:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Flag</p></th>
+<th class="head text-left"><p>Value</p></th>
+<th class="head text-left"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--n_devices</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">2</span></code></p></td>
+<td class="text-left"><p>Data-parallel across 2 A100s via JAX SPMD</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--use_bf16</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td class="text-left"><p>bfloat16 mixed-precision training</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--use_flash_attention</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td class="text-left"><p>Flash Attention 2 for O(N) memory attention</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--gradient_checkpointing</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td class="text-left"><p>Recompute activations during backward pass to reduce peak VRAM</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dataset_source</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">huggingface</span></code></p></td>
+<td class="text-left"><p>Dataset loaded via HuggingFace <code class="docutils literal notranslate"><span class="pre">datasets</span></code></p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dataset_name</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">wikitext</span></code></p></td>
+<td class="text-left"><p>WikiText dataset family</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dataset_config</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">wikitext-103-raw-v1</span></code></p></td>
+<td class="text-left"><p>Raw character-level WikiText-103</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dataset_text_field</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">text</span></code></p></td>
+<td class="text-left"><p>Field name in the HuggingFace dataset</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--dataset_split</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">train</span></code></p></td>
+<td class="text-left"><p>Training split</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">--streaming</span></code></p></td>
+<td class="text-left"><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td class="text-left"><p>Full download and pre-tokenisation cache</p></td>
+</tr>
+</tbody>
+</table>
+<p>The pre-tokenised dataset is cached to <code class="docutils literal notranslate"><span class="pre">data/wikitext_wikitext-103-raw-v1_char.npy</span></code> after the first run and reused by all subsequent runs, reducing per-run startup from approximately 60 seconds to 2 seconds.</p>
+</section>
+<hr class="docutils" />
+<section id="progress-monitoring">
+<h2>Progress Monitoring<a class="headerlink" href="#progress-monitoring" title="Link to this heading"></a></h2>
+<section id="live-log-tailing">
+<h3>Live log tailing<a class="headerlink" href="#live-log-tailing" title="Link to this heading"></a></h3>
+<p>Each run writes a log file to <code class="docutils literal notranslate"><span class="pre">logs/ar_suite/&lt;tag&gt;.log</span></code> or <code class="docutils literal notranslate"><span class="pre">logs/diffusion_suite/&lt;tag&gt;.log</span></code>. To monitor a run in real time:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tail<span class="w"> </span>-f<span class="w"> </span>logs/ar_suite/ar_mha_256d_12b_Dense.log
+</pre></div>
+</div>
+</section>
+<section id="training-csv">
+<h3>Training CSV<a class="headerlink" href="#training-csv" title="Link to this heading"></a></h3>
+<p>The per-step CSV is updated at each validation interval and can be plotted directly:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Quick loss curve (requires pandas + matplotlib)</span>
+python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
+<span class="s">import pandas as pd, matplotlib.pyplot as plt</span>
+<span class="s">df = pd.read_csv(&quot;runs/ar_mha_256d_12b_Dense/training_log.csv&quot;)</span>
+<span class="s">df.plot(x=&quot;step&quot;, y=[&quot;train_loss&quot;, &quot;val_loss&quot;])</span>
+<span class="s">plt.savefig(&quot;/tmp/loss_curve.png&quot;)</span>
+<span class="s">EOF</span>
+</pre></div>
+</div>
+</section>
+<section id="suite-progress-summary">
+<h3>Suite progress summary<a class="headerlink" href="#suite-progress-summary" title="Link to this heading"></a></h3>
+<p>The training scripts print a running count of completed, skipped, and failed runs at the end of each execution:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>════════════════════════════════════════════════════════════
+  Done: trained=12  skipped=36  failed=0  total=48
+════════════════════════════════════════════════════════════
+</pre></div>
+</div>
+</section>
+<section id="w-b-integration">
+<h3>W&amp;B integration<a class="headerlink" href="#w-b-integration" title="Link to this heading"></a></h3>
+<p>If <code class="docutils literal notranslate"><span class="pre">WANDB_API_KEY</span></code> is set in the environment, every run automatically logs to a W&amp;B project named <code class="docutils literal notranslate"><span class="pre">dantinox</span></code>. Sweeps across the full suite can be analysed via the W&amp;B web interface using the run tags as the primary grouping key.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="resuming-failed-runs">
+<h2>Resuming Failed Runs<a class="headerlink" href="#resuming-failed-runs" title="Link to this heading"></a></h2>
+<p>The training scripts are fully idempotent. A run is considered complete if either <code class="docutils literal notranslate"><span class="pre">model_weights.msgpack</span></code> or <code class="docutils literal notranslate"><span class="pre">best_model_weights.msgpack</span></code> exists in its run directory. To resume a suite after an interruption:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Simply re-run the script — completed runs are skipped automatically</span>
+bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Or resume via the top-level pipeline</span>
+bash<span class="w"> </span>scripts/run_full_emnlp.sh<span class="w"> </span>--skip-benchmarks
+</pre></div>
+</div>
+<p>If a run failed mid-epoch (e.g., due to OOM or preemption), the <code class="docutils literal notranslate"><span class="pre">training_cursor.json</span></code> in the run directory stores the last completed step. The <code class="docutils literal notranslate"><span class="pre">Trainer</span></code> will resume from this cursor rather than restarting from scratch:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Force a specific run to restart from its cursor (not from scratch)</span>
+dantinox<span class="w"> </span>train<span class="w"> </span>--config<span class="w"> </span>runs/ar_mha_256d_12b_Dense/config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--run_dir<span class="w"> </span>runs/ar_mha_256d_12b_Dense
+</pre></div>
+</div>
+<p>To force a full restart of a specific run, delete its run directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rm<span class="w"> </span>-rf<span class="w"> </span>runs/ar_mha_256d_12b_Dense/
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="partial-suite-execution">
+<h2>Partial Suite Execution<a class="headerlink" href="#partial-suite-execution" title="Link to this heading"></a></h2>
+<p>Both training scripts support environment variable filters to run a subset of the matrix:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run only Part A (size × attention × FFN matrix), skip Part B ablations</span>
+<span class="nv">PART</span><span class="o">=</span>A<span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Run only Part B ablations, skip Part A</span>
+<span class="nv">PART</span><span class="o">=</span>B<span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Run only MLA attention configurations</span>
+<span class="nv">ATTN</span><span class="o">=</span>mla<span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Run only 256-dimensional models</span>
+<span class="nv">DIM</span><span class="o">=</span><span class="m">256</span><span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Run only Dense FFN models (skip MoE)</span>
+<span class="nv">MOE</span><span class="o">=</span>dense<span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Combine filters: MLA attention, 512d models only</span>
+<span class="nv">ATTN</span><span class="o">=</span>mla<span class="w"> </span><span class="nv">DIM</span><span class="o">=</span><span class="m">512</span><span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+
+<span class="c1"># Print all commands without executing (dry run)</span>
+bash<span class="w"> </span>scripts/train_ar_suite.sh<span class="w"> </span>--dry-run
+</pre></div>
+</div>
+<p>The same filters apply to <code class="docutils literal notranslate"><span class="pre">train_diffusion_suite.sh</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="hardware-requirements">
+<h2>Hardware Requirements<a class="headerlink" href="#hardware-requirements" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head text-left"><p>Resource</p></th>
+<th class="head text-left"><p>Minimum</p></th>
+<th class="head text-left"><p>Recommended</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-left"><p>GPUs</p></td>
+<td class="text-left"><p>1× NVIDIA GPU (CUDA 12+)</p></td>
+<td class="text-left"><p>2× NVIDIA A100 40 GB</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>GPU VRAM (per card)</p></td>
+<td class="text-left"><p>24 GB (for 256d/12b models)</p></td>
+<td class="text-left"><p>40 GB (for 768d/12b models)</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>System RAM</p></td>
+<td class="text-left"><p>32 GB</p></td>
+<td class="text-left"><p>64 GB</p></td>
+</tr>
+<tr class="row-odd"><td class="text-left"><p>Disk (for all checkpoints)</p></td>
+<td class="text-left"><p>50 GB</p></td>
+<td class="text-left"><p>150 GB</p></td>
+</tr>
+<tr class="row-even"><td class="text-left"><p>Dataset download</p></td>
+<td class="text-left"><p>~500 MB (WikiText-103)</p></td>
+<td class="text-left"><p>—</p></td>
+</tr>
+</tbody>
+</table>
+<p>If only a single GPU is available, set <code class="docutils literal notranslate"><span class="pre">--n_devices</span> <span class="pre">1</span></code> in the relevant training commands or override via:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">PART</span><span class="o">=</span>A<span class="w"> </span><span class="nv">DIM</span><span class="o">=</span><span class="m">256</span><span class="w"> </span>bash<span class="w"> </span>scripts/train_ar_suite.sh
+</pre></div>
+</div>
+<p>Note that with a single GPU, <code class="docutils literal notranslate"><span class="pre">n_devices=1</span></code> must also be reflected in the config or passed as an override flag; the default base configs assume 2 devices.</p>
+<p>For disk space management, the cleanup script removes intermediate checkpoints while preserving final weights:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/cleanup_runs.py<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># preview what would be deleted</span>
+python<span class="w"> </span>scripts/cleanup_runs.py<span class="w"> </span>--execute<span class="w">    </span><span class="c1"># delete intermediate checkpoints</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="multi-gpu.html" class="btn btn-neutral float-left" title="Multi-GPU Data-Parallel Training" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../inference/index.html" class="btn btn-neutral float-right" title="Inference &amp; Generation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Marco Simoni.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
