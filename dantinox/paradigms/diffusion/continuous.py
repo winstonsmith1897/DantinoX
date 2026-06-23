@@ -108,17 +108,21 @@ class ContinuousParadigm(Paradigm):
     def generate(
         self,
         model: ELFTransformer,
-        prompt: jnp.ndarray,
-        rng: jax.Array,
+        prompt: jnp.ndarray | None = None,
+        rng: jax.Array | None = None,
         gen_len: int | None = None,
         n_steps: int | None = None,
         cfg_scale: float | None = None,
         gamma: float | None = None,
+        batch_size: int | None = None,
+        seed: int | None = None,
     ) -> jnp.ndarray:
         """ELF generates unconditionally from Gaussian noise.
 
         *prompt* only provides the batch size / sequence length defaults
         (``gen_len`` overrides its length); its token contents are unused.
+        ``batch_size`` and ``seed`` can be passed directly as an alternative
+        to providing a *prompt* and *rng*.
         """
         from dantinox.paradigms.ar import _seed_from
         steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
@@ -126,15 +130,18 @@ class ContinuousParadigm(Paradigm):
         sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
         length = gen_len or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
                              else self.config.max_seq_len)
-        batch  = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
+        if batch_size is None:
+            batch_size = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
+        if seed is None:
+            seed = _seed_from(rng) if rng is not None else 42
         return _elf_generate(
             model,
             gen_len=length,
-            batch_size=batch,
+            batch_size=batch_size,
             n_steps=steps,
             cfg_scale=cfg_w,
             gamma=sde_g,
-            seed=_seed_from(rng),
+            seed=seed,
         )
 
     def stream(
