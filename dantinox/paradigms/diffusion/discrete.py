@@ -14,7 +14,10 @@ from dantinox.core.diffusion import (
     make_noise_schedule,
     masked_cross_entropy,
 )
-from dantinox.core.generation import diffusion_generate as _diffusion_generate
+from dantinox.core.generation import (
+    diffusion_generate as _diffusion_generate,
+    stream_diffusion_generate as _stream_diffusion_generate,
+)
 from dantinox.core.model import Transformer
 from dantinox.paradigms.base import Paradigm
 
@@ -106,6 +109,28 @@ class DiscreteParadigm(Paradigm):
     ) -> jnp.ndarray:
         from dantinox.paradigms.ar import _seed_from
         return _diffusion_generate(
+            model,
+            prompt,
+            gen_len=gen_len,
+            schedule=self._schedule,
+            mask_token_id=self.diffusion_config.mask_token_id,
+            seed=_seed_from(rng),
+            num_sampling_steps=n_steps,
+            temperature=temperature,
+        )
+
+    def stream(
+        self,
+        model: Transformer,
+        prompt: jnp.ndarray,
+        rng: jax.Array,
+        gen_len: int = 256,
+        n_steps: int = 50,
+        temperature: float = 1.0,
+    ):
+        """Like ``generate`` but yields ``(step, total, x_t)`` after each denoising step."""
+        from dantinox.paradigms.ar import _seed_from
+        yield from _stream_diffusion_generate(
             model,
             prompt,
             gen_len=gen_len,

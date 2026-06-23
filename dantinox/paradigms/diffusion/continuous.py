@@ -8,7 +8,10 @@ from flax import nnx
 
 from dantinox.core.config import ELFConfig
 from dantinox.core.elf import ELFEmbedder, ELFTransformer, elf_loss
-from dantinox.core.generation import elf_generate as _elf_generate
+from dantinox.core.generation import (
+    elf_generate as _elf_generate,
+    stream_elf_generate as _stream_elf_generate,
+)
 from dantinox.paradigms.base import Paradigm
 
 
@@ -132,6 +135,30 @@ class ContinuousParadigm(Paradigm):
             cfg_scale=cfg_w,
             gamma=sde_g,
             seed=_seed_from(rng),
+        )
+
+    def stream(
+        self,
+        model: ELFTransformer,
+        prompt: jnp.ndarray | None = None,
+        rng: jax.Array | None = None,
+        gen_len: int | None = None,
+        n_steps: int | None = None,
+        cfg_scale: float | None = None,
+        gamma: float | None = None,
+    ):
+        """Like ``generate`` but yields ``(step, total, tokens)`` after each ODE step."""
+        from dantinox.paradigms.ar import _seed_from
+        steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
+        cfg_w  = cfg_scale or getattr(self.config, "elf_cfg_scale", 1.0)
+        sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
+        length = gen_len or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
+                             else self.config.max_seq_len)
+        batch  = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
+        seed   = _seed_from(rng) if rng is not None else 42
+        yield from _stream_elf_generate(
+            model, gen_len=length, batch_size=batch,
+            n_steps=steps, cfg_scale=cfg_w, gamma=sde_g, seed=seed,
         )
 
     def num_parameters(self, model: ELFTransformer) -> int:

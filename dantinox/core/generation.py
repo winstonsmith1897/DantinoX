@@ -193,7 +193,7 @@ def generate(
 
 # ── Diffusion generation ──────────────────────────────────────────────────────
 
-def diffusion_generate(
+def stream_diffusion_generate(
     model: nnx.Module,
     prefix: jnp.ndarray | None,
     gen_len: int,
@@ -203,14 +203,15 @@ def diffusion_generate(
     num_sampling_steps: int = 50,
     temperature: float = 1.0,
     batch_size: int = 1,
-) -> jnp.ndarray:
-    """Simple MDLM reverse-diffusion generation (no block-wise cache).
+):
+    """Generator version of ``diffusion_generate``.
 
-    Runs ``num_sampling_steps`` denoising steps over the full sequence.
-    For faster inference use ``fast_dllm_generate``.
-    ``prefix`` may be ``None`` for unconditional generation; in that case
-    ``batch_size`` controls the output batch dimension.
+    Yields ``(step, total_steps, x_t)`` after each denoising step so the
+    caller can inspect / display the partially-unmasked sequence live.
+    The final yield is the fully-decoded result.
     """
+    from collections.abc import Iterator  # noqa: PLC0415
+
     B   = prefix.shape[0] if prefix is not None else batch_size
     rng = jax.random.key(seed)
 
@@ -221,8 +222,10 @@ def diffusion_generate(
     x_t       = jnp.full((B, gen_len), mask_token_id, dtype=jnp.int32)
     T         = schedule.alpha_bar.shape[0] - 1
     step_size = max(1, T // max(num_sampling_steps, 1))
+    t_ladder  = list(range(T, 0, -step_size))
+    total     = len(t_ladder) + 1  # denoising steps + final decode
 
-    for t_val in range(T, 0, -step_size):
+    for step, t_val in enumerate(t_ladder):
         output = model(x_t, dual_cache=dual_cache, deterministic=True)
         logits = output.logits / max(temperature, 1e-6)
         probs  = jax.nn.softmax(logits, axis=-1)
@@ -242,10 +245,39 @@ def diffusion_generate(
         rng, subkey2 = jax.random.split(rng)
         do_unmask    = jax.random.bernoulli(subkey2, float(jnp.clip(unmask_prob, 0, 1)), x_t.shape)
         x_t          = jnp.where((x_t == mask_token_id) & do_unmask, x0_pred, x_t)
+        yield step, total, x_t
 
     output = model(x_t, dual_cache=dual_cache, deterministic=True)
     x_t    = jnp.where(x_t == mask_token_id, jnp.argmax(output.logits, axis=-1), x_t)
-    return x_t
+    yield total - 1, total, x_t
+
+
+def diffusion_generate(
+    model: nnx.Module,
+    prefix: jnp.ndarray | None,
+    gen_len: int,
+    schedule: NoiseSchedule,
+    mask_token_id: int,
+    seed: int = 42,
+    num_sampling_steps: int = 50,
+    temperature: float = 1.0,
+    batch_size: int = 1,
+) -> jnp.ndarray:
+    """Simple MDLM reverse-diffusion generation (no block-wise cache).
+
+    Runs ``num_sampling_steps`` denoising steps over the full sequence.
+    For faster inference use ``fast_dllm_generate``.
+    ``prefix`` may be ``None`` for unconditional generation; in that case
+    ``batch_size`` controls the output batch dimension.
+    """
+    x_t = None
+    for _, _, x_t in stream_diffusion_generate(
+        model, prefix, gen_len, schedule, mask_token_id,
+        seed=seed, num_sampling_steps=num_sampling_steps,
+        temperature=temperature, batch_size=batch_size,
+    ):
+        pass
+    return x_t  # type: ignore[return-value]
 
 
 def fast_dllm_generate(
@@ -363,6 +395,65 @@ def fast_dllm_generate(
 
 # ── ELF generation (continuous flow-matching) ─────────────────────────────────
 
+def stream_elf_generate(
+    model,
+    gen_len:    int,
+    batch_size: int   = 1,
+    n_steps:    int   = 64,
+    cfg_scale:  float = 1.0,
+    gamma:      float = 0.0,
+    seed:       int   = 42,
+):
+    """Generator version of ``elf_generate``.
+
+    Yields ``(step, total_steps, tokens)`` after each Euler ODE step, where
+    *tokens* is the argmax-decoded prediction from the current flow state.
+    The final yield is the result of the dedicated t=1 decode step.
+    """
+    rng = jax.random.PRNGKey(seed)
+    B, L  = batch_size, gen_len
+    E     = model.config.embed_dim
+
+    rng_z, *rng_steps = jax.random.split(rng, n_steps + 1)
+
+    z      = jax.random.normal(rng_z, (B, L, E))
+    x_prev = jnp.zeros_like(z)
+    ts     = jnp.linspace(0.0, 1.0, n_steps + 1)
+    total  = n_steps + 1  # ODE steps + final decode
+
+    for i in range(n_steps):
+        t_val  = float(ts[i])
+        dt_val = float(ts[i + 1] - ts[i])
+        w_arr  = jnp.full((B,), cfg_scale)
+        is_den = jnp.zeros(B, dtype=bool)
+
+        if gamma > 0.0:
+            alpha  = 1.0 - gamma * dt_val
+            z_back = alpha * z + (1.0 - alpha) * jax.random.normal(rng_steps[i], z.shape)
+            t_arr  = jnp.full((B,), alpha * t_val)
+            x_hat  = model(z_back, x_prev, t_arr, w_arr, is_den).x_pred
+        else:
+            t_arr = jnp.full((B,), t_val)
+            x_hat = model(z, x_prev, t_arr, w_arr, is_den).x_pred
+
+        v      = (x_hat - z) / jnp.clip(1.0 - t_val, 1e-6)
+        z      = z + dt_val * v
+        x_prev = x_hat
+
+        cur_tokens = jnp.argmax(model.unembed(x_hat), axis=-1).astype(jnp.int32)
+        yield i, total, cur_tokens
+
+    out    = model(
+        z,
+        jnp.zeros_like(z),
+        jnp.ones(B),
+        jnp.full((B,), cfg_scale),
+        jnp.ones(B, dtype=bool),
+    )
+    tokens = jnp.argmax(out.logits, axis=-1).astype(jnp.int32)
+    yield n_steps, total, tokens
+
+
 def elf_generate(
     model,
     gen_len:    int,
@@ -392,45 +483,10 @@ def elf_generate(
     -------
     Token IDs ``[batch_size, gen_len]`` int32.
     """
-    rng = jax.random.PRNGKey(seed)
-    B, L  = batch_size, gen_len
-    E     = model.config.embed_dim
-
-    rng_z, *rng_steps = jax.random.split(rng, n_steps + 1)
-
-    z      = jax.random.normal(rng_z, (B, L, E))
-    x_prev = jnp.zeros_like(z)
-    # Linear schedule for inference: uniform coverage of [0, 1].
-    # The logit-normal schedule used during training concentrates near t≈0.18
-    # and is unsuitable for generation (62/65 values would be < 0.5).
-    ts = jnp.linspace(0.0, 1.0, n_steps + 1)
-
-    for i in range(n_steps):
-        t_val  = float(ts[i])
-        dt_val = float(ts[i + 1] - ts[i])
-        w_arr  = jnp.full((B,), cfg_scale)
-        is_den = jnp.zeros(B, dtype=bool)
-
-        if gamma > 0.0:
-            # SDE: re-inject noise and shift t slightly toward the noisy regime
-            alpha  = 1.0 - gamma * dt_val
-            z_back = alpha * z + (1.0 - alpha) * jax.random.normal(rng_steps[i], z.shape)
-            t_arr  = jnp.full((B,), alpha * t_val)
-            x_hat  = model(z_back, x_prev, t_arr, w_arr, is_den).x_pred
-        else:
-            t_arr = jnp.full((B,), t_val)
-            x_hat = model(z, x_prev, t_arr, w_arr, is_den).x_pred
-
-        v      = (x_hat - z) / jnp.clip(1.0 - t_val, 1e-6)
-        z      = z + dt_val * v
-        x_prev = x_hat
-
-    # Final decode step at t=1: switch to decode mode and return token logits
-    out = model(
-        z,
-        jnp.zeros_like(z),
-        jnp.ones(B),
-        jnp.full((B,), cfg_scale),
-        jnp.ones(B, dtype=bool),
-    )
-    return jnp.argmax(out.logits, axis=-1).astype(jnp.int32)
+    tokens = None
+    for _, _, tokens in stream_elf_generate(
+        model, gen_len=gen_len, batch_size=batch_size,
+        n_steps=n_steps, cfg_scale=cfg_scale, gamma=gamma, seed=seed,
+    ):
+        pass
+    return tokens  # type: ignore[return-value]
