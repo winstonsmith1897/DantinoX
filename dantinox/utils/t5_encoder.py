@@ -45,17 +45,27 @@ class T5ContextualEncoder:
     """
 
     def __init__(self, model_name: str = "t5-base") -> None:
+        flax_exc: Exception | None = None
         try:
             FlaxT5EncoderModel = _import_flax_t5()
             try:
                 model = FlaxT5EncoderModel.from_pretrained(model_name)
             except Exception:
+                # from_pt=True converts PyTorch weights; only try if flax weights
+                # are unavailable and PyTorch is healthy (no torchvision conflict).
                 model = FlaxT5EncoderModel.from_pretrained(model_name, from_pt=True)
             self._model = model
             self._params = jax.device_put(model.params)
             self.hidden_dim: int = model.config.d_model
             self._backend = "flax"
-        except Exception:
+            return
+        except Exception as e:
+            flax_exc = e
+
+        # PyTorch fallback — importing torch can fail on systems where torchvision
+        # was compiled against a different PyTorch version.  Catch that and re-raise
+        # with a clear message rather than a cryptic C++ operator error.
+        try:
             T5EncoderModel = _import_pt_t5()
             model = T5EncoderModel.from_pretrained(model_name)
             model.eval()
@@ -63,6 +73,15 @@ class T5ContextualEncoder:
             self._params = None
             self.hidden_dim = model.config.d_model
             self._backend = "torch"
+        except (RuntimeError, OSError) as pt_exc:
+            if "torchvision" in str(pt_exc) or "operator" in str(pt_exc):
+                raise RuntimeError(
+                    f"T5ContextualEncoder: Flax T5 failed ({flax_exc}) and the "
+                    f"PyTorch fallback hit a torchvision version conflict.\n"
+                    f"Fix: pip install torchvision --upgrade  OR  "
+                    f"pip install transformers[flax] to use the Flax-only path."
+                ) from pt_exc
+            raise
 
     def encode(self, token_ids: jnp.ndarray) -> jnp.ndarray:
         """token_ids [B, L] int → contextual embeddings [B, L, hidden_dim]."""
