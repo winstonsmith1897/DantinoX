@@ -191,7 +191,7 @@ One-Liner Usage
 
    run_dir = dx.fit("ar", "data/wiki.txt",
                     dim=512, n_heads=8, head_size=64,
-                    num_blocks=12, vocab_size=32_000)
+                    num_blocks=12)
 
    print(dx.quick_generate(run_dir, "In the beginning"))
 

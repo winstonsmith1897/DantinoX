@@ -249,12 +249,16 @@ class Trainer:
         # decode time.  Clamping here ensures the built model matches the real
         # tokenizer so generation stays within valid token IDs.
         tok_vocab = int(tokenizer.vocab_size)
-        if hasattr(model_cfg, "vocab_size") and int(model_cfg.vocab_size) > tok_vocab:
-            log.info(
-                "Clamping model vocab_size from %d to tokenizer vocab_size %d.",
-                model_cfg.vocab_size, tok_vocab,
-            )
-            model_cfg.vocab_size = tok_vocab  # model_cfg IS paradigm.config
+        if hasattr(model_cfg, "vocab_size"):
+            if model_cfg.vocab_size is None:
+                log.info("Auto-setting model vocab_size to tokenizer vocab_size %d.", tok_vocab)
+                model_cfg.vocab_size = tok_vocab
+            elif int(model_cfg.vocab_size) > tok_vocab:
+                log.info(
+                    "Clamping model vocab_size from %d to tokenizer vocab_size %d.",
+                    model_cfg.vocab_size, tok_vocab,
+                )
+                model_cfg.vocab_size = tok_vocab  # model_cfg IS paradigm.config
 
         n_val = int(len(tokens) * cfg.val_frac)
         if n_val < sample_len + 1:
@@ -597,7 +601,8 @@ def _load_tokens(
     from dantinox.utils.tokenizer import get_tokenizer, load_tokenizer_from_file
 
     npy_path, tok_path = _token_cache_paths(data_source, cfg)
-    vocab_size = int(getattr(model_cfg, "vocab_size", 200))
+    _vs = getattr(model_cfg, "vocab_size", None)
+    vocab_size: int | None = int(_vs) if _vs is not None else None
 
     src_mtime = (os.path.getmtime(data_source)
                  if cfg.dataset_source != "huggingface" and os.path.exists(data_source)
@@ -625,7 +630,10 @@ def _load_tokens(
     if cfg.tokenizer_type == "char" and not cfg.tokenizer_path:
         tokenizer.train_from_text(text)
     elif cfg.tokenizer_type == "bpe" and not cfg.tokenizer_path:
-        tokenizer.train_from_text(text, vocab_size=vocab_size)
+        if vocab_size is not None:
+            tokenizer.train_from_text(text, vocab_size=vocab_size)
+        else:
+            tokenizer.train_from_text(text)
 
     token_ids = np.asarray(
         tokenizer.encode(text)[: cfg.max_train_tokens], dtype=np.int32)
@@ -639,8 +647,11 @@ def _load_tokens(
 
 def _check_vocab(tokenizer: Any, model_cfg: Any, cfg: TrainingConfig) -> None:
     """Reconcile tokenizer vocab with the model's vocab_size."""
-    tok_vocab   = int(tokenizer.vocab_size)
-    model_vocab = int(getattr(model_cfg, "vocab_size", 0))
+    tok_vocab = int(tokenizer.vocab_size)
+    _mv = getattr(model_cfg, "vocab_size", None)
+    if _mv is None:
+        return  # will be set in Trainer.fit() after tokenizer is known
+    model_vocab = int(_mv)
     if tok_vocab == model_vocab:
         return
     if tok_vocab > model_vocab:

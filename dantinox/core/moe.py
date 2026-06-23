@@ -18,7 +18,7 @@ class MoE(nnx.Module):
             self.down_proj: nnx.Linear = nnx.Linear(config.dim, self.latent_dim, rngs=rngs)
             self.up_proj: nnx.Linear   = nnx.Linear(self.latent_dim, config.dim, rngs=rngs)
 
-        self.experts: nnx.List    = nnx.List([MLP(config, rngs, in_dim=self.latent_dim) for _ in range(self.n_experts)])
+        self.experts: list        = [MLP(config, rngs, in_dim=self.latent_dim) for _ in range(self.n_experts)]
         self.router: nnx.Linear   = nnx.Linear(config.dim, self.n_experts, use_bias=False, rngs=rngs)
         self.top_k_mlp: int       = config.top_k_mlp
 

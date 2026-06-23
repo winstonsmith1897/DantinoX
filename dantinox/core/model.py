@@ -60,6 +60,12 @@ class Transformer(nnx.Module, pytree=False):
 
     def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
         cfg = _to_model_config(config)
+        if cfg.vocab_size is None:
+            raise ValueError(
+                "ModelConfig.vocab_size is not set. "
+                "When using Trainer.fit() it is inferred automatically from the tokenizer. "
+                "For direct model building pass vocab_size=<n> to ModelConfig."
+            )
 
         self.num_blocks: int              = cfg.num_blocks
         self.blocks: list[Block]          = [Block(cfg, rngs=rngs) for _ in range(cfg.num_blocks)]

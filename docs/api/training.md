@@ -57,7 +57,7 @@ and the training procedure in one flat namespace. The relevant fields are:
 | `n_heads` | `int` | `16` | Number of query attention heads |
 | `head_size` | `int` | `32` | Dimension per head; must satisfy `dim == n_heads * head_size` |
 | `num_blocks` | `int` | `20` | Number of transformer blocks |
-| `vocab_size` | `int` | `200` | Vocabulary size (updated after tokenizer training) |
+| `vocab_size` | `int\|None` | `None` | Vocabulary size. Auto-set from the tokenizer inside `fit()`; required only for direct model construction. |
 | `max_context` | `int` | `512` | Maximum sequence length |
 | `kv_heads` | `int` | `4` | KV heads for GQA; set equal to `n_heads` for MHA |
 | `model_type` | `str` | `"autoregressive"` | `"autoregressive"`, `"diffusion"`, or `"elf"` |

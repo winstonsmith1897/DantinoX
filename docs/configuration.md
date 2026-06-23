@@ -67,7 +67,7 @@ model = Transformer(cfg, rngs=nnx.Rngs(42))
 | `n_heads` | `int` | `16` | Number of query attention heads. |
 | `head_size` | `int` | `32` | Per-head key/value dimension. `dim = n_heads × head_size`. |
 | `num_blocks` | `int` | `12` | Number of transformer layers. |
-| `vocab_size` | `int` | `200` | Vocabulary size including all special tokens. |
+| `vocab_size` | `int\|None` | `None` | Vocabulary size. **Auto-set from the tokenizer by `Trainer.fit()`.** Must be provided explicitly for direct model construction (`Transformer(cfg, rngs)`). |
 | `max_context` | `int` | `512` | Maximum sequence length for positional encoding and KV cache. |
 
 ### Architecture choices
@@ -226,7 +226,7 @@ The field names below are what Config uses; where the name differs from ModelCon
 | `n_heads` | `int` | `16` | |
 | `head_size` | `int` | `32` | |
 | `num_blocks` | `int` | `20` | |
-| `vocab_size` | `int` | `200` | |
+| `vocab_size` | `int\|None` | `None` | Auto-set from tokenizer by `Trainer.fit()`; required for direct model construction. |
 | `max_context` | `int` | `512` | |
 | `kv_heads` | `int` | `4` | GQA KV heads. |
 | `model_type` | `str` | `"autoregressive"` | `"autoregressive"` · `"diffusion"` · `"elf"` |
@@ -377,7 +377,7 @@ model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
 | `n_heads` | `int` | `12` | Attention heads. |
 | `head_size` | `int` | `64` | Per-head dimension. |
 | `num_blocks` | `int` | `12` | Transformer layers. |
-| `vocab_size` | `int` | `32000` | Vocabulary size. |
+| `vocab_size` | `int\|None` | `None` | Vocabulary size. **Auto-set from the T5 tokenizer by `Trainer.fit()`.** Required for direct `ELFTransformer` construction. |
 | `max_seq_len` | `int` | `1024` | Max sequence length (excluding control tokens). |
 | `pos_encoding` | `str` | `"rotary"` | Positional encoding. |
 | `norm` | `str` | `"rmsnorm"` | Normalisation type. |

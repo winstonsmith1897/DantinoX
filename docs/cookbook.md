@@ -38,7 +38,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
         "ar",
         "data/corpus.txt",
         dim=256, n_heads=8, head_size=32, num_blocks=6,
-        vocab_size=200, max_context=512,
+        max_context=512,
         lr=3e-4, epochs=10, batch_size=32,
     )
     print("Checkpoint:", run_dir)
@@ -65,7 +65,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
         "diffusion",
         "data/corpus.txt",
         dim=256, n_heads=8, head_size=32, num_blocks=6,
-        vocab_size=32000, max_context=512,
+        max_context=512,
         model_type="diffusion",
         diffusion_steps=1000,
         noise_schedule="cosine",
@@ -100,7 +100,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
         "data/corpus.txt",
         model_type="elf",
         dim=256, n_heads=8, head_size=32, num_blocks=6,
-        vocab_size=32000, max_context=256,
+        max_context=256,
         embed_dim=256, bottleneck_dim=64,
         elf_n_steps=64, elf_cfg_scale=1.5,
         tokenizer_type="bpe", tokenizer_path="t5-base",

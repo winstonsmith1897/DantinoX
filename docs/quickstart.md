@@ -71,7 +71,6 @@ run_dir = dx.fit(
     n_heads=8,                          # number of attention heads
     head_size=64,                       # dimension per head — MUST satisfy: dim = n_heads × head_size
     num_blocks=12,                      # number of Transformer layers
-    vocab_size=32_000,                  # vocabulary size
     lr=3e-4,                            # initial learning rate (Adam)
     epochs=5,                           # number of training epochs
 )
@@ -82,11 +81,22 @@ print(dx.quick_generate(run_dir, "Once upon a time"))
 
 **What happens internally:**
 
-1. `dx.fit` constructs a `Transformer` with the specified configuration
-2. Instantiates a `CharTokenizer` (or BPE if `tokenizer_type="bpe"`)
-3. Creates a `Trainer` with `AdamW` and a cosine learning-rate schedule
-4. Trains for `epochs` epochs, saving the best checkpoint to `runs/<timestamp>/best_model_weights.msgpack`
-5. Returns the path to the run folder
+1. `dx.fit` loads or trains a `CharTokenizer` (or BPE if `tokenizer_type="bpe"`) on the data file
+2. Infers `vocab_size` automatically from the tokenizer — **no need to pass it manually**
+3. Constructs a `Transformer` with the resulting config
+4. Creates a `Trainer` with `AdamW` and a cosine learning-rate schedule
+5. Trains for `epochs` epochs, saving the best checkpoint to `runs/<timestamp>/best_model_weights.msgpack`
+6. Returns the path to the run folder
+
+!!! note "`vocab_size` is optional when using `Trainer.fit()` / `dx.fit()`"
+    When training through the `Trainer`, `vocab_size` is read from the tokenizer after it is
+    loaded or trained and written back to the config automatically.
+    You only need to set it explicitly when **building a model directly**:
+    ```python
+    # Direct construction — vocab_size required
+    cfg   = dx.ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
+    model = paradigm.build_model(nnx.Rngs(42))
+    ```
 
 !!! warning "Key constraint"
     `dim` must equal exactly `n_heads × head_size`.
@@ -110,7 +120,6 @@ run_dir = dx.fit(
     "ar",
     "data/wiki.txt",
     dim=512, n_heads=8, head_size=64, num_blocks=12,
-    vocab_size=32_000,
     causal=True,          # applies a causal (lower-triangular) attention mask
     lr=3e-4,
     epochs=5,
@@ -129,7 +138,6 @@ run_dir = dx.fit(
     "discrete",
     "data/wiki.txt",
     dim=512, n_heads=8, head_size=64, num_blocks=12,
-    vocab_size=32_000,
     causal=False,             # bidirectional attention (sees the whole sequence)
     noise_schedule="cosine",  # schedule that controls how many tokens to mask
     mask_token_id=4,          # vocabulary ID of the [MASK] token
@@ -153,7 +161,6 @@ run_dir = dx.fit(
     embed_dim=768,     # dimension of the continuous embedding space
     model_dim=512,     # internal Transformer dimension
     n_heads=8, head_size=64, num_blocks=12,
-    vocab_size=32_128,
     elf_cfg_scale=1.5, # Classifier-Free Guidance scale (0 = no guidance)
     lr=1e-4,
     epochs=30,

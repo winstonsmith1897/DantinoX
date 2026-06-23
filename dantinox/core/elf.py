@@ -173,6 +173,12 @@ class ELFTransformer(nnx.Module, pytree=False):
     """
 
     def __init__(self, config: ELFConfig, rngs: nnx.Rngs) -> None:
+        if config.vocab_size is None:
+            raise ValueError(
+                "ELFConfig.vocab_size is not set. "
+                "When using Trainer.fit() it is inferred automatically from the tokenizer. "
+                "For direct model building pass vocab_size=<n> to ELFConfig."
+            )
         self.config: ELFConfig = config
 
         D  = config.model_dim

@@ -54,7 +54,7 @@ DantinoX uses a single `Trainer` class for all three paradigms (AR, Diffusion, E
         "ar",                    # paradigm
         "data/wiki.txt",         # data
         dim=512, n_heads=8, head_size=64,
-        num_blocks=12, vocab_size=32_000,
+        num_blocks=12,
         lr=3e-4, epochs=5,
     )
     ```

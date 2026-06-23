@@ -141,7 +141,7 @@ The library is designed to be used at different levels of abstraction, from the 
 
     run_dir = dx.fit("ar", "data/wiki.txt",
                      dim=512, n_heads=8, head_size=64,
-                     num_blocks=12, vocab_size=32_000)
+                     num_blocks=12)
 
     print(dx.quick_generate(run_dir, "In the beginning"))
     ```
@@ -156,7 +156,7 @@ The library is designed to be used at different levels of abstraction, from the 
 
     model_cfg = dx.ModelConfig(
         dim=512, n_heads=8, head_size=64, num_blocks=12,
-        vocab_size=32_000, attention_type="gqa", kv_heads=2,
+        attention_type="gqa", kv_heads=2,
     )
     train_cfg = dx.TrainingConfig(lr=3e-4, epochs=5, grad_accum=4)
 

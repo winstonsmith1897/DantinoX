@@ -25,7 +25,7 @@ class ModelConfig:
     n_heads: int = 16
     head_size: int = 32
     num_blocks: int = 12
-    vocab_size: int = 200
+    vocab_size: int | None = None  # auto-set from tokenizer when using Trainer.fit()
     max_context: int = 512
 
     # ── Architecture choices ──────────────────────────────────────────────────
@@ -777,7 +777,7 @@ class ELFConfig:
     n_heads:    int   = 12
     head_size:  int   = 64
     num_blocks: int   = 12
-    vocab_size: int   = 32_000
+    vocab_size: int | None = None  # auto-set from tokenizer when using Trainer.fit()
     max_seq_len: int  = 1024       # sequence length (excluding control tokens)
 
     # ── Architecture ──────────────────────────────────────────────────────────
