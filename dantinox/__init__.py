@@ -53,7 +53,9 @@ from dantinox.paradigms import (
     ContinuousParadigm,
     DiscreteConfig,
     DiscreteParadigm,
+    EmbedderParadigm,
     Paradigm,
+    info_nce_loss,
 )
 
 # ── Training ──────────────────────────────────────────────────────────────────
@@ -92,6 +94,10 @@ from dantinox.visualization import (
     TrainingCurveChart,
     Visualizer,
 )
+
+# ── Embedding / RAG ──────────────────────────────────────────────────────────
+from dantinox.embedder import Embedder
+from dantinox.embedder_trainer import EmbedderTrainer
 
 # ── Legacy high-level helpers (backward compat) ───────────────────────────────
 from dantinox.generator import Generator
@@ -133,10 +139,19 @@ def _build_continuous(config, kwargs):
     return ContinuousParadigm(config)
 
 
+def _build_embedder(config, kwargs):
+    pooling     = kwargs.pop("pooling", "auto")
+    temperature = kwargs.pop("temperature", 0.05)
+    if config is None:
+        config = ModelConfig(**{**kwargs, "causal": False})
+    return EmbedderParadigm(config, pooling=pooling, temperature=temperature)
+
+
 _PARADIGM_MAP = {
     "ar":         _build_ar,
     "discrete":   _build_discrete,
     "continuous": _build_continuous,
+    "embedder":   _build_embedder,
 }
 
 
@@ -151,12 +166,13 @@ def build(
     """Construct a Paradigm from a string name and optional config.
 
     Args:
-        paradigm    : ``"ar"`` | ``"discrete"`` | ``"continuous"``
-        config      : A ``ModelConfig`` (AR/discrete) or ``ELFConfig``
+        paradigm    : ``"ar"`` | ``"discrete"`` | ``"continuous"`` | ``"embedder"``
+        config      : A ``ModelConfig`` (AR/discrete/embedder) or ``ELFConfig``
                       (continuous).  When omitted, *model_kwargs* are forwarded
                       to the appropriate config constructor.
         **model_kwargs : Forwarded to ``ModelConfig`` or ``ELFConfig`` when
-                         *config* is None.
+                         *config* is None.  For ``"embedder"``, also accepts
+                         ``pooling`` and ``temperature``.
 
     Returns:
         A ready-to-use :class:`Paradigm` instance.
@@ -165,6 +181,9 @@ def build(
 
         p = dx.build("ar", dim=512, n_heads=8, head_size=64,
                      num_blocks=12, vocab_size=32_000)
+
+        p = dx.build("embedder", dim=256, n_heads=4, head_size=64,
+                     num_blocks=4, vocab_size=32_000, dropout=0.1)
     """
     if paradigm not in _PARADIGM_MAP:
         raise ValueError(
@@ -176,9 +195,10 @@ def build(
 
 def train(
     paradigm: Paradigm,
-    data_source: str,
+    data_source: str | None = None,
     *,
     run_dir: str | None = None,
+    training_config: TrainingConfig | None = None,
     **training_kwargs,
 ) -> str:
     """Train *paradigm* on *data_source* and return the run directory.
@@ -186,7 +206,11 @@ def train(
     Args:
         paradigm        : Any :class:`Paradigm` instance.
         data_source     : Path to a text file, or a HuggingFace dataset name.
+                          May be omitted when *training_config* sets
+                          ``dataset_source="huggingface"`` and ``dataset_name``.
         run_dir         : Output directory (auto-generated when omitted).
+        training_config : A ready-made :class:`TrainingConfig`.  When supplied,
+                          *training_kwargs* are ignored.
         **training_kwargs : Forwarded to ``TrainingConfig`` — e.g.
                             ``lr=3e-4, epochs=10, batch_size=64``.
 
@@ -196,8 +220,12 @@ def train(
     Example::
 
         run_dir = dx.train(paradigm, "data/wiki.txt", lr=1e-4, epochs=3)
+
+        cfg = dx.TrainingConfig(lr=1e-4, epochs=3, dataset_source="huggingface",
+                                dataset_name="wikitext")
+        run_dir = dx.train(paradigm, training_config=cfg)
     """
-    cfg     = TrainingConfig(**training_kwargs) if training_kwargs else TrainingConfig()
+    cfg     = training_config or (TrainingConfig(**training_kwargs) if training_kwargs else TrainingConfig())
     trainer = Trainer(paradigm, cfg)
     return trainer.fit(data_source, run_dir=run_dir)
 
@@ -479,6 +507,11 @@ __all__ = [
     "LatencyChart",
     "RadarChart",
     "ParetoChart",
+    # embedding / RAG
+    "Embedder",
+    "EmbedderTrainer",
+    "EmbedderParadigm",
+    "info_nce_loss",
     # low-code functional API
     "build",
     "train",

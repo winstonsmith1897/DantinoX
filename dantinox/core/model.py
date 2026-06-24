@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from .block import Block, RMSNorm, _build_norm
 from .config import Config, ModelConfig
 from .diffusion import DualCache
-from .output import ModelOutput
+from .output import EmbeddingOutput, ModelOutput
 
 
 def _to_model_config(config: ModelConfig | Config) -> ModelConfig:
@@ -218,6 +218,83 @@ class Transformer(nnx.Module, pytree=False):
             kv_caches=tuple(new_caches),
             aux_loss=balancing_loss,
         )
+
+    # ── Embedding / RAG interface ─────────────────────────────────────────────
+
+    def encode_hidden(
+        self,
+        x: jnp.ndarray,
+        *,
+        pooling: str = "auto",
+        normalize: bool = True,
+        attention_mask: jnp.ndarray | None = None,
+        deterministic: bool = True,
+    ) -> EmbeddingOutput:
+        """Extract pooled sentence embeddings for retrieval / RAG.
+
+        Runs the full transformer backbone (embed → blocks → norm_f) and pools
+        the per-token hidden states to a fixed-size vector ``[B, D]``.
+
+        Parameters
+        ----------
+        x:              Token IDs ``[B, T]``.
+        pooling:        ``"auto"`` selects ``"last"`` for causal models and
+                        ``"mean"`` for bidirectional ones.  Other options:
+                        ``"mean"`` — average over the sequence (mask-aware),
+                        ``"last"`` — hidden state of the final non-padding token,
+                        ``"cls"``  — hidden state of the first token.
+        normalize:      L2-normalize the output (required for cosine similarity).
+        attention_mask: Boolean mask ``[B, T]`` (``True`` = keep).  When
+                        ``None`` all positions are treated as valid.
+        deterministic:  Disable dropout (``True`` at inference, ``False``
+                        during contrastive training for SimCSE augmentation).
+
+        Returns
+        -------
+        ``EmbeddingOutput(embeddings, hidden_states)``
+
+        Example::
+
+            ids = tokenizer.encode_batch(texts)           # [B, T]
+            out = model.encode_hidden(ids, normalize=True)
+            # out.embeddings: [B, D] — ready for FAISS / ChromaDB
+        """
+        resolved = pooling
+        if pooling == "auto":
+            resolved = "last" if self.causal else "mean"
+
+        # ── backbone ──────────────────────────────────────────────────────────
+        h = self.embed(x)
+        h = self._add_pos(h, 0)
+        h = self.emb_dropout(h, deterministic=deterministic)
+        for block in self.blocks:
+            h, _, _ = block(h, deterministic=deterministic)
+        h = self.norm_f(h)   # [B, T, D]
+
+        # ── pooling ───────────────────────────────────────────────────────────
+        if resolved == "cls":
+            pooled = h[:, 0, :]
+
+        elif resolved == "last":
+            if attention_mask is not None:
+                # index of the last valid token per sample
+                last_idx = attention_mask.sum(axis=1) - 1          # [B]
+                last_idx = jnp.clip(last_idx, 0, h.shape[1] - 1)
+                pooled = h[jnp.arange(h.shape[0]), last_idx]      # [B, D]
+            else:
+                pooled = h[:, -1, :]
+
+        else:  # "mean"
+            if attention_mask is not None:
+                mask = attention_mask[:, :, None].astype(jnp.float32)  # [B, T, 1]
+                pooled = (h * mask).sum(axis=1) / mask.sum(axis=1).clip(1e-9)
+            else:
+                pooled = h.mean(axis=1)
+
+        if normalize:
+            pooled = pooled / jnp.linalg.norm(pooled, axis=-1, keepdims=True).clip(1e-12)
+
+        return EmbeddingOutput(embeddings=pooled, hidden_states=h)
 
     # ── Diffusion-specific inference methods ──────────────────────────────────
     # Valid only when causal=False (bidirectional transformer).

@@ -66,7 +66,7 @@ from .lora import LoRALinear, LoRAParam
 from .model import Transformer, DiffusionTransformer
 
 # Output
-from .output import ModelOutput, ELFOutput
+from .output import ModelOutput, ELFOutput, EmbeddingOutput
 
 # Sharding
 from .sharding import make_mesh, num_devices, replicate, shard_batch
@@ -128,6 +128,7 @@ __all__ = [
     # Output
     "ModelOutput",
     "ELFOutput",
+    "EmbeddingOutput",
     # Sharding
     "make_mesh",
     "num_devices",

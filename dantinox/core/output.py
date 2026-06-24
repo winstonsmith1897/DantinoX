@@ -56,3 +56,20 @@ class ELFOutput(NamedTuple):
 
     logits: jnp.ndarray
     """Token logits ``[batch, seq_len, vocab_size]`` via ``unembed(x_pred)``."""
+
+
+class EmbeddingOutput(NamedTuple):
+    """Return type for ``Transformer.encode_hidden`` — pooled sentence embeddings.
+
+    Usage::
+
+        out = model.encode_hidden(token_ids, pooling="mean", normalize=True)
+        # out.embeddings: [B, D]  — ready for cosine-similarity / vector stores
+        # out.hidden_states: [B, T, D] — full sequence if you need token-level features
+    """
+
+    embeddings: jnp.ndarray
+    """Pooled sentence embeddings ``[batch, dim]``."""
+
+    hidden_states: jnp.ndarray
+    """Per-token hidden states after the final layer norm ``[batch, seq_len, dim]``."""
