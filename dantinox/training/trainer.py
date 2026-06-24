@@ -231,6 +231,10 @@ class Trainer:
                     "fit() needs a data_source path, or a TrainingConfig with "
                     "dataset_source='huggingface' and dataset_name set."
                 )
+        from dantinox._banner import print_banner as _print_banner
+        import dantinox as _dx
+        _print_banner(_dx.__version__)
+
         run_dir  = _make_run_dir(run_dir)
         rngs     = rngs or nnx.Rngs(cfg.seed)
 

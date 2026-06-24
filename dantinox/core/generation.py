@@ -247,8 +247,17 @@ def stream_diffusion_generate(
         x_t          = jnp.where((x_t == mask_token_id) & do_unmask, x0_pred, x_t)
         yield step, total, x_t
 
-    output = model(x_t, dual_cache=dual_cache, deterministic=True)
-    x_t    = jnp.where(x_t == mask_token_id, jnp.argmax(output.logits, axis=-1), x_t)
+    output      = model(x_t, dual_cache=dual_cache, deterministic=True)
+    last_logits = output.logits / max(temperature, 1e-6)
+    last_probs  = jax.nn.softmax(last_logits, axis=-1)
+    rng, subkey = jax.random.split(rng)
+    B_last      = x_t.shape[0]
+    flat_p      = last_probs.reshape(B_last * gen_len, -1)
+    flat_k      = jax.random.split(subkey, B_last * gen_len)
+    last_pred   = jax.vmap(
+        lambda p, k: jax.random.categorical(k, jnp.log(p + 1e-10))
+    )(flat_p, flat_k).reshape(B_last, gen_len)
+    x_t = jnp.where(x_t == mask_token_id, last_pred, x_t)
     yield total - 1, total, x_t
 
 

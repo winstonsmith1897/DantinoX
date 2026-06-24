@@ -1042,6 +1042,9 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
         datefmt="%H:%M:%S",
     )
+    from dantinox._banner import print_banner as _print_banner
+    from dantinox import __version__ as _ver
+    _print_banner(_ver)
     parser = _build_parser()
     args = parser.parse_args(argv)
 

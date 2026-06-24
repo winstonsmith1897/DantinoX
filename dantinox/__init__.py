@@ -124,6 +124,9 @@ from dantinox.exceptions import (
     PlotError,
 )
 
+# ── Banner ────────────────────────────────────────────────────────────────────
+from dantinox._banner import print_banner as banner
+
 # ── Internal builders ─────────────────────────────────────────────────────────
 # Defined before the public API functions that reference them.
 
@@ -345,23 +348,43 @@ def profile(
     return result
 
 
-def load(run_dir: str, paradigm: Paradigm | None = None):
-    """Load the best checkpoint from *run_dir* and return the NNX model.
+def load(
+    run_dir: str,
+    paradigm: Paradigm | None = None,
+    checkpoint: str = "best",
+):
+    """Load a checkpoint from *run_dir* and return the NNX model.
 
-    When *paradigm* is omitted, ``config.yaml`` in *run_dir* is read to
-    reconstruct the ``ModelConfig`` and infer the paradigm automatically.
-    Pass *paradigm* explicitly to override or when no ``config.yaml`` is
-    present (legacy checkpoints).
+    Args:
+        run_dir    : Directory produced by ``Trainer.fit()`` or ``dx.fit()``.
+        paradigm   : Optional :class:`Paradigm` instance.  When omitted,
+                     ``config.yaml`` in *run_dir* is read to reconstruct the
+                     ``ModelConfig`` and infer the paradigm automatically.
+                     Pass explicitly to override or for legacy checkpoints
+                     without a ``config.yaml``.
+        checkpoint : Which checkpoint to load.  One of:
+
+                     * ``"best"`` *(default)* — ``checkpoint_best.msgpack``
+                     * ``"latest"`` — ``checkpoint_latest.msgpack``
+                     * any other string — ``checkpoint_<string>.msgpack``
+                     * an absolute or relative path ending in ``.msgpack``
+                       to load a file directly.
 
     Example::
 
         model = dx.load("runs/20240101_120000")
-        model = dx.load("runs/20240101_120000", paradigm=my_paradigm)
+        model = dx.load("runs/20240101_120000", checkpoint="latest")
+        model = dx.load("runs/20240101_120000", checkpoint="/path/to/my.msgpack")
     """
     import os
     from flax import nnx
 
-    ckpt_path = os.path.join(run_dir, "checkpoint_best.msgpack")
+    if checkpoint.endswith(".msgpack") and os.path.sep in checkpoint or os.path.isabs(checkpoint):
+        ckpt_path = checkpoint
+    else:
+        tag       = checkpoint if checkpoint.endswith(".msgpack") else f"checkpoint_{checkpoint}.msgpack"
+        ckpt_path = os.path.join(run_dir, tag)
+
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"No checkpoint found at {ckpt_path}")
 
@@ -533,6 +556,8 @@ __all__ = [
     # embedding / RAG
     "Embedder",
     "EmbedderTrainer",
+    # banner
+    "banner",
     # low-code functional API
     "build",
     "train",
