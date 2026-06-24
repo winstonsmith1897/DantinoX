@@ -110,7 +110,7 @@ class ContinuousParadigm(Paradigm):
         model: ELFTransformer,
         prompt: jnp.ndarray | None = None,
         rng: jax.Array | None = None,
-        gen_len: int | None = None,
+        max_new_tokens: int | None = None,
         n_steps: int | None = None,
         cfg_scale: float | None = None,
         gamma: float | None = None,
@@ -120,7 +120,7 @@ class ContinuousParadigm(Paradigm):
         """ELF generates unconditionally from Gaussian noise.
 
         *prompt* only provides the batch size / sequence length defaults
-        (``gen_len`` overrides its length); its token contents are unused.
+        (``max_new_tokens`` overrides its length); its token contents are unused.
         ``batch_size`` and ``seed`` can be passed directly as an alternative
         to providing a *prompt* and *rng*.
         """
@@ -128,8 +128,8 @@ class ContinuousParadigm(Paradigm):
         steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
         cfg_w  = cfg_scale or getattr(self.config, "elf_cfg_scale", 1.0)
         sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
-        length = gen_len or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
-                             else self.config.max_seq_len)
+        length = max_new_tokens or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
+                                    else self.config.max_seq_len)
         if batch_size is None:
             batch_size = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
         if seed is None:
@@ -149,7 +149,7 @@ class ContinuousParadigm(Paradigm):
         model: ELFTransformer,
         prompt: jnp.ndarray | None = None,
         rng: jax.Array | None = None,
-        gen_len: int | None = None,
+        max_new_tokens: int | None = None,
         n_steps: int | None = None,
         cfg_scale: float | None = None,
         gamma: float | None = None,
@@ -159,8 +159,8 @@ class ContinuousParadigm(Paradigm):
         steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
         cfg_w  = cfg_scale or getattr(self.config, "elf_cfg_scale", 1.0)
         sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
-        length = gen_len or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
-                             else self.config.max_seq_len)
+        length = max_new_tokens or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
+                                    else self.config.max_seq_len)
         batch  = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
         seed   = _seed_from(rng) if rng is not None else 42
         yield from _stream_elf_generate(

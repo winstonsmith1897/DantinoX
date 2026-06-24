@@ -153,12 +153,14 @@ nav:
           - Fast-dLLM DualCache: paradigms/fast-dllm.md
           - Confidence-Aware Decoding: paradigms/confidence.md
           - AR vs Diffusion: paradigms/comparison.md
+          - Retriever (Embedder): paradigms/retriever.md
 
   - Training & Inference:
       - Training:
           - Overview: training/index.md
           - Autoregressive: training/autoregressive.md
           - Diffusion: training/diffusion.md
+          - Embedder (Retriever): training/retriever.md
           - Optimizers & Schedules: training/optimizers.md
           - Hyperparameter Sweeps: training/sweeps.md
           - Multi-GPU: training/multi-gpu.md
@@ -173,6 +175,7 @@ nav:
           - Your First Model: tutorials/first-model.md
           - Masked Diffusion LM: tutorials/diffusion-lm.md
           - LoRA Fine-Tuning: tutorials/lora-fine-tuning.md
+          - RAG with DantinoX Embedders: tutorials/retriever-rag.md
           - Benchmarking a Model: tutorials/benchmarking.md
           - Push to Hub: tutorials/hub.md
 

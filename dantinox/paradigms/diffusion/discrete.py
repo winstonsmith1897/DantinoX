@@ -103,7 +103,7 @@ class DiscreteParadigm(Paradigm):
         model: Transformer,
         prompt: jnp.ndarray,
         rng: jax.Array,
-        gen_len: int = 256,
+        max_new_tokens: int = 256,
         n_steps: int = 50,
         temperature: float = 1.0,
     ) -> jnp.ndarray:
@@ -111,7 +111,7 @@ class DiscreteParadigm(Paradigm):
         return _diffusion_generate(
             model,
             prompt,
-            gen_len=gen_len,
+            gen_len=max_new_tokens,
             schedule=self._schedule,
             mask_token_id=self.diffusion_config.mask_token_id,
             seed=_seed_from(rng),
@@ -124,7 +124,7 @@ class DiscreteParadigm(Paradigm):
         model: Transformer,
         prompt: jnp.ndarray,
         rng: jax.Array,
-        gen_len: int = 256,
+        max_new_tokens: int = 256,
         n_steps: int = 50,
         temperature: float = 1.0,
     ):
@@ -133,7 +133,7 @@ class DiscreteParadigm(Paradigm):
         yield from _stream_diffusion_generate(
             model,
             prompt,
-            gen_len=gen_len,
+            gen_len=max_new_tokens,
             schedule=self._schedule,
             mask_token_id=self.diffusion_config.mask_token_id,
             seed=_seed_from(rng),

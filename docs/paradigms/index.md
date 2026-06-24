@@ -2,9 +2,9 @@
 title: Generation Paradigms
 ---
 
-# Generation Paradigms
+# Generation & Retrieval Paradigms
 
-DantinoX implements two orthogonal generation paradigms on the same transformer backbone.
+DantinoX implements three paradigms on the same transformer backbone.
 Each paradigm can be combined freely with any of the three attention mechanisms
 (MHA · GQA · MLA) and the two FFN variants (Dense · MoE).
 
@@ -12,17 +12,16 @@ Each paradigm can be combined freely with any of the three attention mechanisms
 
 ## At a Glance
 
-| | **Autoregressive (AR)** | **Masked Diffusion** |
-|---|---|---|
-| Directionality | Causal (left → right) | Bidirectional |
-| Decoding | Sequential token-by-token | Parallel denoising over full sequence |
-| Attention mask | Causal | None (full attention) |
-| Training loss | Cross-entropy on next token | Masked CE over [MASK] positions |
-| KV-cache type | Static KV-cache | DualCache (prefix + suffix) |
-| Conditioning | Time-step embedding | None |
-| Parallelism | Low (sequential decode) | High (all positions at once) |
-| Long-range coherence | ✗ unidirectional | ✓ bidirectional context |
-| Infilling | Requires re-prompting | Native |
+| | **Autoregressive (AR)** | **Masked Diffusion** | **Retriever (Embedder)** |
+|---|---|---|---|
+| Directionality | Causal (left → right) | Bidirectional | Bidirectional (recommended) |
+| Primary use | Text generation | Text generation | Semantic search / RAG |
+| Training loss | Cross-entropy on next token | Masked CE over [MASK] positions | InfoNCE (symmetric) |
+| Output | Token logits `[B, T, V]` | Token logits `[B, T, V]` | Sentence vectors `[B, D]` |
+| Attention mask | Causal | None (full attention) | None (full attention) |
+| Pooling | — | — | mean · last · cls |
+| FAISS / ChromaDB | — | — | ✓ drop-in |
+| LangChain | — | — | ✓ drop-in |
 
 ---
 
@@ -57,3 +56,4 @@ diff_model = DiffusionTransformer(diff_config, rngs=nnx.Rngs(0))
 | [Fast-dLLM DualCache](fast-dllm.md) | Block-wise inference with prefix + suffix KV caching for diffusion |
 | [Confidence-Aware Decoding](confidence.md) | Threshold and factor strategies for parallel token unmasking |
 | [AR vs. Diffusion](comparison.md) | Side-by-side quality, efficiency, and use-case analysis |
+| [Retriever (Embedder)](retriever.md) | SimCSE / InfoNCE contrastive training for RAG sentence encoders |
