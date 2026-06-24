@@ -51,7 +51,7 @@ def _generate_toks(
     ) -> jnp.ndarray:
 
     def __apply_top_k(probs, decoding_func, key, top_k):
-        top_k_probs, top_k_indices = jax.lax.top_k(probs, k=top_k, axis=-1)
+        top_k_probs, top_k_indices = jax.lax.top_k(probs, top_k)
         top_k_probs = top_k_probs / jnp.sum(top_k_probs, axis=-1, keepdims=True)
 
         new_key, subkey = jax.random.split(key)

@@ -247,12 +247,18 @@ class ModelConfig:
         with open(path, "w") as f:
             yaml.dump(self.to_dict(), f)
 
+    def replace(self, **kwargs) -> "ModelConfig":
+        """Return a new ModelConfig with selected fields overridden."""
+        from dataclasses import replace as _replace
+        return _replace(self, **kwargs)
+
     def __repr__(self) -> str:
-        mode = "AR" if self.causal else "Diffusion"
+        paradigm_part = f"paradigm={self.paradigm!r}, " if self.paradigm is not None else ""
         extra = "+MoE" if self.use_moe else ""
         return (
-            f"ModelConfig(dim={self.dim}, heads={self.n_heads}, blocks={self.num_blocks}, "
-            f"ctx={self.max_context}, mode={mode}, attn={self.attention.upper()}{extra})"
+            f"ModelConfig({paradigm_part}dim={self.dim}, heads={self.n_heads}, "
+            f"blocks={self.num_blocks}, ctx={self.max_context}, "
+            f"attn={self.attention.upper()}{extra})"
         )
 
 
@@ -296,9 +302,6 @@ class TrainingConfig:
     tokenizer_type: str = "char"   # "char" | "bpe" | "t5"
     tokenizer_path: str | None = None
 
-    # ── Diffusion training ────────────────────────────────────────────────────
-    noise_schedule: str = "linear" # "linear" | "cosine" | "sqrt"
-
     # ── Warm start ────────────────────────────────────────────────────────────
     init_from: str = ""            # run dir whose best checkpoint initialises the model
 
@@ -308,14 +311,17 @@ class TrainingConfig:
     def __post_init__(self) -> None:
         if self.lr_schedule not in ("cosine", "linear", "constant", "wsd"):
             raise ValueError(f"lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd'")
-        if self.noise_schedule not in ("linear", "cosine", "sqrt"):
-            raise ValueError(f"noise_schedule must be 'linear', 'cosine', or 'sqrt'")
         if self.n_devices < 0:
             raise ValueError(f"n_devices must be >= 0")
         if not 0.0 <= self.val_frac < 1.0:
             raise ValueError(f"val_frac must be in [0, 1); got {self.val_frac}")
         if self.grad_accum < 1:
             raise ValueError(f"grad_accum must be >= 1; got {self.grad_accum}")
+
+    def replace(self, **kwargs) -> "TrainingConfig":
+        """Return a new TrainingConfig with selected fields overridden."""
+        from dataclasses import replace as _replace
+        return _replace(self, **kwargs)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

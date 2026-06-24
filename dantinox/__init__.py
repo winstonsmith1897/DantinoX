@@ -147,12 +147,21 @@ def _build_continuous(config, kwargs):
 
 
 def _build_embedder(config, kwargs):
-    pooling     = kwargs.pop("pooling", "auto")
-    temperature = kwargs.pop("temperature", 0.05)
+    import warnings
+    if "pooling" in kwargs:
+        warnings.warn(
+            "The 'pooling' kwarg is deprecated; use embed_pooling= on ModelConfig instead.",
+            DeprecationWarning, stacklevel=4,
+        )
+        kwargs["embed_pooling"] = kwargs.pop("pooling")
+    if "temperature" in kwargs:
+        warnings.warn(
+            "The 'temperature' kwarg is deprecated; use embed_temperature= on ModelConfig instead.",
+            DeprecationWarning, stacklevel=4,
+        )
+        kwargs["embed_temperature"] = kwargs.pop("temperature")
     if config is None:
-        config = ModelConfig(**{**kwargs, "paradigm": "embedder",
-                                "embed_pooling": pooling,
-                                "embed_temperature": temperature})
+        config = ModelConfig(**{**kwargs, "paradigm": "embedder"})
     return Paradigm(config)
 
 
@@ -184,12 +193,17 @@ def build(
 ) -> Paradigm:
     """Construct a Paradigm from a string name and optional ``ModelConfig``.
 
+    This is a thin wrapper around ``Paradigm(ModelConfig(paradigm=..., ...))``.
+    For new code, prefer the explicit form::
+
+        p = dx.Paradigm(dx.ModelConfig(paradigm="ar", dim=512, n_heads=8,
+                                        num_blocks=12, vocab_size=32_000))
+
     Args:
         paradigm      : ``"ar"`` | ``"discrete"`` | ``"continuous"`` | ``"embedder"``
         config        : A ``ModelConfig``.  When omitted, *model_kwargs* are
                         forwarded to ``ModelConfig``.
         **model_kwargs : Forwarded to ``ModelConfig`` when *config* is None.
-                         ``"embedder"`` also accepts ``pooling`` and ``temperature``.
 
     Returns:
         A ready-to-use :class:`Paradigm` instance.
@@ -199,7 +213,7 @@ def build(
         p = dx.build("ar", dim=512, n_heads=8, num_blocks=12, vocab_size=32_000)
 
         p = dx.build("continuous", dim=256, n_heads=4, num_blocks=4,
-                     embed_dim=768, bottleneck_dim=128, causal=False)
+                     embed_dim=768, bottleneck_dim=128)
     """
     if paradigm not in _PARADIGM_MAP:
         raise ValueError(
@@ -246,6 +260,13 @@ def train(
     return trainer.fit(data_source, run_dir=run_dir)
 
 
+_LEGACY_PARADIGM_ALIASES = {
+    "autoregressive": "ar",
+    "diffusion": "discrete",
+    "elf": "continuous",
+}
+
+
 def fit(
     paradigm: str,
     data_source: str,
@@ -256,9 +277,8 @@ def fit(
 ) -> str:
     """One-call shortcut: build paradigm, train, return run directory.
 
-    Keyword arguments that match ``ModelConfig`` / ``ELFConfig`` fields are
-    forwarded to the config constructor; everything else goes to
-    ``TrainingConfig``.
+    Keyword arguments that match ``ModelConfig`` fields are forwarded to the
+    config constructor; everything else goes to ``TrainingConfig``.
 
     Example::
 
@@ -266,6 +286,14 @@ def fit(
                          dim=512, n_heads=8, head_size=64, num_blocks=12,
                          vocab_size=32_000, lr=3e-4, epochs=5)
     """
+    import warnings
+    if paradigm in _LEGACY_PARADIGM_ALIASES:
+        canonical = _LEGACY_PARADIGM_ALIASES[paradigm]
+        warnings.warn(
+            f"Paradigm string {paradigm!r} is deprecated; use {canonical!r} instead.",
+            DeprecationWarning, stacklevel=2,
+        )
+        paradigm = canonical
     model_kw, train_kw = _split_kwargs(kwargs)
     p   = build(paradigm, **model_kw)
     cfg = training_config or TrainingConfig(**train_kw)
@@ -320,26 +348,33 @@ def profile(
 def load(run_dir: str, paradigm: Paradigm | None = None):
     """Load the best checkpoint from *run_dir* and return the NNX model.
 
-    When *paradigm* is supplied its ``build_model()`` is called to construct
-    the model skeleton before weights are restored.  Otherwise falls back to
-    ``Transformer.from_pretrained()``.
+    When *paradigm* is omitted, ``config.yaml`` in *run_dir* is read to
+    reconstruct the ``ModelConfig`` and infer the paradigm automatically.
+    Pass *paradigm* explicitly to override or when no ``config.yaml`` is
+    present (legacy checkpoints).
 
     Example::
 
+        model = dx.load("runs/20240101_120000")
         model = dx.load("runs/20240101_120000", paradigm=my_paradigm)
     """
     import os
-    import flax.serialization
     from flax import nnx
 
     ckpt_path = os.path.join(run_dir, "checkpoint_best.msgpack")
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"No checkpoint found at {ckpt_path}")
 
+    if paradigm is None:
+        cfg_path = os.path.join(run_dir, "config.yaml")
+        if os.path.exists(cfg_path):
+            model_cfg = ModelConfig.from_yaml(cfg_path)
+            paradigm  = Paradigm(model_cfg)
+
     if paradigm is not None:
         from dantinox.training.trainer import _msgpack_load
         model = paradigm.build_model(nnx.Rngs(0))
-        raw = _msgpack_load(ckpt_path)
+        raw   = _msgpack_load(ckpt_path)
         state = nnx.state(model, nnx.Not(nnx.RngState))
         state.replace_by_pure_dict(raw)
         nnx.update(model, state)
