@@ -6,7 +6,8 @@ DantinoX is organized in three decoupled layers. Understanding this layering is 
 ┌─────────────────────────────────────────────────────────────────┐
 │  Level 1 API  dx.fit() · dx.train() · dx.quick_generate()       │
 ├─────────────────────────────────────────────────────────────────┤
-│  Paradigms    ARParadigm · DiscreteParadigm · ContinuousParadigm│
+│  Paradigms    Paradigm (unified factory) — selects from:        │
+│               ARParadigm · DiscreteParadigm · ContinuousParadigm│
 │               (own: loss_fn, generate, build_model)             │
 ├─────────────────────────────────────────────────────────────────┤
 │  Training     Trainer · build_optimizer · build_schedule        │
@@ -46,17 +47,29 @@ For the deep-dive on individual layers (MLA math, RoPE, Flash Attention, LoRA, m
 
 ## The Paradigm layer
 
-A `Paradigm` is a thin wrapper that defines *how to train and generate* with a core model. It exposes exactly three methods:
+A `Paradigm` is a thin wrapper that defines *how to train and generate* with a core model. The unified `Paradigm` class selects the right implementation from the `paradigm` key in `ModelConfig`:
 
 ```python
-class Paradigm(ABC):
+import dantinox as dx
+
+# paradigm= selects the implementation; causal is auto-configured
+p = dx.Paradigm(dx.ModelConfig(paradigm="ar",         dim=512, n_heads=8, num_blocks=12))
+p = dx.Paradigm(dx.ModelConfig(paradigm="discrete",   dim=512, n_heads=8, num_blocks=12))
+p = dx.Paradigm(dx.ModelConfig(paradigm="continuous", dim=256, n_heads=4, embed_dim=768,
+                                num_blocks=6))
+```
+
+The base contract (`ParadigmBase`) exposes exactly three abstract methods:
+
+```python
+class ParadigmBase(ABC):
     def build_model(self, rngs: nnx.Rngs) -> Any:
         """Construct the NNX model — called once by the Trainer."""
 
-    def loss_fn(self, model, batch: jnp.ndarray, rng) -> tuple[jnp.ndarray, dict]:
+    def loss_fn(self, model, batch: jnp.ndarray, rng, **kwargs) -> tuple[jnp.ndarray, dict]:
         """Compute scalar loss + metrics dict — differentiated by the Trainer."""
 
-    def generate(self, model, prompt: jnp.ndarray, rng, **kwargs) -> jnp.ndarray:
+    def generate(self, model, *args, **kwargs) -> jnp.ndarray:
         """Decode a token sequence from a prompt prefix."""
 ```
 
@@ -75,11 +88,12 @@ The Trainer calls *only* `loss_fn` and nothing else about the model. This is the
 
 ### Built-in paradigms
 
-| Paradigm | Training objective | Noise / corruption |
-| :--- | :--- | :--- |
-| `ARParadigm` | Cross-entropy on shifted targets (teacher-forcing) | None |
-| `DiscreteParadigm` | `(1/t)`-weighted masked cross-entropy (LLaDA) | Random token masking at rate `p(t)` |
-| `ContinuousParadigm` | Flow-matching MSE + CE (ELF) | `z_t = t·x + (1−t)·ε`, ε ~ N(0,I) |
+| `paradigm=` key | Implementation | Training objective | Noise / corruption |
+| :--- | :--- | :--- | :--- |
+| `"ar"` | `ARParadigm` | Cross-entropy on shifted targets (teacher-forcing) | None |
+| `"discrete"` | `DiscreteParadigm` | `(1/t)`-weighted masked cross-entropy (LLaDA) | Random token masking at rate `p(t)` |
+| `"continuous"` | `ContinuousParadigm` | Flow-matching MSE + CE (ELF) | `z_t = t·x + (1−t)·ε`, ε ~ N(0,I) |
+| `"embedder"` | `EmbedderParadigm` | InfoNCE contrastive loss | None |
 
 See [Paradigm System](architecture/paradigm-system.md) for the full design rationale, and [Generation Paradigms](paradigms/index.md) for usage documentation.
 

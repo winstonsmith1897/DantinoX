@@ -2,6 +2,9 @@
 DantinoX — JAX/Flax transformer library for AR, discrete diffusion, and
 continuous flow-matching models.
 
+All paradigms share a single ``ModelConfig`` and a single ``Paradigm`` class.
+The ``paradigm`` field in ``ModelConfig`` selects which strategy to use.
+
 Three levels of API
 -------------------
 
@@ -10,25 +13,34 @@ Three levels of API
     import dantinox as dx
 
     run_dir = dx.fit("ar", "data/corpus.txt", dim=512, n_heads=8,
-                     head_size=64, num_blocks=12, vocab_size=32_000)
+                     num_blocks=12, vocab_size=32_000)
     tokens  = dx.quick_generate(run_dir, "Once upon a time")
 
 **Level 2 — explicit paradigm objects**::
 
     import dantinox as dx
 
-    paradigm = dx.ARParadigm(dx.ModelConfig(dim=512, n_heads=8, head_size=64,
-                                             num_blocks=12, vocab_size=32_000))
-    trainer  = dx.Trainer(paradigm, dx.TrainingConfig(lr=3e-4, epochs=5))
-    run_dir  = trainer.fit("data/corpus.txt")
+    # Autoregressive
+    p = dx.Paradigm(dx.ModelConfig(paradigm="ar", dim=512, n_heads=8, num_blocks=12))
 
-    model    = dx.load(run_dir)
-    tokens   = paradigm.generate(model, prompt, rng)
+    # Discrete diffusion (LLaDA)
+    p = dx.Paradigm(dx.ModelConfig(paradigm="discrete", dim=512, n_heads=8, num_blocks=12,
+                                    noise_schedule="cosine"))
+
+    # ELF continuous flow-matching
+    p = dx.Paradigm(dx.ModelConfig(paradigm="continuous", dim=512, n_heads=8, num_blocks=12,
+                                    embed_dim=768))
+
+    # Contrastive embedder (SimCSE)
+    p = dx.Paradigm(dx.ModelConfig(paradigm="embedder", dim=512, n_heads=8, num_blocks=12,
+                                    dropout=0.1))
+
+    run_dir = dx.Trainer(p, dx.TrainingConfig(lr=3e-4, epochs=5)).fit("data/corpus.txt")
 
 **Level 3 — full control**::
 
-    from dantinox.core.config    import ModelConfig
-    from dantinox.core.model     import Transformer
+    from dantinox.core.config       import ModelConfig
+    from dantinox.core.model        import Transformer
     from dantinox.paradigms.ar      import ARParadigm
     from dantinox.training.trainer  import Trainer
     from dantinox.profiling         import LatencyTracker, count_flops
@@ -42,20 +54,20 @@ except PackageNotFoundError:
     __version__ = "0.0.0.dev"
 
 # ── Config re-exports ─────────────────────────────────────────────────────────
-from dantinox.core.config import Config, ELFConfig, ModelConfig, TrainingConfig
+from dantinox.core.config import Config, ModelConfig, TrainingConfig
 
 # ── Core model ────────────────────────────────────────────────────────────────
 from dantinox.core.model import Transformer
 
 # ── Paradigms ─────────────────────────────────────────────────────────────────
 from dantinox.paradigms import (
-    ARParadigm,
-    ContinuousParadigm,
-    DiscreteConfig,
-    DiscreteParadigm,
-    EmbedderParadigm,
     Paradigm,
+    EmbedderParadigm,
     info_nce_loss,
+    # advanced / backward compat
+    ARParadigm,
+    DiscreteParadigm,
+    ContinuousParadigm,
 )
 
 # ── Training ──────────────────────────────────────────────────────────────────
@@ -118,33 +130,30 @@ from dantinox.exceptions import (
 
 def _build_ar(config, kwargs):
     if config is None:
-        config = ModelConfig(**{**kwargs, "causal": True})
-    return ARParadigm(config)
+        config = ModelConfig(**{**kwargs, "paradigm": "ar"})
+    return Paradigm(config)
 
 
 def _build_discrete(config, kwargs):
-    diff_kw = {
-        k: kwargs.pop(k)
-        for k in ("noise_schedule", "mask_token_id")
-        if k in kwargs
-    }
     if config is None:
-        config = ModelConfig(**{**kwargs, "causal": False})
-    return DiscreteParadigm(config, DiscreteConfig(**diff_kw) if diff_kw else None)
+        config = ModelConfig(**{**kwargs, "paradigm": "discrete"})
+    return Paradigm(config)
 
 
 def _build_continuous(config, kwargs):
     if config is None:
-        config = ELFConfig(**kwargs)
-    return ContinuousParadigm(config)
+        config = ModelConfig(**{**kwargs, "paradigm": "continuous"})
+    return Paradigm(config)
 
 
 def _build_embedder(config, kwargs):
     pooling     = kwargs.pop("pooling", "auto")
     temperature = kwargs.pop("temperature", 0.05)
     if config is None:
-        config = ModelConfig(**{**kwargs, "causal": False})
-    return EmbedderParadigm(config, pooling=pooling, temperature=temperature)
+        config = ModelConfig(**{**kwargs, "paradigm": "embedder",
+                                "embed_pooling": pooling,
+                                "embed_temperature": temperature})
+    return Paradigm(config)
 
 
 _PARADIGM_MAP = {
@@ -155,35 +164,42 @@ _PARADIGM_MAP = {
 }
 
 
+def _split_kwargs(kwargs: dict) -> tuple[dict, dict]:
+    """Split **kwargs into (model_kwargs, training_kwargs) by field membership."""
+    from dataclasses import fields as _fields
+    model_fields = {f.name for f in _fields(ModelConfig)}
+    train_fields = {f.name for f in _fields(TrainingConfig)}
+    model_kw = {k: v for k, v in kwargs.items() if k in model_fields}
+    train_kw = {k: v for k, v in kwargs.items() if k in train_fields}
+    return model_kw, train_kw
+
+
 # ── Low-code functional API ───────────────────────────────────────────────────
 
 
 def build(
     paradigm: str,
-    config: ModelConfig | ELFConfig | None = None,
+    config: ModelConfig | None = None,
     **model_kwargs,
 ) -> Paradigm:
-    """Construct a Paradigm from a string name and optional config.
+    """Construct a Paradigm from a string name and optional ``ModelConfig``.
 
     Args:
-        paradigm    : ``"ar"`` | ``"discrete"`` | ``"continuous"`` | ``"embedder"``
-        config      : A ``ModelConfig`` (AR/discrete/embedder) or ``ELFConfig``
-                      (continuous).  When omitted, *model_kwargs* are forwarded
-                      to the appropriate config constructor.
-        **model_kwargs : Forwarded to ``ModelConfig`` or ``ELFConfig`` when
-                         *config* is None.  For ``"embedder"``, also accepts
-                         ``pooling`` and ``temperature``.
+        paradigm      : ``"ar"`` | ``"discrete"`` | ``"continuous"`` | ``"embedder"``
+        config        : A ``ModelConfig``.  When omitted, *model_kwargs* are
+                        forwarded to ``ModelConfig``.
+        **model_kwargs : Forwarded to ``ModelConfig`` when *config* is None.
+                         ``"embedder"`` also accepts ``pooling`` and ``temperature``.
 
     Returns:
         A ready-to-use :class:`Paradigm` instance.
 
     Example::
 
-        p = dx.build("ar", dim=512, n_heads=8, head_size=64,
-                     num_blocks=12, vocab_size=32_000)
+        p = dx.build("ar", dim=512, n_heads=8, num_blocks=12, vocab_size=32_000)
 
-        p = dx.build("embedder", dim=256, n_heads=4, head_size=64,
-                     num_blocks=4, vocab_size=32_000, dropout=0.1)
+        p = dx.build("continuous", dim=256, n_heads=4, num_blocks=4,
+                     embed_dim=768, bottleneck_dim=128, causal=False)
     """
     if paradigm not in _PARADIGM_MAP:
         raise ValueError(
@@ -250,15 +266,7 @@ def fit(
                          dim=512, n_heads=8, head_size=64, num_blocks=12,
                          vocab_size=32_000, lr=3e-4, epochs=5)
     """
-    from dataclasses import fields as _fields
-
-    model_fields = {f.name for f in _fields(ModelConfig)}
-    elf_fields   = {f.name for f in _fields(ELFConfig)}
-    train_fields = {f.name for f in _fields(TrainingConfig)}
-
-    model_kw = {k: v for k, v in kwargs.items() if k in model_fields or k in elf_fields}
-    train_kw = {k: v for k, v in kwargs.items() if k in train_fields}
-
+    model_kw, train_kw = _split_kwargs(kwargs)
     p   = build(paradigm, **model_kw)
     cfg = training_config or TrainingConfig(**train_kw)
     return Trainer(p, cfg).fit(data_source, run_dir=run_dir)
@@ -381,13 +389,7 @@ def sweep(
         )
     """
     if isinstance(paradigm, str):
-        from dataclasses import fields as _fields
-        model_fields = {f.name for f in _fields(ModelConfig)}
-        elf_fields   = {f.name for f in _fields(ELFConfig)}
-        train_fields = {f.name for f in _fields(TrainingConfig)}
-        model_kw = {k: v for k, v in training_kwargs.items()
-                    if k in model_fields or k in elf_fields}
-        train_kw = {k: v for k, v in training_kwargs.items() if k in train_fields}
+        model_kw, train_kw = _split_kwargs(training_kwargs)
         paradigm = build(paradigm, **model_kw)
         training_kwargs = train_kw
 
@@ -446,20 +448,9 @@ def quick_generate(
     ids   = jnp.asarray([tokenizer.encode(prompt)], dtype=jnp.int32)
     rng   = jax.random.PRNGKey(0)
 
-    # Paradigms name their length/temperature knobs differently (AR:
-    # max_new_tokens, diffusion: gen_len, ELF: gen_len only) — forward what
-    # this paradigm actually accepts.
-    import inspect
-    params = inspect.signature(paradigm.generate).parameters
-    kwargs = {}
-    if "max_new_tokens" in params:
-        kwargs["max_new_tokens"] = max_new_tokens
-    elif "gen_len" in params:
-        kwargs["gen_len"] = max_new_tokens
-    if "temperature" in params:
-        kwargs["temperature"] = temperature
-
-    out = paradigm.generate(model, ids, rng, **kwargs)
+    out = paradigm.generate(model, ids, rng,
+                            max_new_tokens=max_new_tokens,
+                            temperature=temperature)
     return tokenizer.decode([int(t) for t in out[0]])
 
 
@@ -469,15 +460,12 @@ __all__ = [
     "Config",
     "ModelConfig",
     "TrainingConfig",
-    "ELFConfig",
     # model
     "Transformer",
     # paradigms
     "Paradigm",
-    "ARParadigm",
-    "DiscreteConfig",
-    "DiscreteParadigm",
-    "ContinuousParadigm",
+    "EmbedderParadigm",
+    "info_nce_loss",
     # training
     "Trainer",
     "build_optimizer",
@@ -510,8 +498,6 @@ __all__ = [
     # embedding / RAG
     "Embedder",
     "EmbedderTrainer",
-    "EmbedderParadigm",
-    "info_nce_loss",
     # low-code functional API
     "build",
     "train",
@@ -520,13 +506,11 @@ __all__ = [
     "profile",
     "load",
     "quick_generate",
-    # legacy
-    "Generator",
-    "BenchmarkRunner",
-    "Plotter",
+    # hub
     "push",
     "pull",
     "resolve_checkpoint",
+    # exceptions
     "DantinoXError",
     "ConfigError",
     "CheckpointError",

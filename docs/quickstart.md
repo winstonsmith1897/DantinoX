@@ -120,7 +120,6 @@ run_dir = dx.fit(
     "ar",
     "data/wiki.txt",
     dim=512, n_heads=8, head_size=64, num_blocks=12,
-    causal=True,          # applies a causal (lower-triangular) attention mask
     lr=3e-4,
     epochs=5,
 )
@@ -138,7 +137,6 @@ run_dir = dx.fit(
     "discrete",
     "data/wiki.txt",
     dim=512, n_heads=8, head_size=64, num_blocks=12,
-    causal=False,             # bidirectional attention (sees the whole sequence)
     noise_schedule="cosine",  # schedule that controls how many tokens to mask
     mask_token_id=4,          # vocabulary ID of the [MASK] token
     lr=3e-4,
@@ -182,6 +180,7 @@ from flax import nnx
 
 # Separate architecture config from training config
 model_cfg    = dx.ModelConfig(
+    paradigm="ar",          # "ar" | "discrete" | "continuous" | "embedder"
     dim=512, n_heads=8, head_size=64,
     num_blocks=12, vocab_size=32_000,
     attention_type="gqa",   # use Grouped-Query Attention instead of MHA
@@ -199,7 +198,7 @@ training_cfg = dx.TrainingConfig(
 )
 
 # Build paradigm and model
-paradigm = dx.ARParadigm(model_cfg)
+paradigm = dx.Paradigm(model_cfg)
 model    = paradigm.build_model(nnx.Rngs(params=42))
 
 # Train

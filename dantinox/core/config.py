@@ -23,7 +23,7 @@ class ModelConfig:
     # ── Core dimensions ───────────────────────────────────────────────────────
     dim: int = 512
     n_heads: int = 16
-    head_size: int = 32
+    head_size: int | None = None   # auto-computed as dim // n_heads when None
     num_blocks: int = 12
     vocab_size: int | None = None  # auto-set from tokenizer when using Trainer.fit()
     max_context: int = 512
@@ -67,8 +67,28 @@ class ModelConfig:
     moe_latent: bool = False
     moe_latent_dim: int = 64
 
-    # ── Diffusion ─────────────────────────────────────────────────────────────
+    # ── Paradigm selector ────────────────────────────────────────────────────
+    # Explicit key that tells Paradigm() which training/inference strategy to
+    # use.  When set, `causal` is auto-configured so you don't need to repeat
+    # it.  When None, Paradigm() falls back to inspecting `causal`/`embed_dim`.
+    paradigm: str | None = None   # "ar" | "discrete" | "continuous" | "embedder"
+
+    # ── Diffusion (discrete) ─────────────────────────────────────────────────
     mask_token_id: int = 4
+    noise_schedule: str = "linear"  # "linear" | "cosine" | "sqrt"
+
+    # ── ELF (continuous flow-matching) ───────────────────────────────────────
+    # Set embed_dim > 0 to enable ELF mode; must match the frozen T5 encoder.
+    embed_dim: int = 0              # 0 = standard transformer; 768 for t5-base
+    bottleneck_dim: int = 128       # projection between embed space and model_dim
+    elf_n_steps: int = 32           # ODE denoising steps at inference
+    elf_cfg_scale: float = 1.5      # classifier-free guidance scale
+    sde_gamma: float = 0.0          # SDE noise re-injection (0 = pure ODE)
+    t5_model_name: str = "t5-base"  # frozen T5 encoder variant
+
+    # ── Embedder (contrastive) ───────────────────────────────────────────────
+    embed_pooling: str = "auto"     # "auto" | "mean" | "last" | "cls"
+    embed_temperature: float = 0.05  # InfoNCE temperature
 
     # ── LoRA ──────────────────────────────────────────────────────────────────
     use_lora: bool = False
@@ -80,6 +100,25 @@ class ModelConfig:
     # ── Validation ────────────────────────────────────────────────────────────
 
     def __post_init__(self) -> None:
+        _valid_paradigms = ("ar", "discrete", "continuous", "embedder")
+        if self.paradigm is not None and self.paradigm not in _valid_paradigms:
+            raise ValueError(
+                f"paradigm must be one of {_valid_paradigms} or None; "
+                f"got {self.paradigm!r}"
+            )
+        # Auto-configure causal from the paradigm key so users don't repeat it
+        if self.paradigm in ("ar", "embedder"):
+            self.causal = True
+        elif self.paradigm in ("discrete", "continuous"):
+            self.causal = False
+
+        if self.head_size is None:
+            if self.dim % self.n_heads != 0:
+                raise ValueError(
+                    f"dim ({self.dim}) must be divisible by n_heads ({self.n_heads}) "
+                    "when head_size is not specified"
+                )
+            self.head_size = self.dim // self.n_heads
         if self.kv_heads is None:
             self.kv_heads = self.n_heads
         if self.dim != self.n_heads * self.head_size:
@@ -102,12 +141,22 @@ class ModelConfig:
                 f"pos_encoding must be 'rotary', 'absolute', 'learned', or 'none'; "
                 f"got {self.pos_encoding!r}"
             )
+        if self.noise_schedule not in ("linear", "cosine", "sqrt"):
+            raise ValueError(
+                f"noise_schedule must be 'linear', 'cosine', or 'sqrt'; "
+                f"got {self.noise_schedule!r}"
+            )
         if self.tp_size < 1:
             raise ValueError(f"tp_size must be >= 1; got {self.tp_size}")
         if self.lora_targets not in ("attention", "ffn", "all"):
             raise ValueError(f"lora_targets must be 'attention', 'ffn', or 'all'")
         if self.lora_rank < 1:
             raise ValueError(f"lora_rank must be >= 1")
+        if self.embed_pooling not in ("auto", "mean", "last", "cls"):
+            raise ValueError(
+                f"embed_pooling must be 'auto', 'mean', 'last', or 'cls'; "
+                f"got {self.embed_pooling!r}"
+            )
         if self.moe_latent and not (0 < self.moe_latent_dim < self.dim):
             raise ValueError(
                 f"moe_latent_dim ({self.moe_latent_dim}) must be in (0, dim={self.dim})"
@@ -351,6 +400,7 @@ class Config:
     cfg_scale_max:        float =  5.0
     elf_cfg_scale:        float =  1.0   # CFG scale at inference time
     elf_n_steps:          int   = 64     # denoising steps at inference time
+    sde_gamma:            float =  0.0   # SDE noise re-injection (0 = pure ODE)
     t5_model_name:        str   = "t5-base"  # frozen T5 embedder (ELF §3.1)
 
     # ── MoE ───────────────────────────────────────────────────────────────────
@@ -707,6 +757,13 @@ class Config:
             moe_latent=self.moe_latent,
             moe_latent_dim=self.moe_latent_dim,
             mask_token_id=self.mask_token_id,
+            noise_schedule=self.noise_schedule,
+            embed_dim=self.embed_dim,
+            bottleneck_dim=self.bottleneck_dim,
+            elf_n_steps=self.elf_n_steps,
+            elf_cfg_scale=self.elf_cfg_scale,
+            sde_gamma=self.sde_gamma,
+            t5_model_name=self.t5_model_name,
             use_lora=self.use_lora,
             lora_rank=self.lora_rank,
             lora_alpha=self.lora_alpha,
@@ -775,7 +832,7 @@ class ELFConfig:
     # ── Transformer backbone ──────────────────────────────────────────────────
     model_dim:  int   = 768        # transformer hidden dim (= n_heads × head_size)
     n_heads:    int   = 12
-    head_size:  int   = 64
+    head_size:  int | None = None  # auto-computed as model_dim // n_heads when None
     num_blocks: int   = 12
     vocab_size: int | None = None  # auto-set from tokenizer when using Trainer.fit()
     max_seq_len: int  = 1024       # sequence length (excluding control tokens)
@@ -838,6 +895,13 @@ class ELFConfig:
     t5_model_name: str = "t5-base"
 
     def __post_init__(self) -> None:
+        if self.head_size is None:
+            if self.model_dim % self.n_heads != 0:
+                raise ValueError(
+                    f"model_dim ({self.model_dim}) must be divisible by n_heads ({self.n_heads}) "
+                    "when head_size is not specified"
+                )
+            self.head_size = self.model_dim // self.n_heads
         if self.model_dim != self.n_heads * self.head_size:
             raise ValueError(
                 f"model_dim ({self.model_dim}) must equal n_heads × head_size "

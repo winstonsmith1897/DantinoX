@@ -129,15 +129,15 @@ print(report.summary())
 import jax
 import jax.numpy as jnp
 from flax import nnx
+import dantinox as dx
 from dantinox.core.config import ModelConfig
-from dantinox.paradigms.ar import ARParadigm
 from dantinox.benchmarking import BenchmarkConfig
 from dantinox.benchmarking.tasks.accuracy import TopKAccuracyTask
 
 def test_topk_task_result_keys():
-    cfg      = ModelConfig(dim=64, n_heads=4, head_size=16, num_blocks=2,
-                           vocab_size=100, causal=True)
-    paradigm = ARParadigm(cfg)
+    cfg      = ModelConfig(paradigm="ar", dim=64, n_heads=4, head_size=16,
+                           num_blocks=2, vocab_size=100)
+    paradigm = dx.Paradigm(cfg)
     model    = paradigm.build_model(nnx.Rngs(0))
     config   = BenchmarkConfig(eval_batches=2, eval_seq_len=16, eval_batch_size=2)
     task     = TopKAccuracyTask(k=5)

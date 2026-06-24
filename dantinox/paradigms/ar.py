@@ -10,10 +10,10 @@ from flax import nnx
 from dantinox.core.config import ModelConfig
 from dantinox.core.generation import generate as _generate
 from dantinox.core.model import Transformer
-from dantinox.paradigms.base import Paradigm
+from dantinox.paradigms.base import ParadigmBase
 
 
-class ARParadigm(Paradigm):
+class ARParadigm(ParadigmBase):
     """Autoregressive next-token-prediction paradigm.
 
     Loss: cross-entropy on shifted targets (teacher-forcing).

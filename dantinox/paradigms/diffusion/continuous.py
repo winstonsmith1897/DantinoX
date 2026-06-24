@@ -6,16 +6,43 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from dantinox.core.config import ELFConfig
+from dantinox.core.config import ELFConfig, ModelConfig
 from dantinox.core.elf import ELFEmbedder, ELFTransformer, elf_loss
+
+
+def _elf_config_from_model_config(m: ModelConfig) -> ELFConfig:
+    """Build an ELFConfig from a ModelConfig that has embed_dim > 0."""
+    return ELFConfig(
+        embed_dim=m.embed_dim,
+        bottleneck_dim=m.bottleneck_dim,
+        model_dim=m.dim,
+        n_heads=m.n_heads,
+        head_size=m.head_size,
+        num_blocks=m.num_blocks,
+        vocab_size=m.vocab_size,
+        max_seq_len=m.max_context,
+        pos_encoding=m.pos_encoding,
+        norm=m.norm,
+        dropout=m.dropout,
+        gradient_checkpointing=m.gradient_checkpointing,
+        attention=m.attention,
+        kv_heads=m.kv_heads,
+        down_dim_q=m.down_dim_q,
+        down_dim_kv=m.down_dim_kv,
+        rope_dim=m.rope_dim,
+        elf_n_steps=m.elf_n_steps,
+        elf_cfg_scale=m.elf_cfg_scale,
+        sde_gamma=m.sde_gamma,
+        t5_model_name=m.t5_model_name,
+    )
 from dantinox.core.generation import (
     elf_generate as _elf_generate,
     stream_elf_generate as _stream_elf_generate,
 )
-from dantinox.paradigms.base import Paradigm
+from dantinox.paradigms.base import ParadigmBase
 
 
-class ContinuousParadigm(Paradigm):
+class ContinuousParadigm(ParadigmBase):
     """ELF (Embedded Language Flows) continuous flow-matching paradigm.
 
     The forward process is ``z_t = t·x + (1−t)·ε`` where t ∈ [0,1],
@@ -33,14 +60,24 @@ class ContinuousParadigm(Paradigm):
 
     Quick-start::
 
-        cfg      = ELFConfig(embed_dim=768, model_dim=512, n_heads=8,
-                             head_size=64, num_blocks=12, vocab_size=32_128)
+        cfg      = dx.ModelConfig(dim=512, n_heads=8, num_blocks=12,
+                                  embed_dim=768, bottleneck_dim=128, causal=False)
         paradigm = ContinuousParadigm(cfg)
+
+    A raw ``ELFConfig`` is also accepted for Level-3 control over training
+    hyper-parameters (denoiser schedules, CFG bounds, etc.).
     """
 
     provides_batch_extras = True
 
-    def __init__(self, config: ELFConfig) -> None:
+    def __init__(self, config: ModelConfig | ELFConfig) -> None:
+        if isinstance(config, ModelConfig):
+            if config.embed_dim == 0:
+                raise ValueError(
+                    "ContinuousParadigm requires embed_dim > 0 in ModelConfig. "
+                    "Set embed_dim to match your T5 encoder (e.g. 768 for t5-base)."
+                )
+            config = _elf_config_from_model_config(config)
         self.config = config
         self._t5_encoder: Any = None
 

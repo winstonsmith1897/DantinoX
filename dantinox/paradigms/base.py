@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 
 
-class Paradigm(ABC):
+class ParadigmBase(ABC):
     """Abstract base for all generative paradigms.
 
     A Paradigm wraps a core model and owns the paradigm-specific logic:

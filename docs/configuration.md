@@ -51,13 +51,23 @@ title: Configuration Reference
 Architecture specification for `Transformer` (AR and Diffusion). Everything here describes *what the model is* — not how it trains.
 
 ```python
-from dantinox.core.config import ModelConfig
-from dantinox.core.model import Transformer
-from flax import nnx
+import dantinox as dx
 
-cfg   = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32000)
-model = Transformer(cfg, rngs=nnx.Rngs(42))
+# The paradigm= key selects which training objective and generation strategy to use
+cfg      = dx.ModelConfig(paradigm="ar", dim=512, n_heads=8, head_size=64,
+                           num_blocks=12, vocab_size=32000)
+paradigm = dx.Paradigm(cfg)   # causal=True set automatically for "ar"
 ```
+
+### Paradigm selection
+
+| Field | Type | Default | Valid values | Description |
+|:------|:-----|:-------:|:-------------|:------------|
+| `paradigm` | `str\|None` | `None` | `"ar"` · `"discrete"` · `"continuous"` · `"embedder"` | Selects the training objective and generator. Also auto-configures `causal`. `None` = auto-detect from `causal` and `embed_dim`. |
+
+`causal` is set automatically when `paradigm` is provided:
+- `paradigm in ("ar", "embedder")` → `causal=True`
+- `paradigm in ("discrete", "continuous")` → `causal=False`
 
 ### Core dimensions
 
@@ -78,7 +88,14 @@ model = Transformer(cfg, rngs=nnx.Rngs(42))
 | `ffn` | `str` | `"mlp"` | `"mlp"` · `"moe"` | Feed-forward variant. |
 | `norm` | `str` | `"rmsnorm"` | `"rmsnorm"` · `"layernorm"` | Normalisation type. |
 | `pos_encoding` | `str` | `"rotary"` | `"rotary"` · `"absolute"` · `"learned"` · `"none"` | Positional encoding. |
-| `causal` | `bool` | `True` | — | `True` = AR (causal mask); `False` = bidirectional (diffusion). |
+| `causal` | `bool` | `True` | — | `True` = AR (causal mask); `False` = bidirectional (diffusion). Auto-set when `paradigm` is provided. |
+
+### Embedder fields (`paradigm="embedder"`)
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `embed_pooling` | `str` | `"auto"` | Pooling strategy for sentence representation: `"mean"` · `"last"` · `"cls"` · `"auto"`. |
+| `embed_temperature` | `float` | `0.05` | InfoNCE softmax temperature. |
 
 ### Regularisation
 

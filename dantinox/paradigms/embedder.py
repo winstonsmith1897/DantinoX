@@ -25,7 +25,7 @@ from flax import nnx
 
 from dantinox.core.config import ModelConfig
 from dantinox.core.model import Transformer
-from dantinox.paradigms.base import Paradigm
+from dantinox.paradigms.base import ParadigmBase
 
 
 # ── InfoNCE loss ──────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ def info_nce_loss(
 
 # ── Paradigm ──────────────────────────────────────────────────────────────────
 
-class EmbedderParadigm(Paradigm):
+class EmbedderParadigm(ParadigmBase):
     """Contrastive embedding paradigm (SimCSE unsupervised).
 
     Works directly with ``Trainer`` — no labelled pairs required.  Each

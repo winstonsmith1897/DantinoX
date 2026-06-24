@@ -681,10 +681,9 @@ def _cmd_run(args: argparse.Namespace) -> None:
 
     model_type   = arch.pop("model_type", "autoregressive")
     model_fields = {f.name for f in dataclasses.fields(dx.ModelConfig)}
-    elf_fields   = {f.name for f in dataclasses.fields(dx.ELFConfig)}
     _TYPE_MAP    = {"autoregressive": "ar", "diffusion": "discrete", "elf": "continuous"}
 
-    model_kw = {k: v for k, v in arch.items() if k in model_fields or k in elf_fields}
+    model_kw = {k: v for k, v in arch.items() if k in model_fields}
     paradigm = dx.build(_TYPE_MAP.get(model_type, model_type), **model_kw)
     logging.getLogger(__name__).info(
         "Paradigm: %s  config=%s", type(paradigm).__name__, paradigm.config

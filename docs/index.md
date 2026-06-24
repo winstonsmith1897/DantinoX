@@ -155,12 +155,13 @@ The library is designed to be used at different levels of abstraction, from the 
     from flax import nnx
 
     model_cfg = dx.ModelConfig(
+        paradigm="ar",
         dim=512, n_heads=8, head_size=64, num_blocks=12,
         attention_type="gqa", kv_heads=2,
     )
     train_cfg = dx.TrainingConfig(lr=3e-4, epochs=5, grad_accum=4)
 
-    paradigm = dx.ARParadigm(model_cfg)
+    paradigm = dx.Paradigm(model_cfg)
     run_dir  = dx.Trainer(paradigm, train_cfg).fit("data/wiki.txt")
     model    = dx.load(run_dir, paradigm=paradigm)
     tokens   = paradigm.generate(model, prompt_ids, rng=nnx.Rngs(0))
@@ -173,15 +174,15 @@ The library is designed to be used at different levels of abstraction, from the 
     ```python
     from dantinox.core.config import ModelConfig
     from dantinox.core.model import Transformer
-    from dantinox.paradigms.ar import ARParadigm
+    from dantinox.paradigms.paradigm import Paradigm
     from dantinox.training.trainer import Trainer
     from dantinox.training.optimizer import build_optimizer, build_schedule
     from dantinox.profiling import LatencyTracker, count_flops
     from flax import nnx
 
-    cfg      = ModelConfig(dim=512, n_heads=8, head_size=64,
+    cfg      = ModelConfig(paradigm="ar", dim=512, n_heads=8, head_size=64,
                            num_blocks=12, vocab_size=32_000)
-    paradigm = ARParadigm(cfg)
+    paradigm = Paradigm(cfg)
     model    = paradigm.build_model(nnx.Rngs(42))
 
     tx       = build_optimizer(cfg)
@@ -212,7 +213,10 @@ DantinoX/
 │   ├── cli.py                      12 CLI subcommands
 │   ├── generator.py                Generator class (AR, loads checkpoint)
 │   ├── paradigms/
+│   │   ├── paradigm.py             Paradigm (unified factory — public API)
+│   │   ├── base.py                 ParadigmBase (ABC)
 │   │   ├── ar.py                   ARParadigm
+│   │   ├── embedder.py             EmbedderParadigm
 │   │   └── diffusion/
 │   │       ├── discrete.py         DiscreteParadigm (LLaDA)
 │   │       └── continuous.py       ContinuousParadigm (ELF)

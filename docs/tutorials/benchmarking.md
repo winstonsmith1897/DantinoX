@@ -14,9 +14,9 @@ from flax import nnx
 import jax
 
 # Build a small AR model for demonstration
-cfg      = dx.ModelConfig(dim=256, n_heads=4, head_size=64, num_blocks=4,
-                           vocab_size=8_000, causal=True)
-paradigm = dx.ARParadigm(cfg)
+cfg      = dx.ModelConfig(paradigm="ar", dim=256, n_heads=4, head_size=64,
+                           num_blocks=4, vocab_size=8_000)
+paradigm = dx.Paradigm(cfg)
 model    = paradigm.build_model(nnx.Rngs(0))
 
 print(f"Parameters: {paradigm.num_parameters(model):,}")
@@ -136,9 +136,9 @@ from dantinox.visualization import Visualizer
 # Collect results from multiple runs
 rows = []
 for dim in [128, 256, 512]:
-    cfg_i    = dx.ModelConfig(dim=dim, n_heads=4, head_size=dim // 4,
-                               num_blocks=4, vocab_size=8_000, causal=True)
-    par_i    = dx.ARParadigm(cfg_i)
+    cfg_i    = dx.ModelConfig(paradigm="ar", dim=dim, n_heads=4, head_size=dim // 4,
+                               num_blocks=4, vocab_size=8_000)
+    par_i    = dx.Paradigm(cfg_i)
     model_i  = par_i.build_model(nnx.Rngs(0))
     report_i = BenchmarkSuite.throughput_only().run(par_i, model_i)
     for result in report_i.results:

@@ -19,7 +19,7 @@ from dantinox.core.generation import (
     stream_diffusion_generate as _stream_diffusion_generate,
 )
 from dantinox.core.model import Transformer
-from dantinox.paradigms.base import Paradigm
+from dantinox.paradigms.base import ParadigmBase
 
 
 @dataclass
@@ -45,7 +45,7 @@ class DiscreteConfig:
             )
 
 
-class DiscreteParadigm(Paradigm):
+class DiscreteParadigm(ParadigmBase):
     """LLaDA-style masked-token diffusion paradigm.
 
     Training objective: (1/t)-weighted cross-entropy on masked positions.
@@ -54,10 +54,12 @@ class DiscreteParadigm(Paradigm):
 
     Quick-start::
 
-        model_cfg   = ModelConfig(dim=512, n_heads=8, head_size=64,
-                                  num_blocks=12, vocab_size=32_000, causal=False)
-        diff_cfg    = DiscreteConfig(noise_schedule="cosine", mask_token_id=4)
-        paradigm    = DiscreteParadigm(model_cfg, diff_cfg)
+        cfg      = ModelConfig(dim=512, n_heads=8, num_blocks=12,
+                               causal=False, noise_schedule="cosine", mask_token_id=4)
+        paradigm = DiscreteParadigm(cfg)
+
+    A ``DiscreteConfig`` is still accepted as a second positional argument
+    for backward compatibility.
     """
 
     def __init__(
@@ -69,11 +71,15 @@ class DiscreteParadigm(Paradigm):
             raise ValueError(
                 "DiscreteParadigm requires a bidirectional model (config.causal=False)."
             )
-        self.model_config     = model_config
-        self.diffusion_config = diffusion_config or DiscreteConfig()
-        self._schedule: NoiseSchedule = make_noise_schedule(
-            self.diffusion_config.noise_schedule
-        )
+        self.model_config = model_config
+        self.config       = model_config  # alias for _paradigm_config() in Trainer
+        if diffusion_config is not None:
+            self._noise_schedule = diffusion_config.noise_schedule
+            self._mask_token_id  = diffusion_config.mask_token_id
+        else:
+            self._noise_schedule = model_config.noise_schedule
+            self._mask_token_id  = model_config.mask_token_id
+        self._schedule: NoiseSchedule = make_noise_schedule(self._noise_schedule)
 
     # ── Paradigm contract ─────────────────────────────────────────────────────
 
@@ -86,7 +92,7 @@ class DiscreteParadigm(Paradigm):
         batch: jnp.ndarray,
         rng: jax.Array,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
-        mask_id = self.diffusion_config.mask_token_id
+        mask_id = self._mask_token_id
         rng_t, rng_corrupt = jax.random.split(rng)
 
         B = batch.shape[0]
@@ -113,7 +119,7 @@ class DiscreteParadigm(Paradigm):
             prompt,
             gen_len=max_new_tokens,
             schedule=self._schedule,
-            mask_token_id=self.diffusion_config.mask_token_id,
+            mask_token_id=self._mask_token_id,
             seed=_seed_from(rng),
             num_sampling_steps=n_steps,
             temperature=temperature,
@@ -135,7 +141,7 @@ class DiscreteParadigm(Paradigm):
             prompt,
             gen_len=max_new_tokens,
             schedule=self._schedule,
-            mask_token_id=self.diffusion_config.mask_token_id,
+            mask_token_id=self._mask_token_id,
             seed=_seed_from(rng),
             num_sampling_steps=n_steps,
             temperature=temperature,
@@ -144,6 +150,6 @@ class DiscreteParadigm(Paradigm):
     def __repr__(self) -> str:
         return (
             f"DiscreteParadigm("
-            f"schedule={self.diffusion_config.noise_schedule!r}, "
-            f"mask_id={self.diffusion_config.mask_token_id})"
+            f"schedule={self._noise_schedule!r}, "
+            f"mask_id={self._mask_token_id})"
         )

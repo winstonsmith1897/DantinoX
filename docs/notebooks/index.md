@@ -23,7 +23,7 @@ All notebooks are self-contained and runnable on **Google Colab** (free GPU tier
 
     ---
 
-    Train a masked-diffusion LM end-to-end. Covers `DiscreteParadigm`, (1/t)-weighted loss, iterative unmasking generation, and noise schedule comparison.
+    Train a masked-diffusion LM end-to-end. Covers `Paradigm(ModelConfig(paradigm="discrete"))`, (1/t)-weighted loss, iterative unmasking generation, and noise schedule comparison.
 
     [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button .md-button--primary }
     [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button }

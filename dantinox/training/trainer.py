@@ -19,7 +19,7 @@ from tqdm import tqdm
 from dantinox.core.config import Config, TrainingConfig
 from dantinox.core.lora import LoRAParam
 from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
-from dantinox.paradigms.base import Paradigm
+from dantinox.paradigms.base import ParadigmBase as _ParadigmBase
 from dantinox.training.optimizer import build_optimizer, _model_has_lora
 from dantinox.training.callbacks import BaseCallback
 
@@ -55,17 +55,17 @@ class Trainer:
 
     Quick-start::
 
-        from dantinox import ARParadigm, ModelConfig, TrainingConfig, Trainer
+        from dantinox import Paradigm, ModelConfig, TrainingConfig, Trainer
 
-        paradigm = ARParadigm(ModelConfig(dim=512, n_heads=8, head_size=64,
-                                          num_blocks=12, vocab_size=32_000))
+        paradigm = Paradigm(ModelConfig(paradigm="ar", dim=512, n_heads=8,
+                                        num_blocks=12, vocab_size=32_000))
         trainer  = Trainer(paradigm, TrainingConfig(lr=3e-4, epochs=5))
         run_dir  = trainer.fit("data/corpus.txt")
     """
 
     def __init__(
         self,
-        paradigm: Paradigm | Config,
+        paradigm: _ParadigmBase | Config,
         config: TrainingConfig | None = None,
         callbacks: list[BaseCallback] | None = None,
     ) -> None:
@@ -75,24 +75,23 @@ class Trainer:
             warnings.warn(
                 "Passing a monolithic Config to Trainer is deprecated — "
                 "build a Paradigm and a TrainingConfig instead, e.g. "
-                "Trainer(ARParadigm(ModelConfig(...)), TrainingConfig(...)). ",
+                "Trainer(Paradigm(ModelConfig(paradigm='ar', ...)), TrainingConfig(...)). ",
                 DeprecationWarning,
                 stacklevel=2,
             )
             paradigm, legacy_train_cfg = _paradigm_from_legacy_config(paradigm)
             config = config or legacy_train_cfg
 
-        if not isinstance(paradigm, Paradigm):
+        if not isinstance(paradigm, _ParadigmBase):
             raise TypeError(
                 f"Trainer expects a Paradigm as its first argument, got "
                 f"{type(paradigm).__name__}. Build one first, e.g.:\n"
                 "    import dantinox as dx\n"
-                "    paradigm = dx.build('ar', dim=256, n_heads=4, head_size=64,\n"
-                "                        num_blocks=4, vocab_size=200)\n"
+                "    paradigm = dx.Paradigm(dx.ModelConfig(paradigm='ar', dim=256,\n"
+                "                                          n_heads=4, num_blocks=4))\n"
                 "    Trainer(paradigm, dx.TrainingConfig(lr=1e-3, epochs=1)).fit('corpus.txt')\n"
-                "Architecture fields (model_type, dim, embed_dim, num_blocks, …) "
-                "belong to ModelConfig / ELFConfig — TrainingConfig only holds "
-                "optimisation and dataset settings."
+                "Architecture fields (dim, embed_dim, num_blocks, …) belong to ModelConfig;\n"
+                "TrainingConfig only holds optimisation and dataset settings."
             )
         self.paradigm  = paradigm
         self.config    = config or TrainingConfig()
@@ -458,33 +457,21 @@ class Trainer:
 
 def _paradigm_from_legacy_config(cfg: Config) -> tuple[Paradigm, TrainingConfig]:
     """Split a monolithic legacy ``Config`` into (Paradigm, TrainingConfig)."""
-    from dantinox.paradigms import (
-        ARParadigm,
-        ContinuousParadigm,
-        DiscreteConfig,
-        DiscreteParadigm,
-    )
+    from dantinox.paradigms.paradigm import Paradigm
 
     train_cfg = TrainingConfig.from_dict(cfg.to_dict())
     if cfg.model_type == "elf":
         train_cfg.tokenizer_type = "t5"  # the frozen T5 encoder needs T5 IDs
-        return ContinuousParadigm(cfg.to_elf_config()), train_cfg
+        return Paradigm(cfg.to_model_config()), train_cfg
     if cfg.model_type == "diffusion":
-        schedule = (cfg.noise_schedule
-                    if cfg.noise_schedule in ("linear", "cosine", "sqrt")
-                    else "linear")
-        paradigm = DiscreteParadigm(
-            cfg.to_model_config(),
-            DiscreteConfig(noise_schedule=schedule, mask_token_id=cfg.mask_token_id),
-        )
-        return paradigm, train_cfg
-    return ARParadigm(cfg.to_model_config()), train_cfg
+        return Paradigm(cfg.to_model_config()), train_cfg
+    return Paradigm(cfg.to_model_config()), train_cfg
 
 
 # ── Paradigm introspection helpers ────────────────────────────────────────────
 
 
-def _paradigm_config(paradigm: Paradigm) -> Any:
+def _paradigm_config(paradigm: _ParadigmBase) -> Any:
     """Return the architecture config of *paradigm* (ModelConfig or ELFConfig)."""
     cfg = getattr(paradigm, "config", None)
     if cfg is None:
@@ -497,7 +484,7 @@ def _paradigm_config(paradigm: Paradigm) -> Any:
     return cfg
 
 
-def _paradigm_seq_len(paradigm: Paradigm) -> int:
+def _paradigm_seq_len(paradigm: _ParadigmBase) -> int:
     cfg = _paradigm_config(paradigm)
     seq = getattr(cfg, "max_context", None)
     if seq is None:
@@ -518,7 +505,7 @@ def _make_run_dir(run_dir: str | None) -> str:
 
 def _save_run_metadata(
     run_dir: str,
-    paradigm: Paradigm,
+    paradigm: _ParadigmBase,
     cfg: TrainingConfig,
     tokenizer: Any,
     data_source: str,

@@ -62,13 +62,12 @@ DantinoX and HuggingFace Transformers serve different goals. This page helps you
 === "DantinoX"
 
     ```python
-    from dantinox.paradigms.ar import ARParadigm
-    from dantinox.trainer import Trainer
-    from dantinox.core.config import Config
+    import dantinox as dx
 
-    cfg     = Config.from_yaml("configs/default_config.yaml")
-    trainer = Trainer(cfg)
-    run_dir = trainer.fit("wiki.txt")      # full training loop in one call
+    run_dir = dx.Trainer(
+        dx.Paradigm(dx.ModelConfig(paradigm="ar", dim=512, n_heads=8, num_blocks=12)),
+        dx.TrainingConfig(lr=3e-4, epochs=5),
+    ).fit("wiki.txt")      # full training loop in one call
     ```
 
     Under the hood, `Trainer` calls `paradigm.loss_fn(model, batch)` at every step — the loss function is owned by the paradigm, not the model.

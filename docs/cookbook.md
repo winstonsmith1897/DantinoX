@@ -401,17 +401,17 @@ dantinox train \
 ## 14. Convert between config APIs
 
 ```python
+import dantinox as dx
 from dantinox.core.config import Config
 
 cfg = Config.from_yaml("configs/default_config.yaml")
 
 # To the new split API
-model_cfg    = cfg.to_model_config()   # → ModelConfig
-elf_cfg      = cfg.to_elf_config()     # → ELFConfig (when model_type="elf")
+model_cfg = cfg.to_model_config()   # → ModelConfig
 
-# Use with Paradigm API
-from dantinox.paradigms.ar import ARParadigm
-paradigm = ARParadigm(model_cfg)
+# Use with unified Paradigm API — set paradigm= to select the right implementation
+model_cfg.paradigm = "ar"           # or "discrete" / "continuous" / "embedder"
+paradigm = dx.Paradigm(model_cfg)
 ```
 
 ---

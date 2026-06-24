@@ -72,13 +72,13 @@ from .output import ModelOutput, ELFOutput, EmbeddingOutput
 from .sharding import make_mesh, num_devices, replicate, shard_batch
 
 __all__ = [
-    # Attention
+    # Attention building blocks
     "BaseAttention",
     "MHAAttention",
     "GQAAttention",
     "MLAAttention",
     "build_attention",
-    # Blocks
+    # Transformer blocks
     "RMSNorm",
     "AdaLayerNorm",
     "ARBlock",
@@ -88,31 +88,9 @@ __all__ = [
     # Config
     "Config",
     "ModelConfig",
-    "ELFConfig",
-    # Discrete diffusion
-    "DualCache",
-    "NoiseSchedule",
-    "make_noise_schedule",
-    "corrupt",
-    "masked_cross_entropy",
-    "confidence_unmask_threshold",
-    "confidence_unmask_factor",
-    # Continuous flow-matching (ELF)
-    "sample_t_logit_normal",
-    "sample_p_per_token",
-    "sample_cfg_scale",
-    "corrupt_denoiser",
-    "corrupt_decoder",
-    "logit_normal_schedule",
     # ELF model
     "ELFEmbedder",
     "ELFTransformer",
-    "ELFNet",
-    "elf_mse_loss",
-    "elf_ce_loss",
-    "elf_denoiser_loss",
-    "elf_decoder_loss",
-    "elf_loss",
     # Generation
     "decode",
     "generate",
@@ -125,7 +103,7 @@ __all__ = [
     # Models
     "Transformer",
     "DiffusionTransformer",
-    # Output
+    # Output types
     "ModelOutput",
     "ELFOutput",
     "EmbeddingOutput",

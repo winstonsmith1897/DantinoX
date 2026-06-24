@@ -49,22 +49,23 @@ Input tokens [B, T]
 ## Quick start
 
 ```python
-from dantinox.paradigms.diffusion.continuous import ContinuousParadigm
-from dantinox.core.config import ELFConfig
+import dantinox as dx
 from flax import nnx
 
-cfg = ELFConfig(
-    embed_dim=768,         # T5 embedding dimension
-    model_dim=512,         # transformer hidden dim
+cfg = dx.ModelConfig(
+    paradigm="continuous",  # causal=False set automatically
+    embed_dim=768,          # T5 embedding dimension
+    bottleneck_dim=128,
+    dim=512,                # transformer hidden dim
     n_heads=8,
     head_size=64,
     num_blocks=12,
     vocab_size=32_128,
-    elf_n_steps=64,        # ODE integration steps at generation time
-    elf_cfg_scale=1.5,     # classifier-free guidance weight
+    elf_n_steps=64,         # ODE integration steps at generation time
+    elf_cfg_scale=1.5,      # classifier-free guidance weight
 )
 
-paradigm = ContinuousParadigm(cfg)
+paradigm = dx.Paradigm(cfg)
 model    = paradigm.build_model(nnx.Rngs(0))
 embedder = paradigm.build_embedder(nnx.Rngs(0))  # frozen T5
 ```

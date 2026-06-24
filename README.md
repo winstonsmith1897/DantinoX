@@ -110,8 +110,9 @@ run_dir = dx.fit("continuous", "data/wiki.txt",
 import dantinox as dx
 from flax import nnx
 
-cfg      = dx.ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
-paradigm = dx.ARParadigm(cfg)
+cfg      = dx.ModelConfig(paradigm="ar", dim=512, n_heads=8, head_size=64,
+                           num_blocks=12, vocab_size=32_000)
+paradigm = dx.Paradigm(cfg)
 model    = paradigm.build_model(nnx.Rngs(42))
 
 # Train
@@ -175,7 +176,10 @@ DantinoX/
 ├── dantinox/                    # Installable library package
 │   ├── cli.py                   # 9 subcommands: train/generate/sweep/benchmark/infbench/find-lr/push/pull/plot
 │   ├── paradigms/
+│   │   ├── paradigm.py          # Paradigm (unified factory — public API)
+│   │   ├── base.py              # ParadigmBase (ABC)
 │   │   ├── ar.py                # ARParadigm
+│   │   ├── embedder.py          # EmbedderParadigm
 │   │   └── diffusion/
 │   │       ├── discrete.py      # DiscreteParadigm (LLaDA)
 │   │       └── continuous.py    # ContinuousParadigm (ELF)
@@ -313,13 +317,13 @@ merged = merge_lora(model)   # fold adapters into base weights for deployment
 ## Benchmarking
 
 ```python
-from dantinox.core.config import ModelConfig
-from dantinox.paradigms.ar import ARParadigm
+import dantinox as dx
 from dantinox.benchmarking import BenchmarkSuite
 from flax import nnx
 
-cfg      = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
-paradigm = ARParadigm(cfg)
+cfg      = dx.ModelConfig(paradigm="ar", dim=512, n_heads=8, head_size=64,
+                           num_blocks=12, vocab_size=32_000)
+paradigm = dx.Paradigm(cfg)
 model    = paradigm.build_model(nnx.Rngs(0))
 
 report = BenchmarkSuite.default().run(paradigm, model, save_csv="results.csv")
