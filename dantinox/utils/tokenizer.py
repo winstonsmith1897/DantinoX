@@ -14,22 +14,42 @@ class Tokenizer(Protocol):
 
 
 class CharTokenizer:
+    _MASK_CHAR = "\x00"  # NUL — never appears in real text; reserved as [MASK]
+
     def __init__(self) -> None:
         self.stoi: dict[str, int] = {}
         self.itos: dict[int, str] = {}
         self.vocab_size: int = 0
 
     def train_from_text(self, text: str, **kwargs: Any) -> None:
-        chars = sorted(set(text))
+        chars = [self._MASK_CHAR] + [c for c in sorted(set(text)) if c != self._MASK_CHAR]
         self.vocab_size = len(chars)
         self.stoi = {ch: i for i, ch in enumerate(chars)}
         self.itos = {i: ch for i, ch in enumerate(chars)}
+
+    @property
+    def mask_token_id(self) -> int | None:
+        return self.stoi.get(self._MASK_CHAR)
 
     def encode(self, s: str) -> list[int]:
         return [self.stoi[c] for c in s]
 
     def decode(self, tokens: list[int]) -> str:
-        return ''.join(self.itos.get(i, '�') for i in tokens)
+        return ''.join(self.itos.get(i, '?') for i in tokens)
+
+    def decode_display(self, tokens: list[int], mask_symbol: str | None = '▒') -> str:
+        """Decode tokens for display, optionally rendering mask positions.
+
+        Args:
+            mask_symbol: Character(s) shown in place of each mask token.
+                ``None`` hides mask tokens entirely (they are skipped).
+        """
+        mask_id = self.stoi.get(self._MASK_CHAR)
+        return ''.join(
+            (mask_symbol if mask_symbol is not None else '')
+            if i == mask_id else self.itos.get(i, '?')
+            for i in tokens
+        )
 
     def save(self, path: str) -> None:
         payload = {"type": "char", "vocab": self.stoi}
@@ -44,20 +64,48 @@ class BPETokenizer:
         self.tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel()
         self.vocab_size: int = 0
 
+    _SPECIAL_TOKENS = ["[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]"]
+
     def train_from_text(self, text: str, vocab_size: int = 1000, **kwargs: Any) -> None:
         from tokenizers import trainers
         trainer = trainers.BpeTrainer(
             vocab_size=vocab_size,
-            special_tokens=["[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]"]
+            special_tokens=self._SPECIAL_TOKENS,
         )
         self.tokenizer.train_from_iterator([text], trainer=trainer)
         self.vocab_size = self.tokenizer.get_vocab_size()
+
+    @property
+    def mask_token_id(self) -> int | None:
+        return self.tokenizer.token_to_id("[MASK]")
 
     def encode(self, s: str) -> list[int]:
         return self.tokenizer.encode(s).ids
 
     def decode(self, tokens: list[int]) -> str:
         return self.tokenizer.decode(tokens)
+
+    def decode_display(self, tokens: list[int], mask_symbol: str | None = '▒') -> str:
+        """Decode tokens for display, optionally rendering mask positions.
+
+        Args:
+            mask_symbol: String shown in place of each mask token.
+                ``None`` hides mask tokens entirely (they are skipped).
+        """
+        mask_id = self.tokenizer.token_to_id("[MASK]")
+        result, run = [], []
+        for t in tokens:
+            if t == mask_id:
+                if run:
+                    result.append(self.tokenizer.decode(run))
+                    run = []
+                if mask_symbol is not None:
+                    result.append(mask_symbol)
+            else:
+                run.append(t)
+        if run:
+            result.append(self.tokenizer.decode(run))
+        return ''.join(result)
 
     def save(self, path: str) -> None:
         payload = {
@@ -124,6 +172,41 @@ class T5SentencePieceTokenizer:
     def vocab_size(self) -> int:
         v = self._tok.vocab_size
         return v() if callable(v) else int(v)
+
+    @property
+    def mask_token_id(self) -> int | None:
+        # T5 uses <extra_id_0> as its span-corruption sentinel (analogous to [MASK])
+        if hasattr(self._tok, "convert_tokens_to_ids"):
+            return self._tok.convert_tokens_to_ids("<extra_id_0>")
+        # SentencePieceProcessor fallback
+        if hasattr(self._tok, "PieceToId"):
+            tid = self._tok.PieceToId("<extra_id_0>")
+            return tid if tid != 0 else None
+        return None
+
+    def decode_display(self, tokens, mask_symbol: str | None = '▒') -> str:
+        """Decode tokens for display, optionally rendering mask positions.
+
+        Args:
+            mask_symbol: String shown in place of each mask token.
+                ``None`` hides mask tokens entirely (they are skipped).
+        """
+        if not isinstance(tokens, list):
+            tokens = list(tokens)
+        mask_id = self.mask_token_id
+        result, run = [], []
+        for t in tokens:
+            if t == mask_id:
+                if run:
+                    result.append(self.decode(run))
+                    run = []
+                if mask_symbol is not None:
+                    result.append(mask_symbol)
+            else:
+                run.append(t)
+        if run:
+            result.append(self.decode(run))
+        return ''.join(result)
 
     def save(self, path: str) -> None:
         with open(path, "w", encoding="utf-8") as f:

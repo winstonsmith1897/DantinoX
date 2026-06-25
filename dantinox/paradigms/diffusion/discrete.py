@@ -16,8 +16,12 @@ from dantinox.core.diffusion import (
 )
 from dantinox.core.generation import (
     diffusion_generate as _diffusion_generate,
+    fast_dllm_generate as _fast_dllm_generate,
     stream_diffusion_generate as _stream_diffusion_generate,
+    stream_fast_dllm_generate as _stream_fast_dllm_generate,
 )
+# _fast_dllm_generate and _stream_fast_dllm_generate are used by generate/stream
+# when block_size is provided.
 from dantinox.core.model import Transformer
 from dantinox.paradigms.base import ParadigmBase
 
@@ -112,17 +116,57 @@ class DiscreteParadigm(ParadigmBase):
         max_new_tokens: int = 256,
         n_steps: int = 50,
         temperature: float = 1.0,
+        decoding_strategy: str = "sample",
+        confidence_threshold: float = 0.9,
+        factor: float = 1.5,
+        block_size: int | None = None,
+        steps_per_block: int = 50,
+        use_dual_cache: bool = True,
+        refresh_interval: int | None = None,
     ) -> jnp.ndarray:
+        """Run reverse diffusion and return the generated token IDs.
+
+        Args:
+            decoding_strategy: ``"sample"`` (default), ``"greedy"``,
+                ``"confidence"``, or ``"factor"``.
+                When ``block_size`` is set only ``"threshold"``/``"confidence"``
+                and ``"factor"`` are meaningful (confidence-based strategies).
+            confidence_threshold: τ for the ``"confidence"``/``"threshold"`` strategy.
+            factor:               f for the ``"factor"`` strategy.
+            block_size:           If set, use block-wise generation (Fast-dLLM style).
+                                  ``None`` (default) uses global denoising.
+            steps_per_block:      Inner denoising steps per block (block mode only).
+            use_dual_cache:       Enable prefix+suffix DualCache (block mode only).
+            refresh_interval:     Recompute suffix cache every N steps (block mode only).
+        """
         from dantinox.paradigms.ar import _seed_from
+        seed = _seed_from(rng)
+        if block_size is not None:
+            return _fast_dllm_generate(
+                model, prompt,
+                gen_len=max_new_tokens,
+                schedule=self._schedule,
+                mask_token_id=self._mask_token_id,
+                block_size=block_size,
+                steps_per_block=steps_per_block,
+                decoding_strategy=decoding_strategy,
+                confidence_threshold=confidence_threshold,
+                factor=factor,
+                use_dual_cache=use_dual_cache,
+                refresh_interval=refresh_interval,
+                seed=seed,
+            )
         return _diffusion_generate(
-            model,
-            prompt,
+            model, prompt,
             gen_len=max_new_tokens,
             schedule=self._schedule,
             mask_token_id=self._mask_token_id,
-            seed=_seed_from(rng),
+            seed=seed,
             num_sampling_steps=n_steps,
             temperature=temperature,
+            decoding_strategy=decoding_strategy,
+            confidence_threshold=confidence_threshold,
+            factor=factor,
         )
 
     def stream(
@@ -133,19 +177,59 @@ class DiscreteParadigm(ParadigmBase):
         max_new_tokens: int = 256,
         n_steps: int = 50,
         temperature: float = 1.0,
+        decoding_strategy: str = "sample",
+        confidence_threshold: float = 0.9,
+        factor: float = 1.5,
+        block_size: int | None = None,
+        steps_per_block: int = 50,
+        use_dual_cache: bool = True,
+        refresh_interval: int | None = None,
     ):
-        """Like ``generate`` but yields ``(step, total, x_t)`` after each denoising step."""
+        """Yields ``(step, total, x_gen)`` after each denoising step.
+
+        Args:
+            decoding_strategy: ``"sample"`` (default), ``"greedy"``,
+                ``"confidence"``, or ``"factor"``.
+                When ``block_size`` is set only ``"threshold"``/``"confidence"``
+                and ``"factor"`` are meaningful.
+            confidence_threshold: τ for the ``"confidence"``/``"threshold"`` strategy.
+            factor:               f for the ``"factor"`` strategy.
+            block_size:           If set, use block-wise generation (Fast-dLLM style).
+                                  ``None`` (default) uses global denoising.
+            steps_per_block:      Inner denoising steps per block (block mode only).
+            use_dual_cache:       Enable prefix+suffix DualCache (block mode only).
+            refresh_interval:     Recompute suffix cache every N steps (block mode only).
+        """
         from dantinox.paradigms.ar import _seed_from
-        yield from _stream_diffusion_generate(
-            model,
-            prompt,
-            gen_len=max_new_tokens,
-            schedule=self._schedule,
-            mask_token_id=self._mask_token_id,
-            seed=_seed_from(rng),
-            num_sampling_steps=n_steps,
-            temperature=temperature,
-        )
+        seed = _seed_from(rng)
+        if block_size is not None:
+            yield from _stream_fast_dllm_generate(
+                model, prompt,
+                gen_len=max_new_tokens,
+                schedule=self._schedule,
+                mask_token_id=self._mask_token_id,
+                block_size=block_size,
+                steps_per_block=steps_per_block,
+                decoding_strategy=decoding_strategy,
+                confidence_threshold=confidence_threshold,
+                factor=factor,
+                use_dual_cache=use_dual_cache,
+                refresh_interval=refresh_interval,
+                seed=seed,
+            )
+        else:
+            yield from _stream_diffusion_generate(
+                model, prompt,
+                gen_len=max_new_tokens,
+                schedule=self._schedule,
+                mask_token_id=self._mask_token_id,
+                seed=seed,
+                num_sampling_steps=n_steps,
+                temperature=temperature,
+                decoding_strategy=decoding_strategy,
+                confidence_threshold=confidence_threshold,
+                factor=factor,
+            )
 
     def __repr__(self) -> str:
         return (

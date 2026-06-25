@@ -14,11 +14,19 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
-from tqdm import tqdm
+
+import dantinox._ui as _ui
 
 from dantinox.core.config import Config, TrainingConfig
 from dantinox.core.lora import LoRAParam
-from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
+from dantinox.core.sharding import (
+    apply_tp_sharding,
+    make_mesh,
+    make_tp_mesh,
+    num_devices,
+    replicate,
+    shard_batch,
+)
 from dantinox.paradigms.base import ParadigmBase as _ParadigmBase
 from dantinox.training.optimizer import build_optimizer, _model_has_lora
 from dantinox.training.callbacks import BaseCallback
@@ -203,38 +211,54 @@ class Trainer:
         run_dir: str | None = None,
         rngs: nnx.Rngs | None = None,
         resume: bool = False,
+        dataset_source: str | None = None,
+        dataset_name: str | None = None,
     ) -> str:
         """Train the paradigm on *data_source* and return the checkpoint directory.
 
         Args:
-            data_source : Path to a text file.  May be omitted when the
-                          TrainingConfig points at a HuggingFace dataset
-                          (``dataset_source="huggingface"``).
-            run_dir     : Where to write checkpoints and logs.
-                          Defaults to ``runs/<timestamp>``.
-            rngs        : Flax NNX random state.  Auto-created from
-                          ``config.seed`` when omitted.
-            resume      : Continue from the full train state saved in
-                          *run_dir* (model, optimizer, epoch).
+            data_source    : Path to a text file, or a HuggingFace dataset name.
+                             May be omitted when the dataset is set via
+                             *dataset_name* or in ``TrainingConfig``.
+            run_dir        : Where to write checkpoints and logs.
+                             Defaults to ``runs/<timestamp>``.
+            rngs           : Flax NNX random state.  Auto-created from
+                             ``config.seed`` when omitted.
+            resume         : Continue from the full train state saved in
+                             *run_dir* (model, optimizer, epoch).
+            dataset_source : Override ``TrainingConfig.dataset_source`` inline.
+                             Pass ``"huggingface"`` to load from the Hub.
+            dataset_name   : Override ``TrainingConfig.dataset_name`` inline.
+                             Shortcut for HF datasets without touching the config.
 
         Returns:
             Absolute path to the run directory containing the best checkpoint.
+
+        Example — HuggingFace shortcut::
+
+            trainer.fit(dataset_source="huggingface",
+                        dataset_name="ajibawa-2023/Shell-Code-Large")
         """
+        import dataclasses as _dc
         cfg      = self.config
         paradigm = self.paradigm
+
+        # Inline overrides for dataset_source / dataset_name
+        if dataset_source is not None or dataset_name is not None:
+            cfg = _dc.replace(
+                cfg,
+                dataset_source=dataset_source or cfg.dataset_source,
+                dataset_name=dataset_name or cfg.dataset_name,
+            )
 
         if data_source is None:
             if cfg.dataset_source == "huggingface" and cfg.dataset_name:
                 data_source = cfg.dataset_name  # cache label; data comes from HF
             else:
                 raise ValueError(
-                    "fit() needs a data_source path, or a TrainingConfig with "
-                    "dataset_source='huggingface' and dataset_name set."
+                    "fit() needs a data_source path, or dataset_source='huggingface' "
+                    "and dataset_name (either in TrainingConfig or as fit() kwargs)."
                 )
-        from dantinox._banner import print_banner as _print_banner
-        import dantinox as _dx
-        _print_banner(_dx.__version__)
-
         run_dir  = _make_run_dir(run_dir)
         rngs     = rngs or nnx.Rngs(cfg.seed)
 
@@ -263,6 +287,16 @@ class Trainer:
                 )
                 model_cfg.vocab_size = tok_vocab  # model_cfg IS paradigm.config
 
+        # For discrete-diffusion paradigms, sync mask_token_id from the tokenizer
+        # so the user never has to hardcode it.
+        if hasattr(model_cfg, "mask_token_id") and hasattr(tokenizer, "mask_token_id"):
+            tok_mask = tokenizer.mask_token_id
+            if tok_mask is not None:
+                tok_mask = int(tok_mask)
+                if model_cfg.mask_token_id != tok_mask:
+                    log.info("Auto-setting mask_token_id to %d from tokenizer.", tok_mask)
+                    model_cfg.mask_token_id = tok_mask
+
         n_val = int(len(tokens) * cfg.val_frac)
         if n_val < sample_len + 1:
             if cfg.val_frac > 0:
@@ -276,7 +310,13 @@ class Trainer:
         val_tokens   = tokens[len(tokens) - n_val:] if n_val else None
 
         steps_per_epoch = max(len(train_tokens) // (cfg.batch_size * seq_len), 1)
-        total_updates   = max(steps_per_epoch * cfg.epochs // cfg.grad_accum, 1)
+        if cfg.epochs >= 1:
+            n_epochs        = int(cfg.epochs)
+            steps_this_epoch = steps_per_epoch
+        else:
+            n_epochs        = 1
+            steps_this_epoch = max(1, round(cfg.epochs * steps_per_epoch))
+        total_updates   = max(steps_this_epoch * n_epochs // cfg.grad_accum, 1)
         log.info("tokens=%d (train=%d, val=%d)  steps/epoch=%d  updates=%d",
                  len(tokens), len(train_tokens), n_val, steps_per_epoch, total_updates)
 
@@ -285,27 +325,70 @@ class Trainer:
         if cfg.use_bf16:
             _cast_params(model, jnp.bfloat16)
 
-        mesh  = make_mesh(cfg.n_devices)
-        n_dev = num_devices(mesh)
+        # ── Device mesh ───────────────────────────────────────────────────────
+        tp       = max(1, cfg.tp_size)
+        n_local  = len(jax.local_devices())
+        n_total  = n_local if cfg.n_devices == 0 else min(cfg.n_devices, n_local)
+        if tp > 1 and n_total % tp != 0:
+            n_total = (n_total // tp) * tp or tp
+            log.warning(
+                "Total devices (%d) not divisible by tp_size=%d — using %d devices.",
+                n_local if cfg.n_devices == 0 else cfg.n_devices, tp, n_total,
+            )
+        n_dp = n_total // tp   # data-parallel replicas (each holds one model shard group)
+
+        if tp > 1:
+            mesh = make_tp_mesh(n_tp=tp, n_dp=n_dp)
+        else:
+            mesh = make_mesh(n_dp)
+
+        # n_dev controls batch sharding — always the DP count, never total devices
+        n_dev = n_dp
         if n_dev > 1 and cfg.batch_size % n_dev != 0:
             usable = n_dev
             while cfg.batch_size % usable:
                 usable -= 1
             log.warning(
-                "batch_size=%d is not divisible across %d devices — "
-                "using %d device(s). Pick batch_size as a multiple of the "
-                "device count to use them all.",
+                "batch_size=%d is not divisible across %d DP replicas — "
+                "using %d replica(s). Pick batch_size as a multiple of the "
+                "DP count to use all replicas.",
                 cfg.batch_size, n_dev, usable,
             )
-            mesh  = make_mesh(usable)
+            n_dp  = usable
             n_dev = usable
-        if n_dev > 1:
-            # replicate() operates on array pytrees — push the module state
-            # through it and write the replicated arrays back.
+            mesh  = make_tp_mesh(n_tp=tp, n_dp=n_dp) if tp > 1 else make_mesh(n_dp)
+
+        if tp > 1:
+            # Shard model weights along the tensor-parallel axis; non-sharded
+            # weights are replicated across both DP and TP axes automatically.
+            apply_tp_sharding(model, mesh)
+            log.info("Tensor parallelism: tp=%d  dp=%d  total=%d devices", tp, n_dp, tp * n_dp)
+        elif n_dev > 1:
+            # Pure data parallelism: replicate the full model on every device.
             nnx.update(model, replicate(nnx.state(model), mesh))
 
         optimizer = build_optimizer(model, cfg, total_updates)
-        log.info("Parameters: %s", _fmt_params(paradigm.num_parameters(model)))
+        n_params  = paradigm.num_parameters(model)
+        log.info("Parameters: %s", _fmt_params(n_params))
+
+        _ui.print_run_header(
+            paradigm_type    = getattr(paradigm, "type", type(paradigm).__name__),
+            model_cfg        = model_cfg,
+            cfg              = cfg,
+            data_source      = str(data_source),
+            tokenizer_type   = cfg.tokenizer_type,
+            tok_vocab        = int(tokenizer.vocab_size),
+            n_train          = len(train_tokens),
+            n_val            = n_val,
+            n_params         = n_params,
+            run_dir          = run_dir,
+            n_epochs         = n_epochs,
+            steps_per_epoch  = steps_per_epoch,
+            steps_this_epoch = steps_this_epoch,
+            total_updates    = total_updates,
+            n_dev            = n_dev,
+            tp_size          = tp,
+        )
 
         # ── Run metadata (config.yaml + tokenizer.json for Generator) ────────
         _save_run_metadata(run_dir, paradigm, cfg, tokenizer, data_source)
@@ -392,19 +475,22 @@ class Trainer:
             return float(jnp.mean(jnp.stack(losses)))
 
         # ── Training loop ─────────────────────────────────────────────────────
+        import time as _time
         base_key = jax.random.PRNGKey(cfg.seed)
         for cb in self.callbacks: cb.on_train_begin(cfg)  # ① callback hook
         log_rows: list[dict] = []
         log_every = 10  # host syncs for the progress bar, once per N steps
 
-        for epoch in range(start_epoch, cfg.epochs + 1):
+        for epoch in range(start_epoch, n_epochs + 1):
             # Per-epoch derived RNGs make resume deterministic without
             # serialising key state.
-            epoch_key = jax.random.fold_in(base_key, epoch)
-            np_rng    = np.random.default_rng(cfg.seed + epoch)
+            epoch_key  = jax.random.fold_in(base_key, epoch)
+            np_rng     = np.random.default_rng(cfg.seed + epoch)
+            epoch_t0   = _time.monotonic()
 
             step_losses: list[jnp.ndarray] = []
-            pbar = tqdm(range(steps_per_epoch), desc=f"Epoch {epoch}/{cfg.epochs}")
+            _ui.print_compile_hint(epoch)
+            pbar = _ui.make_epoch_bar(epoch, n_epochs, steps_this_epoch)
             for step in pbar:
                 batch = jnp.asarray(
                     _sample_batch(train_tokens, cfg.batch_size, sample_len, np_rng))
@@ -422,21 +508,26 @@ class Trainer:
                 for cb in self.callbacks: cb.on_step_end(step, {"train_loss": float(loss)}, epoch)  # ② callback hook
                 if step % log_every == 0:
                     pbar.set_postfix(loss=f"{float(loss):.4f}")
+            pbar.close()
 
             train_loss = float(jnp.mean(jnp.stack(step_losses)))
             val_loss   = _evaluate()
+            elapsed    = _time.monotonic() - epoch_t0
             log.info("Epoch %d  train_loss=%.4f  val_loss=%.4f",
                      epoch, train_loss, val_loss)
             log_rows.append({"epoch": epoch,
                              "train_loss": train_loss,
                              "val_loss": val_loss})
 
-            if val_loss < best_loss:
+            is_best = val_loss < best_loss
+            if is_best:
                 best_loss  = val_loss
                 no_improve = 0
                 _save_checkpoint(model, run_dir, tag="best")
             else:
                 no_improve += 1
+
+            _ui.print_epoch_result(epoch, n_epochs, train_loss, val_loss, is_best, elapsed)
 
             _save_checkpoint(model, run_dir, tag="latest")
             _save_train_state(state_path, model, optimizer)
@@ -452,6 +543,7 @@ class Trainer:
 
         log.info("Training complete.  Best val loss: %.4f  Run dir: %s",
                  best_loss, run_dir)
+        _ui.print_training_done(best_loss, run_dir)
         for cb in self.callbacks: cb.on_train_end()  # ③ callback hook
         return run_dir
 
@@ -554,8 +646,9 @@ def _token_cache_paths(data_source: str, cfg: TrainingConfig) -> tuple[str, str]
 
 def _read_corpus(data_source: str, cfg: TrainingConfig) -> str:
     if cfg.dataset_source == "huggingface":
-        from datasets import load_dataset
-        ds = load_dataset(
+        import datasets as _datasets   # full init before any attribute access
+        import datasets.utils          # force submodule to load (avoids partial-init bug)
+        ds = _datasets.load_dataset(
             cfg.dataset_name,
             cfg.dataset_config or None,
             split=cfg.dataset_split,

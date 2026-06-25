@@ -127,6 +127,9 @@ from dantinox.exceptions import (
 # ── Banner ────────────────────────────────────────────────────────────────────
 from dantinox._banner import print_banner as banner
 
+# Print on every fresh import (no-ops on subsequent imports or non-TTY pipes)
+banner(__version__)
+
 # ── Internal builders ─────────────────────────────────────────────────────────
 # Defined before the public API functions that reference them.
 

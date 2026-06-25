@@ -94,6 +94,30 @@ class Paradigm(ParadigmBase):
     def generate(self, model: Any, *args: Any, **kwargs: Any) -> Any:
         return self._impl.generate(model, *args, **kwargs)
 
+    # ── ParadigmBase class-attribute overrides ────────────────────────────────
+    # These are class attributes on ParadigmBase, so __getattr__ is never
+    # triggered for them — Python finds them via normal MRO lookup before
+    # reaching __getattr__.  We must override them explicitly as properties so
+    # they delegate to the inner implementation.
+
+    @property  # type: ignore[override]
+    def provides_batch_extras(self) -> bool:
+        return self._impl.provides_batch_extras
+
+    @property  # type: ignore[override]
+    def requires_shifted_targets(self) -> bool:
+        return self._impl.requires_shifted_targets
+
+    # ── ParadigmBase hook overrides ───────────────────────────────────────────
+    # Same issue: on_train_start / prepare_batch are concrete (non-abstract)
+    # methods on ParadigmBase, so __getattr__ never routes to the inner impl.
+
+    def on_train_start(self, model: Any, sample_batches: list) -> None:
+        return self._impl.on_train_start(model, sample_batches)
+
+    def prepare_batch(self, batch: Any) -> Any:
+        return self._impl.prepare_batch(batch)
+
     # ── Streaming (discrete + continuous only) ────────────────────────────────
 
     def stream(self, model: Any, *args: Any, **kwargs: Any):

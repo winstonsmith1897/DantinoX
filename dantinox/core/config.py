@@ -1,9 +1,28 @@
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass, fields
 from typing import Any
 
 import yaml
+
+
+# ── ANSI color helpers (used by ModelConfig.__repr__) ────────────────────────
+# Self-contained; no import from _ui.py to keep config.py import-cost low.
+
+def _ansi_ok() -> bool:
+    return not os.environ.get("NO_COLOR") and os.environ.get("TERM") != "dumb"
+
+def _C(n: int, s: str) -> str:     # 256-color wrap
+    return f"\033[38;5;{n}m{s}\033[0m" if _ansi_ok() else s
+
+def _Cmgn(s: str) -> str: return _C(201, s)  # magenta  — paradigm value
+def _Cprp(s: str) -> str: return _C(141, s)  # lavender — section headers
+def _Cblu(s: str) -> str: return _C(69,  s)  # cornflower — labels (attn:, pos:…)
+def _Cazr(s: str) -> str: return _C(39,  s)  # azure    — mode / secondary
+def _Ccyn(s: str) -> str: return _C(51,  s)  # cyan     — numbers
+def _Cwht(s: str) -> str: return (f"\033[97m{s}\033[0m" if _ansi_ok() else s)
+def _Cdim(s: str) -> str: return (f"\033[2m{s}\033[0m"  if _ansi_ok() else s)
 
 
 # ── ModelConfig ────────────────────────────────────────────────────────────────
@@ -111,6 +130,11 @@ class ModelConfig:
             self.causal = True
         elif self.paradigm in ("discrete", "continuous"):
             self.causal = False
+
+        # For continuous (ELF) paradigm, vocab_size is fixed by the T5 tokenizer.
+        # All T5 variants share the same 32100-token SentencePiece vocabulary.
+        if self.paradigm == "continuous" and self.vocab_size is None:
+            self.vocab_size = 32100
 
         if self.head_size is None:
             if self.dim % self.n_heads != 0:
@@ -253,13 +277,128 @@ class ModelConfig:
         return _replace(self, **kwargs)
 
     def __repr__(self) -> str:
-        paradigm_part = f"paradigm={self.paradigm!r}, " if self.paradigm is not None else ""
-        extra = "+MoE" if self.use_moe else ""
-        return (
-            f"ModelConfig({paradigm_part}dim={self.dim}, heads={self.n_heads}, "
-            f"blocks={self.num_blocks}, ctx={self.max_context}, "
-            f"attn={self.attention.upper()}{extra})"
+        _W = 46   # section rule width
+
+        def _sec(title: str) -> str:
+            prefix = f"─── {title} "
+            return "  " + _Cprp(prefix + "─" * max(2, _W - len(prefix)))
+
+        # ── Attention ──
+        if self.attention == "gqa" and self.kv_heads is not None and self.kv_heads != self.n_heads:
+            attn_s = f"GQA  ({self.n_heads}q / {self.kv_heads}kv)"
+        elif self.attention == "mla":
+            attn_s = f"MLA  (dq={self.down_dim_q}, dkv={self.down_dim_kv}, rope_dim={self.rope_dim})"
+        else:
+            attn_s = "MHA"
+
+        # ── Positional encoding ──
+        _pos = {"rotary": "RoPE", "absolute": "sinusoidal", "learned": "learned", "none": "none"}
+        pos_s = _pos.get(self.pos_encoding, self.pos_encoding)
+        if self.pos_encoding == "rotary" and self.rope_scale != 1.0:
+            pos_s += f"(×{self.rope_scale})"
+
+        # ── Norm / FFN ──
+        norm_s = {"rmsnorm": "RMSNorm", "layernorm": "LayerNorm"}.get(self.norm, self.norm)
+        act_s  = "SwiGLU" if self.use_swiglu else self.activation.upper()
+        if self.use_moe:
+            lat_s = f"  latent={self.moe_latent_dim}" if self.moe_latent else ""
+            ffn_s = f"MoE  ({self.n_experts} experts, top-{self.top_k}, α={self.moe_balance_coeff}{lat_s})"
+        else:
+            ffn_s = f"MLP  (×{self.expansion}, {act_s})"
+
+        hs    = self.head_size or (self.dim // self.n_heads)
+        vocab = f"{self.vocab_size:,}" if self.vocab_size is not None else "?"
+        mode  = "causal" if self.causal else "bidirectional"
+
+        L: list[str] = ["ModelConfig("]
+
+        # paradigm / mode header
+        if self.paradigm is not None:
+            L.append(
+                f"  {_Cdim('paradigm')} = {_Cmgn(repr(self.paradigm))}"
+                f"  ·  {_Cdim('mode')} = {_Cazr(mode)}"
+            )
+        else:
+            L.append(f"  {_Cdim('mode')} = {_Cazr(mode)}")
+
+        # ── core ──
+        L.append(_sec("core"))
+        L.append(
+            f"  dim={_Ccyn(str(self.dim))}"
+            f"  ·  {_Ccyn(str(self.n_heads))} heads × {_Ccyn(str(hs))}"
+            f"  ·  {_Ccyn(str(self.num_blocks))} blocks"
         )
+        L.append(
+            f"  vocab={_Ccyn(vocab)}"
+            f"  ·  ctx={_Ccyn(str(self.max_context))}"
+        )
+
+        # ── architecture ──
+        L.append(_sec("architecture"))
+        L.append(f"  {_Cblu('attn:')}  {_Cwht(attn_s)}")
+        L.append(
+            f"  {_Cblu('pos:')}   {_Cwht(pos_s)}"
+            f"  ·  {_Cblu('norm:')} {_Cwht(norm_s)}"
+        )
+        L.append(f"  {_Cblu('ffn:')}   {_Cwht(ffn_s)}")
+
+        # ── regularization ──
+        L.append(_sec("regularization"))
+        L.append(
+            f"  dropout={_Ccyn(str(self.dropout))}"
+            f"  ·  weight_tying={_Ccyn(str(self.weight_tying))}"
+            f"  ·  grad_ckpt={_Ccyn(str(self.gradient_checkpointing))}"
+        )
+        extras: list[str] = []
+        if self.use_flash:
+            extras.append("flash_attn")
+        if self.sliding_window:
+            extras.append(f"sliding_window(k={self.context_window})")
+        if self.tp_size > 1:
+            extras.append(f"tp={self.tp_size}")
+        if extras:
+            L.append(f"  {_Cdim(' · '.join(extras))}")
+
+        # ── paradigm-specific sections ──
+        if self.paradigm == "discrete":
+            L.append(_sec("discrete diffusion"))
+            L.append(
+                f"  schedule={_Cwht(self.noise_schedule)}"
+                f"  ·  mask_id={_Ccyn(str(self.mask_token_id))}"
+            )
+
+        elif self.paradigm == "continuous":
+            L.append(_sec("continuous / ELF"))
+            L.append(
+                f"  embed_dim={_Ccyn(str(self.embed_dim))}"
+                f"  ·  bottleneck={_Ccyn(str(self.bottleneck_dim))}"
+                f"  ·  T5={_Cwht(self.t5_model_name)}"
+            )
+            L.append(
+                f"  n_steps={_Ccyn(str(self.elf_n_steps))}"
+                f"  ·  cfg_scale={_Ccyn(str(self.elf_cfg_scale))}"
+                f"  ·  sde_γ={_Ccyn(str(self.sde_gamma))}"
+            )
+
+        elif self.paradigm == "embedder":
+            L.append(_sec("embedder"))
+            L.append(
+                f"  pooling={_Cwht(self.embed_pooling)}"
+                f"  ·  temperature={_Ccyn(str(self.embed_temperature))}"
+            )
+
+        # ── LoRA ──
+        if self.use_lora:
+            L.append(_sec("LoRA"))
+            L.append(
+                f"  rank={_Ccyn(str(self.lora_rank))}"
+                f"  ·  alpha={_Ccyn(str(self.lora_alpha))}"
+                f"  ·  targets={_Cwht(self.lora_targets)}"
+                f"  ·  dropout={_Ccyn(str(self.lora_dropout))}"
+            )
+
+        L.append(")")
+        return "\n".join(L)
 
 
 # ── TrainingConfig ─────────────────────────────────────────────────────────────
@@ -275,10 +414,10 @@ class TrainingConfig:
     lr: float = 3e-4
     batch_size: int = 32
     grad_accum: int = 1
-    epochs: int = 100
+    epochs: float = 100   # int → full passes; float < 1 → fraction of one pass (e.g. 0.1 = 10%)
     warmup_steps: int = 400
     lr_schedule: str = "cosine"    # "cosine" | "linear" | "constant" | "wsd"
-    optimizer: str = "adamw"       # "adamw" | "adafactor" | "lion" | "adam"
+    optimizer: str = "adamw"       # "adamw" | "adafactor" | "lion" | "adam" | "muon"
     grad_clip: float = 1.0
     seed: int = 42
     use_bf16: bool = False
@@ -288,6 +427,7 @@ class TrainingConfig:
 
     # ── Multi-GPU ─────────────────────────────────────────────────────────────
     n_devices: int = 0             # 0 = all available devices
+    tp_size: int = 1               # devices per tensor-parallel group (1 = data-parallel only)
 
     # ── Dataset ───────────────────────────────────────────────────────────────
     dataset_source: str = "local"  # "local" | "huggingface"
@@ -313,6 +453,8 @@ class TrainingConfig:
             raise ValueError(f"lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd'")
         if self.n_devices < 0:
             raise ValueError(f"n_devices must be >= 0")
+        if self.tp_size < 1:
+            raise ValueError(f"tp_size must be >= 1; got {self.tp_size}")
         if not 0.0 <= self.val_frac < 1.0:
             raise ValueError(f"val_frac must be in [0, 1); got {self.val_frac}")
         if self.grad_accum < 1:
