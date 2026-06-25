@@ -26,7 +26,7 @@ Each cell installs DantinoX automatically — no local setup required.
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch: **01 — Quickstart**
+-   **01 — Quickstart**
 
     ---
 
@@ -34,10 +34,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **~10 min &nbsp;·&nbsp; GPU (T4)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/01_quickstart.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/01_quickstart.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/01_quickstart.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/01_quickstart.ipynb){ .md-button }
 
--   :material-blur: **02 — Discrete Diffusion (LLaDA)**
+-   **02 — Discrete Diffusion (LLaDA)**
 
     ---
 
@@ -45,10 +45,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **~20 min &nbsp;·&nbsp; GPU (T4)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button }
 
--   :material-wave: **03 — ELF Continuous Flow-Matching**
+-   **03 — ELF Continuous Flow-Matching**
 
     ---
 
@@ -56,10 +56,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **~25 min &nbsp;·&nbsp; GPU (T4)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/03_elf_flow_matching.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/03_elf_flow_matching.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/03_elf_flow_matching.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/03_elf_flow_matching.ipynb){ .md-button }
 
--   :material-speedometer: **04 — Benchmarking & Profiling**
+-   **04 — Benchmarking & Profiling**
 
     ---
 
@@ -67,10 +67,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **~15 min &nbsp;·&nbsp; GPU (T4)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/04_benchmarking.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/04_benchmarking.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/04_benchmarking.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/04_benchmarking.ipynb){ .md-button }
 
--   :material-tune: **05 — LoRA Fine-Tuning**
+-   **05 — LoRA Fine-Tuning**
 
     ---
 
@@ -78,10 +78,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **~20 min &nbsp;·&nbsp; GPU (T4)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/05_lora_fine_tuning.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/05_lora_fine_tuning.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/05_lora_fine_tuning.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/05_lora_fine_tuning.ipynb){ .md-button }
 
--   :material-chart-bar: **06 — Paradigm Profiling**
+-   **06 — Paradigm Profiling**
 
     ---
 
@@ -89,10 +89,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **10–40 min &nbsp;·&nbsp; GPU (T4 / A100)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/06_paradigm_profiling.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/06_paradigm_profiling.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/06_paradigm_profiling.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/06_paradigm_profiling.ipynb){ .md-button }
 
--   :material-cached: **07 — Diffusion Cache Profiling**
+-   **07 — Diffusion Cache Profiling**
 
     ---
 
@@ -100,10 +100,10 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **5–25 min &nbsp;·&nbsp; GPU (T4 / A100)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/07_diffusion_cache_profiling.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/07_diffusion_cache_profiling.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/07_diffusion_cache_profiling.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/07_diffusion_cache_profiling.ipynb){ .md-button }
 
--   :material-database-search: **08 — Retrievers & Embedder Training**
+-   **08 — Retrievers & Embedder Training**
 
     ---
 
@@ -111,8 +111,8 @@ Each cell installs DantinoX automatically — no local setup required.
 
     **~25 min &nbsp;·&nbsp; GPU (T4)**
 
-    [:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/08_retrievers_training.ipynb){ .md-button .md-button--primary }
-    [:fontawesome-brands-github: View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/08_retrievers_training.ipynb){ .md-button }
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/08_retrievers_training.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/08_retrievers_training.ipynb){ .md-button }
 
 </div>
 
