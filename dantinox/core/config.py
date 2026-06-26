@@ -424,10 +424,11 @@ class TrainingConfig:
     patience: int = 0              # early stopping: epochs without val improvement (0 = off)
     eval_iters: int = 20
     val_frac: float = 0.1          # fraction of tokens held out for validation
+    val_every: int = 1             # run validation every N epochs (0 = only at the end)
 
     # ── Multi-GPU ─────────────────────────────────────────────────────────────
-    n_devices: int = 0             # 0 = all available devices
-    tp_size: int = 1               # devices per tensor-parallel group (1 = data-parallel only)
+    n_devices: int = 0             # 0 = all available; with tp_size>1 this is the DP replica count
+    tp_size: int = 1               # TP shards per replica; total GPUs = n_devices * tp_size
 
     # ── Dataset ───────────────────────────────────────────────────────────────
     dataset_source: str = "local"  # "local" | "huggingface"

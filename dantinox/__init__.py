@@ -472,6 +472,7 @@ def quick_generate(
     tokenizer=None,
     max_new_tokens: int = 200,
     temperature: float = 1.0,
+    use_cache: bool = True,
 ) -> str:
     """Load checkpoint and generate text — no boilerplate required.
 
@@ -490,6 +491,7 @@ def quick_generate(
             prompt,
             max_new_tokens=max_new_tokens,
             temperature=temperature,
+            use_cache=use_cache,
         )
 
     import os
@@ -511,7 +513,8 @@ def quick_generate(
 
     out = paradigm.generate(model, ids, rng,
                             max_new_tokens=max_new_tokens,
-                            temperature=temperature)
+                            temperature=temperature,
+                            use_cache=use_cache)
     return tokenizer.decode([int(t) for t in out[0]])
 
 

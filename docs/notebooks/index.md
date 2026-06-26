@@ -21,6 +21,9 @@ Each cell installs DantinoX automatically — no local setup required.
 | 06 | [Paradigm Profiling](#06--paradigm-profiling) | AR vs Discrete vs ELF — 2D + interactive 3D Plotly | 10–40 min |
 | 07 | [Diffusion Cache Profiling](#07--diffusion-cache-profiling) | No Cache vs Prefix Cache vs Dual Cache (Fast-dLLM) | 5–25 min |
 | 08 | [Retrievers & Embedder Training](#08--retrievers--embedder-training) | SimCSE, contrastive fine-tuning, FAISS, LangChain, ChromaDB | ~25 min |
+| 10 | [Generation Quality Comparison](#10--generation-quality-comparison) | Perplexity, distinct-n, rep-n, entropy — AR vs Discrete vs ELF | ~25 min |
+| 11 | [Attention Head Visualization](#11--attention-head-visualization) | Causal vs bidirectional heatmaps, head entropy, layer-depth analysis | ~10 min |
+| 12 | [Custom Paradigm Tutorial](#12--custom-paradigm-tutorial) | Build SemiAR from scratch, training, generation, registry | ~20 min |
 
 ---
 
@@ -114,6 +117,39 @@ Each cell installs DantinoX automatically — no local setup required.
     [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/08_retrievers_training.ipynb){ .md-button .md-button--primary }
     [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/08_retrievers_training.ipynb){ .md-button }
 
+-   **10 — Generation Quality Comparison**
+
+    ---
+
+    Objective comparison of AR, Discrete Diffusion, and ELF on the same corpus. Covers **perplexity** (held-out NLL), **distinct-1/2** (diversity), **rep-4** (repetition), and **output entropy**. Includes a qualitative side-by-side and a summary radar chart.
+
+    **~25 min &nbsp;·&nbsp; GPU (T4)**
+
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/10_generation_quality.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/10_generation_quality.ipynb){ .md-button }
+
+-   **11 — Attention Head Visualization**
+
+    ---
+
+    Visualise per-layer, per-head attention patterns for AR (causal, lower-triangular) and Discrete Diffusion (bidirectional, full matrix) on the same reference sequence. Covers head-entropy analysis, layer-depth attention distance, and a side-by-side paradigm comparison.
+
+    **~10 min &nbsp;·&nbsp; GPU (T4)**
+
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/11_attention_visualization.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/11_attention_visualization.ipynb){ .md-button }
+
+-   **12 — Custom Paradigm Tutorial**
+
+    ---
+
+    Build a **SemiAR** paradigm from scratch — decodes one block of tokens per step, left to right. Covers the `Paradigm` interface, masked-token training loss, streaming generation, block-size ablation (1 token/step → one-shot), and registry integration for `dx.fit('semiar', ...)`.
+
+    **~20 min &nbsp;·&nbsp; GPU (T4)**
+
+    [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/12_custom_paradigm.ipynb){ .md-button .md-button--primary }
+    [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/12_custom_paradigm.ipynb){ .md-button }
+
 </div>
 
 ---
@@ -128,6 +164,7 @@ pip install "dantinox[all] @ git+https://github.com/winstonsmith1897/DantinoX.gi
 
 A **free Colab T4** is sufficient for all notebooks.
 Notebooks 06 and 07 expose a `QUICK` flag — set `QUICK = False` for larger sweeps that benefit from an A100.
+Notebook 09 is reserved for a future RAG end-to-end demo.
 
 ---
 

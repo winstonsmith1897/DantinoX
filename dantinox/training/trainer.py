@@ -266,6 +266,18 @@ class Trainer:
         seq_len    = _paradigm_seq_len(paradigm)
         sample_len = seq_len + (1 if paradigm.requires_shifted_targets else 0)
 
+        # ── ELF tokenizer auto-detection ──────────────────────────────────────
+        # ContinuousParadigm feeds tokens into a frozen T5 encoder, so T5
+        # tokenizer IDs are required.  If the user left tokenizer_type at its
+        # default (or set it to something else), override it silently so the
+        # wrong tokenizer never reaches _load_tokens.
+        if getattr(paradigm, "type", None) == "continuous" and cfg.tokenizer_type != "t5":
+            import dataclasses as _dc
+            _prev = cfg.tokenizer_type
+            cfg = _dc.replace(cfg, tokenizer_type="t5")
+            _ui.print_tokenizer_override(_prev, "t5")
+            log.info("ELF paradigm: tokenizer_type auto-set to 't5' (was %r).", _prev)
+
         # ── Data (memmapped token cache) ──────────────────────────────────────
         tokenizer, tokens = _load_tokens(data_source, cfg, model_cfg)
 
@@ -326,14 +338,23 @@ class Trainer:
             _cast_params(model, jnp.bfloat16)
 
         # ── Device mesh ───────────────────────────────────────────────────────
-        tp       = max(1, cfg.tp_size)
-        n_local  = len(jax.local_devices())
-        n_total  = n_local if cfg.n_devices == 0 else min(cfg.n_devices, n_local)
+        tp      = max(1, cfg.tp_size)
+        n_local = len(jax.local_devices())
+        # n_devices == 0  → use all available devices
+        # n_devices >  0, tp == 1 → total device cap
+        # n_devices >  0, tp >  1 → n_devices is the number of DP replicas;
+        #                            total = n_devices * tp_size
+        if cfg.n_devices == 0:
+            n_total = n_local
+        elif tp > 1:
+            n_total = min(cfg.n_devices * tp, n_local)
+        else:
+            n_total = min(cfg.n_devices, n_local)
         if tp > 1 and n_total % tp != 0:
             n_total = (n_total // tp) * tp or tp
             log.warning(
-                "Total devices (%d) not divisible by tp_size=%d — using %d devices.",
-                n_local if cfg.n_devices == 0 else cfg.n_devices, tp, n_total,
+                "Requested %d total devices not divisible by tp_size=%d — using %d.",
+                cfg.n_devices * tp if cfg.n_devices else n_local, tp, n_total,
             )
         n_dp = n_total // tp   # data-parallel replicas (each holds one model shard group)
 
@@ -389,6 +410,7 @@ class Trainer:
             n_dev            = n_dev,
             tp_size          = tp,
         )
+        _ui.print_sharding_summary(model_cfg, n_dev=n_dev, tp_size=tp)
 
         # ── Run metadata (config.yaml + tokenizer.json for Generator) ────────
         _save_run_metadata(run_dir, paradigm, cfg, tokenizer, data_source)
@@ -457,22 +479,22 @@ class Trainer:
 
         def _evaluate() -> float:
             """Average loss over ``eval_iters`` deterministic validation batches."""
-            source = val_tokens if val_tokens is not None else train_tokens
+            source      = val_tokens if val_tokens is not None else train_tokens
             eval_rng_np = np.random.default_rng(cfg.seed + 99_991)
             eval_key    = jax.random.PRNGKey(cfg.seed + 99_991)
-            losses = []
+            running     = jnp.zeros(())
             for i in range(cfg.eval_iters):
                 batch = jnp.asarray(
                     _sample_batch(source, cfg.batch_size, sample_len, eval_rng_np))
                 if n_dev > 1:
                     batch = shard_batch(batch, mesh)
                 key = jax.random.fold_in(eval_key, i)
-                if has_extras:
-                    losses.append(_eval_step_extras(
-                        model, batch, paradigm.prepare_batch(batch), key))
-                else:
-                    losses.append(_eval_step(model, batch, key))
-            return float(jnp.mean(jnp.stack(losses)))
+                loss = (
+                    _eval_step_extras(model, batch, paradigm.prepare_batch(batch), key)
+                    if has_extras else _eval_step(model, batch, key)
+                )
+                running = running + loss
+            return float(running) / cfg.eval_iters
 
         # ── Training loop ─────────────────────────────────────────────────────
         import time as _time
@@ -488,12 +510,16 @@ class Trainer:
             np_rng     = np.random.default_rng(cfg.seed + epoch)
             epoch_t0   = _time.monotonic()
 
-            step_losses: list[jnp.ndarray] = []
+            # Prefetcher overlaps CPU batch sampling with GPU compute.
+            prefetcher = _Prefetcher(train_tokens, cfg.batch_size, sample_len, np_rng)
+
+            # Running sum avoids accumulating a list of futures and the
+            # jnp.stack+mean at epoch end (single host sync instead of N+1).
+            running_loss = jnp.zeros(())
             _ui.print_compile_hint(epoch)
             pbar = _ui.make_epoch_bar(epoch, n_epochs, steps_this_epoch)
             for step in pbar:
-                batch = jnp.asarray(
-                    _sample_batch(train_tokens, cfg.batch_size, sample_len, np_rng))
+                batch = jnp.asarray(prefetcher.get())
                 if n_dev > 1:
                     batch = shard_batch(batch, mesh)
                 step_key = jax.random.fold_in(epoch_key, step)
@@ -504,27 +530,44 @@ class Trainer:
                 else:
                     loss = _step(model, optimizer, batch, step_key)
 
-                step_losses.append(loss)
-                for cb in self.callbacks: cb.on_step_end(step, {"train_loss": float(loss)}, epoch)  # ② callback hook
-                if step % log_every == 0:
-                    pbar.set_postfix(loss=f"{float(loss):.4f}")
+                running_loss = running_loss + loss
+                if step % log_every == 0 or self.callbacks:
+                    loss_host = float(loss)  # single host sync, shared by both uses
+                    if step % log_every == 0:
+                        pbar.set_postfix(loss=f"{loss_host:.4f}")
+                    for cb in self.callbacks: cb.on_step_end(step, {"train_loss": loss_host}, epoch)  # ② callback hook
             pbar.close()
+            prefetcher.close()
 
-            train_loss = float(jnp.mean(jnp.stack(step_losses)))
-            val_loss   = _evaluate()
+            train_loss = float(running_loss) / max(steps_this_epoch, 1)
             elapsed    = _time.monotonic() - epoch_t0
-            log.info("Epoch %d  train_loss=%.4f  val_loss=%.4f",
-                     epoch, train_loss, val_loss)
+
+            # val_every=0 → only at the very last epoch; val_every=N → every N epochs
+            is_last_epoch = (epoch == n_epochs)
+            do_val = (
+                cfg.val_every == 0 and is_last_epoch
+            ) or (
+                cfg.val_every > 0 and epoch % cfg.val_every == 0
+            )
+
+            val_loss: float | None = _evaluate() if do_val else None
+
+            if val_loss is not None:
+                log.info("Epoch %d  train_loss=%.4f  val_loss=%.4f",
+                         epoch, train_loss, val_loss)
+            else:
+                log.info("Epoch %d  train_loss=%.4f", epoch, train_loss)
+
             log_rows.append({"epoch": epoch,
                              "train_loss": train_loss,
                              "val_loss": val_loss})
 
-            is_best = val_loss < best_loss
+            is_best = val_loss is not None and val_loss < best_loss
             if is_best:
-                best_loss  = val_loss
+                best_loss  = val_loss  # type: ignore[assignment]
                 no_improve = 0
                 _save_checkpoint(model, run_dir, tag="best")
-            else:
+            elif val_loss is not None:
                 no_improve += 1
 
             _ui.print_epoch_result(epoch, n_epochs, train_loss, val_loss, is_best, elapsed)
@@ -753,6 +796,46 @@ def _check_vocab(tokenizer: Any, model_cfg: Any, cfg: TrainingConfig) -> None:
              "stay unused.", tok_vocab, model_vocab)
 
 
+class _Prefetcher:
+    """One-step lookahead: prepares the next batch in a background thread
+    while the GPU is computing the current step.
+
+    Usage::
+        pf = _Prefetcher(tokens, batch_size, sample_len, rng)
+        batch = pf.get()   # blocks only if the worker hasn't finished yet
+        ...
+        pf.close()
+    """
+
+    def __init__(
+        self,
+        tokens: np.ndarray,
+        batch_size: int,
+        sample_len: int,
+        rng: np.random.Generator,
+    ) -> None:
+        import concurrent.futures as _cf
+        self._pool = _cf.ThreadPoolExecutor(max_workers=1)
+        self._tokens     = tokens
+        self._batch_size = batch_size
+        self._sample_len = sample_len
+        self._rng        = rng
+        self._future     = self._submit()   # warm up one batch ahead
+
+    def _submit(self):
+        return self._pool.submit(
+            _sample_batch, self._tokens, self._batch_size, self._sample_len, self._rng
+        )
+
+    def get(self) -> np.ndarray:
+        batch        = self._future.result()   # wait (usually instant — GPU was busy)
+        self._future = self._submit()           # immediately queue the next one
+        return batch
+
+    def close(self) -> None:
+        self._pool.shutdown(wait=False)
+
+
 def _sample_batch(
     tokens: np.ndarray,
     batch_size: int,
@@ -762,8 +845,8 @@ def _sample_batch(
     """Draw ``batch_size`` random windows of ``sample_len`` tokens."""
     max_start = max(len(tokens) - sample_len, 1)
     starts = np_rng.integers(0, max_start, size=batch_size)
-    rows = np.stack([np.asarray(tokens[s: s + sample_len]) for s in starts])
-    return rows.astype(np.int32)
+    idx = starts[:, np.newaxis] + np.arange(sample_len, dtype=starts.dtype)
+    return np.asarray(tokens[idx], dtype=np.int32)
 
 
 # ── Checkpointing ─────────────────────────────────────────────────────────────
@@ -787,25 +870,61 @@ def _save_checkpoint(model: Any, run_dir: str, tag: str) -> None:
         f.write(flax.serialization.msgpack_serialize(pure))
 
 
+_MASKED_NODE_SENTINEL = "__masked_node__"
+
+
+def _strip_masked_nodes(obj: Any) -> Any:
+    """Replace optax.MaskedNode with a string sentinel for msgpack serialization.
+
+    Muon uses optax.masked internally, which places MaskedNode placeholders in
+    the optimizer state for parameters that a given sub-optimizer does not own
+    (e.g., Adam gets MaskedNode for 2D kernels, Muon gets MaskedNode for biases).
+    msgpack cannot serialize MaskedNode, so we replace them before saving.
+    """
+    try:
+        from optax import MaskedNode as _MN
+        _masked_type = type(_MN())
+    except (ImportError, AttributeError):
+        return obj
+
+    def _walk(o: Any) -> Any:
+        if isinstance(o, _masked_type):
+            return _MASKED_NODE_SENTINEL
+        if isinstance(o, dict):
+            return {k: _walk(v) for k, v in o.items()}
+        if isinstance(o, list):
+            return [_walk(v) for v in o]
+        return o
+
+    return _walk(obj)
+
+
+def _restore_masked_nodes(obj: Any) -> Any:
+    """Inverse of ``_strip_masked_nodes``: put optax.MaskedNode back in place."""
+    try:
+        from optax import MaskedNode as _MN
+    except ImportError:
+        return obj
+
+    def _walk(o: Any) -> Any:
+        if isinstance(o, (str, bytes)) and o == _MASKED_NODE_SENTINEL:
+            return _MN()
+        if isinstance(o, dict):
+            return {k: _walk(v) for k, v in o.items()}
+        if isinstance(o, list):
+            return [_walk(v) for v in o]
+        return o
+
+    return _walk(obj)
+
+
 def _save_train_state(path: str, model: Any, optimizer: nnx.Optimizer) -> None:
     """Full train state (model + optimizer) for exact resume."""
     model_state = nnx.state(model, _WEIGHTS).to_pure_dict()
-    try:
-        opt_state = nnx.state(optimizer, _WEIGHTS).to_pure_dict()
-        payload   = {"model": model_state, "opt": opt_state}
-        with open(path, "wb") as f:
-            f.write(flax.serialization.msgpack_serialize(payload))
-    except (TypeError, Exception):
-        # Some optimizers (e.g., Muon) produce non-serialisable state
-        # (MaskedNode, etc.). Save model weights only so training still
-        # checkpoints; resume will restart the optimizer from scratch.
-        log.warning(
-            "Optimizer state is not serialisable — saving model weights only. "
-            "Resume will restart the optimizer from scratch."
-        )
-        payload = {"model": model_state, "opt": {}}
-        with open(path, "wb") as f:
-            f.write(flax.serialization.msgpack_serialize(payload))
+    opt_state   = _strip_masked_nodes(nnx.state(optimizer, _WEIGHTS).to_pure_dict())
+    payload     = {"model": model_state, "opt": opt_state}
+    with open(path, "wb") as f:
+        f.write(flax.serialization.msgpack_serialize(payload))
 
 
 def _msgpack_load(path: str) -> Any:
@@ -825,8 +944,9 @@ def _restore_train_state(path: str, model: Any, optimizer: nnx.Optimizer) -> Non
     model_state.replace_by_pure_dict(raw["model"])
     nnx.update(model, model_state)
 
+    opt_raw   = _restore_masked_nodes(raw["opt"])
     opt_state = nnx.state(optimizer, _WEIGHTS)
-    opt_state.replace_by_pure_dict(raw["opt"])
+    opt_state.replace_by_pure_dict(opt_raw)
     nnx.update(optimizer, opt_state)
 
 

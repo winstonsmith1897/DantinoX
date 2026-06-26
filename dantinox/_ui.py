@@ -251,6 +251,99 @@ def print_run_header(
     print("\n".join(L), file=stream, flush=True)
 
 
+def print_sharding_summary(model_cfg: Any, n_dev: int, tp_size: int) -> None:
+    """Print an ASCII sharding map below the run header.
+
+    For pure data-parallelism just notes that every GPU has a full replica.
+    For tensor-parallelism shows the Megatron column/row split per layer type.
+    """
+    if n_dev <= 1 and tp_size <= 1:
+        return   # single device — nothing to show
+
+    stream = _out()
+    L: list[str] = []
+
+    L.append(_sec("sharding"))
+
+    if tp_size <= 1:
+        # ── Pure data-parallelism ─────────────────────────────────────────
+        L.append(
+            f"  {_cyn(str(n_dev))}× data-parallel  ·  "
+            f"each GPU holds a {_wht('full')} model copy"
+        )
+        L.append(
+            f"  {_dim('batch split: ')} "
+            f"{_blu('B')}/{_cyn(str(n_dev))} samples per device"
+        )
+    else:
+        # ── Tensor-parallelism (+ optional DP) ───────────────────────────
+        dim    = _cfg_dim(model_cfg)
+        n_h    = getattr(model_cfg, "n_heads", 8)
+        vocab  = getattr(model_cfg, "vocab_size", None) or "V"
+        exp    = getattr(model_cfg, "expansion", 4)
+        swiglu = getattr(model_cfg, "use_swiglu", True)
+
+        # column widths
+        NW, SW, PW, KW = 20, 16, 16, 10
+
+        header = (
+            f"  {_blu('tensor'.ljust(NW))}"
+            f"  {_dim('full shape'.ljust(SW))}"
+            f"  {_dim('per-TP slice'.ljust(PW))}"
+            f"  {_dim('kind')}"
+        )
+        sep = "  " + _dim("·" * (NW + SW + PW + KW + 6))
+
+        L.append(sep)
+        L.append(header)
+        L.append(sep)
+
+        tp = tp_size
+        d, h = dim, n_h
+        # FFN width depends on SwiGLU (gate+up split) vs plain MLP
+        ffn_w = exp * d // 2 if swiglu else exp * d
+
+        rows: list[tuple[str, str, str, str]] = [
+            ("embedding",         f"[{vocab}×{d}]",     "replicated",                "–"),
+            ("attn qkv kernel",   f"[{d}×{3*d}]",       f"[{d}×{3*d//tp}]",          "col-∥"),
+            ("attn out kernel",   f"[{d}×{d}]",         f"[{d//tp}×{d}]",            "row-∥"),
+            ("ffn up/gate",       f"[{d}×{ffn_w}]",     f"[{d}×{ffn_w//tp}]",        "col-∥"),
+            ("ffn down kernel",   f"[{ffn_w}×{d}]",     f"[{ffn_w//tp}×{d}]",        "row-∥"),
+            ("norms / pos emb",   f"[{d}]",             "replicated",                "–"),
+        ]
+
+        for name, full, slc, kind in rows:
+            col_kind = _grn(kind) if "∥" in kind else _dim(kind)
+            is_rep   = slc == "replicated"
+            col_slc  = _dim(slc.ljust(PW)) if is_rep else _cyn(slc.ljust(PW))
+            L.append(
+                f"  {_blu(name.ljust(NW))}"
+                f"  {_dim(full.ljust(SW))}"
+                f"  {col_slc}"
+                f"  {col_kind}"
+            )
+
+        L.append(sep)
+        total = n_dev * tp_size
+        L.append(
+            f"  {_dim('total: ')}"
+            f"{_cyn(str(n_dev))} DP × {_cyn(str(tp_size))} TP"
+            f"  {_dim('=')}  {_cyn(str(total))} GPUs"
+        )
+
+    L.append("")
+    print("\n".join(L), file=stream, flush=True)
+
+
+def print_tokenizer_override(prev: str, new: str) -> None:
+    """Warn that the tokenizer_type was silently overridden."""
+    print(
+        f"  {_yel('[DantinoX]')}  ELF paradigm detected — "
+        f"tokenizer_type: {_dim(repr(prev))} → {_wht(repr(new))}",
+        file=_out(), flush=True,
+    )
+
+
 def print_compile_hint(epoch: int) -> None:
     """Print a one-time hint that the first step triggers JIT compilation."""
     if epoch == 1:
@@ -275,15 +368,18 @@ def print_epoch_result(
     epoch:       int,
     n_epochs:    int,
     train_loss:  float,
-    val_loss:    float,
+    val_loss:    float | None,
     is_best:     bool,
     elapsed:     float,
 ) -> None:
     """Print a one-line summary after each epoch's progress bar closes."""
     ep_tag  = _prp(f"Epoch {epoch}/{n_epochs}")
     tr_tag  = f"train={_cyn(f'{train_loss:.4f}')}"
-    va_val  = _grn(f"{val_loss:.4f}") if is_best else _azr(f"{val_loss:.4f}")
-    va_tag  = f"val={va_val}"
+    if val_loss is None:
+        va_tag = f"val={_dim('—')}"
+    else:
+        va_val = _grn(f"{val_loss:.4f}") if is_best else _azr(f"{val_loss:.4f}")
+        va_tag = f"val={va_val}"
     best    = f"  {_yel('★ best')}" if is_best else ""
     t_tag   = _dim(f"{elapsed:.1f}s")
     print(f"  {ep_tag}  {tr_tag}  {va_tag}{best}  {t_tag}",
