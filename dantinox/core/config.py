@@ -106,6 +106,7 @@ class ModelConfig:
     no_sink: bool = False
     differential: bool = False    # differential attention (Ye et al., 2025)
     lambda_init: float = 0.8      # λ_init for differential attention
+    use_linear_attention: bool = False  # linear attention (elu+1 kernel) for bidirectional (is_causal=False) calls
 
     # ── MLA-specific ──────────────────────────────────────────────────────────
     down_dim_q: int = 256
@@ -685,6 +686,7 @@ class Config:
     differential: bool = False
     lambda_init: float = 0.8
     use_flash_attention: bool = False
+    use_linear_attention: bool = False
 
     # ── MLA ───────────────────────────────────────────────────────────────────
     mla: bool = False

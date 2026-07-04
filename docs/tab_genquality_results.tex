@@ -26,18 +26,18 @@
 % ── Discrete Diffusion ────────────────────────────────────────────────────────
 \rowcolor{gray!10}
 \multicolumn{6}{@{}l}{\textbf{Discrete Diffusion}} \\
-\quad MHA (70M)  & \textbf{0.155} & 1883.4          & 0.721          & 0.031          & 0.030 \\
-\quad GQA (65M)  & 0.116          & 1842.8          & \textbf{0.730} & \textbf{0.005} & 0.031 \\
-\quad MLA (70M)  & 0.098          & \textbf{1803.8} & 0.711          & 0.030          & \textbf{0.035} \\
+\quad MHA (70M)  & 0.20{\tiny$\pm$.04} & 1834{\tiny$\pm$43} & 0.728{\tiny$\pm$.006} & 0.019{\tiny$\pm$.010} & 0.029{\tiny$\pm$.000} \\
+\quad GQA (65M)  & 0.12{\tiny$\pm$.00} & 1777{\tiny$\pm$57} & 0.733{\tiny$\pm$.003} & \textbf{0.006}{\tiny$\pm$.000} & 0.030{\tiny$\pm$.003} \\
+\quad MLA (70M)  & 0.15{\tiny$\pm$.05} & 1803{\tiny$\pm$1}  & 0.720{\tiny$\pm$.008} & 0.020{\tiny$\pm$.009} & 0.033{\tiny$\pm$.003} \\
 %
 \midrule
 %
 % ── Continuous Flow-Matching ──────────────────────────────────────────────────
 \rowcolor{gray!10}
 \multicolumn{6}{@{}l}{\textbf{Continuous Flow-Matching}} \\
-\quad MHA (82M)  & 0.750          & 232.3           & \textbf{0.628} & \textbf{0.007} & --- \\
-\quad GQA (77M)  & 0.739          & 187.6           & 0.560          & 0.027          & --- \\
-\quad MLA (79M)  & \textbf{0.845} & \textbf{156.7}  & 0.538          & 0.106          & --- \\
+\quad MHA (82M)  & 0.80{\tiny$\pm$.04} & 234.6{\tiny$\pm$2.0}          & \textbf{0.627}{\tiny$\pm$.001} & \textbf{0.007}{\tiny$\pm$.000} & --- \\
+\quad GQA (77M)  & 0.69{\tiny$\pm$.09} & 188.0{\tiny$\pm$0.4}          & 0.562{\tiny$\pm$.001}          & 0.027{\tiny$\pm$.000}          & --- \\
+\quad MLA (79M)  & 0.78{\tiny$\pm$.07} & \textbf{156.3}{\tiny$\pm$0.3} & 0.538{\tiny$\pm$.001}          & 0.107{\tiny$\pm$.000}          & --- \\
 \bottomrule
 \end{tabular}
 \caption{%
@@ -47,11 +47,13 @@
   D-2 = Distinct-2~$\uparrow$; R-4 = Rep-4~$\downarrow$;
   B-4 = BLEU-4\textsubscript{cond}~$\uparrow$
   (``---'' = paradigm does not support prefix conditioning).
-  All metrics: 100 unconditional samples of 128 tokens per generation seed,
-  averaged over 3 seeds; matched inference budget of 64 steps
+  All metrics: mean~$\pm$~std over 3 generation seeds, 100 unconditional
+  samples of 128 tokens each; matched inference budget of 64 steps
   (AR decodes token-by-token; Diffusion: 64 denoising steps, on average
   2 tokens per step; Flow-Matching: 64 ODE steps).
-  \textbf{Bold} = best per paradigm.%
+  \textbf{Bold} = best per paradigm where the margin exceeds seed
+  variance; within-paradigm MAUVE differences are within noise and
+  left unmarked.%
 }
 \label{tab:genquality}
 \end{table}

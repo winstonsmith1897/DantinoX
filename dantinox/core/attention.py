@@ -90,6 +90,7 @@ class BaseAttention(nnx.Module):
         self.no_sink        = config.no_sink
         self.use_rotary     = config.use_rotary_pos
         self.use_flash      = config.use_flash_attention
+        self.use_linear_attention = config.use_linear_attention
         self.sliding_window = config.sliding_window
         self.context_window = config.context_window
         self.inference      = config.inference
@@ -227,6 +228,25 @@ class BaseAttention(nnx.Module):
         prefix_kv: tuple[jnp.ndarray, jnp.ndarray] | None = None,
     ) -> tuple[jnp.ndarray, tuple]:
         raise NotImplementedError(f"{type(self).__name__} must implement __call__")
+
+
+def _apply_linear_attention(q: jnp.ndarray, k: jnp.ndarray, v: jnp.ndarray) -> jnp.ndarray:
+    """Non-causal linear attention (Katharopoulos et al., 2020), O(T) in sequence length.
+
+    ``q``/``k``/``v`` are grouped-head tensors ``[B, kv_heads, G, T, head_size]``
+    (b=batch, k=kv_heads, g=group, t=tokens, h/j=head_size). Since there is no
+    causal mask, ``kv`` is accumulated once over all tokens rather than
+    prefix-summed, giving the same ``[B, kv_heads, G, T, head_size]`` output
+    layout as the softmax path.
+    """
+    fn = lambda x: jax.nn.elu(x) + 1
+    q, k = map(fn, (q, k))
+
+    kv      = jnp.einsum('bkgth, bkgtj -> bkghj', k, v)
+    num     = jnp.einsum('bkgth, bkghj -> bkgtj', q, kv)
+    k_denom = jnp.sum(k, axis=3)  # sum over tokens -> [B, kv_heads, G, head_size]
+    denom   = jnp.einsum('bkgth, bkgh -> bkgt', q, k_denom)
+    return num / (denom[..., None] + 1e-6)
 
 
 # ── Standard attention (MHA and GQA share the same forward pass) ──────────────
@@ -425,6 +445,23 @@ class _StandardAttention(BaseAttention):
             pk, pv = prefix_kv
             k = jnp.concatenate([pk, k], axis=3)  # [B, kv_heads, 1, T_pre+T, head_size]
             v = jnp.concatenate([pv, v], axis=3)
+
+        # Linear attention fast path (bidirectional only — no causal masking support)
+        if not is_causal and self.use_linear_attention:
+            y = _apply_linear_attention(q, k, v)
+            if self.differential:
+                y2  = _apply_linear_attention(q2, k2, v)
+                lam = self._compute_lambda().reshape(self.kv_heads, -1)[None, :, :, None, None]  # [1, kv_heads, G, 1, 1]
+                y   = y - lam * y2
+            y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.n_heads, self.head_size)
+            if self.differential:
+                y = self.diff_norm(y) * (1.0 - self.lambda_init)
+            y   = y.reshape(B, T, self.dim)
+            y   = self._apply_gate(y, x)
+            out = call_linear(self.o_proj, y, deterministic=deterministic)
+            if self.tp_size > 1 and in_mesh_context():
+                out = jax.lax.with_sharding_constraint(out, P(None, None, None))
+            return self.resid_dropout(out, deterministic=deterministic), kv_cache
 
         attn = q @ jnp.swapaxes(k, -2, -1) / math.sqrt(self.head_size)
         S    = attn.shape[-1]
