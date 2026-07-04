@@ -6,13 +6,13 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from dantinox.core.config import ELFConfig, ModelConfig
-from dantinox.core.elf import ELFEmbedder, ELFTransformer, elf_loss
+from dantinox.core.config import FlowMatchingConfig, ModelConfig
+from dantinox.core.flow import FlowEmbedder, FlowMatchingTransformer, flow_loss
 
 
-def _elf_config_from_model_config(m: ModelConfig) -> ELFConfig:
-    """Build an ELFConfig from a ModelConfig that has embed_dim > 0."""
-    return ELFConfig(
+def _elf_config_from_model_config(m: ModelConfig) -> FlowMatchingConfig:
+    """Build an FlowMatchingConfig from a ModelConfig that has embed_dim > 0."""
+    return FlowMatchingConfig(
         embed_dim=m.embed_dim,
         bottleneck_dim=m.bottleneck_dim,
         model_dim=m.dim,
@@ -30,14 +30,16 @@ def _elf_config_from_model_config(m: ModelConfig) -> ELFConfig:
         down_dim_q=m.down_dim_q,
         down_dim_kv=m.down_dim_kv,
         rope_dim=m.rope_dim,
-        elf_n_steps=m.elf_n_steps,
-        elf_cfg_scale=m.elf_cfg_scale,
+        flow_n_steps=m.flow_n_steps,
+        flow_cfg_scale=m.flow_cfg_scale,
         sde_gamma=m.sde_gamma,
         t5_model_name=m.t5_model_name,
     )
 from dantinox.core.generation import (
-    elf_generate as _elf_generate,
-    stream_elf_generate as _stream_elf_generate,
+    flow_generate as _flow_generate,
+)
+from dantinox.core.generation import (
+    stream_flow_generate as _stream_flow_generate,
 )
 from dantinox.paradigms.base import ParadigmBase
 
@@ -64,13 +66,13 @@ class ContinuousParadigm(ParadigmBase):
                                   embed_dim=768, bottleneck_dim=128, causal=False)
         paradigm = ContinuousParadigm(cfg)
 
-    A raw ``ELFConfig`` is also accepted for Level-3 control over training
+    A raw ``FlowMatchingConfig`` is also accepted for Level-3 control over training
     hyper-parameters (denoiser schedules, CFG bounds, etc.).
     """
 
     provides_batch_extras = True
 
-    def __init__(self, config: ModelConfig | ELFConfig) -> None:
+    def __init__(self, config: ModelConfig | FlowMatchingConfig) -> None:
         if isinstance(config, ModelConfig):
             if config.embed_dim == 0:
                 raise ValueError(
@@ -83,24 +85,24 @@ class ContinuousParadigm(ParadigmBase):
 
     # ── Paradigm contract ─────────────────────────────────────────────────────
 
-    def build_model(self, rngs: nnx.Rngs) -> ELFTransformer:
-        return ELFTransformer(self.config, rngs=rngs)
+    def build_model(self, rngs: nnx.Rngs) -> FlowMatchingTransformer:
+        return FlowMatchingTransformer(self.config, rngs=rngs)
 
-    def build_embedder(self, rngs: nnx.Rngs) -> ELFEmbedder:
+    def build_embedder(self, rngs: nnx.Rngs) -> FlowEmbedder:
         """Build the frozen T5 embedder used to project tokens to flow space."""
-        return ELFEmbedder(self.config, rngs=rngs)
+        return FlowEmbedder(self.config, rngs=rngs)
 
     def loss_fn(
         self,
-        model: ELFTransformer,
+        model: FlowMatchingTransformer,
         batch: jnp.ndarray,
         rng: jax.Array,
         embeddings: jnp.ndarray | None = None,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
-        """Compute ELF training loss.
+        """Compute the flow-matching training loss.
 
         Args:
-            model      : ELFTransformer NNX module.
+            model      : FlowMatchingTransformer NNX module.
             batch      : Integer token IDs ``[B, T]`` (targets for CE branch).
             rng        : JAX random key.
             embeddings : Raw T5 contextual embeddings ``[B, T, embed_dim]``
@@ -113,16 +115,16 @@ class ContinuousParadigm(ParadigmBase):
         if embeddings is None:
             raise ValueError(
                 "ContinuousParadigm.loss_fn requires 'embeddings' — "
-                "pre-compute them via prepare_batch() / ELFEmbedder before "
+                "pre-compute them via prepare_batch() / FlowEmbedder before "
                 "calling loss_fn."
             )
         normed = model.encode(embeddings)
-        loss, metrics = elf_loss(model, normed, batch, rng, self.config)
+        loss, metrics = flow_loss(model, normed, batch, rng, self.config)
         return loss, metrics
 
     # ── Training hooks ────────────────────────────────────────────────────────
 
-    def on_train_start(self, model: ELFTransformer, sample_batches: list[Any]) -> None:
+    def on_train_start(self, model: FlowMatchingTransformer, sample_batches: list[Any]) -> None:
         """Initialise the embedder's normalisation stats from real T5 outputs."""
         encoder = self._encoder()
         token_batches = [jnp.asarray(b) for b in sample_batches]
@@ -144,7 +146,7 @@ class ContinuousParadigm(ParadigmBase):
 
     def generate(
         self,
-        model: ELFTransformer,
+        model: FlowMatchingTransformer,
         prompt: jnp.ndarray | None = None,
         rng: jax.Array | None = None,
         max_new_tokens: int | None = None,
@@ -154,7 +156,7 @@ class ContinuousParadigm(ParadigmBase):
         batch_size: int | None = None,
         seed: int | None = None,
     ) -> jnp.ndarray:
-        """ELF generates unconditionally from Gaussian noise.
+        """Flow-matching generates unconditionally from Gaussian noise.
 
         *prompt* only provides the batch size / sequence length defaults
         (``max_new_tokens`` overrides its length); its token contents are unused.
@@ -162,8 +164,8 @@ class ContinuousParadigm(ParadigmBase):
         to providing a *prompt* and *rng*.
         """
         from dantinox.paradigms.ar import _seed_from
-        steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
-        cfg_w  = cfg_scale or getattr(self.config, "elf_cfg_scale", 1.0)
+        steps  = n_steps   or getattr(self.config, "flow_n_steps", 64)
+        cfg_w  = cfg_scale or getattr(self.config, "flow_cfg_scale", 1.0)
         sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
         length = max_new_tokens or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
                                     else self.config.max_seq_len)
@@ -171,7 +173,7 @@ class ContinuousParadigm(ParadigmBase):
             batch_size = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
         if seed is None:
             seed = _seed_from(rng) if rng is not None else 42
-        return _elf_generate(
+        return _flow_generate(
             model,
             gen_len=length,
             batch_size=batch_size,
@@ -183,7 +185,7 @@ class ContinuousParadigm(ParadigmBase):
 
     def stream(
         self,
-        model: ELFTransformer,
+        model: FlowMatchingTransformer,
         prompt: jnp.ndarray | None = None,
         rng: jax.Array | None = None,
         max_new_tokens: int | None = None,
@@ -193,21 +195,21 @@ class ContinuousParadigm(ParadigmBase):
     ):
         """Like ``generate`` but yields ``(step, total, tokens)`` after each ODE step."""
         from dantinox.paradigms.ar import _seed_from
-        steps  = n_steps   or getattr(self.config, "elf_n_steps", 64)
-        cfg_w  = cfg_scale or getattr(self.config, "elf_cfg_scale", 1.0)
+        steps  = n_steps   or getattr(self.config, "flow_n_steps", 64)
+        cfg_w  = cfg_scale or getattr(self.config, "flow_cfg_scale", 1.0)
         sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
         length = max_new_tokens or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
                                     else self.config.max_seq_len)
         batch  = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1
         seed   = _seed_from(rng) if rng is not None else 42
-        yield from _stream_elf_generate(
+        yield from _stream_flow_generate(
             model, gen_len=length, batch_size=batch,
             n_steps=steps, cfg_scale=cfg_w, gamma=sde_g, seed=seed,
         )
 
-    def num_parameters(self, model: ELFTransformer) -> int:
-        from flax import nnx as _nnx
+    def num_parameters(self, model: FlowMatchingTransformer) -> int:
         import jax as _jax
+        from flax import nnx as _nnx
         params = _nnx.state(model, _nnx.Param)
         return sum(x.size for x in _jax.tree_util.tree_leaves(params))
 

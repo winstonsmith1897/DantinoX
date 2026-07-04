@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -148,7 +149,7 @@ def fig_pareto(par: pd.DataFrame, out: Path, arch: str) -> None:
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel(f"Per-request latency (ms, full generation of G=256 tokens)")
+    ax.set_xlabel("Per-request latency (ms, full generation of G=256 tokens)")
     ax.set_ylabel("System throughput (tok/s)")
     ax.set_title(f"Serving frontier — {arch}: diffusion owns the low-latency "
                  f"regime,\nAR wins once batching saturates the GPU "

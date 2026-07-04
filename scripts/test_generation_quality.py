@@ -224,7 +224,7 @@ def eval_run(
     r4   = rep_4(samples)
     vcov = vocab_coverage(samples, config.vocab_size)
 
-    print(f"\n  ── Metrics ──────────────────────────────────────────────────────")
+    print("\n  ── Metrics ──────────────────────────────────────────────────────")
     print(f"  distinct_1    : {d1:.4f}  (higher = more diverse unigrams; random ≈ 0.8+)")
     print(f"  distinct_2    : {d2:.4f}  (higher = more diverse bigrams;  random ≈ 0.9+)")
     print(f"  rep_4         : {r4:.4f}  (lower  = less repetitive 4-grams; good < 0.1)")
@@ -236,7 +236,7 @@ def eval_run(
     for t in all_tokens:
         tok_counts[t] = tok_counts.get(t, 0) + 1
     top10 = sorted(tok_counts.items(), key=lambda x: -x[1])[:10]
-    print(f"\n  ── Top-10 most frequent token IDs ───────────────────────────────")
+    print("\n  ── Top-10 most frequent token IDs ───────────────────────────────")
     for tid, cnt in top10:
         pct  = 100 * cnt / len(all_tokens)
         text = ""
@@ -255,7 +255,7 @@ def eval_run(
         print(f"\n  [{i+1}] {text[:200]}")
 
     # ── Verdict ───────────────────────────────────────────────────────────────
-    print(f"\n  ── Quality verdict ──────────────────────────────────────────────")
+    print("\n  ── Quality verdict ──────────────────────────────────────────────")
     issues = []
     if d1 < 0.05:
         issues.append(f"distinct_1={d1:.3f} is very low — severe repetition / mode collapse")
@@ -267,11 +267,11 @@ def eval_run(
         issues.append(f"vocab_cov={vcov:.5f} — model is using very few tokens (< 0.1% of vocab)")
 
     if issues:
-        print(f"  [FAIL] Quality INSUFFICIENT for EMNLP 2026:")
+        print("  [FAIL] Quality INSUFFICIENT for EMNLP 2026:")
         for iss in issues:
             print(f"    • {iss}")
     else:
-        print(f"  [PASS] Diversity metrics look reasonable — inspect text samples above.")
+        print("  [PASS] Diversity metrics look reasonable — inspect text samples above.")
 
     return {
         "run":        name,
@@ -305,7 +305,7 @@ def main() -> None:
                         help="Save metrics to this CSV file.")
     args = parser.parse_args()
 
-    print(f"DantinoX generation quality test")
+    print("DantinoX generation quality test")
     print(f"Device: {jax.default_backend()}")
     print(f"Config: {args.n_samples} samples × {args.gen_len} tokens")
 

@@ -1,3 +1,12 @@
+"""LoRA (Low-Rank Adaptation) building blocks.
+
+``LoRALinear`` is a drop-in ``nnx.Linear`` replacement whose base weight is
+frozen while a low-rank ``A @ B`` delta (stored as ``LoRAParam`` so the
+optimizer can target it separately) is trained.  ``call_linear`` dispatches
+uniformly over plain / LoRA layers; ``merge_lora`` folds adapters into base
+weights for export.  Which layers receive adapters is decided by
+``config.use_lora`` / ``config.lora_targets`` inside attention.py and mlp.py.
+"""
 from __future__ import annotations
 
 import copy
@@ -60,7 +69,7 @@ class LoRALinear(nnx.Module):
 
 
 def call_linear(
-    layer: nnx.Linear | "LoRALinear",
+    layer: nnx.Linear | LoRALinear,
     x: jnp.ndarray,
     *,
     deterministic: bool = True,

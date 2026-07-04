@@ -4,7 +4,7 @@ The paradigm is selected via the ``paradigm`` field in ``ModelConfig``:
 
 * ``"ar"``         — autoregressive next-token prediction
 * ``"discrete"``   — LLaDA-style masked-token diffusion
-* ``"continuous"`` — ELF continuous flow-matching (requires ``embed_dim > 0``)
+* ``"continuous"`` — continuous flow-matching, ELF recipe (requires ``embed_dim > 0``)
 * ``"embedder"``   — SimCSE contrastive embedding
 
 When ``paradigm`` is not set, the selection falls back to inspecting
@@ -65,7 +65,7 @@ class Paradigm(ParadigmBase):
         p = dx.Paradigm(dx.ModelConfig(paradigm="discrete", dim=512, n_heads=8, num_blocks=12,
                                         noise_schedule="cosine"))
 
-        # ELF continuous flow-matching
+        # Continuous flow-matching
         p = dx.Paradigm(dx.ModelConfig(paradigm="continuous", dim=512, n_heads=8, num_blocks=12,
                                         embed_dim=768))
 
@@ -103,6 +103,10 @@ class Paradigm(ParadigmBase):
     @property  # type: ignore[override]
     def provides_batch_extras(self) -> bool:
         return self._impl.provides_batch_extras
+
+    @property  # type: ignore[override]
+    def diffusion_config(self):
+        return self._impl.diffusion_config
 
     @property  # type: ignore[override]
     def requires_shifted_targets(self) -> bool:

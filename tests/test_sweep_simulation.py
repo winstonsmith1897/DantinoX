@@ -8,11 +8,16 @@ Validates configuration handling, optimizer setup, and batch processing.
 import json
 import math
 import os
+import pathlib
+import sys
 import tempfile
 from unittest.mock import Mock, patch
 
 import jax.numpy as jnp
 import pytest
+
+# The script under test lives in scripts/, which is not a package.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scripts"))
 
 # ============================================================================
 # FIXTURES AND SETUP
@@ -600,6 +605,17 @@ class TestTrainingLoop:
         assert float(rows[1][1]) == 5.0
 
 
+def _wandb_installed() -> bool:
+    # The repo-root wandb/ run-log directory shadows the wandb package as a
+    # namespace module; a real install exposes wandb.init.
+    try:
+        import wandb  # noqa: F401
+        return hasattr(wandb, "init")
+    except ImportError:
+        return False
+
+
+@pytest.mark.skipif(not _wandb_installed(), reason="wandb library not importable")
 class TestWandBIntegration:
     """Test W&B integration."""
 

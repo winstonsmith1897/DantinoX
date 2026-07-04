@@ -60,7 +60,7 @@ from flax import nnx
 from flax.serialization import _msgpack_ext_unpack
 
 from dantinox.core.config import Config
-from dantinox.core.elf import ELFTransformer
+from dantinox.core.flow import FlowMatchingTransformer
 from dantinox.core.model import DiffusionTransformer, Transformer
 
 log = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ def _load_config(run_path: str) -> Config:
 def _load_model(
     run_path: str,
     config: Config,
-) -> Transformer | DiffusionTransformer | ELFTransformer:
+) -> Transformer | DiffusionTransformer | FlowMatchingTransformer:
     """Load model weights from a run directory.
 
     Tries ``best_model_weights.msgpack`` first, then ``model_weights.msgpack``.
@@ -141,14 +141,39 @@ def _load_model(
             if vocab != config.vocab_size:
                 config = dataclasses.replace(config, vocab_size=vocab)
 
+    # Detect legacy MLA checkpoints saved before the DeepSeek-V2 latent-projection
+    # refactor.  Old checkpoints store a single joint `qkv` linear in each attention
+    # block; new MLAAttention uses separate `down_q / down_kv / up_*` projections.
+    # When detected, instantiate as standard attention so the checkpoint loads cleanly.
+    # The caller's config (and therefore _attn_type()) still sees mla=True, preserving
+    # the correct "MLA" label in results.
+    cfg_for_model = config
+    if getattr(config, "mla", False):
+        blks = _get(state_dict, "blocks")
+        if isinstance(blks, dict):
+            b0 = next(iter(blks.values())) if blks else None
+        elif isinstance(blks, (list, tuple)) and blks:
+            b0 = blks[0]
+        else:
+            b0 = None
+        if b0 is not None:
+            attn = _get(b0, "attention") or _get(b0, "attn")
+            if attn is not None and _get(attn, "qkv") is not None:
+                log.warning(
+                    "%s: legacy MLA checkpoint (joint qkv projection) detected — "
+                    "loading as standard attention for eval compatibility.",
+                    Path(run_path).name,
+                )
+                cfg_for_model = dataclasses.replace(config, mla=False, attention_type="mha")
+
     rngs = nnx.Rngs(42)
-    model: Transformer | DiffusionTransformer | ELFTransformer
-    if config.model_type == "elf":
-        model = ELFTransformer(config.to_elf_config(), rngs=rngs)
-    elif config.model_type == "diffusion":
-        model = DiffusionTransformer(config, rngs=rngs)
+    model: Transformer | DiffusionTransformer | FlowMatchingTransformer
+    if cfg_for_model.model_type == "elf":
+        model = FlowMatchingTransformer(cfg_for_model.to_flow_config(), rngs=rngs)
+    elif cfg_for_model.model_type == "diffusion":
+        model = DiffusionTransformer(cfg_for_model, rngs=rngs)
     else:
-        model = Transformer(config, rngs=rngs)
+        model = Transformer(cfg_for_model, rngs=rngs)
     nnx.update(model, state_dict)
     return model
 

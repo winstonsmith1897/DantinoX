@@ -43,10 +43,8 @@ from datetime import datetime
 from typing import Any
 
 import flax.serialization
-import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 from tqdm import tqdm
 

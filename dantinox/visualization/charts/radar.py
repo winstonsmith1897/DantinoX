@@ -43,6 +43,7 @@ class RadarChart(Chart):
 
     def render(self, data: Any, config: RenderConfig, out_path: Any) -> Any:
         import matplotlib.pyplot as plt
+
         from dantinox.visualization.style import apply_style
 
         apply_style(config.style)
@@ -56,7 +57,6 @@ class RadarChart(Chart):
         return out_path
 
     def _render_mpl(self, data: Any, config: RenderConfig, fig: Any, ax: Any) -> None:
-        import pandas as pd
         df     = _to_df(data)
         colors = get_palette(config.style)
 
@@ -101,6 +101,7 @@ class RadarChart(Chart):
 
 def _to_df(data: Any):
     import pandas as pd
+
     from dantinox.benchmarking.base import SuiteReport
     if isinstance(data, SuiteReport):
         return data.to_dataframe()

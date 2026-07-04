@@ -2,7 +2,8 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+from jax.sharding import Mesh, NamedSharding
+from jax.sharding import PartitionSpec as P
 
 mesh = Mesh(np.array(jax.devices()[:2]).reshape(1, 2), ("data", "model"))
 x = jax.device_put(jnp.ones((8, 4096)), NamedSharding(mesh, P()))

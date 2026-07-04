@@ -1,0 +1,57 @@
+% Generation quality table — Small scale (512-d, 12-layer), all three paradigms
+% Needs: booktabs, xcolor (colortbl)
+% NOTE: AR rows and mean±std values pending — AR training + multi-seed eval in
+% progress; numbers below are seed-42 values for Diffusion/Flow-Matching.
+\begin{table}[t]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{} l rrrrr @{}}
+\toprule
+\textbf{Arch (Params)}
+  & MV~$\uparrow$ & PPL~$\downarrow$
+  & D-2~$\uparrow$ & R-4~$\downarrow$ & B-4~$\uparrow$ \\
+\midrule
+%
+% ── Autoregressive ────────────────────────────────────────────────────────────
+\rowcolor{gray!10}
+\multicolumn{6}{@{}l}{\textbf{Autoregressive}} \\
+\quad MHA (67M)  & TODO & TODO & TODO & TODO & TODO \\
+\quad GQA (TODO) & TODO & TODO & TODO & TODO & TODO \\
+\quad MLA (TODO) & TODO & TODO & TODO & TODO & TODO \\
+%
+\midrule
+%
+% ── Discrete Diffusion ────────────────────────────────────────────────────────
+\rowcolor{gray!10}
+\multicolumn{6}{@{}l}{\textbf{Discrete Diffusion}} \\
+\quad MHA (70M)  & \textbf{0.155} & 1883.4          & 0.721          & 0.031          & 0.030 \\
+\quad GQA (65M)  & 0.116          & 1842.8          & \textbf{0.730} & \textbf{0.005} & 0.031 \\
+\quad MLA (70M)  & 0.098          & \textbf{1803.8} & 0.711          & 0.030          & \textbf{0.035} \\
+%
+\midrule
+%
+% ── Continuous Flow-Matching ──────────────────────────────────────────────────
+\rowcolor{gray!10}
+\multicolumn{6}{@{}l}{\textbf{Continuous Flow-Matching}} \\
+\quad MHA (82M)  & 0.750          & 232.3           & \textbf{0.628} & \textbf{0.007} & --- \\
+\quad GQA (77M)  & 0.739          & 187.6           & 0.560          & 0.027          & --- \\
+\quad MLA (79M)  & \textbf{0.845} & \textbf{156.7}  & 0.538          & 0.106          & --- \\
+\bottomrule
+\end{tabular}
+\caption{%
+  \textsc{DantinoX} open-ended generation quality at Small scale
+  (512-d, 12-layer).
+  MV = MAUVE~$\uparrow$; PPL = PPL\textsubscript{GPT-2}~$\downarrow$;
+  D-2 = Distinct-2~$\uparrow$; R-4 = Rep-4~$\downarrow$;
+  B-4 = BLEU-4\textsubscript{cond}~$\uparrow$
+  (``---'' = paradigm does not support prefix conditioning).
+  All metrics: 100 unconditional samples of 128 tokens per generation seed,
+  averaged over 3 seeds; matched inference budget of 64 steps
+  (AR decodes token-by-token; Diffusion: 64 denoising steps, on average
+  2 tokens per step; Flow-Matching: 64 ODE steps).
+  \textbf{Bold} = best per paradigm.%
+}
+\label{tab:genquality}
+\end{table}

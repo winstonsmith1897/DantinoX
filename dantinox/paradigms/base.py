@@ -25,7 +25,7 @@ class ParadigmBase(ABC):
     without the Trainer knowing its internals:
 
     * ``on_train_start(model, sample_batches)`` — one-time setup before the
-      first step (e.g. ELF computes T5 embedding normalisation statistics).
+      first step (e.g. flow-matching computes T5 embedding normalisation statistics).
     * ``prepare_batch(batch)`` — host-side, non-JIT preprocessing of each
       batch; whatever it returns is forwarded to ``loss_fn`` as the
       ``embeddings`` keyword.  Set ``provides_batch_extras = True`` to
@@ -106,6 +106,11 @@ class ParadigmBase(ABC):
         from flax import nnx
         params = nnx.state(model, nnx.Param)
         return sum(x.size for x in jax.tree_util.tree_leaves(params))
+
+    @property
+    def diffusion_config(self):
+        """Diffusion-specific configuration.  Returns None for non-diffusion paradigms."""
+        return None
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"

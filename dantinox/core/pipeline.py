@@ -37,7 +37,7 @@ def pipeline(
         task: Task name.  Currently only ``"text-generation"`` is supported.
         model_id_or_path: Local run directory **or** HuggingFace Hub repo ID
             (e.g. ``"my-org/my-dantinox-model"``).
-        prompt: Input text prompt (AR models).  Ignored for diffusion/ELF.
+        prompt: Input text prompt (AR models).  Ignored for diffusion/flow-matching.
         max_new_tokens: Number of new tokens to generate.
         seed: PRNG seed for sampling.
         temperature: Sampling temperature (AR models only).
@@ -45,7 +45,7 @@ def pipeline(
         **kwargs: Extra options forwarded to the generation function:
             ``top_k``, ``top_p``, ``use_cache`` (AR);
             ``n_steps``, ``block_size``, ``confidence_threshold`` (diffusion);
-            ``n_steps``, ``cfg_scale`` (ELF).
+            ``n_steps``, ``cfg_scale`` (flow-matching).
 
     Returns:
         Decoded generated text string.
@@ -72,21 +72,16 @@ def pipeline(
             f"Supported: {sorted(_SUPPORTED_TASKS)}"
         )
 
+    from dantinox.core.checkpoint import load_config, model_kind
     from dantinox.hub import resolve_checkpoint
-    from dantinox.core.config import Config
     from dantinox.utils.tokenizer import load_tokenizer_from_file
 
     local_dir = resolve_checkpoint(model_id_or_path)
     log.info("Resolved checkpoint: %s → %s", model_id_or_path, local_dir)
 
-    config_path = os.path.join(local_dir, "config.yaml")
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(
-            f"config.yaml not found in {local_dir!r}. "
-            "Is this a valid DantinoX run directory?"
-        )
-    cfg = Config.from_yaml(config_path)
-    log.info("Config: %s  model_type=%s", cfg, cfg.model_type)
+    cfg = load_config(local_dir)
+    kind = model_kind(cfg)
+    log.info("Config: %s  model_kind=%s", cfg, kind)
 
     # ── Tokenizer ──────────────────────────────────────────────────────────────
     tok_path = os.path.join(local_dir, "tokenizer.json")
@@ -101,89 +96,32 @@ def pipeline(
         tokenizer = AutoTokenizer.from_pretrained("t5-base")
 
     # ── Model ─────────────────────────────────────────────────────────────────
-    model, weights_path = _load_model(cfg, local_dir, seed)
+    from dantinox.core.checkpoint import load_model
+
+    model, _, weights_path = load_model(local_dir, seed=seed)
     log.info("Weights restored from %s", weights_path)
 
     # ── Generation ────────────────────────────────────────────────────────────
-    model_type = cfg.model_type
-    if model_type == "autoregressive":
+    if kind == "autoregressive":
         return _ar_generate(
             model, tokenizer, prompt, max_new_tokens,
             seed=seed, temperature=temperature, greedy=greedy, **kwargs,
         )
-    if model_type == "diffusion":
+    if kind == "diffusion":
         return _diffusion_generate(
             model, tokenizer, cfg, max_new_tokens, seed=seed,
             temperature=temperature, **kwargs,
         )
-    if model_type == "elf":
-        return _elf_generate(model, tokenizer, cfg, max_new_tokens, seed=seed, **kwargs)
+    if kind == "elf":
+        return _flow_generate(model, tokenizer, cfg, max_new_tokens, seed=seed, **kwargs)
 
     raise ValueError(
-        f"Unknown model_type {model_type!r} in {config_path}. "
+        f"Unknown model kind {kind!r} for {local_dir}. "
         "Expected 'autoregressive', 'diffusion', or 'elf'."
     )
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
-
-
-def _load_model(cfg: Any, local_dir: str, seed: int) -> tuple[Any, str]:
-    """Instantiate the correct NNX model class and restore checkpoint weights.
-
-    Tries checkpoint filenames in priority order so both new-style
-    (``checkpoint_best.msgpack``) and legacy (``best_model_weights.msgpack``)
-    runs are supported transparently.
-    """
-    import msgpack
-    from flax import nnx
-    from flax.serialization import _msgpack_ext_unpack
-
-    _WEIGHT_FILENAMES = (
-        "checkpoint_best.msgpack",
-        "checkpoint_latest.msgpack",
-        "best_model_weights.msgpack",
-        "model_weights.msgpack",
-    )
-    for fname in _WEIGHT_FILENAMES:
-        wp = os.path.join(local_dir, fname)
-        if os.path.exists(wp):
-            weights_path = wp
-            break
-    else:
-        raise FileNotFoundError(
-            f"No weights file found in {local_dir!r}. "
-            f"Expected one of: {_WEIGHT_FILENAMES}"
-        )
-
-    rngs = nnx.Rngs(seed)
-    model_type = cfg.model_type
-
-    if model_type == "elf":
-        from dantinox.core.elf import ELFTransformer
-        model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
-    elif model_type == "diffusion":
-        from dantinox.core.model import Transformer
-        # Unified Transformer with causal=False handles masked-diffusion.
-        model = Transformer(cfg.to_model_config(), rngs=rngs)
-    else:
-        from dantinox.core.model import Transformer
-        model = Transformer(cfg.to_model_config(), rngs=rngs)
-
-    with open(weights_path, "rb") as fh:
-        raw = msgpack.unpackb(
-            fh.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
-        )
-
-    # Full train-state checkpoints wrap weights under {"model": ..., "opt": ...};
-    # model-only checkpoints (checkpoint_best / best_model_weights) are flat.
-    if isinstance(raw, dict) and "model" in raw and "opt" in raw:
-        raw = raw["model"]
-
-    state = nnx.state(model, nnx.Not(nnx.RngState))
-    state.replace_by_pure_dict(raw)
-    nnx.update(model, state)
-    return model, weights_path
 
 
 def _decode(tokenizer: Any, ids: list[int]) -> str:
@@ -206,6 +144,7 @@ def _ar_generate(
     **kwargs: Any,
 ) -> str:
     import jax.numpy as jnp
+
     from dantinox.core.generation import generate
 
     prompt_ids = tokenizer.encode(prompt)
@@ -216,8 +155,8 @@ def _ar_generate(
         seed=seed,
         temperature=temperature,
         use_cache=kwargs.get("use_cache", True),
-        top_k=kwargs.get("top_k", None),
-        top_p=kwargs.get("top_p", None),
+        top_k=kwargs.get("top_k"),
+        top_p=kwargs.get("top_p"),
     )
     new_ids = out[0].tolist()[len(prompt_ids):]
     return prompt + _decode(tokenizer, new_ids)
@@ -234,6 +173,7 @@ def _diffusion_generate(
     **kwargs: Any,
 ) -> str:
     import jax.numpy as jnp
+
     from dantinox.core.diffusion import make_noise_schedule
     from dantinox.core.generation import fast_dllm_generate
 
@@ -243,14 +183,15 @@ def _diffusion_generate(
         model, prefix, max_new_tokens, schedule,
         mask_token_id=cfg.mask_token_id,
         block_size=kwargs.get("block_size", 32),
-        steps_per_block=kwargs.get("n_steps", cfg.num_sampling_steps),
+        # ModelConfig has no num_sampling_steps field; only legacy Config does.
+        steps_per_block=kwargs.get("n_steps", getattr(cfg, "num_sampling_steps", 50)),
         confidence_threshold=kwargs.get("confidence_threshold", 0.9),
         seed=seed,
     )
     return _decode(tokenizer, out[0].tolist())
 
 
-def _elf_generate(
+def _flow_generate(
     model: Any,
     tokenizer: Any,
     cfg: Any,
@@ -259,14 +200,14 @@ def _elf_generate(
     seed: int,
     **kwargs: Any,
 ) -> str:
-    from dantinox.core.generation import elf_generate
+    from dantinox.core.generation import flow_generate
 
-    out = elf_generate(
+    out = flow_generate(
         model,
         gen_len=max_new_tokens,
         batch_size=1,
-        n_steps=kwargs.get("n_steps", cfg.elf_n_steps),
-        cfg_scale=kwargs.get("cfg_scale", cfg.elf_cfg_scale),
+        n_steps=kwargs.get("n_steps", cfg.flow_n_steps),
+        cfg_scale=kwargs.get("cfg_scale", cfg.flow_cfg_scale),
         seed=seed,
     )
     return _decode(tokenizer, out[0].tolist())

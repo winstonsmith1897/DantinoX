@@ -27,7 +27,6 @@ from dantinox.core.config import ModelConfig
 from dantinox.core.model import Transformer
 from dantinox.paradigms.base import ParadigmBase
 
-
 # ── InfoNCE loss ──────────────────────────────────────────────────────────────
 
 def info_nce_loss(

@@ -23,7 +23,6 @@ class LatencyChart(Chart):
     accepts = object
 
     def _render_mpl(self, data: Any, config: RenderConfig, fig: Any, ax: Any) -> None:
-        import numpy as np
         df     = _to_df(data)
         colors = get_palette(config.style)
 
@@ -66,7 +65,6 @@ class LatencyChart(Chart):
 
 
 def _draw_pareto_frontier(ax: Any, latency: Any, throughput: Any) -> None:
-    import numpy as np
     points = sorted(zip(latency, throughput))
     frontier: list[tuple] = []
     best_tps = -float("inf")
@@ -81,6 +79,7 @@ def _draw_pareto_frontier(ax: Any, latency: Any, throughput: Any) -> None:
 
 def _to_df(data: Any):
     import pandas as pd
+
     from dantinox.benchmarking.base import SuiteReport
     if isinstance(data, SuiteReport):
         return data.to_dataframe()

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import jax
-import jax.numpy as jnp
 
 from dantinox.benchmarking.base import BenchmarkConfig, BenchmarkResult, BenchmarkTask
 from dantinox.profiling.tracker import LatencyTracker

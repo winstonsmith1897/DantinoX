@@ -1,3 +1,10 @@
+"""NamedTuple return types for model forward passes.
+
+Kept in one leaf module (no internal imports) so any part of the library can
+depend on them without cycles: ``ModelOutput`` (Transformer),
+``FlowMatchingOutput`` (FlowMatchingTransformer), ``EmbeddingOutput``
+(``Transformer.encode_hidden``).
+"""
 from __future__ import annotations
 
 from typing import NamedTuple
@@ -20,19 +27,24 @@ class ModelOutput(NamedTuple):
     """Token logits ``[batch, seq_len, vocab_size]``."""
 
     kv_caches: tuple
-    """Per-layer KV caches.  Each element is ``(k, v)`` for standard attention
-    or ``(k, v, k2)`` when differential attention is active.
-    ``None`` entries when ``use_cache=False``."""
+    """Per-layer KV caches: ``attention.KVCache`` tuples for standard
+    attention (``k2`` populated only with differential attention) or
+    ``attention.MLACache`` for absorbed MLA.  ``None`` entries when
+    ``use_cache=False``."""
 
     aux_loss: float
-    """MoE load-balancing auxiliary loss (``0.0`` for dense models)."""
+    """MoE load-balancing auxiliary loss (``0.0`` for dense models).
+
+    Note: this NamedTuple intentionally stays at three fields — call sites
+    rely on ``logits, kv_caches, aux_loss = model(x)`` unpacking.  For final
+    hidden states use ``Transformer.encode_hidden``."""
 
 
-class ELFOutput(NamedTuple):
-    """Return type for ``ELFTransformer.__call__`` (continuous flow-matching).
+class FlowMatchingOutput(NamedTuple):
+    """Return type for ``FlowMatchingTransformer.__call__`` (continuous flow-matching).
 
-    ELF predicts clean embeddings x̂ (x-prediction) and materialises token
-    logits in the same forward pass via the shared unembedding head.
+    The model predicts clean embeddings x̂ (x-prediction) and materialises
+    token logits in the same forward pass via the shared unembedding head.
 
     Usage::
 
@@ -41,10 +53,10 @@ class ELFOutput(NamedTuple):
         # Denoiser MSE loss
         inv_1mt = 1.0 / jnp.clip(1.0 - t[:, None, None], 1e-6)
         v_pred  = (out.x_pred - z_t) * inv_1mt
-        loss    = elf_mse_loss(v_pred, v_target)
+        loss    = flow_mse_loss(v_pred, v_target)
 
         # Decoder CE loss
-        loss = elf_ce_loss(out.logits, tokens)
+        loss = flow_ce_loss(out.logits, tokens)
 
         # ODE velocity step
         v      = (out.x_pred - z) / jnp.clip(1.0 - t, 1e-6)
@@ -73,3 +85,7 @@ class EmbeddingOutput(NamedTuple):
 
     hidden_states: jnp.ndarray
     """Per-token hidden states after the final layer norm ``[batch, seq_len, dim]``."""
+
+
+# Deprecated ELF-branded alias (removed in v1.0).
+ELFOutput = FlowMatchingOutput

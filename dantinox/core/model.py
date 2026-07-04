@@ -1,6 +1,26 @@
-from __future__ import annotations
+"""The unified Transformer backbone — one model class for three paradigms.
 
-import contextlib
+``Transformer`` implements embed → L × Block → norm → (tied or separate)
+vocabulary head.  The ``causal`` flag from the config selects autoregressive
+(causal mask + KV cache) versus bidirectional (masked diffusion) behaviour —
+the weights, code, and training loop are otherwise identical, which is what
+makes cross-paradigm comparisons controlled.
+
+Structure of the class:
+
+* ``_forward_hidden`` — the single backbone pass shared by ``__call__`` and
+  ``encode_hidden`` (so the two can never diverge); handles KV caches,
+  dual-cache prefix injection, and gradient checkpointing.
+* ``__call__`` — backbone + vocabulary head → ``ModelOutput``.
+* ``encode_hidden`` — pooled sentence embeddings for retrieval / RAG.
+* ``compute_prefix_cache`` / ``compute_block_dual_cache`` / ``decode_block``
+  — Fast-dLLM dual-cache helpers for block-wise diffusion inference.
+* ``build`` / ``from_pretrained`` — class-based construction and checkpoint
+  loading (via core/checkpoint.py).
+
+Decoding loops live in generation.py; the flow-matching model in flow.py.
+"""
+from __future__ import annotations
 
 import flax.nnx as nnx
 import jax
@@ -67,6 +87,7 @@ class Transformer(nnx.Module, pytree=False):
                 "For direct model building pass vocab_size=<n> to ModelConfig."
             )
 
+
         self.num_blocks: int              = cfg.num_blocks
         self.blocks: list[Block]          = [Block(cfg, rngs=rngs) for _ in range(cfg.num_blocks)]
         self.embed: nnx.Embed             = nnx.Embed(cfg.vocab_size, cfg.dim, rngs=rngs)
@@ -130,7 +151,7 @@ class Transformer(nnx.Module, pytree=False):
 
     # ── Forward pass ──────────────────────────────────────────────────────────
 
-    def __call__(
+    def _forward_hidden(
         self,
         x: jnp.ndarray,
         *,
@@ -138,26 +159,11 @@ class Transformer(nnx.Module, pytree=False):
         cache_index: int = 0,
         dual_cache: DualCache | None = None,
         deterministic: bool = False,
-    ) -> ModelOutput:
-        """Run the transformer forward pass.
+    ) -> tuple[jnp.ndarray, tuple, float]:
+        """Shared backbone pass: embed → blocks → norm_f.
 
-        Parameters
-        ----------
-        x:             Token IDs ``[B, T]``.
-        caches:        Per-layer KV cache for AR generation.  Each element is
-                       ``(k_cache, v_cache)`` for standard attention, or
-                       ``(k_cache, v_cache, k2_cache)`` when differential
-                       attention is active.  Pass
-                       ``tuple((None, None) for _ in range(model.num_blocks))``
-                       to initialise a fresh cache on the first token step.
-                       ``None`` (default) disables caching entirely (training).
-        cache_index:   Write position for the AR KV cache.
-        dual_cache:    Bidirectional prefix KV cache for diffusion inference.
-        deterministic: Disables dropout.
-
-        Returns
-        -------
-        ``ModelOutput(logits, kv_caches, aux_loss)``
+        Single implementation used by ``__call__`` and ``encode_hidden`` so the
+        two paths can never diverge.  Returns ``(hidden, kv_caches, aux_loss)``.
         """
         use_cache = (caches is not None)
 
@@ -166,8 +172,8 @@ class Transformer(nnx.Module, pytree=False):
         h = self.emb_dropout(h, deterministic=deterministic)
 
         # Block-level caches: (None, None) sentinel = "create cache on first step".
-        # After the first step each block returns (kc, vc) or (kc, vc, k2c)
-        # for differential attention; subsequent calls pass those tuples back.
+        # After the first step each block returns a KVCache / MLACache;
+        # subsequent calls pass those back in.
         block_caches: tuple = (
             caches if use_cache
             else tuple((None, None) for _ in range(self.num_blocks))
@@ -206,16 +212,51 @@ class Transformer(nnx.Module, pytree=False):
             new_caches.append(new_c)
             balancing_loss += aux
 
-        h = self.norm_f(h)
-        logits = (
-            h @ self.embed.embedding[...].T
-            if self.weight_tying
-            else self.head(h)  # type: ignore[misc]
-        )
+        return self.norm_f(h), tuple(new_caches), balancing_loss
 
+    def _unembed(self, h: jnp.ndarray) -> jnp.ndarray:
+        """Project hidden states to vocabulary logits (tied or separate head)."""
+        if self.weight_tying:
+            return h @ self.embed.embedding[...].T
+        return self.head(h)  # type: ignore[misc]
+
+    def __call__(
+        self,
+        x: jnp.ndarray,
+        *,
+        caches: tuple | None = None,
+        cache_index: int = 0,
+        dual_cache: DualCache | None = None,
+        deterministic: bool = False,
+    ) -> ModelOutput:
+        """Run the transformer forward pass.
+
+        Parameters
+        ----------
+        x:             Token IDs ``[B, T]``.
+        caches:        Per-layer KV cache for AR generation
+                       (``attention.KVCache`` / ``attention.MLACache``).  Pass
+                       ``tuple((None, None) for _ in range(model.num_blocks))``
+                       to initialise a fresh cache on the first token step.
+                       ``None`` (default) disables caching entirely (training).
+        cache_index:   Write position for the AR KV cache.
+        dual_cache:    Bidirectional prefix KV cache for diffusion inference.
+        deterministic: Disables dropout.
+
+        Returns
+        -------
+        ``ModelOutput(logits, kv_caches, aux_loss)``
+        """
+        h, new_caches, balancing_loss = self._forward_hidden(
+            x,
+            caches=caches,
+            cache_index=cache_index,
+            dual_cache=dual_cache,
+            deterministic=deterministic,
+        )
         return ModelOutput(
-            logits=logits,
-            kv_caches=tuple(new_caches),
+            logits=self._unembed(h),
+            kv_caches=new_caches,
             aux_loss=balancing_loss,
         )
 
@@ -263,13 +304,8 @@ class Transformer(nnx.Module, pytree=False):
         if pooling == "auto":
             resolved = "last" if self.causal else "mean"
 
-        # ── backbone ──────────────────────────────────────────────────────────
-        h = self.embed(x)
-        h = self._add_pos(h, 0)
-        h = self.emb_dropout(h, deterministic=deterministic)
-        for block in self.blocks:
-            h, _, _ = block(h, deterministic=deterministic)
-        h = self.norm_f(h)   # [B, T, D]
+        # ── backbone (same code path as __call__, minus the logits head) ──────
+        h, _, _ = self._forward_hidden(x, deterministic=deterministic)   # [B, T, D]
 
         # ── pooling ───────────────────────────────────────────────────────────
         if resolved == "cls":
@@ -302,6 +338,7 @@ class Transformer(nnx.Module, pytree=False):
     def compute_prefix_cache(self, prefix: jnp.ndarray) -> DualCache:
         """Process a static conditioning prefix once and cache per-layer KV."""
         h = self.embed(prefix)
+        h = self._add_pos(h, 0)
         h = self.emb_dropout(h, deterministic=True)
 
         prefix_kvs: list = []
@@ -319,6 +356,7 @@ class Transformer(nnx.Module, pytree=False):
     ) -> DualCache:
         """Run a full forward pass and split KV into prefix and suffix parts."""
         h = self.embed(x_full)
+        h = self._add_pos(h, 0)
         h = self.emb_dropout(h, deterministic=True)
 
         prefix_kvs: list = []
@@ -366,26 +404,9 @@ class Transformer(nnx.Module, pytree=False):
             else:
                 ctx = None
 
-            x_norm = block.norm1(h)
-            x_attn, _ = block.attention(
-                x_norm,
-                use_cache=False,
-                kv_cache=(None, None),
-                cache_index=offset,
-                deterministic=deterministic,
-                is_causal=False,
-                prefix_kv=ctx,
-            )
-            h = h + x_attn
-            ff, _ = block.ffn(block.norm2(h), deterministic=deterministic)
-            h = h + ff
+            h = block.decode_with_context(h, ctx, offset, deterministic=deterministic)
 
-        h = self.norm_f(h)
-        return (
-            h @ self.embed.embedding[...].T
-            if self.weight_tying
-            else self.head(h)  # type: ignore[misc]
-        )
+        return self._unembed(self.norm_f(h))
 
     # ── Class-based builder ────────────────────────────────────────────────────
 
@@ -458,49 +479,17 @@ class Transformer(nnx.Module, pytree=False):
         revision: str | None = None,
     ) -> Transformer:
         """Load a trained Transformer from a local directory or HuggingFace Hub."""
-        import os
-
-        import msgpack
-
         from dantinox.hub import resolve_checkpoint  # type: ignore[import]
+
+        from .checkpoint import find_weights_file, load_config, restore_model
 
         run_dir = resolve_checkpoint(path_or_repo, token=token, revision=revision)
 
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        # Try new ModelConfig first, fall back to legacy Config
-        config_path = os.path.join(run_dir, "config.yaml")
-        try:
-            config: ModelConfig | Config = ModelConfig.from_yaml(config_path)
-        except Exception:
-            config = Config.from_yaml(config_path)
-
-        model = cls(config, rngs=rngs)
-
-        _WEIGHT_FILENAMES = (
-            "checkpoint_best.msgpack",
-            "checkpoint_latest.msgpack",
-            "best_model_weights.msgpack",
-            "model_weights.msgpack",
-        )
-        weights_path = None
-        for fname in _WEIGHT_FILENAMES:
-            candidate = os.path.join(run_dir, fname)
-            if os.path.exists(candidate) and (best or fname != "checkpoint_best.msgpack"):
-                weights_path = candidate
-                break
-        if weights_path is None:
-            weights_path = os.path.join(run_dir, "model_weights.msgpack")
-
-        _ext_hook: object = None
-        with contextlib.suppress(ImportError, AttributeError):
-            from flax.serialization import _msgpack_ext_unpack  # type: ignore[attr-defined]
-            _ext_hook = _msgpack_ext_unpack
-
-        with open(weights_path, "rb") as f:
-            state_dict = msgpack.unpackb(f.read(), ext_hook=_ext_hook, strict_map_key=False)
-        nnx.update(model, state_dict)
+        model = cls(load_config(run_dir), rngs=rngs)
+        restore_model(model, find_weights_file(run_dir, best=best))
         return model
 
 

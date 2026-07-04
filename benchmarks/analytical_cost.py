@@ -35,9 +35,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax
-import numpy as np
 from flax import nnx
-
 
 # ── Parameter partitioning (exact, from the built model) ─────────────────────
 
@@ -91,7 +89,7 @@ class CostModel:
     weight_tying: bool = True
 
     @classmethod
-    def from_model(cls, model: nnx.Module, cfg: Any) -> "CostModel":
+    def from_model(cls, model: nnx.Module, cfg: Any) -> CostModel:
         c = partition_params(model)
         kv_heads = getattr(cfg, "kv_heads", None) or getattr(cfg, "n_heads", 8)
         return cls(
@@ -155,7 +153,7 @@ class CostModel:
     def elf_decode(self, B: int, T: int, n_ctrl: int = 12) -> float:
         return self.elf_step(B, T, n_ctrl) + 2.0 * self.D * self.V * B * T / 1e9
 
-    def elf_generate(self, B: int, T: int, S: int) -> float:
+    def flow_generate(self, B: int, T: int, S: int) -> float:
         return S * self.elf_step(B, T) + self.elf_decode(B, T)
 
     # ── Bytes (returns GB, traffic lower bound) ───────────────────────────────
@@ -191,8 +189,8 @@ def _selftest() -> None:
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from dantinox.core.config import ELFConfig, ModelConfig
-    from dantinox.core.elf import ELFTransformer
+    from dantinox.core.config import FlowMatchingConfig, ModelConfig
+    from dantinox.core.flow import FlowMatchingTransformer
     from dantinox.core.model import Transformer
 
     cfg = ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12,
@@ -206,7 +204,7 @@ def _selftest() -> None:
     B, T, P = 64, 1024, 64
     print(f"\nDiscrete step  B={B} T={T} P={P}")
     print(f"  analytical : {cm.disc_step(B, T, P):,.0f} GFLOPs")
-    print(f"  (XLA measured on this config was ~2,099 GFLOPs — expected to be lower)")
+    print("  (XLA measured on this config was ~2,099 GFLOPs — expected to be lower)")
     print(f"  bytes      : {cm.disc_step_bytes(B, T, P):,.2f} GB")
     ai = cm.disc_step(B, T, P) / cm.disc_step_bytes(B, T, P)
     print(f"  intensity  : {ai:,.0f} FLOP/B")
@@ -219,11 +217,11 @@ def _selftest() -> None:
     by = cm.ar_decode_bytes(B, P + T)
     print(f"  analytical : {g:.3f} GFLOPs, {by:.4f} GB → intensity {g/by:.1f} FLOP/B")
 
-    ecfg = ELFConfig(embed_dim=512, bottleneck_dim=128, model_dim=512,
+    ecfg = FlowMatchingConfig(embed_dim=512, bottleneck_dim=128, model_dim=512,
                      n_heads=8, head_size=64, num_blocks=12,
                      vocab_size=32128, max_seq_len=T,
                      gradient_checkpointing=False)
-    emodel = ELFTransformer(ecfg, rngs=nnx.Rngs(0))
+    emodel = FlowMatchingTransformer(ecfg, rngs=nnx.Rngs(0))
     ecm = CostModel.from_model(emodel, ecfg)
     print(f"\nELF step B={B} T={T}: {ecm.elf_step(B, T):,.0f} GFLOPs "
           f"(no unembed) vs decode {ecm.elf_decode(B, T):,.0f} GFLOPs")

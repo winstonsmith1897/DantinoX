@@ -70,12 +70,12 @@ def _row(label: str, value: str, lw: int = 12) -> str:
 # ── Compact model architecture summary ───────────────────────────────────────
 
 def _cfg_dim(cfg: Any) -> int:
-    """Return the transformer backbone width from either ModelConfig or ELFConfig."""
+    """Return the transformer backbone width from either ModelConfig or FlowMatchingConfig."""
     return getattr(cfg, "dim", None) or getattr(cfg, "model_dim", 512)
 
 
 def _cfg_ctx(cfg: Any) -> int:
-    """Return max context length from either ModelConfig or ELFConfig."""
+    """Return max context length from either ModelConfig or FlowMatchingConfig."""
     return getattr(cfg, "max_context", None) or getattr(cfg, "max_seq_len", 512)
 
 
@@ -89,7 +89,7 @@ def _cfg_use_moe(cfg: Any) -> bool:
 def _model_lines(cfg: Any) -> list[str]:
     """Return two lines summarizing the model architecture.
 
-    Accepts both ``ModelConfig`` and the legacy ``ELFConfig``.
+    Accepts both ``ModelConfig`` and the legacy ``FlowMatchingConfig``.
     """
     dim   = _cfg_dim(cfg)
     ctx   = _cfg_ctx(cfg)
@@ -338,7 +338,7 @@ def print_sharding_summary(model_cfg: Any, n_dev: int, tp_size: int) -> None:
 def print_tokenizer_override(prev: str, new: str) -> None:
     """Warn that the tokenizer_type was silently overridden."""
     print(
-        f"  {_yel('[DantinoX]')}  ELF paradigm detected — "
+        f"  {_yel('[DantinoX]')}  Continuous flow-matching paradigm detected — "
         f"tokenizer_type: {_dim(repr(prev))} → {_wht(repr(new))}",
         file=_out(), flush=True,
     )

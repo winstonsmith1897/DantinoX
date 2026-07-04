@@ -45,8 +45,8 @@ from typing import Any
 import numpy as np
 
 try:
-    import pandas as pd
     import matplotlib
+    import pandas as pd
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker

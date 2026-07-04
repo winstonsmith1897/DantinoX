@@ -9,7 +9,7 @@ import logging
 import warnings
 
 from dantinox.exceptions import PlotError
-from dantinox.visualization import RenderConfig, Visualizer
+from dantinox.visualization import Visualizer
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +66,7 @@ class Plotter:
         to :class:`~dantinox.visualization.Visualizer`.
         """
         import os
+
         import pandas as pd
 
         if not os.path.exists(self.in_csv):

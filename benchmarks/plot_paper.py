@@ -9,16 +9,15 @@ Generates:
   results/paper_figs/fig4_quality.{png,pdf}         — quality + memory
 """
 import os
-import sys
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
 import matplotlib
 import matplotlib.ticker
+import numpy as np
+import pandas as pd
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 
 # ── global style (ACL-compatible) ──────────────────────────────────────────
@@ -400,7 +399,7 @@ def fig4_quality() -> None:
                            color="#333333")
 
     ax_l.set_xticks(x_centers)
-    ax_l.set_xticklabels([f"512d  (70M)" , f"768d  (180M)"], fontsize=7.5)
+    ax_l.set_xticklabels(["512d  (70M)" , "768d  (180M)"], fontsize=7.5)
     ax_l.set_ylabel("Bits-per-byte (bpb) ↓", fontsize=8)
     ax_l.set_title("Language modelling quality\n(Masked Diffusion, WikiText-103)",
                     fontsize=8)

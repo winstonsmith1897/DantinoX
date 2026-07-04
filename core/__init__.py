@@ -29,5 +29,5 @@ for _name in _SUBMODULES:
         f"dantinox.core.{_name}"
     )
 
-from dantinox.core import *          # noqa: F401,F403,E402
-from dantinox.core import __all__    # noqa: F401,E402
+from dantinox.core import *  # noqa: F401,F403,E402
+from dantinox.core import __all__  # noqa: F401,E402

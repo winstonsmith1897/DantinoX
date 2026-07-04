@@ -16,8 +16,13 @@ from flax.nnx.transforms.autodiff import DiffState
 from tqdm import tqdm
 
 from dantinox.core.config import Config
-from dantinox.core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
-from dantinox.core.elf import ELFTransformer, elf_loss
+from dantinox.core.diffusion import (
+    NoiseSchedule,
+    corrupt,
+    make_noise_schedule,
+    masked_cross_entropy,
+)
+from dantinox.core.flow import FlowMatchingTransformer, flow_loss
 from dantinox.core.lora import LoRAParam
 from dantinox.core.model import DiffusionTransformer, Transformer
 from dantinox.core.sharding import make_mesh, num_devices, replicate, shard_batch
@@ -146,16 +151,16 @@ def _format_text(text: str) -> str:
 
 def _create_model(
     config: Config, rngs: nnx.Rngs
-) -> Transformer | DiffusionTransformer | ELFTransformer:
+) -> Transformer | DiffusionTransformer | FlowMatchingTransformer:
     """Instantiate the right model class from config.model_type."""
     if config.model_type == "elf":
-        return ELFTransformer(config.to_elf_config(), rngs=rngs)
+        return FlowMatchingTransformer(config.to_flow_config(), rngs=rngs)
     if config.model_type == "diffusion":
         return DiffusionTransformer(config, rngs=rngs)
     return Transformer(config, rngs=rngs)
 
 
-def _model_summary(model: Transformer | DiffusionTransformer | ELFTransformer, config: Config, optimizer: nnx.Optimizer) -> dict:
+def _model_summary(model: Transformer | DiffusionTransformer | FlowMatchingTransformer, config: Config, optimizer: nnx.Optimizer) -> dict:
     params = nnx.state(model, nnx.Param)
     total = sum(x.size for x in jax.tree_util.tree_leaves(params))
     opt_state = nnx.state(optimizer)
@@ -179,7 +184,7 @@ def _model_summary(model: Transformer | DiffusionTransformer | ELFTransformer, c
     }
 
 
-def _cast_params(model: Transformer | ELFTransformer, dtype: jnp.dtype) -> None:
+def _cast_params(model: Transformer | FlowMatchingTransformer, dtype: jnp.dtype) -> None:
     params = nnx.state(model, nnx.Param)
     nnx.update(
         model,
@@ -190,7 +195,7 @@ def _cast_params(model: Transformer | ELFTransformer, dtype: jnp.dtype) -> None:
     )
 
 
-def _save_weights(model: Transformer | DiffusionTransformer | ELFTransformer, path: str) -> None:
+def _save_weights(model: Transformer | DiffusionTransformer | FlowMatchingTransformer, path: str) -> None:
     state_dict = nnx.state(model, nnx.Param).to_pure_dict()
     with open(path, "wb") as f:
         f.write(flax.serialization.msgpack_serialize(state_dict))
@@ -280,7 +285,7 @@ class Trainer:
         #   data/<dataset_slug>_<tok_type>.json   ← shared tokenizer
         # Subsequent runs load directly from these files — no HF download,
         # no re-tokenisation. Reduces per-run overhead from ~60s to ~2s.
-        import hashlib, numpy as _np
+        import numpy as _np
 
         _data_dir = os.path.join(os.path.dirname(run_dir) if run_dir else ".", "..", "data")
         _data_dir = os.path.normpath(_data_dir)
@@ -406,16 +411,16 @@ class Trainer:
         _wrt = wrt_type  # captured in closure for JIT
 
         if is_elf:
-            # ── ELF continuous flow-matching training step ────────────────────
+            # ── Continuous flow-matching training step ────────────────────────
             # Each step:
             #   1. T5 contextual encoder runs OUTSIDE JIT → embeddings [B, L, E]
-            #   2. JIT-compiled step normalizes embeddings and runs elf_loss
-            #   3. elf_loss routes to denoiser (MSE) or decoder (CE) branch
+            #   2. JIT-compiled step normalizes embeddings and runs flow_loss
+            #   3. flow_loss routes to denoiser (MSE) or decoder (CE) branch
             #
             # Keeping T5 encoder outside JIT avoids retracing its large graph
             # and lets it run on its own XLA computation.  At inference the
-            # ELF model generates from Gaussian noise — T5 is never called.
-            _elf_config = config.to_elf_config()
+            # Flow-matching model generates from Gaussian noise — T5 is never called.
+            _elf_config = config.to_flow_config()
 
             # Initialize contextual T5 encoder (not a JAX module, never updated)
             from dantinox.utils.t5_encoder import T5ContextualEncoder
@@ -424,7 +429,7 @@ class Trainer:
             log.info("T5 encoder loaded — hidden_dim=%d", _t5_encoder.hidden_dim)
 
             # Compute channel-wise norm stats from a few training batches and
-            # store them in the model's ELFEmbedder so JIT-compiled steps can
+            # store them in the model's FlowEmbedder so JIT-compiled steps can
             # normalize consistently.
             log.info("Computing T5 embedding normalization statistics …")
             _stat_key = jax.random.PRNGKey(0)
@@ -450,7 +455,7 @@ class Trainer:
 
                 def _loss(model, emb_i, x_i, key):
                     embeddings = model.encode(emb_i)  # normalize: [B, L, E]
-                    loss, aux  = elf_loss(model, embeddings, x_i, key, _elf_config)
+                    loss, aux  = flow_loss(model, embeddings, x_i, key, _elf_config)
                     return loss, aux["den_loss"]
 
                 grad_fn    = nnx.value_and_grad(_loss, argnums=DiffState(0, _wrt), has_aux=True)
@@ -472,7 +477,7 @@ class Trainer:
             @nnx.jit
             def eval_step(model, emb, x, key):  # type: ignore[misc]
                 embeddings = model.encode(emb)  # normalize
-                loss, aux  = elf_loss(model, embeddings, x, key, _elf_config)
+                loss, aux  = flow_loss(model, embeddings, x, key, _elf_config)
                 return loss, aux["den_loss"], key
 
             def estimate_loss(key: jax.Array) -> tuple[dict[str, float], jax.Array]:

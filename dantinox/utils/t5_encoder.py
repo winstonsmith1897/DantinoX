@@ -1,11 +1,12 @@
-"""Contextual T5 encoder for ELF — runs outside JIT, never updated during training."""
+"""Contextual T5 encoder for continuous flow-matching — runs outside JIT, never updated during training."""
 from __future__ import annotations
 
 import importlib
 import importlib.util
-import numpy as np
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 
 def _import_flax_t5():

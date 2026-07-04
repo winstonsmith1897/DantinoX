@@ -9,7 +9,6 @@ import yaml
 from dantinox.profiling.counter import FLOPsBreakdown
 from dantinox.profiling.tracker import ProfilingResult
 
-
 # ── Result types ──────────────────────────────────────────────────────────────
 
 
@@ -176,7 +175,7 @@ class BenchmarkTask(ABC):
 
         Args:
             paradigm : The :class:`~dantinox.paradigms.Paradigm` wrapping the model.
-            model    : The NNX model object (Transformer or ELFTransformer).
+            model    : The NNX model object (Transformer or FlowMatchingTransformer).
             config   : Suite-level benchmark configuration.
             rng      : JAX random key.
         """

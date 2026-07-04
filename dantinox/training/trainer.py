@@ -16,20 +16,18 @@ import numpy as np
 from flax import nnx
 
 import dantinox._ui as _ui
-
 from dantinox.core.config import Config, TrainingConfig
 from dantinox.core.lora import LoRAParam
 from dantinox.core.sharding import (
     apply_tp_sharding,
     make_mesh,
     make_tp_mesh,
-    num_devices,
     replicate,
     shard_batch,
 )
 from dantinox.paradigms.base import ParadigmBase as _ParadigmBase
-from dantinox.training.optimizer import build_optimizer, _model_has_lora
 from dantinox.training.callbacks import BaseCallback
+from dantinox.training.optimizer import _model_has_lora, build_optimizer
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +43,7 @@ class Trainer:
     """Paradigm-agnostic training harness.
 
     The Trainer is decoupled from model type: paradigm-specific behaviour
-    (masking, noise schedules, ELF branches, T5 embeddings) lives in the
+    (masking, noise schedules, flow-matching branches, T5 embeddings) lives in the
     Paradigm, which the Trainer drives through ``loss_fn`` plus the optional
     ``on_train_start`` / ``prepare_batch`` hooks.
 
@@ -149,6 +147,7 @@ class Trainer:
             ) from exc
 
         import dataclasses
+
         import yaml
 
         with open(sweep_yaml) as f:
@@ -266,7 +265,7 @@ class Trainer:
         seq_len    = _paradigm_seq_len(paradigm)
         sample_len = seq_len + (1 if paradigm.requires_shifted_targets else 0)
 
-        # ── ELF tokenizer auto-detection ──────────────────────────────────────
+        # ── Flow-matching tokenizer auto-detection ────────────────────────────
         # ContinuousParadigm feeds tokens into a frozen T5 encoder, so T5
         # tokenizer IDs are required.  If the user left tokenizer_type at its
         # default (or set it to something else), override it silently so the
@@ -276,7 +275,7 @@ class Trainer:
             _prev = cfg.tokenizer_type
             cfg = _dc.replace(cfg, tokenizer_type="t5")
             _ui.print_tokenizer_override(_prev, "t5")
-            log.info("ELF paradigm: tokenizer_type auto-set to 't5' (was %r).", _prev)
+            log.info("Flow-matching paradigm: tokenizer_type auto-set to 't5' (was %r).", _prev)
 
         # ── Data (memmapped token cache) ──────────────────────────────────────
         tokenizer, tokens = _load_tokens(data_source, cfg, model_cfg)
@@ -429,7 +428,7 @@ class Trainer:
             log.info("Resumed from %s — continuing at epoch %d (best=%.4f)",
                      state_path, start_epoch, best_loss)
 
-        # ── Paradigm data hook (e.g. ELF T5 norm stats) ───────────────────────
+        # ── Paradigm data hook (e.g. flow-matching T5 norm stats) ─────────────
         np_rng = np.random.default_rng(cfg.seed)
         paradigm.on_train_start(
             model,
@@ -611,7 +610,7 @@ def _paradigm_from_legacy_config(cfg: Config) -> tuple[Paradigm, TrainingConfig]
 
 
 def _paradigm_config(paradigm: _ParadigmBase) -> Any:
-    """Return the architecture config of *paradigm* (ModelConfig or ELFConfig)."""
+    """Return the architecture config of *paradigm* (ModelConfig or FlowMatchingConfig)."""
     cfg = getattr(paradigm, "config", None)
     if cfg is None:
         cfg = getattr(paradigm, "model_config", None)
@@ -689,8 +688,8 @@ def _token_cache_paths(data_source: str, cfg: TrainingConfig) -> tuple[str, str]
 
 def _read_corpus(data_source: str, cfg: TrainingConfig) -> str:
     if cfg.dataset_source == "huggingface":
-        import datasets as _datasets   # full init before any attribute access
-        import datasets.utils          # force submodule to load (avoids partial-init bug)
+        import datasets as _datasets  # full init before any attribute access
+        import datasets.utils  # force submodule to load (avoids partial-init bug)
         ds = _datasets.load_dataset(
             cfg.dataset_name,
             cfg.dataset_config or None,

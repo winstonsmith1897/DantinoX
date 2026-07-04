@@ -26,8 +26,8 @@ import logging
 import sys
 from pathlib import Path
 
-from dantinox.core.config import Config
 from dantinox import __version__
+from dantinox.core.config import Config
 
 
 # Persistent XLA compilation cache — compiled GPU kernels are saved to disk so
@@ -52,6 +52,17 @@ def _str2bool(v: str) -> bool:
     raise argparse.ArgumentTypeError(f"Boolean value expected, got {v!r}")
 
 
+def _auto_cast(v: str):
+    """Cast to int/float when possible, else keep as str (argparse type helper
+    for Config fields whose default is None, e.g. ``vocab_size: int | None``)."""
+    for cast in (int, float):
+        try:
+            return cast(v)
+        except ValueError:
+            pass
+    return v
+
+
 def _add_config_overrides(parser: argparse.ArgumentParser) -> None:
     """Add one --<field> flag for every Config field.
 
@@ -62,8 +73,8 @@ def _add_config_overrides(parser: argparse.ArgumentParser) -> None:
         flag = f"--{field.name}"
         if flag in parser._option_string_actions:
             continue
-        if field.default is dataclasses.MISSING:
-            parser.add_argument(flag, type=str, default=None)
+        if field.default is dataclasses.MISSING or field.default is None:
+            parser.add_argument(flag, type=_auto_cast, default=None)
         elif isinstance(field.default, bool):
             parser.add_argument(flag, type=_str2bool, default=None, metavar="BOOL")
         else:
@@ -120,6 +131,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
     _init_jax_cache()
     import os
     import time
+
     import yaml
 
     # Read config.yaml to determine model_type
@@ -182,15 +194,16 @@ def _cmd_generate(args: argparse.Namespace) -> None:
                   f"({new_tokens / elapsed:.1f} tok/s)")
 
     elif model_type == "diffusion":
-        import msgpack
         import jax.numpy as jnp
+        import msgpack
         from flax import nnx
         from flax.serialization import _msgpack_ext_unpack
+        from transformers import AutoTokenizer
+
         from dantinox.core.config import Config
         from dantinox.core.diffusion import make_noise_schedule
+        from dantinox.core.generation import fast_dllm_generate
         from dantinox.core.model import DiffusionTransformer
-        from dantinox.core.generation import diffusion_generate, fast_dllm_generate
-        from transformers import AutoTokenizer
 
         cfg = Config.from_dict(_flat)
         for _fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
@@ -240,10 +253,11 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         import msgpack
         from flax import nnx
         from flax.serialization import _msgpack_ext_unpack
-        from dantinox.core.config import Config
-        from dantinox.core.elf import ELFTransformer
-        from dantinox.core.generation import elf_generate
         from transformers import AutoTokenizer
+
+        from dantinox.core.config import Config
+        from dantinox.core.flow import FlowMatchingTransformer
+        from dantinox.core.generation import flow_generate
 
         cfg = Config.from_dict(_flat)
         for _fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
@@ -255,7 +269,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
             sys.exit(1)
         with open(_wp, "rb") as _f:
             _state = msgpack.unpackb(_f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
-        _model = ELFTransformer(cfg.to_elf_config(), rngs=nnx.Rngs(args.seed))
+        _model = FlowMatchingTransformer(cfg.to_flow_config(), rngs=nnx.Rngs(args.seed))
         nnx.update(_model, _state)
 
         tokenizer_type = _flat.get("tokenizer_type", "")
@@ -266,7 +280,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
             _tokenizer = AutoTokenizer.from_pretrained("t5-base")
 
         t0 = time.time()
-        _out = elf_generate(
+        _out = flow_generate(
             _model,
             gen_len=args.max_new_tokens,
             batch_size=1,
@@ -375,7 +389,9 @@ def _cmd_pull(args: argparse.Namespace) -> None:
 
 def _cmd_plot(args: argparse.Namespace) -> None:
     import os
+
     import pandas as pd
+
     from dantinox.visualization import Visualizer
 
     _GROUP_TO_CHARTS = {
@@ -410,13 +426,14 @@ def _cmd_plot(args: argparse.Namespace) -> None:
 def _cmd_benchmark(args: argparse.Namespace) -> None:
     import os
     import traceback
+
     import pandas as pd
-    from dantinox.core.config import Config
-    from dantinox.core.model import Transformer
     from flax import nnx
-    from dantinox.paradigms.ar import ARParadigm
-    from dantinox.benchmarking import BenchmarkConfig, BenchmarkSuite, ThroughputTask, LatencyTask
+
+    from dantinox.benchmarking import BenchmarkConfig, BenchmarkSuite, LatencyTask, ThroughputTask
+    from dantinox.core.model import Transformer
     from dantinox.exceptions import BenchmarkError
+    from dantinox.paradigms.ar import ARParadigm
 
     runs_dir = args.runs_dir
     if not os.path.isdir(runs_dir):
@@ -519,10 +536,12 @@ def _cmd_merge_lora(args: argparse.Namespace) -> None:
     """Merge LoRA adapters into base weights and save to a new directory."""
     import os
     import shutil
+
     import msgpack
     import yaml
     from flax import nnx
     from flax.serialization import _msgpack_ext_unpack
+
     from dantinox.core.config import Config
     from dantinox.core.lora import LoRALinear
 
@@ -561,8 +580,8 @@ def _cmd_merge_lora(args: argparse.Namespace) -> None:
     model_type = flat.get("model_type", "autoregressive")
     rngs = nnx.Rngs(42)
     if model_type == "elf":
-        from dantinox.core.elf import ELFTransformer
-        model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
+        from dantinox.core.flow import FlowMatchingTransformer
+        model = FlowMatchingTransformer(cfg.to_flow_config(), rngs=rngs)
     elif model_type == "diffusion":
         from dantinox.core.model import DiffusionTransformer
         model = DiffusionTransformer(cfg, rngs=rngs)
@@ -596,6 +615,7 @@ def _cmd_profile(args: argparse.Namespace) -> None:
     """Print parameter count and FLOPs for a checkpoint or config."""
     import yaml
     from flax import nnx
+
     from dantinox.core.config import Config
     from dantinox.profiling.counter import count_flops
 
@@ -625,8 +645,8 @@ def _cmd_profile(args: argparse.Namespace) -> None:
     model_type = flat.get("model_type", "autoregressive")
     rngs = nnx.Rngs(42)
     if model_type == "elf":
-        from dantinox.core.elf import ELFTransformer
-        model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
+        from dantinox.core.flow import FlowMatchingTransformer
+        model = FlowMatchingTransformer(cfg.to_flow_config(), rngs=rngs)
     elif model_type == "diffusion":
         from dantinox.core.model import DiffusionTransformer
         model = DiffusionTransformer(cfg, rngs=rngs)
@@ -664,6 +684,7 @@ def _cmd_run(args: argparse.Namespace) -> None:
     inside an OOM-guard retry loop.
     """
     import dataclasses
+
     import yaml
 
     _init_jax_cache()
@@ -734,8 +755,8 @@ def _cmd_run(args: argparse.Namespace) -> None:
         )
 
     # ── OOM-guarded training loop ─────────────────────────────────────────────
-    from dantinox.training.trainer import Trainer
     from dantinox.training.stability import OOMMitigatedError, with_oom_guard
+    from dantinox.training.trainer import Trainer
 
     run_dir = getattr(args, "run_dir", None)
     max_retries = 5
@@ -835,16 +856,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--seed", type=int, default=42)
     # Diffusion-specific arguments
     p_gen.add_argument("--n_steps", type=int, default=50,
-                       help="Denoising steps (diffusion/ELF only)")
+                       help="Denoising steps (diffusion/flow-matching only)")
     p_gen.add_argument("--block_size", type=int, default=32,
                        help="Block size for fast_dllm_generate (diffusion only)")
     p_gen.add_argument("--use_dual_cache", action="store_true", default=True,
                        help="Use DualCache in fast_dllm_generate (diffusion only)")
     p_gen.add_argument("--confidence_threshold", type=float, default=0.9,
                        help="Confidence threshold for unmasking (diffusion only)")
-    # ELF-specific arguments
+    # Flow-matching-specific arguments
     p_gen.add_argument("--cfg_scale", type=float, default=1.5,
-                       help="CFG guidance scale (ELF only)")
+                       help="CFG guidance scale (flow-matching only)")
 
     # ── sweep ──────────────────────────────────────────────────────────────
     p_sweep = sub.add_parser("sweep", help="Run a W&B hyperparameter sweep")
@@ -1042,8 +1063,8 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
         datefmt="%H:%M:%S",
     )
-    from dantinox._banner import print_banner as _print_banner
     from dantinox import __version__ as _ver
+    from dantinox._banner import print_banner as _print_banner
     _print_banner(_ver)
     parser = _build_parser()
     args = parser.parse_args(argv)

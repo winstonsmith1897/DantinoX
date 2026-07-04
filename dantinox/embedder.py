@@ -43,11 +43,9 @@ Integration with vector stores
 
 from __future__ import annotations
 
-import math
 import os
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -173,7 +171,8 @@ class Embedder:
             col = client.create_collection("docs", embedding_function=embedder.as_chroma_fn())
         """
         try:
-            from chromadb import EmbeddingFunction, Documents, Embeddings as ChromaEmbs  # type: ignore[import]
+            from chromadb import Documents, EmbeddingFunction  # type: ignore[import]
+            from chromadb import Embeddings as ChromaEmbs
         except ImportError as exc:
             raise ImportError("Install chromadb: pip install chromadb") from exc
 
@@ -196,7 +195,7 @@ class Embedder:
         pooling: str = "auto",
         normalize: bool = True,
         pad_id: int = 0,
-    ) -> "Embedder":
+    ) -> Embedder:
         """Build an Embedder from a DantinoX run directory.
 
         Loads the best checkpoint and the saved tokenizer automatically.

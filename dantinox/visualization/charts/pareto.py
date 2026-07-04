@@ -40,7 +40,6 @@ class ParetoChart(Chart):
         self.size_col  = size_col
 
     def _render_mpl(self, data: Any, config: RenderConfig, fig: Any, ax: Any) -> None:
-        import numpy as np
         df     = _to_df(data)
         colors = get_palette(config.style)
 
@@ -98,7 +97,6 @@ class ParetoChart(Chart):
 
 
 def _draw_pareto_2d(ax: Any, x: Any, y: Any) -> None:
-    import numpy as np
     """Draw the Pareto frontier for (max x, min y) optimum."""
     pts = sorted(zip(x, y), key=lambda p: p[0])
     frontier: list[tuple] = []
@@ -113,7 +111,6 @@ def _draw_pareto_2d(ax: Any, x: Any, y: Any) -> None:
 
 
 def _scale_sizes(col: Any) -> list[float]:
-    import numpy as np
     v = col.astype(float).values
     v_min, v_max = v.min(), v.max()
     if v_max > v_min:
@@ -123,6 +120,7 @@ def _scale_sizes(col: Any) -> list[float]:
 
 def _to_df(data: Any):
     import pandas as pd
+
     from dantinox.benchmarking.base import SuiteReport
     if isinstance(data, SuiteReport):
         return data.to_dataframe()

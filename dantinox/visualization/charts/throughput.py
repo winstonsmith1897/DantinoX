@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
 from dantinox.visualization.base import Chart, RenderConfig
 from dantinox.visualization.style import TYPE_COLORS, get_palette
 
@@ -86,6 +84,7 @@ class ThroughputBatchChart(Chart):
 
 def _to_df(data: Any):
     import pandas as pd
+
     from dantinox.benchmarking.base import SuiteReport
     if isinstance(data, SuiteReport):
         return data.to_dataframe()

@@ -1,0 +1,59 @@
+% Full results table — Perplexity + Generation Quality
+% Needs: booktabs, multirow, xcolor (table, colortbl), adjustbox
+\begin{table*}[t]
+\centering
+\small
+\renewcommand{\arraystretch}{1.22}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{} l c rr rrrr @{}}
+\toprule
+ & & \multicolumn{2}{c}{\textbf{Perplexity}~$\downarrow$}
+   & \multicolumn{4}{c}{\textbf{Open-Ended Generation}} \\
+\cmidrule(lr){3-4}\cmidrule(l){5-8}
+\textbf{Architecture} & \textbf{Params}
+  & Wiki-103 & LAMBADA
+  & D-1~$\uparrow$ & D-2~$\uparrow$ & Rep-4~$\downarrow$ & SB-4~$\downarrow$ \\
+\midrule
+%
+% ── Discrete Diffusion ─────────────────────────────────────────────────────────
+\rowcolor{gray!10}
+\multicolumn{8}{@{}l}{\quad\textbf{Discrete Diffusion}} \\[-2pt]
+\multicolumn{8}{@{}l}{\quad\textit{Small}~{\scriptsize (512-d, 12-layer)}} \\
+\quad MHA & 70M  & 1193.4          & 2731.8          & 0.366          & 0.729          & 0.012          & 0.118 \\
+\quad GQA & 65M  & \textbf{1191.4} & 2719.8          & \textbf{0.369} & \textbf{0.734} & \textbf{0.007} & 0.121 \\
+\quad MLA & 70M  & 1195.2          & \textbf{2711.9} & 0.367          & \textbf{0.734} & 0.014          & \textbf{0.117} \\
+\addlinespace[3pt]
+\multicolumn{8}{@{}l}{\quad\textit{Medium}~{\scriptsize (768-d, 16-layer)}} \\
+\quad MHA & 180M & 1008.8          & 2375.8          & 0.339          & 0.718          & 0.017          & 0.121 \\
+\quad GQA & 166M & \textbf{999.3}  & 2360.1          & \textbf{0.354} & \textbf{0.741} & \textbf{0.004} & \textbf{0.111} \\
+\quad MLA & 180M & 1007.1          & \textbf{2345.4} & 0.335          & 0.712          & 0.012          & 0.122 \\
+%
+\midrule
+%
+% ── ELF ────────────────────────────────────────────────────────────────────────
+\rowcolor{gray!10}
+\multicolumn{8}{@{}l}{\quad\textbf{Continuous Flow-Matching (ELF)}} \\[-2pt]
+\multicolumn{8}{@{}l}{\quad\textit{Small}~{\scriptsize (512-d, 12-layer)}} \\
+\quad MHA & 82M  & 28.8           & 210.4           & 0.160          & \textbf{0.628} & \textbf{0.007} & \textbf{0.127} \\
+\quad GQA & 77M  & 130.7          & 1400.7          & \textbf{0.162} & 0.560          & 0.027          & 0.215 \\
+\quad MLA & 79M  & \textbf{5.5}   & \textbf{32.9}   & 0.160          & 0.538          & 0.106          & 0.168 \\
+\addlinespace[3pt]
+\multicolumn{8}{@{}l}{\quad\textit{Medium}~{\scriptsize (768-d, 16-layer)}} \\
+\quad MHA           & 184M & \textbf{1.7} & 8.5            & 0.187          & 0.764          & \textbf{0.001} & 0.047 \\
+\quad GQA$^{\,\dagger}$ & 172M & 1.8      & \textbf{6.5}   & \textbf{0.216} & \textbf{0.781} & \textbf{0.001} & \textbf{0.042} \\
+\quad MLA           & 170M & 3.9          & 20.9           & 0.142          & 0.502          & 0.090          & 0.165 \\
+\bottomrule
+\end{tabular}
+\caption{%
+  \textbf{DantinoX benchmark results.}
+  Perplexity is evaluated on WikiText-103 and LAMBADA test sets.
+  Open-ended generation quality is measured over 100 unconditional samples of 128 tokens (BOS prompt):
+  D-1 / D-2 = Distinct-1/-2 (lexical diversity, $\uparrow$);
+  Rep-4 = 4-gram repetition rate ($\downarrow$);
+  SB-4 = Self-BLEU-4, inter-sample similarity ($\downarrow$).
+  \textbf{Bold} marks the best value per paradigm and size group.
+  $\dagger$~Intermediate checkpoint (${\sim}76\%$ of training complete);
+  final results pending.%
+}
+\label{tab:main_results}
+\end{table*}

@@ -68,8 +68,8 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from dantinox.core.config import ELFConfig, ModelConfig
-from dantinox.core.elf import ELFTransformer
+from dantinox.core.config import FlowMatchingConfig, ModelConfig
+from dantinox.core.flow import FlowMatchingTransformer
 from dantinox.core.generation import generate as ar_generate_lib
 from dantinox.core.model import Transformer
 
@@ -163,6 +163,7 @@ class PowerSampler:
 
     def __init__(self) -> None:
         import threading
+
         import pynvml
         pynvml.nvmlInit()
         vis = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
@@ -190,7 +191,7 @@ class PowerSampler:
             time.sleep(0.02)
         return float(np.mean(ws))
 
-    def __enter__(self) -> "PowerSampler":
+    def __enter__(self) -> PowerSampler:
         self._samples = []
         self._stop.clear()
         self._thread = self._threading.Thread(target=self._loop, daemon=True)
@@ -277,15 +278,15 @@ def build_disc(attn: str, max_context: int, bf16: bool) -> tuple[ModelConfig, Tr
     return cfg, model
 
 
-def build_elf(attn: str, G: int, bf16: bool) -> tuple[ELFConfig, ELFTransformer]:
-    cfg = ELFConfig(
+def build_elf(attn: str, G: int, bf16: bool) -> tuple[FlowMatchingConfig, FlowMatchingTransformer]:
+    cfg = FlowMatchingConfig(
         embed_dim=DIM, bottleneck_dim=128, model_dim=DIM,
         n_heads=N_HEADS, head_size=HEAD_SIZE, num_blocks=BLOCKS,
         vocab_size=VOCAB, max_seq_len=G,
         gradient_checkpointing=False, dropout=0.0,
         **_attn_cfg(attn, ar_cache=False),
     )
-    model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
+    model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))
     if bf16:
         _cast_bf16(model)
     _apply_tp(model)   # weight sharding only; GSPMD propagates inside blocks
@@ -366,7 +367,7 @@ def _disc_step_fn(model: Transformer, x_t: jnp.ndarray, dual: Any,
     return jnp.where((x_t == MASK_ID) & reveal, x0, x_t)
 
 
-def _elf_step_fn(model: ELFTransformer, z: jnp.ndarray, x_prev: jnp.ndarray,
+def _flow_step_fn(model: FlowMatchingTransformer, z: jnp.ndarray, x_prev: jnp.ndarray,
                  t: jax.Array, dt: jax.Array, w: jnp.ndarray) -> tuple:
     B = z.shape[0]
     out = model(z, x_prev, jnp.full((B,), t, dtype=z.dtype), w,
@@ -380,7 +381,7 @@ def _elf_step_fn(model: ELFTransformer, z: jnp.ndarray, x_prev: jnp.ndarray,
 ar_decode  = nnx.jit(_ar_decode_fn)
 ar_prefill = nnx.jit(_ar_prefill_fn)
 disc_step  = nnx.jit(_disc_step_fn)
-elf_step   = nnx.jit(_elf_step_fn)
+elf_step   = nnx.jit(_flow_step_fn)
 
 
 # ── Fused end-to-end generators (lax.fori_loop inside one XLA program) ────────
@@ -443,7 +444,7 @@ def disc_gen_fused_vanilla(model: Transformer, x0_full: jnp.ndarray,
 
 
 @nnx.jit
-def elf_gen_fused(model: ELFTransformer, z0: jnp.ndarray, w: jnp.ndarray,
+def elf_gen_fused(model: FlowMatchingTransformer, z0: jnp.ndarray, w: jnp.ndarray,
                   ts: jnp.ndarray) -> jnp.ndarray:
     """ELF Euler ODE sampler + final decode, fully fused. ts: [S+1] schedule."""
     B = z0.shape[0]
@@ -451,7 +452,7 @@ def elf_gen_fused(model: ELFTransformer, z0: jnp.ndarray, w: jnp.ndarray,
     def body(i: jax.Array, val: tuple) -> tuple:
         z, xp = val
         t, dt = ts[i], ts[i + 1] - ts[i]
-        return _elf_step_fn(model, z, xp, t, dt, w)
+        return _flow_step_fn(model, z, xp, t, dt, w)
 
     z, _ = jax.lax.fori_loop(0, ts.shape[0] - 1, body, (z0, jnp.zeros_like(z0)))
     out = model(z, jnp.zeros_like(z), jnp.ones(B, dtype=z.dtype), w,
@@ -594,7 +595,7 @@ def run_grid(args: argparse.Namespace) -> list[dict]:
             z = jax.random.normal(jax.random.key(0), (B, G, DIM), dtype=zdt)
             xp = jnp.zeros_like(z)
             w = jnp.ones((B,), dtype=zdt)
-            gf_xla, _ = _cost(_elf_step_fn, model, z, xp,
+            gf_xla, _ = _cost(_flow_step_fn, model, z, xp,
                               jnp.float32(0.5), jnp.float32(1 / GRID_STEPS), w)
             st_step = _time_stats(elf_step, model, z, xp, jnp.float32(0.5),
                                   jnp.float32(1 / GRID_STEPS), w,
@@ -604,7 +605,7 @@ def run_grid(args: argparse.Namespace) -> list[dict]:
             gen_fn = elf_gen_fused
             an = dict(step_gflops=round(cm.elf_step(B, G), 2),
                       step_gbytes=round(cm.elf_step_bytes(B, G), 4),
-                      gen_gflops=round(cm.elf_generate(B, G, GRID_STEPS), 2))
+                      gen_gflops=round(cm.flow_generate(B, G, GRID_STEPS), 2))
 
         st_e2e = _time_stats(gen_fn, *gen_args, n_trials=args.n_e2e,
                              desc=f"{paradigm} e2e B{B} G{G}")
@@ -701,7 +702,7 @@ def run_pareto(args: argparse.Namespace) -> list[dict]:
             if key in done and str(done[key].get("oom", "")).lower() != "true":
                 tqdm.write(f"  skip {label} B{B} (resumed)")
                 continue
-            if label in dead_b and B >= dead_b[label]:
+            if label in dead_b and dead_b[label] <= B:
                 tqdm.write(f"  skip {label} B{B} (series OOM at B={dead_b[label]})")
                 continue
             meta = dict(arch=args.arch, paradigm=paradigm, label=label,

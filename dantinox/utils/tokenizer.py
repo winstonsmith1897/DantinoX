@@ -121,7 +121,7 @@ class T5SentencePieceTokenizer:
     """T5's pre-trained SentencePiece tokenizer (vocab_size=32128).
 
     Token IDs from this tokenizer correctly index into the T5 embedding matrix,
-    making it the only valid choice for ELF which uses frozen T5 embeddings.
+    making it the only valid choice for continuous flow-matching, which uses frozen T5 embeddings.
     No training is needed — the vocabulary is fixed by the T5 model.
     """
 
@@ -139,8 +139,8 @@ class T5SentencePieceTokenizer:
             pass
         # Fallback: raw sentencepiece (avoids transformers entirely)
         try:
-            from sentencepiece import SentencePieceProcessor
             from huggingface_hub import hf_hub_download
+            from sentencepiece import SentencePieceProcessor
             path = hf_hub_download(repo_id=model_name, filename="spiece.model")
             sp = SentencePieceProcessor()
             sp.Load(path)
@@ -213,7 +213,7 @@ class T5SentencePieceTokenizer:
             json.dump({"type": "t5", "model_name": self.model_name}, f)
 
     @classmethod
-    def load(cls, path: str) -> "T5SentencePieceTokenizer":
+    def load(cls, path: str) -> T5SentencePieceTokenizer:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return cls(model_name=data.get("model_name", "t5-base"))

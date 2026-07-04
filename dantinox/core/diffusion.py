@@ -32,14 +32,13 @@ only the current block is recomputed each step.
 """
 from __future__ import annotations
 
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from .config import Config
-
 
 # ── Dual-cache container (Fast-dLLM DualCache) ────────────────────────────────
 
@@ -80,7 +79,7 @@ class NoiseSchedule(NamedTuple):
         Required by ``diffusion_generate`` / ``fast_dllm_generate``.
     """
     schedule: str
-    alpha_bar: Any = None  # np.ndarray | jnp.ndarray, shape [T+1]
+    alpha_bar: np.ndarray | jnp.ndarray | None = None  # shape [T+1]
 
 
 def make_noise_schedule(config_or_name: Config | str, n_steps: int | None = None) -> NoiseSchedule:
@@ -246,152 +245,51 @@ def confidence_unmask_factor(
     Finds the largest n such that (n+1)(1 - c_(n)) < f, where c_(n) is the
     n-th highest confidence among masked positions.  This is a tighter,
     theoretically grounded variant of the threshold strategy (Theorem 1).
+
+    Fully vectorised over batch and sequence, so it is jit-compatible and
+    runs without host round-trips.
     """
     B, T = x_t.shape
-    V           = logits.shape[-1]
-    probs       = jax.nn.softmax(logits, axis=-1)
-    confidence  = probs.max(axis=-1)                            # [B, T]
-    x0_pred     = jnp.argmax(logits, axis=-1)
-    is_masked   = (x_t == mask_token_id)
+    probs      = jax.nn.softmax(logits, axis=-1)
+    confidence = probs.max(axis=-1)                            # [B, T]
+    x0_pred    = jnp.argmax(logits, axis=-1)                   # [B, T]
+    is_masked  = (x_t == mask_token_id)                        # [B, T]
 
-    # Process each batch element independently (Python loop over B — small)
-    new_x = x_t
-    for b in range(B):
-        masked_pos  = jnp.where(is_masked[b])[0]               # positions that are MASK
-        if masked_pos.size == 0:
-            continue
-        conf_masked = confidence[b][masked_pos]
-        # Sort descending
-        order       = jnp.argsort(-conf_masked)
-        sorted_conf = conf_masked[order]
-        sorted_pos  = masked_pos[order]
+    # Rank masked positions by confidence (descending); unmasked positions get
+    # -inf so they sort last and can never enter the selected prefix.
+    conf_masked = jnp.where(is_masked, confidence, -jnp.inf)   # [B, T]
+    order       = jnp.argsort(-conf_masked, axis=-1)           # [B, T]
+    sorted_conf = jnp.take_along_axis(conf_masked, order, axis=-1)
 
-        # Find largest n with (n+1)(1 - c_(n)) < factor
-        n_unmask = 1  # always unmask at least 1
-        for n in range(1, len(sorted_conf)):
-            if (n + 1) * (1.0 - float(sorted_conf[n])) < factor:
-                n_unmask = n + 1
-            else:
-                break
+    # The original algorithm extends the prefix while consecutive ranks n
+    # satisfy (n+1)(1 - c_(n)) < f, always unmasking at least rank 0.
+    ranks  = jnp.arange(T, dtype=sorted_conf.dtype)
+    cond   = (ranks + 1.0) * (1.0 - sorted_conf) < factor      # [B, T]
+    cond   = cond.at[:, 0].set(True)                            # progress guarantee
+    prefix = jnp.cumprod(cond.astype(jnp.int32), axis=-1).astype(bool)
 
-        for idx in range(n_unmask):
-            pos   = int(sorted_pos[idx])
-            token = int(x0_pred[b, pos])
-            new_x = new_x.at[b, pos].set(token)
+    # Only genuinely masked entries may be revealed (rows with no masks
+    # select nothing because their sorted entries are all -inf / unmasked).
+    sorted_is_masked = jnp.take_along_axis(is_masked, order, axis=-1)
+    select_sorted    = prefix & sorted_is_masked                # [B, T]
 
-    return new_x
+    # Scatter the selection back to original positions via the inverse permutation.
+    inv_order = jnp.argsort(order, axis=-1)
+    do_unmask = jnp.take_along_axis(select_sorted, inv_order, axis=-1)
+
+    return jnp.where(do_unmask, x0_pred, x_t)
 
 
-# ── Continuous flow-matching utilities (ELF) ──────────────────────────────────
-# Analogous to corrupt() / masked_cross_entropy() above, but for the continuous
-# rectified-flow paradigm used by ELFTransformer.
-#
-# Forward process:  z_t = t·x + (1−t)·ε,  ε ~ N(0, I),  t ∈ [0, 1]
-# Network predicts clean embeddings x̂ (x-prediction).
-# At inference, use logit_normal_schedule + ODE/SDE steps (see generation.py).
-
-def sample_t_logit_normal(
-    rng:        jax.Array,
-    batch_size: int,
-    pmean:      float,
-    pstd:       float,
-) -> jax.Array:
-    """Sample t ∈ (0, 1) per example from a logit-normal distribution.
-
-    Draws t' ~ N(pmean, pstd²) then maps t = sigmoid(t').
-    Default denoiser params (pmean=-1.5, pstd=0.8) concentrate mass near
-    t ≈ 0.18, ensuring the noisy regime is well-trained.
-    """
-    return jax.nn.sigmoid(jax.random.normal(rng, (batch_size,)) * pstd + pmean)
-
-
-def sample_p_per_token(
-    rng:        jax.Array,
-    batch_size: int,
-    seq_len:    int,
-    pmean:      float,
-    pstd:       float,
-) -> jax.Array:
-    """Per-token corruption level p ∈ (0, 1) for the ELF decoder branch.
-
-    Each token in each sequence gets its own p, encouraging the decoder to
-    handle a range of corruption levels within a single context.
-    Returns shape [B, L].
-    """
-    return jax.nn.sigmoid(jax.random.normal(rng, (batch_size, seq_len)) * pstd + pmean)
-
-
-def sample_cfg_scale(
-    rng:       jax.Array,
-    batch_size: int,
-    scale_min: float,
-    scale_max: float,
-) -> jax.Array:
-    """Sample CFG scale w ∈ [scale_min, scale_max] with a power distribution.
-
-    Uses a quadratic transform biased toward smaller values, matching ELF §B.1.
-    Returns shape [B].
-    """
-    u = jax.random.uniform(rng, (batch_size,))
-    return scale_min + (scale_max - scale_min) * u ** 2
-
-
-def corrupt_denoiser(
-    x:           jnp.ndarray,  # [B, L, D] clean normalised embeddings
-    t:           jnp.ndarray,  # [B]
-    rng:         jax.Array,
-    noise_scale: float = 2.0,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Denoiser-branch corruption (ELF Appendix B.1).
-
-    z_t = t · x + (1 − t) · (noise_scale · ε),   ε ~ N(0, I)
-    v   = x − (noise_scale · ε)
-
-    Returns ``(z_t, v)``.  ``noise_scale=2`` is the ELF default.
-    """
-    eps = noise_scale * jax.random.normal(rng, x.shape)
-    t_b = t[:, None, None]
-    z_t = t_b * x + (1.0 - t_b) * eps
-    return z_t, x - eps
-
-
-def corrupt_decoder(
-    x:           jnp.ndarray,  # [B, L, D] clean normalised embeddings
-    p:           jnp.ndarray,  # [B, L] per-token corruption level
-    rng:         jax.Array,
-    noise_scale: float = 5.0,
-) -> jnp.ndarray:
-    """Decoder-branch corruption (ELF Appendix B.1).
-
-    z̃ = p · x + (1 − p) · (noise_scale · ε),   ε ~ N(0, I)
-
-    Per-token p makes the decoder robust to imperfect denoiser outputs.
-    """
-    eps = noise_scale * jax.random.normal(rng, x.shape)
-    p_b = p[:, :, None]
-    return p_b * x + (1.0 - p_b) * eps
-
-
-def logit_normal_schedule(
-    n_steps: int,
-    pmean:   float = -1.5,
-    pstd:    float = 0.8,
-    *,
-    rng:     jax.Array | None = None,
-) -> jnp.ndarray:
-    """Logit-normal inference time schedule for ELF (ELF §B.2).
-
-    Samples ``n_steps − 1`` interior time-points from the same logit-normal
-    distribution used at training time, sorts them, and bookends with 0 and 1.
-
-    Returns sorted array of shape ``[n_steps + 1]`` with ts[0]=0, ts[-1]=1.
-    Smaller intervals near t=0 (noisy) and larger near t=1 (clean).
-    """
-    import numpy as np
-    rng_np = np.random.default_rng(
-        int(jax.random.randint(rng, (), 0, 2**31 - 1)) if rng is not None else None
-    )
-    t_prime   = rng_np.normal(pmean, pstd, size=(n_steps - 1,))
-    t_interior = 1.0 / (1.0 + np.exp(-t_prime))
-    t_interior.sort()
-    return jnp.asarray(np.concatenate([[0.0], t_interior, [1.0]]), dtype=jnp.float32)
+# ── Backward-compatibility re-exports ─────────────────────────────────────────
+# The continuous flow-matching utilities (corrupt_denoiser, corrupt_decoder,
+# sample_*_*, logit_normal_schedule) moved to flow.py, where the rest of the
+# flow-matching paradigm lives.  Re-exported here so old imports keep working;
+# removed in v1.0.
+from .flow import (  # noqa: E402, F401
+    corrupt_decoder,
+    corrupt_denoiser,
+    logit_normal_schedule,
+    sample_cfg_scale,
+    sample_p_per_token,
+    sample_t_logit_normal,
+)

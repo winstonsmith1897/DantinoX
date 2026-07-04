@@ -1,9 +1,35 @@
+"""Decoding loops for all three generation paradigms.
+
+Autoregressive
+    ``generate`` — jit-compiled token loop with greedy / temperature /
+    top-k / top-p decoding and optional KV cache.
+Discrete masked diffusion
+    ``diffusion_generate`` / ``stream_diffusion_generate`` — full-sequence
+    reverse diffusion; ``fast_dllm_generate`` / ``stream_fast_dllm_generate``
+    — block-wise decoding with the Fast-dLLM DualCache.
+Continuous flow-matching
+    ``flow_generate`` / ``stream_flow_generate`` — Euler ODE (or SDE with
+    ``gamma > 0``) integration plus a dedicated decode step.
+
+Design rules kept by this module:
+
+* every eager function drains its streaming twin, so the two can never
+  diverge;
+* the per-step model forwards are jit-compiled (module-level ``nnx.jit``
+  helpers) — shapes are constant within a call, so compilation happens once;
+* sampling operates on logits directly (``jax.random.categorical``), never on
+  re-logged softmax probabilities.
+
+Models live in model.py / flow.py; unmasking strategies in diffusion.py.
+"""
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from flax import nnx
 
 from .diffusion import (
@@ -11,30 +37,71 @@ from .diffusion import (
     NoiseSchedule,
     confidence_unmask_factor,
     confidence_unmask_threshold,
-    logit_normal_schedule,
 )
 
+# Decode functions operate on (possibly filtered) *logits*, not probabilities:
+# jax.random.categorical takes logits directly, so no softmax → log round-trip
+# is needed anywhere in the sampling path.
 DecodeFunc = Callable[[jnp.ndarray, jax.Array | None], jnp.ndarray]
 
 
-def _greedy_decode(v, _key=None):
-    return jnp.argmax(v, axis=-1, keepdims=True)
+def _greedy_decode(logits, _key=None):
+    return jnp.argmax(logits, axis=-1, keepdims=True)
 
-def _sampling_decode(v, key):
-    return jax.random.categorical(key, jnp.log(v + 1e-10), axis=-1)
+def _sampling_decode(logits, key):
+    return jax.random.categorical(key, logits, axis=-1)
 
 def decode(
-        probs: jnp.ndarray,
+        logits: jnp.ndarray,
         decoding_func: DecodeFunc,
         key: jax.Array | None
     ) -> jnp.ndarray:
 
-    tok = decoding_func(probs, key)
+    tok = decoding_func(logits, key)
 
     if tok.ndim == 1:
         tok = tok[:, None]
 
     return tok
+
+
+# ── JIT-compiled forward helpers ──────────────────────────────────────────────
+# The AR path compiles its whole loop (`_generate_toks`); the diffusion / flow
+# paths run a Python loop but compile the per-step model forward below, which
+# dominates the cost.  Shapes are constant within a generation call, so each
+# helper compiles once per (batch, length) configuration and is reused across
+# steps and calls.
+
+@nnx.jit
+def _forward_logits(model: nnx.Module, x: jnp.ndarray, dual_cache: DualCache | None) -> jnp.ndarray:
+    return model(x, dual_cache=dual_cache, deterministic=True).logits  # type: ignore[operator]
+
+
+@nnx.jit(static_argnames=["block_start", "block_end"])
+def _block_dual_cache(
+    model: nnx.Module, x_full: jnp.ndarray, block_start: int, block_end: int
+) -> DualCache:
+    return model.compute_block_dual_cache(x_full, block_start, block_end)  # type: ignore[attr-defined]
+
+
+@nnx.jit
+def _decode_block_logits(
+    model: nnx.Module, x_block: jnp.ndarray, dual_cache: DualCache, block_start: jnp.ndarray
+) -> jnp.ndarray:
+    return model.decode_block(x_block, dual_cache, block_start)  # type: ignore[attr-defined]
+
+
+@nnx.jit
+def _flow_step(
+    model: nnx.Module,
+    z: jnp.ndarray,
+    x_prev: jnp.ndarray,
+    t: jnp.ndarray,
+    w: jnp.ndarray,
+    is_decode: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
+    out = model(z, x_prev, t, w, is_decode, deterministic=True)  # type: ignore[operator]
+    return out.x_pred, jnp.argmax(out.logits, axis=-1).astype(jnp.int32)
 
 @nnx.jit(static_argnames=['decoding_func', 'use_cache', 'top_k', 'top_p', 'temperature'])
 def _generate_toks(
@@ -50,38 +117,39 @@ def _generate_toks(
     temperature: float = 1.0
     ) -> jnp.ndarray:
 
-    def __apply_top_k(probs, decoding_func, key, top_k):
-        top_k_probs, top_k_indices = jax.lax.top_k(probs, top_k)
-        top_k_probs = top_k_probs / jnp.sum(top_k_probs, axis=-1, keepdims=True)
+    def __apply_top_k(logits, decoding_func, key, top_k):
+        # Sampling from the top-k logits directly is equivalent to sampling
+        # from the renormalised top-k probabilities (categorical normalises).
+        top_k_logits, top_k_indices = jax.lax.top_k(logits, top_k)
 
         new_key, subkey = jax.random.split(key)
-        batch_keys = jax.random.split(subkey, probs.shape[0])
+        batch_keys = jax.random.split(subkey, logits.shape[0])
 
-        def sample_from_top_k(p, k, i):
-            sample = decode(probs=p, decoding_func=decoding_func, key=k)
+        def sample_from_top_k(lg, k, i):
+            sample = decode(logits=lg, decoding_func=decoding_func, key=k)
             return i[sample]
 
-        toks = jax.vmap(sample_from_top_k)(top_k_probs, batch_keys, top_k_indices)
+        toks = jax.vmap(sample_from_top_k)(top_k_logits, batch_keys, top_k_indices)
         return toks, new_key
 
-    def __apply_top_p(probs, decoding_func, key, top_p):
-        sorted_indices = jnp.argsort(probs, axis=-1)[:, ::-1]
-        sorted_probs = jnp.take_along_axis(probs, sorted_indices, axis=-1)
+    def __apply_top_p(logits, decoding_func, key, top_p):
+        sorted_indices = jnp.argsort(logits, axis=-1)[:, ::-1]
+        sorted_logits  = jnp.take_along_axis(logits, sorted_indices, axis=-1)
+        sorted_probs   = jax.nn.softmax(sorted_logits, axis=-1)
 
         new_key, subkey = jax.random.split(key)
-        batch_keys = jax.random.split(subkey, probs.shape[0])
+        batch_keys = jax.random.split(subkey, logits.shape[0])
 
-        def sample_from_top_p(p_sorted, k, idx_sorted, top_p_val):
+        def sample_from_top_p(lg_sorted, p_sorted, k, idx_sorted, top_p_val):
             cumulative_probs = jnp.cumsum(p_sorted, axis=-1)
             mask = (cumulative_probs - p_sorted) < top_p_val
-            masked_probs = jnp.where(mask, p_sorted, 0.0)
-            masked_probs = masked_probs / jnp.sum(masked_probs)
+            masked_logits = jnp.where(mask, lg_sorted, -jnp.inf)
 
-            sample_idx = decode(probs=masked_probs, decoding_func=decoding_func, key=k)
+            sample_idx = decode(logits=masked_logits, decoding_func=decoding_func, key=k)
             return idx_sorted[sample_idx]
 
-        toks = jax.vmap(sample_from_top_p, in_axes=(0, 0, 0, None))(
-            sorted_probs, batch_keys, sorted_indices, top_p
+        toks = jax.vmap(sample_from_top_p, in_axes=(0, 0, 0, 0, None))(
+            sorted_logits, sorted_probs, batch_keys, sorted_indices, top_p
         )
         return toks, new_key
 
@@ -99,22 +167,21 @@ def _generate_toks(
 
     def _get_tok_id(i, x, k, last_logits):
         last_logits = last_logits / temperature
-        probs = jax.nn.softmax(last_logits, axis=-1)
 
         if k is None:
-            tok = decode(probs=probs, decoding_func=decoding_func, key=k)
+            tok = decode(logits=last_logits, decoding_func=decoding_func, key=k)
         elif top_k is not None:
-            tok, k = __apply_top_k(probs=probs, decoding_func=decoding_func, key=k, top_k=top_k)
+            tok, k = __apply_top_k(logits=last_logits, decoding_func=decoding_func, key=k, top_k=top_k)
         elif top_p is not None:
-            tok, k = __apply_top_p(probs=probs, decoding_func=decoding_func, key=k, top_p=top_p)
+            tok, k = __apply_top_p(logits=last_logits, decoding_func=decoding_func, key=k, top_p=top_p)
         else:
             new_key, subkey = jax.random.split(k)
-            batch_keys = jax.random.split(subkey, probs.shape[0])
+            batch_keys = jax.random.split(subkey, last_logits.shape[0])
 
-            def sample_base(p, ky):
-                return decode(probs=p, decoding_func=decoding_func, key=ky)
+            def sample_base(lg, ky):
+                return decode(logits=lg, decoding_func=decoding_func, key=ky)
 
-            tok = jax.vmap(sample_base)(probs, batch_keys)
+            tok = jax.vmap(sample_base)(last_logits, batch_keys)
             k = new_key
         tok = tok.reshape(-1, 1)
         x = x.at[:, i].set(tok[:, 0])
@@ -171,6 +238,12 @@ def generate(
 
     decoding_func: DecodeFunc
     if greedy:
+        if top_k is not None or top_p is not None:
+            warnings.warn(
+                "greedy=True ignores top_k/top_p; pass greedy=False to use them.",
+                UserWarning,
+                stacklevel=2,
+            )
         key = None
         decoding_func = _greedy_decode
     else:
@@ -236,8 +309,7 @@ def stream_diffusion_generate(
     total     = len(t_ladder) + 1  # denoising steps + final greedy cleanup
 
     for step, t_val in enumerate(t_ladder):
-        output = model(x_t, dual_cache=dual_cache, deterministic=True)
-        logits = output.logits
+        logits = _forward_logits(model, x_t, dual_cache)
 
         if decoding_strategy == "confidence":
             x_t = confidence_unmask_threshold(logits, x_t, mask_token_id,
@@ -249,28 +321,25 @@ def stream_diffusion_generate(
             scaled = logits / max(temperature, 1e-6)
             if decoding_strategy == "greedy":
                 x0_pred = jnp.argmax(scaled, axis=-1)
-            else:  # "sample"
-                probs      = jax.nn.softmax(scaled, axis=-1)
+            else:  # "sample": categorical draws independently per position
                 rng, subkey = jax.random.split(rng)
-                flat_probs  = probs.reshape(B * gen_len, -1)
-                flat_keys   = jax.random.split(subkey, B * gen_len)
-                x0_pred     = jax.vmap(
-                    lambda p, k: jax.random.categorical(k, jnp.log(p + 1e-10))
-                )(flat_probs, flat_keys).reshape(B, gen_len)
+                x0_pred = jax.random.categorical(subkey, scaled, axis=-1)
 
+            # alpha_bar is a host-side numpy array, so these are free of syncs.
             t_prev      = max(t_val - step_size, 0)
             alpha_t     = float(schedule.alpha_bar[t_val])
             alpha_prev  = float(schedule.alpha_bar[t_prev])
             unmask_prob = (alpha_prev - alpha_t) / (1.0 - alpha_t + 1e-8) if alpha_t < 1.0 else 0.0
+            unmask_prob = min(max(unmask_prob, 0.0), 1.0)
             rng, subkey2 = jax.random.split(rng)
-            do_unmask    = jax.random.bernoulli(subkey2, float(jnp.clip(unmask_prob, 0, 1)), x_t.shape)
+            do_unmask    = jax.random.bernoulli(subkey2, unmask_prob, x_t.shape)
             x_t          = jnp.where((x_t == mask_token_id) & do_unmask, x0_pred, x_t)
 
         yield step, total, x_t
 
     # Final greedy cleanup: fill any positions still masked
-    out     = model(x_t, dual_cache=dual_cache, deterministic=True)
-    x_t     = jnp.where(x_t == mask_token_id, jnp.argmax(out.logits, axis=-1), x_t)
+    logits = _forward_logits(model, x_t, dual_cache)
+    x_t    = jnp.where(x_t == mask_token_id, jnp.argmax(logits, axis=-1), x_t)
     yield total - 1, total, x_t
 
 
@@ -296,7 +365,7 @@ def diffusion_generate(
     ``batch_size`` controls the output batch dimension.
     """
     x_t = None
-    for _, _, x_t in stream_diffusion_generate(
+    for _, _, x_t in stream_diffusion_generate(  # noqa: B007
         model, prefix, gen_len, schedule, mask_token_id,
         seed=seed, num_sampling_steps=num_sampling_steps,
         temperature=temperature, batch_size=batch_size,
@@ -345,82 +414,19 @@ def fast_dllm_generate(
     Returns:
         Generated token IDs ``[B, gen_len]``.
     """
-    B        = prefix.shape[0]
-    T_prefix = prefix.shape[1]
-    T_total  = T_prefix + gen_len
-    T_diff   = int(schedule.alpha_bar.shape[0]) - 1
-
-    # Full sequence: [prefix | MASK * gen_len]
-    x = jnp.concatenate([
-        prefix,
-        jnp.full((B, gen_len), mask_token_id, dtype=jnp.int32),
-    ], axis=1)
-
-    # Timestep ladder for the inner loop: T → 0 in steps_per_block steps
-    step_size  = max(1, T_diff // max(steps_per_block, 1))
-    inner_steps = list(range(T_diff, 0, -step_size))
-
-    n_blocks = (gen_len + block_size - 1) // block_size
-
-    for k in range(n_blocks):
-        block_start = T_prefix + k * block_size
-        block_end   = min(T_prefix + (k + 1) * block_size, T_total)
-        actual_bs   = block_end - block_start  # last block may be smaller
-
-        # ── Initialise / refresh dual cache ───────────────────────────────
-        if use_dual_cache:
-            dual_cache = model.compute_block_dual_cache(  # type: ignore[attr-defined]
-                x, block_start, block_end
-            )
-
-        # ── Inner denoising loop ───────────────────────────────────────────
-        for step_idx, _t_val in enumerate(inner_steps):
-            x_block = x[:, block_start:block_end]
-
-            # Periodic suffix refresh (optional, for better accuracy)
-            if (
-                use_dual_cache
-                and refresh_interval is not None
-                and step_idx > 0
-                and step_idx % refresh_interval == 0
-            ):
-                dual_cache = model.compute_block_dual_cache(  # type: ignore[attr-defined]
-                    x, block_start, block_end
-                )
-
-            if use_dual_cache:
-                logits = model.decode_block(  # type: ignore[attr-defined]
-                    x_block, dual_cache, block_start
-                )
-            else:
-                # PrefixCache fallback: run model on x[block_start:]
-                x_from = x[:, block_start:]
-                out    = model(x_from, deterministic=True)
-                logits = out.logits[:, :actual_bs, :]
-
-            # ── Confidence-aware unmasking ─────────────────────────────────
-            if decoding_strategy == "factor":
-                x_block_new = confidence_unmask_factor(
-                    logits, x_block, mask_token_id, factor=factor
-                )
-            else:
-                x_block_new = confidence_unmask_threshold(
-                    logits, x_block, mask_token_id, threshold=confidence_threshold
-                )
-
-            x = x.at[:, block_start:block_end].set(x_block_new)
-
-            # Early exit if all tokens in this block are revealed
-            if not (x[:, block_start:block_end] == mask_token_id).any():
-                break
-
-    # Final greedy cleanup: fill any positions still masked after all blocks.
-    # Exclude mask_token_id from argmax — the model should never predict it as output.
-    out         = model(x, deterministic=True)
-    safe_logits = out.logits.at[:, :, mask_token_id].set(-jnp.inf)
-    x           = jnp.where(x == mask_token_id, jnp.argmax(safe_logits, axis=-1), x)
-
-    return x[:, T_prefix:]
+    # Single implementation: drain the streaming generator so the eager and
+    # streaming paths can never diverge.
+    x_gen = None
+    for _, _, x_gen in stream_fast_dllm_generate(  # noqa: B007
+        model, prefix, gen_len, schedule, mask_token_id,
+        block_size=block_size, steps_per_block=steps_per_block,
+        confidence_threshold=confidence_threshold,
+        decoding_strategy=decoding_strategy, factor=factor,
+        use_dual_cache=use_dual_cache, refresh_interval=refresh_interval,
+        seed=seed,
+    ):
+        pass
+    return x_gen  # type: ignore[return-value]
 
 
 def stream_fast_dllm_generate(
@@ -469,9 +475,7 @@ def stream_fast_dllm_generate(
         actual_bs   = block_end - block_start
 
         if use_dual_cache:
-            dual_cache = model.compute_block_dual_cache(  # type: ignore[attr-defined]
-                x, block_start, block_end
-            )
+            dual_cache = _block_dual_cache(model, x, block_start, block_end)
 
         for step_idx, _t_val in enumerate(inner_steps):
             x_block = x[:, block_start:block_end]
@@ -482,18 +486,15 @@ def stream_fast_dllm_generate(
                 and step_idx > 0
                 and step_idx % refresh_interval == 0
             ):
-                dual_cache = model.compute_block_dual_cache(  # type: ignore[attr-defined]
-                    x, block_start, block_end
-                )
+                dual_cache = _block_dual_cache(model, x, block_start, block_end)
 
             if use_dual_cache:
-                logits = model.decode_block(  # type: ignore[attr-defined]
-                    x_block, dual_cache, block_start
+                logits = _decode_block_logits(
+                    model, x_block, dual_cache, jnp.asarray(block_start, jnp.int32)
                 )
             else:
-                x_from = x[:, block_start:]
-                out    = model(x_from, deterministic=True)
-                logits = out.logits[:, :actual_bs, :]
+                # PrefixCache fallback: run the model on x[block_start:]
+                logits = _forward_logits(model, x[:, block_start:], None)[:, :actual_bs, :]
 
             if decoding_strategy == "factor":
                 x_block_new = confidence_unmask_factor(
@@ -515,13 +516,12 @@ def stream_fast_dllm_generate(
         # block before moving to the next one, so blocks reveal sequentially.
         if (x[:, block_start:block_end] == mask_token_id).any():
             if use_dual_cache:
-                logits = model.decode_block(  # type: ignore[attr-defined]
-                    x[:, block_start:block_end], dual_cache, block_start
+                logits = _decode_block_logits(
+                    model, x[:, block_start:block_end], dual_cache,
+                    jnp.asarray(block_start, jnp.int32),
                 )
             else:
-                x_from = x[:, block_start:]
-                out    = model(x_from, deterministic=True)
-                logits = out.logits[:, :actual_bs, :]
+                logits = _forward_logits(model, x[:, block_start:], None)[:, :actual_bs, :]
             # Exclude mask_token_id from argmax — the model should never
             # predict the mask token itself as output.
             safe_logits = logits.at[:, :, mask_token_id].set(-jnp.inf)
@@ -536,15 +536,15 @@ def stream_fast_dllm_generate(
 
     # Final greedy cleanup for any residual masks across all blocks.
     # Also excludes mask_token_id from argmax.
-    out         = model(x, deterministic=True)
-    safe_logits = out.logits.at[:, :, mask_token_id].set(-jnp.inf)
+    logits      = _forward_logits(model, x, None)
+    safe_logits = logits.at[:, :, mask_token_id].set(-jnp.inf)
     x           = jnp.where(x == mask_token_id, jnp.argmax(safe_logits, axis=-1), x)
     yield global_step, total, x[:, T_prefix:]
 
 
-# ── ELF generation (continuous flow-matching) ─────────────────────────────────
+# ── Continuous flow-matching generation ───────────────────────────────────────
 
-def stream_elf_generate(
+def stream_flow_generate(
     model,
     gen_len:    int,
     batch_size: int   = 1,
@@ -553,7 +553,7 @@ def stream_elf_generate(
     gamma:      float = 0.0,
     seed:       int   = 42,
 ):
-    """Generator version of ``elf_generate``.
+    """Generator version of ``flow_generate``.
 
     Yields ``(step, total_steps, tokens)`` after each Euler ODE step, where
     *tokens* is the argmax-decoded prediction from the current flow state.
@@ -567,43 +567,43 @@ def stream_elf_generate(
 
     z      = jax.random.normal(rng_z, (B, L, E))
     x_prev = jnp.zeros_like(z)
-    ts     = jnp.linspace(0.0, 1.0, n_steps + 1)
+    # Host-side schedule: avoids a device sync per step when reading t/dt.
+    ts     = np.linspace(0.0, 1.0, n_steps + 1)
     total  = n_steps + 1  # ODE steps + final decode
+    w_arr  = jnp.full((B,), cfg_scale)
+    is_den = jnp.zeros(B, dtype=bool)
 
     for i in range(n_steps):
         t_val  = float(ts[i])
         dt_val = float(ts[i + 1] - ts[i])
-        w_arr  = jnp.full((B,), cfg_scale)
-        is_den = jnp.zeros(B, dtype=bool)
 
         if gamma > 0.0:
             alpha  = 1.0 - gamma * dt_val
             z_back = alpha * z + (1.0 - alpha) * jax.random.normal(rng_steps[i], z.shape)
             t_arr  = jnp.full((B,), alpha * t_val)
-            x_hat  = model(z_back, x_prev, t_arr, w_arr, is_den).x_pred
+            x_hat, cur_tokens = _flow_step(model, z_back, x_prev, t_arr, w_arr, is_den)
         else:
             t_arr = jnp.full((B,), t_val)
-            x_hat = model(z, x_prev, t_arr, w_arr, is_den).x_pred
+            x_hat, cur_tokens = _flow_step(model, z, x_prev, t_arr, w_arr, is_den)
 
-        v      = (x_hat - z) / jnp.clip(1.0 - t_val, 1e-6)
+        v      = (x_hat - z) / max(1.0 - t_val, 1e-6)
         z      = z + dt_val * v
         x_prev = x_hat
 
-        cur_tokens = jnp.argmax(model.unembed(x_hat), axis=-1).astype(jnp.int32)
         yield i, total, cur_tokens
 
-    out    = model(
+    _, tokens = _flow_step(
+        model,
         z,
         jnp.zeros_like(z),
         jnp.ones(B),
-        jnp.full((B,), cfg_scale),
+        w_arr,
         jnp.ones(B, dtype=bool),
     )
-    tokens = jnp.argmax(out.logits, axis=-1).astype(jnp.int32)
     yield n_steps, total, tokens
 
 
-def elf_generate(
+def flow_generate(
     model,
     gen_len:    int,
     batch_size: int   = 1,
@@ -612,7 +612,7 @@ def elf_generate(
     gamma:      float = 0.0,
     seed:       int   = 42,
 ) -> jnp.ndarray:
-    """Generate token sequences with ELF continuous diffusion (ELF Algorithm 5/6).
+    """Generate with continuous flow-matching (ELF recipe, Algorithms 5/6).
 
     Denoises from pure Gaussian noise to clean embeddings using an Euler ODE
     sampler (``gamma=0``) or an SDE-inspired stochastic sampler (``gamma>0``),
@@ -620,7 +620,7 @@ def elf_generate(
 
     Parameters
     ----------
-    model:      Trained ``ELFTransformer``.
+    model:      Trained ``FlowMatchingTransformer``.
     gen_len:    Number of tokens to generate.
     batch_size: Number of sequences to generate in parallel.
     n_steps:    Denoising steps before the final decode step.
@@ -633,9 +633,14 @@ def elf_generate(
     Token IDs ``[batch_size, gen_len]`` int32.
     """
     tokens = None
-    for _, _, tokens in stream_elf_generate(
+    for _, _, tokens in stream_flow_generate(  # noqa: B007
         model, gen_len=gen_len, batch_size=batch_size,
         n_steps=n_steps, cfg_scale=cfg_scale, gamma=gamma, seed=seed,
     ):
         pass
     return tokens  # type: ignore[return-value]
+
+
+# Deprecated ELF-branded aliases (removed in v1.0).
+elf_generate        = flow_generate
+stream_elf_generate = stream_flow_generate

@@ -166,7 +166,7 @@ train_one() {
 
 # ── Attention helpers ─────────────────────────────────────────────────────────
 mha_flags() { local nh=$1; echo "--kv_heads ${nh} --mla false"; }
-gqa_flags() { local nh=$1; local kv=$(( nh / 4 )); [[ ${kv} -lt 1 ]] && kv=1; echo "--kv_heads ${kv} --mla false"; }
+gqa_flags() { local nh=$1; local kv=$(( nh / 3 )); [[ ${kv} -lt 1 ]] && kv=1; echo "--kv_heads ${kv} --mla false"; }
 mla_flags() {
     local nh=$1 hs=$2
     local dkv=$(( hs * 3 )); [[ ${dkv} -gt 256 ]] && dkv=256

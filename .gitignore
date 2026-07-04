@@ -81,3 +81,6 @@ scripts/scratch/
 dantinox/core/old_model.py
 examples/demo_dual_cache.py
 examples/demo_simple_gen.py
+
+
+trials/

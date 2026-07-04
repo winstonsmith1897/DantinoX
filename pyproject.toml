@@ -68,7 +68,6 @@ markers      = [
 [tool.ruff]
 line-length    = 100
 target-version = "py310"
-exclude        = ["dantinox/core/old_model.py"]
 
 [tool.ruff.lint]
 select = [
@@ -97,7 +96,6 @@ warn_unused_ignores   = false
 warn_return_any       = false
 disallow_untyped_defs = true
 files                 = ["dantinox"]
-exclude               = ["dantinox/core/old_model\\.py"]
 
 [[tool.mypy.overrides]]
 module = ["dantinox.core.generation", "dantinox.core.attention"]
@@ -121,6 +119,6 @@ ignore-property-decorators = true
 fail-under           = 100
 verbose              = 1
 color                = true
-exclude              = ["dantinox/core/old_model.py", "dantinox/plots/", "dantinox/bench.py",
+exclude              = ["dantinox/plots/", "dantinox/bench.py",
                         "dantinox/plotting.py"]
 whitelist-regex      = []

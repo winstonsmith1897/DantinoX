@@ -8,7 +8,8 @@ flat buffer, and emitted as non-overlapping AR-formatted windows.
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 

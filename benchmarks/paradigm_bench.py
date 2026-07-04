@@ -12,7 +12,7 @@ blocks) so differences reflect the *paradigm*, not the architecture:
   AR          Transformer(causal=True)   — prefill + KV-cache greedy decode
   Discrete    Transformer(causal=False)  — LLaDA-style iterative unmasking,
                                            prefix dual-cache for conditioning
-  Continuous  ELFTransformer             — flow-matching Euler ODE sampler
+  Continuous  FlowMatchingTransformer             — flow-matching Euler ODE sampler
                                            (z_t = t·x + (1−t)·ε) + decode step
 
 Metrics per experiment
@@ -54,10 +54,12 @@ Usage
 from __future__ import annotations
 
 import argparse
+import ctypes
 import gc
 import logging
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -72,13 +74,124 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from dantinox.core.config import ELFConfig, ModelConfig
+from dantinox.core.config import FlowMatchingConfig, ModelConfig
 from dantinox.core.diffusion import make_noise_schedule
-from dantinox.core.elf import ELFTransformer
+from dantinox.core.flow import FlowMatchingTransformer
 from dantinox.core.model import Transformer
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 log = logging.getLogger(__name__)
+
+
+# ── NVML power monitoring (ctypes — no pynvml required) ───────────────────────
+
+class _NVMLLib:
+    """Lazy-loaded ctypes wrapper around libnvidia-ml.so.1."""
+
+    _inst: Any = None  # None=uninitialised, False=unavailable
+
+    @classmethod
+    def get(cls) -> Any:
+        if cls._inst is None:
+            try:
+                lib = ctypes.CDLL("libnvidia-ml.so.1")
+                fn  = getattr(lib, "nvmlInit_v2", None) or lib.nvmlInit
+                fn()
+                obj = object.__new__(cls)
+                obj._lib = lib
+                cls._inst = obj
+            except Exception:
+                cls._inst = False
+        return cls._inst if cls._inst is not False else None
+
+    def device_handle(self, idx: int) -> ctypes.c_void_p:
+        handle = ctypes.c_void_p()
+        fn = getattr(self._lib, "nvmlDeviceGetHandleByIndex_v2", None) \
+             or self._lib.nvmlDeviceGetHandleByIndex
+        fn(idx, ctypes.byref(handle))
+        return handle
+
+    def power_mw(self, handle: ctypes.c_void_p) -> int:
+        pw = ctypes.c_uint()
+        self._lib.nvmlDeviceGetPowerUsage(handle, ctypes.byref(pw))
+        return pw.value
+
+
+class _PowerSampler:
+    """Samples total GPU power (all visible devices) every ~25 ms in a thread."""
+
+    def __init__(self) -> None:
+        nvml = _NVMLLib.get()
+        if nvml is None:
+            raise RuntimeError("NVML not available")
+        vis = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+        self._handles = [nvml.device_handle(int(i.strip()))
+                         for i in vis.split(",") if i.strip().lstrip("-").isdigit()]
+        self._nvml   = nvml
+        self._stop   = threading.Event()
+        self._samples: list[tuple[float, float]] = []
+        self._thread: threading.Thread | None = None
+
+    def _loop(self) -> None:
+        while not self._stop.is_set():
+            w = sum(self._nvml.power_mw(h) / 1e3 for h in self._handles)
+            self._samples.append((time.perf_counter(), w))
+            self._stop.wait(0.025)
+
+    def idle_watts(self, secs: float = 0.4) -> float:
+        ws: list[float] = []
+        t0 = time.perf_counter()
+        while time.perf_counter() - t0 < secs:
+            ws.append(sum(self._nvml.power_mw(h) / 1e3 for h in self._handles))
+            time.sleep(0.025)
+        return float(np.mean(ws)) if ws else float("nan")
+
+    def __enter__(self) -> _PowerSampler:
+        self._samples.clear()
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2.0)
+
+    def joules(self) -> float:
+        if len(self._samples) < 2:
+            return float("nan")
+        t = np.array([s[0] for s in self._samples])
+        w = np.array([s[1] for s in self._samples])
+        trap = getattr(np, "trapezoid", None) or np.trapz
+        return float(trap(w, t))
+
+
+def _measure_energy(
+    fn: Any, *args: Any, min_window_s: float = 1.5
+) -> tuple[float, float]:
+    """Run fn repeatedly until ≥ min_window_s of GPU work, return (J/call, mean_W).
+
+    Returns (nan, nan) when NVML is unavailable.  The idle baseline is
+    subtracted so only the marginal energy of the workload is reported.
+    """
+    try:
+        ps = _PowerSampler()
+    except Exception:
+        return float("nan"), float("nan")
+    idle = ps.idle_watts()
+    jax.block_until_ready(fn(*args))          # ensure XLA kernel is compiled
+    t0    = time.perf_counter()
+    n_runs = 0
+    with ps:
+        while time.perf_counter() - t0 < min_window_s or n_runs < 3:
+            jax.block_until_ready(fn(*args))
+            n_runs += 1
+    dt    = time.perf_counter() - t0
+    gross = ps.joules()
+    net   = max(gross - idle * dt, 0.0)
+    mean_w = gross / dt if dt > 0 else float("nan")
+    return (net / n_runs if n_runs > 0 else float("nan")), mean_w
 
 _XLA_CACHE = Path.home() / ".cache" / "jax_xla" / "dantinox_paradigm_bench"
 _XLA_CACHE.mkdir(parents=True, exist_ok=True)
@@ -109,7 +222,7 @@ _GQA_RATIO = 4   # GQA: kv_heads = n_heads // 4 (min 1)
 
 
 def _attn_kwargs(size: str, attn: str, ar_cache: bool) -> dict[str, Any]:
-    """Attention-variant kwargs shared by ModelConfig and ELFConfig.
+    """Attention-variant kwargs shared by ModelConfig and FlowMatchingConfig.
 
     ``ar_cache=True`` enables the MLA absorbed-projection inference path,
     required for AR KV-cache decoding (not used by the diffusion forwards).
@@ -163,6 +276,48 @@ def _disc_step_fn(
     return jnp.where((x_t == MASK_TOKEN_ID) & reveal, x0, x_t)
 
 
+def _disc_step_topk_fn(
+    model: Transformer,
+    x_t: jnp.ndarray,    # (B, G)
+    dual_cache: Any,
+    n_unmask: int,        # Python int — static so jax.lax.top_k can use it
+) -> jnp.ndarray:
+    """Confident (top-k) unmasking: unmask the n_unmask most confident masked positions.
+
+    This is the mask-predict / confidence-based decoding strategy:
+    instead of uniform random unmasking, each step reveals the positions
+    where the model assigns the highest max-softmax probability.
+    Ties are broken by argmax (deterministic given the same logits).
+    """
+    out   = model(x_t, dual_cache=dual_cache, deterministic=True)
+    x0    = jnp.argmax(out.logits, axis=-1).astype(jnp.int32)          # greedy pred
+    probs = jax.nn.softmax(out.logits.astype(jnp.float32), axis=-1)
+    conf  = jnp.where(x_t == MASK_TOKEN_ID,
+                      probs.max(axis=-1), -jnp.inf)                     # (B, G)
+    # top_k returns (values, indices); indices are the positions to unmask
+    _, top_idx = jax.lax.top_k(conf, n_unmask)                         # (B, n_unmask)
+    reveal = jnp.zeros(x_t.shape, dtype=bool).at[
+        jnp.arange(x_t.shape[0])[:, None], top_idx
+    ].set(True)
+    return jnp.where(reveal, x0, x_t)
+
+
+def _disc_step_temp_fn(
+    model: Transformer,
+    x_t: jnp.ndarray,
+    dual_cache: Any,
+    key: jax.Array,
+    unmask_p: jax.Array,
+    temperature: jax.Array,    # scalar; 1.0 = standard, <1 = sharper, >1 = flatter
+) -> jnp.ndarray:
+    """Temperature-scaled diffusion step: softmax(logits / T) before sampling."""
+    out = model(x_t, dual_cache=dual_cache, deterministic=True)
+    k1, k2 = jax.random.split(key)
+    x0     = jax.random.categorical(k1, out.logits / temperature).astype(jnp.int32)
+    reveal = jax.random.bernoulli(k2, unmask_p, x_t.shape)
+    return jnp.where((x_t == MASK_TOKEN_ID) & reveal, x0, x_t)
+
+
 def _disc_final_fn(model: Transformer, x_t: jnp.ndarray, dual_cache: Any) -> jnp.ndarray:
     out = model(x_t, dual_cache=dual_cache, deterministic=True)
     return jnp.where(
@@ -172,8 +327,8 @@ def _disc_final_fn(model: Transformer, x_t: jnp.ndarray, dual_cache: Any) -> jnp
     )
 
 
-def _elf_step_fn(
-    model: ELFTransformer,
+def _flow_step_fn(
+    model: FlowMatchingTransformer,
     z: jnp.ndarray,
     x_prev: jnp.ndarray,
     t: jax.Array,       # scalar in [0, 1]
@@ -187,7 +342,7 @@ def _elf_step_fn(
     return (z + dt * v).astype(z.dtype), out.x_pred
 
 
-def _elf_decode_fn(model: ELFTransformer, z: jnp.ndarray, w: jnp.ndarray) -> jnp.ndarray:
+def _elf_decode_fn(model: FlowMatchingTransformer, z: jnp.ndarray, w: jnp.ndarray) -> jnp.ndarray:
     B   = z.shape[0]
     out = model(
         z, jnp.zeros_like(z), jnp.ones(B, dtype=z.dtype), w,
@@ -196,16 +351,31 @@ def _elf_decode_fn(model: ELFTransformer, z: jnp.ndarray, w: jnp.ndarray) -> jnp
     return jnp.argmax(out.logits, axis=-1).astype(jnp.int32)
 
 
-ar_prefill  = nnx.jit(_ar_prefill_fn)
-ar_decode   = nnx.jit(_ar_decode_fn)
-disc_prefix = nnx.jit(_disc_prefix_fn)
-disc_step   = nnx.jit(_disc_step_fn)
-disc_final  = nnx.jit(_disc_final_fn)
-elf_step    = nnx.jit(_elf_step_fn)
-elf_decode  = nnx.jit(_elf_decode_fn)
+ar_prefill    = nnx.jit(_ar_prefill_fn)
+ar_decode     = nnx.jit(_ar_decode_fn)
+disc_prefix   = nnx.jit(_disc_prefix_fn)
+disc_step     = nnx.jit(_disc_step_fn)
+disc_step_temp = nnx.jit(_disc_step_temp_fn)
+disc_final    = nnx.jit(_disc_final_fn)
+elf_step      = nnx.jit(_flow_step_fn)
+elf_decode    = nnx.jit(_elf_decode_fn)
+
+# disc_step_topk is created per-experiment because n_unmask must be a static
+# Python int for jax.lax.top_k — use functools.partial + nnx.jit per value.
+import functools as _ft
+
+
+@_ft.lru_cache(maxsize=64)
+def _make_disc_step_topk(n_unmask: int) -> Any:
+    return nnx.jit(_ft.partial(_disc_step_topk_fn, n_unmask=n_unmask))
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _p99(arr: np.ndarray) -> float:
+    """p99 from a small sample: use max() when n_trials < 100, else true percentile."""
+    return float(np.max(arr)) if len(arr) < 100 else float(np.percentile(arr, 99))
+
 
 def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int, desc: str = "") -> np.ndarray:
     t0 = time.perf_counter()
@@ -224,7 +394,7 @@ def _time_fn(fn: Any, *args: Any, n_warmup: int, n_trials: int, desc: str = "") 
 
 
 def _measured_gflops(fn: Any, model: nnx.Module, *args: Any) -> float:
-    """FLOPs of one call via XLA cost analysis (GFLOPs). Best-effort; unreliable for ELFTransformer at scale."""
+    """FLOPs of one call via XLA cost analysis (GFLOPs). Best-effort; unreliable for FlowMatchingTransformer at scale."""
     graphdef, state = nnx.split(model)
 
     def pure(state: Any, *a: Any) -> Any:
@@ -277,10 +447,10 @@ def _analytical_gflops_disc_step(exp: dict, cfg: Any) -> float:
     return _analytical_gflops_transformer(B, G, dim, n_heads, head_size, blocks, kv_heads)
 
 
-def _analytical_gflops_elf_step(exp: dict, cfg: Any) -> float:
+def _analytical_gflops_flow_step(exp: dict, cfg: Any) -> float:
     """Step GFLOPs for one ELF (Continuous) Euler ODE step.
 
-    ELFTransformer processes z of shape (B, G, dim) — continuous latents —
+    FlowMatchingTransformer processes z of shape (B, G, dim) — continuous latents —
     so seq_len = G and the embedding dimension equals dim.
     """
     B, G = exp["B"], exp["G"]
@@ -357,13 +527,26 @@ def _base_row(exp: dict) -> dict:
         "dtype":      "bf16" if exp["bf16"] else "fp32",
         "params_m":   _NAN, "params_mb": _NAN,
         "prefill_ms_p50": _NAN, "prefill_ms_p95": _NAN,
-        "step_ms_p50": _NAN, "step_ms_p95": _NAN,
+        "step_ms_p50": _NAN, "step_ms_p95": _NAN, "step_ms_p99": _NAN,
         "e2e_ms": _NAN, "ttft_ms": _NAN,
+        # itl_ms: inter-token latency (AR only; NaN for parallel paradigms)
+        "itl_ms": _NAN,
+        # streaming_e2e_ms: wall-clock to deliver all G tokens in a streaming
+        # scenario — for AR this is prefill + itl*(G-1); for diffusion/ELF
+        # all tokens arrive simultaneously so streaming_e2e_ms == e2e_ms.
+        "streaming_e2e_ms": _NAN,
         "tok_s_e2e": _NAN, "tok_s_steady": _NAN,
         "prefill_gflops": _NAN, "step_gflops": _NAN,
         "total_gen_gflops": _NAN, "gflops_per_tok": _NAN,
         "mfu_pct": _NAN,
         "peak_mem_mb": _NAN, "cache_mb": _NAN,
+        # cache_overhead_pct: KV/prefix cache as % of total device memory
+        "cache_overhead_pct": _NAN,
+        # energy columns — populated when --power is active
+        "joules": _NAN, "watts": _NAN, "j_per_tok": _NAN,
+        # decoding-strategy metadata
+        "decoding": exp.get("decoding", "uniform"),
+        "temperature": exp.get("temperature", 1.0),
         "oom": False,
     }
 
@@ -380,6 +563,10 @@ def _finish_row(row: dict, exp: dict, total_gflops: float, e2e_ms: float) -> Non
             100.0 * total_gflops * 1e9 / (e2e_ms / 1e3) / PEAK_FLOPS[dtype], 3
         )
     row["peak_mem_mb"] = round(_device_mem_mb(), 2)
+    cache = row.get("cache_mb", _NAN)
+    peak  = row["peak_mem_mb"]
+    if not (np.isnan(cache) or np.isnan(peak)) and peak > 0:
+        row["cache_overhead_pct"] = round(100.0 * cache / peak, 2)
 
 
 # ── Paradigm runners ───────────────────────────────────────────────────────────
@@ -426,7 +613,12 @@ def run_ar(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
         row["prefill_ms_p95"] = round(float(np.percentile(prefill_ms, 95)), 3)
         row["step_ms_p50"]    = round(float(np.percentile(decode_ms, 50)), 3)
         row["step_ms_p95"]    = round(float(np.percentile(decode_ms, 95)), 3)
+        row["step_ms_p99"]    = round(_p99(decode_ms), 3)
         row["ttft_ms"]        = row["prefill_ms_p50"]
+        row["itl_ms"]         = row["step_ms_p50"]
+        row["streaming_e2e_ms"] = round(
+            row["prefill_ms_p50"] + row["step_ms_p50"] * (G - 1), 3
+        )
         row["tok_s_steady"]   = round(B * 1e3 / float(np.median(decode_ms)), 2)
 
         # End-to-end greedy generation: prefill + G cached decode steps
@@ -448,6 +640,12 @@ def run_ar(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
         row["cache_mb"] = round(blocks * per_layer / 1e6, 3)
         total_gf = prefill_gf + G * decode_gf
         _finish_row(row, exp, total_gf, e2e_ms)
+
+        if exp.get("measure_power", False):
+            joules, watts = _measure_energy(_e2e)
+            row["joules"]    = round(joules, 4)
+            row["watts"]     = round(watts, 1)
+            row["j_per_tok"] = round(joules / (B * G), 7)
 
     except Exception as exc:  # noqa: BLE001
         log.warning("OOM/error %s: %s", tag, exc)
@@ -502,9 +700,8 @@ def run_discrete(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
                 blocks * 2 * P * cfg.kv_heads * head_size * bpp * B / 1e6, 3
             )
 
-        # One denoise step (full bidirectional forward over the G masked tokens).
-        # Use analytical GFLOPs — XLA cost_analysis is unreliable for bidirectional
-        # transformers at larger scales (returns values that don't scale with params).
+        # ── Per-step latency (always measured with the default "uniform" strategy
+        #    for comparability; the selected decoding affects e2e timing only)
         step_gf = _analytical_gflops_disc_step(exp, cfg)
         row["step_gflops"] = round(step_gf, 4)
 
@@ -513,30 +710,75 @@ def run_discrete(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
                            desc=f"step    {tag}")
         row["step_ms_p50"] = round(float(np.percentile(step_ms, 50)), 3)
         row["step_ms_p95"] = round(float(np.percentile(step_ms, 95)), 3)
+        row["step_ms_p99"] = round(_p99(step_ms), 3)
         row["tok_s_steady"] = round(
             B * G * 1e3 / (steps * float(np.mean(step_ms))), 2
         )
 
-        # End-to-end LLaDA-style reverse diffusion: steps × denoise + final fill
-        def _e2e() -> None:
-            d = disc_prefix(model, prefix) if use_prefix else None
-            x = x_mask
-            k = jax.random.key(1)
-            for t in range(steps, 0, -1):
-                a_t, a_prev = alpha_bar[t], alpha_bar[t - 1]
-                p = (a_prev - a_t) / (1.0 - a_t + 1e-8) if a_t < 1.0 else 0.0
-                k, sub = jax.random.split(k)
-                x = disc_step(model, x, d, sub, jnp.float32(np.clip(p, 0.0, 1.0)))
-            x = disc_final(model, x, d)
-            jax.block_until_ready(x)
+        # ── End-to-end generation: decoding strategy selected by exp["decoding"] ──
+        decoding    = exp.get("decoding", "uniform")
+        temperature = float(exp.get("temperature", 1.0))
 
-        e2e_ms = _median_ms(_e2e, n_e2e, desc=f"e2e {tag}")
-        row["ttft_ms"] = round(e2e_ms, 3)   # tokens arrive only at the end
+        if decoding == "topk":
+            # Confident (mask-predict) decoding: unmask n_unmask most confident
+            # masked positions per step; final step unmasks all remaining.
+            n_unmask_per_step = max(1, G // steps)
+            _step_topk = _make_disc_step_topk(n_unmask_per_step)
+            _step_topk_final = _make_disc_step_topk(G)  # unmask all remaining
+
+            def _e2e() -> None:
+                d = disc_prefix(model, prefix) if use_prefix else None
+                x = x_mask
+                for _ in range(steps - 1):
+                    x = _step_topk(model, x, d)
+                x = _step_topk_final(model, x, d)   # clear any leftovers
+                jax.block_until_ready(x)
+
+        elif decoding == "temperature":
+            temp_jnp = jnp.float32(temperature)
+
+            def _e2e() -> None:
+                d = disc_prefix(model, prefix) if use_prefix else None
+                x = x_mask
+                k = jax.random.key(1)
+                for t in range(steps, 0, -1):
+                    a_t, a_prev = alpha_bar[t], alpha_bar[t - 1]
+                    p = (a_prev - a_t) / (1.0 - a_t + 1e-8) if a_t < 1.0 else 0.0
+                    k, sub = jax.random.split(k)
+                    x = disc_step_temp(model, x, d, sub,
+                                       jnp.float32(np.clip(p, 0.0, 1.0)), temp_jnp)
+                x = disc_final(model, x, d)
+                jax.block_until_ready(x)
+
+        else:  # "uniform" — standard LLaDA / MDLM schedule
+            def _e2e() -> None:
+                d = disc_prefix(model, prefix) if use_prefix else None
+                x = x_mask
+                k = jax.random.key(1)
+                for t in range(steps, 0, -1):
+                    a_t, a_prev = alpha_bar[t], alpha_bar[t - 1]
+                    p = (a_prev - a_t) / (1.0 - a_t + 1e-8) if a_t < 1.0 else 0.0
+                    k, sub = jax.random.split(k)
+                    x = disc_step(model, x, d, sub, jnp.float32(np.clip(p, 0.0, 1.0)))
+                x = disc_final(model, x, d)
+                jax.block_until_ready(x)
+
+        e2e_ms = _median_ms(_e2e, n_e2e, desc=f"e2e[{decoding}] {tag}")
+        # Diffusion generates all G tokens simultaneously; the first token is
+        # available only after the full e2e pass — no streaming is possible.
+        row["ttft_ms"]          = round(e2e_ms, 3)
+        row["streaming_e2e_ms"] = round(e2e_ms, 3)
 
         prefill_gf = row["prefill_gflops"] if P > 0 else 0.0
         prefill_gf = 0.0 if np.isnan(prefill_gf) else prefill_gf
         total_gf   = prefill_gf + (steps + 1) * step_gf
         _finish_row(row, exp, total_gf, e2e_ms)
+
+        if exp.get("measure_power", False):
+            joules, watts = _measure_energy(_e2e)
+            row["joules"]    = round(joules, 4)
+            row["watts"]     = round(watts, 1)
+            row["j_per_tok"] = round(joules / (B * G), 7)
 
     except Exception as exc:  # noqa: BLE001
         log.warning("OOM/error %s: %s", tag, exc)
@@ -551,14 +793,14 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
     tag = f"Cont/{exp['group']}/{exp['label']}"
 
     try:
-        cfg = ELFConfig(
+        cfg = FlowMatchingConfig(
             embed_dim=dim, bottleneck_dim=max(32, dim // 2),
             model_dim=dim, n_heads=n_heads, head_size=head_size,
             num_blocks=blocks, vocab_size=VOCAB_SIZE, max_seq_len=G,
             gradient_checkpointing=False, dropout=0.0,
             **_attn_kwargs(exp["size"], exp["attn"], ar_cache=False),
         )
-        model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
+        model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))
         if bf16:
             _cast_bf16(model)
 
@@ -576,8 +818,8 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
 
         # One Euler denoise step.
         # Use analytical GFLOPs — XLA cost_analysis returns inconsistent values for
-        # ELFTransformer (e.g. 9x inflated at xxl), while timing data is correct.
-        step_gf = _analytical_gflops_elf_step(exp, cfg)
+        # FlowMatchingTransformer (e.g. 9x inflated at xxl), while timing data is correct.
+        step_gf = _analytical_gflops_flow_step(exp, cfg)
         row["step_gflops"] = round(step_gf, 4)
 
         step_ms = _time_fn(elf_step, model, z, x_prev, t_mid, dt, w,
@@ -585,6 +827,7 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
                            desc=f"step    {tag}")
         row["step_ms_p50"] = round(float(np.percentile(step_ms, 50)), 3)
         row["step_ms_p95"] = round(float(np.percentile(step_ms, 95)), 3)
+        row["step_ms_p99"] = round(_p99(step_ms), 3)
         row["tok_s_steady"] = round(
             B * G * 1e3 / (steps * float(np.mean(step_ms))), 2
         )
@@ -602,10 +845,18 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
             jax.block_until_ready(toks)
 
         e2e_ms = _median_ms(_e2e, n_e2e, desc=f"e2e {tag}")
-        row["ttft_ms"] = round(e2e_ms, 3)   # tokens decoded all at once at t=1
+        # ELF decodes all tokens simultaneously at the final step (t=1).
+        row["ttft_ms"]          = round(e2e_ms, 3)
+        row["streaming_e2e_ms"] = round(e2e_ms, 3)
 
         total_gf = steps * step_gf
         _finish_row(row, exp, total_gf, e2e_ms)
+
+        if exp.get("measure_power", False):
+            joules, watts = _measure_energy(_e2e)
+            row["joules"]    = round(joules, 4)
+            row["watts"]     = round(watts, 1)
+            row["j_per_tok"] = round(joules / (B * G), 7)
 
     except Exception as exc:  # noqa: BLE001
         log.warning("OOM/error %s: %s", tag, exc)
@@ -682,6 +933,17 @@ def build_experiments() -> list[dict]:
                     exps.append(_e("steps_x_scale", f"s={s},{size}", p,
                                    steps=s, size=size, attn=a))
 
+        # 10. Decoding strategy: uniform vs. top-k confident vs. temperature
+        #   AR reference + Discrete only (ELF ODE is deterministic at fixed steps).
+        exps.append(_e("decoding", "AR-ref",        "AR",       attn=a))
+        for dec in ("uniform", "topk"):
+            for s in (8, 32):
+                exps.append(_e("decoding", f"{dec}-s={s}", "Discrete",
+                               steps=s, decoding=dec, attn=a))
+        for temp in (0.5, 0.8, 1.0, 1.5):
+            exps.append(_e("decoding", f"temp={temp}-s=32", "Discrete",
+                           steps=32, decoding="temperature", temperature=temp, attn=a))
+
     return exps
 
 
@@ -709,6 +971,11 @@ def main(argv: list[str] | None = None) -> None:
                         help="Smoke test: 1 warmup, 3 trials, small subset.")
     parser.add_argument("--device", type=str, default=None)
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--power", action=argparse.BooleanOptionalAction, default=False,
+        help="Measure GPU power via NVML and report j_per_tok / watts "
+             "(adds ~1.5 s overhead per experiment; requires NVML).",
+    )
     args = parser.parse_args(argv)
 
     if args.device:
@@ -748,14 +1015,19 @@ def main(argv: list[str] | None = None) -> None:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    if args.power and _NVMLLib.get() is None:
+        print("  [WARNING] --power requested but NVML is not available — j_per_tok will be NaN")
+
     print(f"DantinoX paradigm benchmark — {len(selected)} experiments")
     print(f"  device   : {jax.default_backend()} ({jax.devices()[0].device_kind})")
     print(f"  warmup   : {args.n_warmup}  trials: {args.n_trials}  e2e runs: {args.n_e2e}")
+    print(f"  power    : {'on (NVML)' if args.power else 'off (use --power to enable)'}")
     print(f"  output   : {out_path}")
     print()
 
     rows: list[dict] = []
     for exp in tqdm(selected, desc="sweep", unit="exp"):
+        exp = {**exp, "measure_power": args.power}
         row = RUNNERS[exp["paradigm"]](exp, args.n_warmup, args.n_trials, args.n_e2e)
         rows.append(row)
         if args.verbose and not row["oom"]:

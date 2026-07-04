@@ -2,26 +2,33 @@
 Verifies the Colab notebook logic end-to-end and saves the 3D plots to HTML + PNG.
 Run with: CUDA_VISIBLE_DEVICES=3 python scripts/verify_colab.py
 """
-import os, sys, math, time, warnings
+import os
+import sys
+import warnings
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 warnings.filterwarnings("ignore")
 
-import jax, jax.numpy as jnp
+import jax
+import jax.numpy as jnp
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from flax import nnx
 
-from dantinox.core.config import ModelConfig, ELFConfig
-from dantinox.core.model   import Transformer
-from dantinox.core.elf     import ELFTransformer
+from dantinox.core.config import ELFConfig, ModelConfig
+from dantinox.core.elf import ELFTransformer
+from dantinox.core.model import Transformer
 from dantinox.profiling import (
-    LatencyMetric, ThroughputMetric, FLOPsMetric,
-    LatencyResult, ThroughputResult,
-    RunProfile, MultiRunReport,
-    plot_3d_surface, plot_3d_compare, plot_bar_compare,
+    LatencyMetric,
+    MultiRunReport,
+    RunProfile,
+    ThroughputResult,
+    plot_3d_compare,
+    plot_3d_surface,
 )
 
 print(f"JAX {jax.__version__}  backend={jax.default_backend()}")
@@ -385,7 +392,7 @@ fig.suptitle("Fig 1 — Scale: diffusion is consistently 3–8× faster than AR"
              fontweight="bold", y=1.02)
 plt.tight_layout()
 fig.savefig(f"{OUT_DIR}/fig1_scale.png"); plt.close(fig)
-print(f"  saved fig1_scale.png")
+print("  saved fig1_scale.png")
 
 # Fig 2: Batch sweep (Pareto + throughput)
 fig, axes = plt.subplots(1, 2, figsize=(11, 4))
@@ -404,7 +411,7 @@ for ax_i, sl in enumerate([SEQ_LENS[0], SEQ_LENS[-1]]):
 fig.suptitle("Fig 2 — Batch-size sweep", fontweight="bold", y=1.02)
 plt.tight_layout()
 fig.savefig(f"{OUT_DIR}/fig2_batch.png"); plt.close(fig)
-print(f"  saved fig2_batch.png")
+print("  saved fig2_batch.png")
 
 # Fig 3: Latency vs throughput Pareto
 fig, ax = plt.subplots(figsize=(7, 4.5))
@@ -425,7 +432,7 @@ ax.set_title("Fig 3 — Serving Pareto frontier (log–log)", fontweight="bold")
 ax.legend(fontsize=7.5)
 plt.tight_layout()
 fig.savefig(f"{OUT_DIR}/fig3_pareto.png"); plt.close(fig)
-print(f"  saved fig3_pareto.png")
+print("  saved fig3_pareto.png")
 
 print(f"\nAll outputs in {OUT_DIR}/")
 print("PASS — notebook logic verified.")

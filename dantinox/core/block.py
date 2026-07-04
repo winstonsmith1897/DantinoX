@@ -1,3 +1,22 @@
+"""Pre-norm transformer block and normalisation layers.
+
+Public API
+----------
+``RMSNorm``            Root-mean-square layer normalisation.
+``AdaLayerNorm``       DiT-style adaptive layer norm (conditioning).
+``Block``              norm → attention → residual → norm → FFN → residual.
+                       Causal vs bidirectional is fixed at construction from
+                       ``config.causal``; the FFN is dense (``MLP``) or sparse
+                       (``MoE``) from ``config.ffn``.
+``Block.decode_with_context``
+                       Single-block step for Fast-dLLM dual-cache decoding —
+                       kept here so model-level code never reaches into block
+                       internals.
+``ARBlock`` / ``DiffusionBlock`` / ``build_block``
+                       Deprecated aliases of ``Block`` (removed in v1.0).
+
+Attention variants live in attention.py; the full model in model.py.
+"""
 from __future__ import annotations
 
 import flax.nnx as nnx
@@ -8,7 +27,6 @@ from .attention import BaseAttention, build_attention
 from .config import ModelConfig
 from .mlp import MLP
 from .moe import MoE
-
 
 # ── Normalisation layers ───────────────────────────────────────────────────────
 
@@ -119,6 +137,35 @@ class Block(nnx.Module):
         if return_kv:
             return x_out, new_cache, aux, kv
         return x_out, new_cache, aux
+
+    def decode_with_context(
+        self,
+        x: jnp.ndarray,
+        context_kv: tuple | None,
+        cache_index: jnp.ndarray | int,
+        deterministic: bool = True,
+    ) -> jnp.ndarray:
+        """Bidirectional block pass attending over ``[context_kv | x]``.
+
+        Used for Fast-dLLM dual-cache decoding: *context_kv* holds the frozen
+        prefix/suffix ``(k, v)`` tensors while only the current block ``x`` is
+        recomputed.  Keeping this inside ``Block`` (rather than unrolling
+        norm/attention/ffn at the model level) means changes to the block
+        structure cannot silently diverge from the dual-cache path.
+        """
+        x_norm = self.norm1(x)
+        x_attn, _ = self.attention(
+            x_norm,
+            use_cache=False,
+            kv_cache=(None, None),
+            cache_index=cache_index,
+            deterministic=deterministic,
+            is_causal=False,
+            prefix_kv=context_kv,
+        )
+        x = x + x_attn
+        ff, _ = self.ffn(self.norm2(x), deterministic=deterministic)
+        return x + ff
 
 
 # ── Backward-compatible aliases ────────────────────────────────────────────────

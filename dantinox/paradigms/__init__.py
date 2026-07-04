@@ -1,9 +1,8 @@
-from dantinox.paradigms.paradigm import Paradigm
-from dantinox.paradigms.embedder import EmbedderParadigm, info_nce_loss
-
 # Internal implementations — importable for advanced use / backward compat
 from dantinox.paradigms.ar import ARParadigm
-from dantinox.paradigms.diffusion import DiscreteParadigm, ContinuousParadigm
+from dantinox.paradigms.diffusion import ContinuousParadigm, DiscreteParadigm
+from dantinox.paradigms.embedder import EmbedderParadigm, info_nce_loss
+from dantinox.paradigms.paradigm import Paradigm
 
 __all__ = [
     "Paradigm",

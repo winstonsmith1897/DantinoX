@@ -1,21 +1,24 @@
 import argparse
+import csv
+import dataclasses
+import datetime
+import json
+import math
+import os
+import time
+
 import jax
 import jax.numpy as jnp
-from flax import nnx
 import optax
-import time
-import csv
-import os
-import json
-import datetime
-import math
 from datasets import load_dataset
+from flax import nnx
+
+import wandb
 from dantinox.core.config import Config
 from dantinox.core.model import Transformer
-from dantinox.utils.tokenizer import get_tokenizer
 from dantinox.utils.helpers import compute_loss, get_batch
-import dataclasses
-import wandb
+from dantinox.utils.tokenizer import get_tokenizer
+
 
 def get_optax_optimizer(config, total_steps):
     requested_warmup = getattr(config, 'warmup_steps', 0)
@@ -25,7 +28,7 @@ def get_optax_optimizer(config, total_steps):
         peak_value=config.lr,
         warmup_steps=warmup_steps,
         decay_steps=max(total_steps, warmup_steps + 1),
-        end_value=config.lr * 0.01  
+        end_value=config.lr * 0.01
     )
     opt_name = config.optimizer.lower()
     if opt_name == "adamw": return optax.adamw(learning_rate=lr_schedule)
@@ -37,8 +40,13 @@ def parse_args():
     parser.add_argument("--config", type=str, default="configs/default_config.yaml")
     parser.add_argument("--data_path", type=str)
     parser.add_argument("--wandb_project", type=str, default="DantinoX")
+    # Config uses `from __future__ import annotations`, so field.type is a
+    # *string* ("int", "int | None", ...) — map it to a callable for argparse.
+    _arg_types = {"int": int, "float": float, "str": str, "bool": bool}
     for field in dataclasses.fields(Config):
         ftype = field.type
+        if not callable(ftype):
+            ftype = _arg_types.get(str(ftype).split(" | ")[0], str)
         arg_name = f"--{field.name}"
         if arg_name not in parser._option_string_actions:
             parser.add_argument(arg_name, type=ftype)
@@ -76,14 +84,14 @@ def report_model_summary(model, config, optimizer, save_path):
 
 def main():
     wandb.init(group="Attention-Comparison-V1")
-    
+
     args = parse_args()
     config = Config.from_yaml(args.config)
-    
+
     for k, v in wandb.config.items():
         if hasattr(config, k):
             setattr(config, k, v)
-            
+
     if getattr(wandb.config, 'activation', 'silu') == "gelu":
         config.use_swiglu = False
         config.activation = "gelu"
@@ -94,7 +102,7 @@ def main():
     config.head_size = 32
     config.n_heads = config.dim // config.head_size
     attn_type = wandb.config.get("attention_type", "standard_mha")
-    
+
     if attn_type == "standard_mha":
         config.mla = False
         config.kv_heads = config.n_heads
@@ -115,11 +123,11 @@ def main():
         kv_bytes = 2 * (config.down_dim_kv + config.rope_dim)
     else:
         kv_bytes = 2 * 2 * (config.kv_heads * config.head_size)
-    
+
     config.use_rotary_pos = True
     config.absolute_pos = False
     config.trainable_pos = False
-    
+
     moe_tag = "MoE" if config.use_moe else "Dense"
     timestamp = datetime.datetime.now().strftime("%H%M%S")
     run_id = f"{attn_type}_{config.dim}d_{config.num_blocks}b_{moe_tag}_{timestamp}"
@@ -143,7 +151,7 @@ def main():
         text = " ".join(raw_dataset['text'])
     else:
         path = args.data_path if args.data_path else config.dataset_name
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             text = f.read()
 
     raw_lines = text.split('\n')
@@ -155,10 +163,10 @@ def main():
 
     tokenizer = get_tokenizer(config.tokenizer_type)
     if config.tokenizer_type == "char":
-        tokenizer.train_from_text(text) 
+        tokenizer.train_from_text(text)
     elif config.tokenizer_type == "bpe":
         tokenizer.train_from_text(text, vocab_size=config.vocab_size)
-    
+
     config.vocab_size = tokenizer.vocab_size
     full_data = jnp.array(tokenizer.encode(text), dtype=jnp.int32)
     n = int(0.9 * len(full_data))
@@ -169,15 +177,15 @@ def main():
     model = Transformer(config, rngs=rngs)
     tx = get_optax_optimizer(config, total_steps)
     optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
-    
+
     report_model_summary(model, config, optimizer, os.path.join(run_dir, "model_summary.json"))
-    
+
     log_f = open(os.path.join(run_dir, "training_log.csv"), 'a', newline='')
     log_writer = csv.writer(log_f)
     log_writer.writerow(['step', 'train_loss', 'val_loss', 'vram_gb', 'ms_per_step'])
 
     micro_batch_size = config.batch_size // config.grad_accum
-    
+
     def loss_fn(model, x, y):
         logits, _, bal_loss = model(x, use_cache=False, kv_caches=None, cache_index=0)
         loss = compute_loss(logits, y)
@@ -217,28 +225,28 @@ def main():
             graphdef, state = nnx.split((model, optimizer, metrics))
             l, bl, new_state = train_step(graphdef, state, x, y)
             nnx.update((model, optimizer, metrics), new_state)
-            
+
             if step % 50 == 0:
                 dt = (time.time() - t0) * 1000 / 50 if step > 0 else 0
                 t0 = time.time()
                 vram = get_vram_usage()
-                
+
                 key, subkey = jax.random.split(key)
                 vx, vy = get_batch(val_data, micro_batch_size, config.max_context, subkey)
                 vl, vb = eval_step(model, vx, vy)
-                
+
                 wandb.log({
                     "step": step, "train_loss": float(l), "val_loss": float(vl),
                     "vram_gb": vram, "ms_per_step": dt, "kv_bytes": kv_bytes
                 })
                 log_writer.writerow([step, float(l), float(vl), round(vram, 3), round(dt, 2)])
                 log_f.flush()
-        
+
         final_params = nnx.state(model, nnx.Param).to_pure_dict()
         with open(os.path.join(run_dir, "model_weights.msgpack"), "wb") as f:
             import flax.serialization
             f.write(flax.serialization.msgpack_serialize(final_params))
-            
+
     finally:
         log_f.close()
         wandb.finish()

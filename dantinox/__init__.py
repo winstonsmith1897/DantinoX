@@ -27,7 +27,7 @@ Three levels of API
     p = dx.Paradigm(dx.ModelConfig(paradigm="discrete", dim=512, n_heads=8, num_blocks=12,
                                     noise_schedule="cosine"))
 
-    # ELF continuous flow-matching
+    # Continuous flow-matching
     p = dx.Paradigm(dx.ModelConfig(paradigm="continuous", dim=512, n_heads=8, num_blocks=12,
                                     embed_dim=768))
 
@@ -46,7 +46,8 @@ Three levels of API
     from dantinox.profiling         import LatencyTracker, count_flops
 """
 
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 try:
     __version__: str = _pkg_version("dantinox")
@@ -54,33 +55,9 @@ except PackageNotFoundError:
     __version__ = "0.0.0.dev"
 
 # ── Config re-exports ─────────────────────────────────────────────────────────
-from dantinox.core.config import Config, ModelConfig, TrainingConfig
-
-# ── Core model ────────────────────────────────────────────────────────────────
-from dantinox.core.model import Transformer
-
-# ── Paradigms ─────────────────────────────────────────────────────────────────
-from dantinox.paradigms import (
-    Paradigm,
-    EmbedderParadigm,
-    info_nce_loss,
-    # advanced / backward compat
-    ARParadigm,
-    DiscreteParadigm,
-    ContinuousParadigm,
-)
-
-# ── Training ──────────────────────────────────────────────────────────────────
-from dantinox.training import Trainer, build_optimizer, build_schedule
-
-# ── Profiling ─────────────────────────────────────────────────────────────────
-from dantinox.profiling import (
-    FLOPsBreakdown,
-    LatencyTracker,
-    ProfilingResult,
-    count_flops,
-    profile_fn,
-)
+# ── Banner ────────────────────────────────────────────────────────────────────
+from dantinox._banner import print_banner as banner
+from dantinox.bench import BenchmarkRunner
 
 # ── Benchmarking ─────────────────────────────────────────────────────────────
 from dantinox.benchmarking import (
@@ -93,6 +70,49 @@ from dantinox.benchmarking import (
     SuiteReport,
     ThroughputTask,
 )
+from dantinox.core.config import Config, ModelConfig, TrainingConfig
+
+# ── Core model ────────────────────────────────────────────────────────────────
+from dantinox.core.model import Transformer
+
+# ── Embedding / RAG ──────────────────────────────────────────────────────────
+from dantinox.embedder import Embedder
+from dantinox.embedder_trainer import EmbedderTrainer
+from dantinox.exceptions import (
+    BenchmarkError,
+    CheckpointError,
+    ConfigError,
+    DantinoXError,
+    PlotError,
+)
+
+# ── Legacy high-level helpers (backward compat) ───────────────────────────────
+from dantinox.generator import Generator
+from dantinox.hub import pull, push, resolve_checkpoint
+
+# ── Paradigms ─────────────────────────────────────────────────────────────────
+from dantinox.paradigms import (
+    # advanced / backward compat
+    ARParadigm,
+    ContinuousParadigm,
+    DiscreteParadigm,
+    EmbedderParadigm,
+    Paradigm,
+    info_nce_loss,
+)
+from dantinox.plotting import Plotter
+
+# ── Profiling ─────────────────────────────────────────────────────────────────
+from dantinox.profiling import (
+    FLOPsBreakdown,
+    LatencyTracker,
+    ProfilingResult,
+    count_flops,
+    profile_fn,
+)
+
+# ── Training ──────────────────────────────────────────────────────────────────
+from dantinox.training import Trainer, build_optimizer, build_schedule
 
 # ── Visualization ─────────────────────────────────────────────────────────────
 from dantinox.visualization import (
@@ -106,26 +126,6 @@ from dantinox.visualization import (
     TrainingCurveChart,
     Visualizer,
 )
-
-# ── Embedding / RAG ──────────────────────────────────────────────────────────
-from dantinox.embedder import Embedder
-from dantinox.embedder_trainer import EmbedderTrainer
-
-# ── Legacy high-level helpers (backward compat) ───────────────────────────────
-from dantinox.generator import Generator
-from dantinox.bench import BenchmarkRunner
-from dantinox.hub import pull, push, resolve_checkpoint
-from dantinox.plotting import Plotter
-from dantinox.exceptions import (
-    BenchmarkError,
-    CheckpointError,
-    ConfigError,
-    DantinoXError,
-    PlotError,
-)
-
-# ── Banner ────────────────────────────────────────────────────────────────────
-from dantinox._banner import print_banner as banner
 
 # Print on every fresh import (no-ops on subsequent imports or non-TTY pipes)
 banner(__version__)
@@ -380,6 +380,7 @@ def load(
         model = dx.load("runs/20240101_120000", checkpoint="/path/to/my.msgpack")
     """
     import os
+
     from flax import nnx
 
     if checkpoint.endswith(".msgpack") and os.path.sep in checkpoint or os.path.isabs(checkpoint):
@@ -495,6 +496,7 @@ def quick_generate(
         )
 
     import os
+
     import jax
     import jax.numpy as jnp
 

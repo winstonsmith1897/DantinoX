@@ -24,15 +24,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from dantinox.profiling import (
-    LatencyMetric, ThroughputMetric, FLOPsMetric, PerplexityMetric, EntropyMetric,
-    EnergyMetric,
-    LatencyResult, ThroughputResult, FLOPsResult, PerplexityResult, EntropyResult,
-    RunsProfiler, MultiRunReport, RunProfile,
+    EntropyMetric,
+    EntropyResult,
+    FLOPsMetric,
+    FLOPsResult,
+    LatencyMetric,
+    LatencyResult,
     # backward compat
-    LatencyTracker, ProfilingResult,
+    LatencyTracker,
+    MultiRunReport,
+    PerplexityMetric,
+    PerplexityResult,
+    ProfilingResult,
+    RunProfile,
+    RunsProfiler,
+    ThroughputMetric,
+    ThroughputResult,
 )
 
 RUNS_DIR = "runs"
@@ -148,6 +157,7 @@ check(str(result).startswith("Latency"), "str(result) works")
 
 # variable-time fn (ensures ordering)
 import random
+
 result2 = lat.measure(lambda: time.sleep(random.uniform(0.001, 0.005)), n_tokens=64)
 check(result2.p50_ms <= result2.p99_ms, "variable latency: p50 ≤ p99")
 
@@ -245,7 +255,6 @@ check(abs(result.bpb - 3.0/math.log(2)) < 0.01,
 check(result.n_batches == 10,              "n_batches=10")
 
 # varying loss
-import itertools
 losses_iter = iter([1.0, 2.0, 3.0, 4.0])
 def var_loss_fn(batch, rng):
     v = next(losses_iter, 2.5)
@@ -322,7 +331,7 @@ profiler = RunsProfiler(
 
 found = profiler.discover()
 print(f"  Discovered {len(found)} run(s): {[os.path.basename(d) for d in found]}")
-check(len(found) >= 1, f"at least 1 AR 128d run found")
+check(len(found) >= 1, "at least 1 AR 128d run found")
 
 report = profiler.run()
 
@@ -531,14 +540,17 @@ check(r_thr.peak_tps > 0,                 f"peak_tps > 0  got={r_thr.peak_tps:,.
 # ── 3D plots (no browser, write to /tmp HTML) ─────────────────────────────────
 print("\n  3D plots (write HTML only, no browser)")
 
-import tempfile, os as _os
-
-from dantinox.profiling.plots import (
-    plot_3d_surface, plot_3d_compare, plot_bar_compare,
-)
+import os as _os
+import tempfile
 
 # Build a synthetic RunProfile with throughput grid for plotting
-from dantinox.profiling import RunProfile, MultiRunReport, ThroughputResult
+from dantinox.profiling import MultiRunReport, ThroughputResult
+from dantinox.profiling.plots import (
+    plot_3d_compare,
+    plot_3d_surface,
+    plot_bar_compare,
+)
+
 
 def _make_profile(name, bs_list, sl_list, tps_fn):
     grid = [

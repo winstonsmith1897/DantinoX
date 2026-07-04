@@ -41,9 +41,9 @@ import statistics
 import threading
 import time
 from collections import deque
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterator
-
+from typing import Any
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -602,7 +602,6 @@ class PerplexityMetric:
         rng:     Any,
     ) -> PerplexityResult:
         import jax
-        import jax.numpy as jnp
 
         sweep: list[dict[str, Any]] = []
         all_losses: list[float]     = []
@@ -733,7 +732,6 @@ class EntropyMetric:
         rng:      Any,
     ) -> EntropyResult:
         import jax
-        import jax.numpy as jnp
 
         sweep: list[dict[str, Any]] = []
         all_entropy: list[float]    = []

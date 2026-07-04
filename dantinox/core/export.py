@@ -29,7 +29,6 @@ Load the exported binary later (no Python model code needed)::
 
 from __future__ import annotations
 
-import functools
 import logging
 import os
 from typing import Any
@@ -91,19 +90,13 @@ def export_to_stablehlo(
             "Upgrade with:  pip install -U jax jaxlib"
         )
 
-    from dantinox.core.config import Config
+    from dantinox.core.checkpoint import load_model
 
     # ── Load config + model ───────────────────────────────────────────────────
-    config_path = os.path.join(checkpoint_path, "config.yaml")
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(
-            f"config.yaml not found in {checkpoint_path!r}"
-        )
-    cfg = Config.from_yaml(config_path)
-    T = seq_len if seq_len is not None else cfg.max_context
+    model, cfg, weights_path = load_model(checkpoint_path, seed=seed)
+    max_ctx = getattr(cfg, "max_context", None) or getattr(cfg, "max_seq_len", 512)
+    T = seq_len if seq_len is not None else max_ctx
     log.info("Exporting %s  batch=%d  seq=%d", cfg, batch_size, T)
-
-    model, weights_path = _load_model_for_export(cfg, checkpoint_path, seed)
     log.info("Weights loaded from %s", weights_path)
 
     # ── Build a pure, weight-closed-over forward function ─────────────────────
@@ -140,53 +133,6 @@ def export_to_stablehlo(
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
-
-
-def _load_model_for_export(cfg: Any, run_dir: str, seed: int) -> tuple[Any, str]:
-    """Instantiate the NNX model and restore weights from the best checkpoint."""
-    import msgpack
-    from flax.serialization import _msgpack_ext_unpack
-
-    _CANDIDATES = (
-        "checkpoint_best.msgpack",
-        "checkpoint_latest.msgpack",
-        "best_model_weights.msgpack",
-        "model_weights.msgpack",
-    )
-    for fname in _CANDIDATES:
-        wp = os.path.join(run_dir, fname)
-        if os.path.exists(wp):
-            weights_path = wp
-            break
-    else:
-        raise FileNotFoundError(
-            f"No weights file found in {run_dir!r}. "
-            f"Tried: {_CANDIDATES}"
-        )
-
-    rngs = nnx.Rngs(seed)
-    model_type = cfg.model_type
-
-    if model_type == "elf":
-        from dantinox.core.elf import ELFTransformer
-        model = ELFTransformer(cfg.to_elf_config(), rngs=rngs)
-    else:
-        # Unified Transformer handles both AR (causal=True) and diffusion.
-        from dantinox.core.model import Transformer
-        model = Transformer(cfg.to_model_config(), rngs=rngs)
-
-    with open(weights_path, "rb") as fh:
-        raw = msgpack.unpackb(
-            fh.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False
-        )
-
-    if isinstance(raw, dict) and "model" in raw and "opt" in raw:
-        raw = raw["model"]
-
-    state = nnx.state(model, nnx.Not(nnx.RngState))
-    state.replace_by_pure_dict(raw)
-    nnx.update(model, state)
-    return model, weights_path
 
 
 def _serialize(exported: Any, output_path: str) -> bytes:

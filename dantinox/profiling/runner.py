@@ -31,7 +31,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Any
 
 import yaml
@@ -344,7 +344,7 @@ class RunsProfiler:
             log.error("[RunsProfiler] could not load data: %s", exc)
             return None
 
-    def _run_metrics(self, profile: RunProfile, adapter: "_ModelAdapter", data: Any) -> None:
+    def _run_metrics(self, profile: RunProfile, adapter: _ModelAdapter, data: Any) -> None:
         import jax
 
         lat_elapsed: float | None = None
@@ -479,7 +479,6 @@ class _ARAdapter(_ModelAdapter):
 
     def get_batch_fn(self):
         import jax
-        import jax.numpy as jnp
         vocab = self._config.vocab_size
         def _make(bs: int, sl: int):
             return jax.random.randint(jax.random.PRNGKey(0), (bs, sl), 0, vocab)
@@ -518,7 +517,6 @@ class _ARAdapter(_ModelAdapter):
         return _loss
 
     def logit_fn(self):
-        import jax
         model = self._model
 
         def _fn(x):
@@ -585,7 +583,6 @@ class _DiffusionAdapter(_ModelAdapter):
         return _loss
 
     def logit_fn(self):
-        import jax
         model   = self._model
         mask_id = getattr(self._config, "mask_token_id", 4)
         import jax.numpy as jnp
@@ -599,7 +596,7 @@ class _DiffusionAdapter(_ModelAdapter):
         return _fn
 
 
-class _ELFAdapter(_ModelAdapter):
+class _FlowAdapter(_ModelAdapter):
     def __init__(self, config, model, t5_encoder) -> None:
         self._config     = config
         self._model      = model
@@ -636,7 +633,6 @@ class _ELFAdapter(_ModelAdapter):
 
     def make_forward_fn(self, batch_size: int, seq_len: int):
         import jax
-        import jax.numpy as jnp
         model     = self._model
         t5_encode = self._t5_encoder.encode
         x         = self.get_batch_fn()(batch_size, seq_len)
@@ -650,26 +646,24 @@ class _ELFAdapter(_ModelAdapter):
 
     def loss_fn(self):
         import jax
-        import jax.numpy as jnp
-        from dantinox.training.elf_loss import elf_loss
+
+        from dantinox.training.flow_loss import flow_loss
 
         model     = self._model
         t5_encode = self._t5_encoder.encode
-        elf_cfg   = getattr(self._config, "to_elf_config", lambda: self._config)()
+        elf_cfg   = getattr(self._config, "to_flow_config", lambda: self._config)()
 
         def _loss(batch, rng):
             x   = batch[:, :-1]
             emb = t5_encode(x)
             emb_n = model.encode(emb)
             rng, sub = jax.random.split(rng)
-            loss, aux = elf_loss(model, emb_n, x, sub, elf_cfg)
+            loss, aux = flow_loss(model, emb_n, x, sub, elf_cfg)
             return float(loss), aux
 
         return _loss
 
     def logit_fn(self):
-        import jax
-        import jax.numpy as jnp
         model     = self._model
         t5_encode = self._t5_encoder.encode
 
@@ -685,11 +679,9 @@ class _ELFAdapter(_ModelAdapter):
 # ── Model loading ─────────────────────────────────────────────────────────────
 
 
-def _load_adapter(run_dir: str, cfg: dict[str, Any]) -> "_ModelAdapter":
+def _load_adapter(run_dir: str, cfg: dict[str, Any]) -> _ModelAdapter:
     """Load the model from *run_dir* and wrap it in the right adapter."""
-    import jax
     import msgpack
-    import yaml
     from flax import nnx
     from flax.serialization import _msgpack_ext_unpack
 
@@ -701,9 +693,9 @@ def _load_adapter(run_dir: str, cfg: dict[str, Any]) -> "_ModelAdapter":
 
     # ── Build model skeleton ──────────────────────────────────────────────────
     if model_type == "elf":
-        from dantinox.core.elf import ELFTransformer
-        elf_cfg = config.to_elf_config()
-        model   = ELFTransformer(elf_cfg, rngs=rngs)
+        from dantinox.core.flow import FlowMatchingTransformer
+        elf_cfg = config.to_flow_config()
+        model   = FlowMatchingTransformer(elf_cfg, rngs=rngs)
     elif model_type == "diffusion":
         from dantinox.core.model import DiffusionTransformer
         model = DiffusionTransformer(config, rngs=rngs)
@@ -734,7 +726,7 @@ def _load_adapter(run_dir: str, cfg: dict[str, Any]) -> "_ModelAdapter":
     # ── Wrap in adapter ───────────────────────────────────────────────────────
     if model_type == "elf":
         t5_enc = _load_t5_encoder(cfg.get("t5_model_name", "t5-base"))
-        return _ELFAdapter(config, model, t5_enc)
+        return _FlowAdapter(config, model, t5_enc)
     elif model_type == "diffusion":
         return _DiffusionAdapter(config, model)
     else:
@@ -746,9 +738,8 @@ def _load_t5_encoder(model_name: str):
     import logging as _logging
     for _noisy in ("httpx", "transformers", "huggingface_hub"):
         _logging.getLogger(_noisy).setLevel(_logging.WARNING)
-    from transformers import FlaxT5EncoderModel, AutoTokenizer
-    import jax
     import jax.numpy as jnp
+    from transformers import AutoTokenizer, FlaxT5EncoderModel
 
     class _T5Enc:
         def __init__(self):

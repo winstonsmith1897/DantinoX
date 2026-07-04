@@ -30,8 +30,6 @@ class TrainingCurveChart(Chart):
         return self._dispatch_mpl(data, config, out_path)
 
     def _render_mpl(self, data: Any, config: RenderConfig, fig: Any, ax: Any) -> None:
-        import pandas as pd
-        from dantinox.visualization.style import get_palette
 
         df     = _load_df(data)
         colors = get_palette(config.style)

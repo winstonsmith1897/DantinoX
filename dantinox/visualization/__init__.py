@@ -1,7 +1,5 @@
-from dantinox.visualization.base       import Chart, RenderConfig
-from dantinox.visualization.style      import apply_style, get_palette, TYPE_COLORS
-from dantinox.visualization.visualizer import Visualizer
-from dantinox.visualization.charts     import (
+from dantinox.visualization.base import Chart, RenderConfig
+from dantinox.visualization.charts import (
     LatencyChart,
     ParetoChart,
     RadarChart,
@@ -9,6 +7,8 @@ from dantinox.visualization.charts     import (
     ThroughputChart,
     TrainingCurveChart,
 )
+from dantinox.visualization.style import TYPE_COLORS, apply_style, get_palette
+from dantinox.visualization.visualizer import Visualizer
 
 __all__ = [
     "Chart",

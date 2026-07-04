@@ -17,7 +17,7 @@ import pathlib
 import sys
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import jax
 import numpy as np
@@ -252,9 +252,8 @@ class TestAutoDataPipeline:
         # Hide both the package and any cached import
         hidden = {k: None for k in list(sys.modules.keys()) if k.startswith("datasets")}
         hidden["datasets"] = None
-        with patch.dict(sys.modules, hidden):
-            with pytest.raises(ImportError, match="datasets"):
-                next(iter(pipe))
+        with patch.dict(sys.modules, hidden), pytest.raises(ImportError, match="datasets"):
+            next(iter(pipe))
 
 
 # ===========================================================================
@@ -346,6 +345,7 @@ class TestWandbCallback:
 
     def test_on_train_begin_passes_dataclass_config(self):
         import dataclasses
+
         from dantinox.training.callbacks import WandbCallback
 
         @dataclasses.dataclass
@@ -475,17 +475,15 @@ class TestOOMGuard:
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg(batch_size=16, grad_accum=2)
-        with pytest.raises(OOMMitigatedError):
-            with with_oom_guard(cfg):
-                raise RuntimeError(msg)
+        with pytest.raises(OOMMitigatedError), with_oom_guard(cfg):
+            raise RuntimeError(msg)
 
     def test_non_oom_runtime_error_passes_through(self):
         from dantinox.training.stability import with_oom_guard
 
         cfg = self._cfg()
-        with pytest.raises(RuntimeError, match="division"):
-            with with_oom_guard(cfg):
-                raise RuntimeError("division by zero")
+        with pytest.raises(RuntimeError, match="division"), with_oom_guard(cfg):
+            raise RuntimeError("division by zero")
         # Config must not have been modified
         assert cfg.batch_size == 32
         assert cfg.grad_accum == 4
@@ -494,17 +492,15 @@ class TestOOMGuard:
         from dantinox.training.stability import with_oom_guard
 
         cfg = self._cfg()
-        with pytest.raises(ValueError):
-            with with_oom_guard(cfg):
-                raise ValueError("bad value")
+        with pytest.raises(ValueError), with_oom_guard(cfg):
+            raise ValueError("bad value")
 
     def test_key_error_passes_through(self):
         from dantinox.training.stability import with_oom_guard
 
         cfg = self._cfg()
-        with pytest.raises(KeyError):
-            with with_oom_guard(cfg):
-                raise KeyError("missing")
+        with pytest.raises(KeyError), with_oom_guard(cfg):
+            raise KeyError("missing")
 
     # ── Config mutation ───────────────────────────────────────────────────────
 
@@ -512,27 +508,24 @@ class TestOOMGuard:
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg(batch_size=64, grad_accum=1)
-        with pytest.raises(OOMMitigatedError):
-            with with_oom_guard(cfg):
-                raise RuntimeError("out of memory")
+        with pytest.raises(OOMMitigatedError), with_oom_guard(cfg):
+            raise RuntimeError("out of memory")
         assert cfg.batch_size == 32
 
     def test_grad_accum_is_doubled(self):
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg(batch_size=32, grad_accum=4)
-        with pytest.raises(OOMMitigatedError):
-            with with_oom_guard(cfg):
-                raise RuntimeError("out of memory")
+        with pytest.raises(OOMMitigatedError), with_oom_guard(cfg):
+            raise RuntimeError("out of memory")
         assert cfg.grad_accum == 8
 
     def test_batch_size_floor_is_one(self):
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg(batch_size=1, grad_accum=2)
-        with pytest.raises(OOMMitigatedError) as exc_info:
-            with with_oom_guard(cfg):
-                raise RuntimeError("cuda out of memory")
+        with pytest.raises(OOMMitigatedError) as exc_info, with_oom_guard(cfg):
+            raise RuntimeError("cuda out of memory")
         assert cfg.batch_size == 1
         assert exc_info.value.new_batch_size == 1
 
@@ -540,9 +533,8 @@ class TestOOMGuard:
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg(batch_size=7, grad_accum=1)
-        with pytest.raises(OOMMitigatedError):
-            with with_oom_guard(cfg):
-                raise RuntimeError("out of memory")
+        with pytest.raises(OOMMitigatedError), with_oom_guard(cfg):
+            raise RuntimeError("out of memory")
         assert cfg.batch_size == 3   # floor(7 // 2)
 
     # ── OOMMitigatedError attributes ──────────────────────────────────────────
@@ -551,9 +543,8 @@ class TestOOMGuard:
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg(batch_size=128, grad_accum=1)
-        with pytest.raises(OOMMitigatedError) as exc_info:
-            with with_oom_guard(cfg):
-                raise RuntimeError("out of memory")
+        with pytest.raises(OOMMitigatedError) as exc_info, with_oom_guard(cfg):
+            raise RuntimeError("out of memory")
         assert exc_info.value.new_batch_size == 64
         assert exc_info.value.new_grad_accum == 2
 
@@ -562,9 +553,8 @@ class TestOOMGuard:
 
         cfg = self._cfg()
         original = RuntimeError("resource_exhausted: gpu oom")
-        with pytest.raises(OOMMitigatedError) as exc_info:
-            with with_oom_guard(cfg):
-                raise original
+        with pytest.raises(OOMMitigatedError) as exc_info, with_oom_guard(cfg):
+            raise original
         assert exc_info.value.original is original
 
     # ── Side effects ──────────────────────────────────────────────────────────
@@ -573,20 +563,18 @@ class TestOOMGuard:
         from dantinox.training.stability import OOMMitigatedError, with_oom_guard
 
         cfg = self._cfg()
-        with patch("jax.clear_caches") as mock_clear:
-            with pytest.raises(OOMMitigatedError):
-                with with_oom_guard(cfg):
-                    raise RuntimeError("out of memory")
+        with patch("jax.clear_caches") as mock_clear, pytest.raises(OOMMitigatedError):
+            with with_oom_guard(cfg):
+                raise RuntimeError("out of memory")
         mock_clear.assert_called_once()
 
     def test_does_not_clear_caches_on_non_oom(self):
         from dantinox.training.stability import with_oom_guard
 
         cfg = self._cfg()
-        with patch("jax.clear_caches") as mock_clear:
-            with pytest.raises(RuntimeError):
-                with with_oom_guard(cfg):
-                    raise RuntimeError("unrelated error")
+        with patch("jax.clear_caches") as mock_clear, pytest.raises(RuntimeError):
+            with with_oom_guard(cfg):
+                raise RuntimeError("unrelated error")
         mock_clear.assert_not_called()
 
     # ── Retry pattern ─────────────────────────────────────────────────────────
@@ -801,8 +789,7 @@ class TestPipelineErrors:
 
     def test_missing_weights_raises_file_not_found(self, tmp_path):
         """Config exists but no weights file → FileNotFoundError."""
-        import yaml
-        from dantinox.core.pipeline import _load_model
+        from dantinox.core.checkpoint import load_model
         from dantinox.core.config import Config
 
         run = tmp_path / "no_weights"
@@ -814,7 +801,7 @@ class TestPipelineErrors:
         cfg.save_yaml(str(run / "config.yaml"))
 
         with pytest.raises(FileNotFoundError, match="No weights file"):
-            _load_model(cfg, str(run), seed=0)
+            load_model(str(run), seed=0)
 
 
 class TestPipelineIntegration:
@@ -854,9 +841,10 @@ class TestPipelineIntegration:
         assert r1 == r2
 
     def test_pipeline_respects_max_new_tokens(self, trained_new_run):
+        import os
+
         from dantinox.core.pipeline import pipeline
         from dantinox.utils.tokenizer import load_tokenizer_from_file
-        import os
 
         tok = load_tokenizer_from_file(
             os.path.join(trained_new_run, "tokenizer.json")
@@ -926,17 +914,13 @@ class TestExportErrors:
                 export_to_stablehlo(str(run), str(tmp_path / "out.stablehlo"))
 
     def test_load_model_for_export_no_weights_raises(self, tmp_path):
-        from dantinox.core.export import _load_model_for_export
-        from dantinox.core.config import Config
+        """Export shares the checkpoint loader: no weights file → FileNotFoundError."""
+        from dantinox.core.checkpoint import find_weights_file
 
         run = tmp_path / "no_weights"
         run.mkdir()
-        cfg = Config(
-            dim=64, n_heads=2, head_size=32, num_blocks=1,
-            vocab_size=200, max_context=32, kv_heads=2,
-        )
         with pytest.raises(FileNotFoundError, match="No weights file"):
-            _load_model_for_export(cfg, str(run), seed=0)
+            find_weights_file(str(run))
 
 
 class TestSerializeHelper:
@@ -1165,11 +1149,11 @@ class TestAutoDataPipelineRepr:
 
 
 # ===========================================================================
-# 12. Pipeline _load_model — checkpoint priority
+# 12. Checkpoint loader — filename priority
 # ===========================================================================
 
 class TestLoadModelCheckpointPriority:
-    """_load_model must prefer checkpoint_best.msgpack over legacy filenames."""
+    """load_model must prefer checkpoint_best.msgpack over legacy filenames."""
 
     def _make_checkpoint(self, run_dir: pathlib.Path, model, filename: str) -> None:
         """Save a real model checkpoint using the new-style format."""
@@ -1184,9 +1168,10 @@ class TestLoadModelCheckpointPriority:
     def test_prefers_checkpoint_best(self, tmp_path):
         """When both checkpoint_best and best_model_weights exist, prefers the former."""
         from flax import nnx
+
+        from dantinox.core.checkpoint import load_model
         from dantinox.core.config import Config
         from dantinox.core.model import Transformer
-        from dantinox.core.pipeline import _load_model
 
         run = tmp_path / "pref_run"
         run.mkdir()
@@ -1197,18 +1182,19 @@ class TestLoadModelCheckpointPriority:
         cfg.save_yaml(str(run / "config.yaml"))
 
         model = Transformer(cfg.to_model_config(), rngs=nnx.Rngs(0))
-        # Write both; _load_model should prefer checkpoint_best
+        # Write both; load_model should prefer checkpoint_best
         self._make_checkpoint(run, model, "checkpoint_best.msgpack")
         self._make_checkpoint(run, model, "best_model_weights.msgpack")
 
-        loaded_model, weights_path = _load_model(cfg, str(run), seed=0)
+        _, _, weights_path = load_model(str(run), seed=0)
         assert "checkpoint_best" in weights_path
 
     def test_falls_back_to_legacy_filename(self, tmp_path):
         from flax import nnx
+
+        from dantinox.core.checkpoint import load_model
         from dantinox.core.config import Config
         from dantinox.core.model import Transformer
-        from dantinox.core.pipeline import _load_model
 
         run = tmp_path / "legacy_run"
         run.mkdir()
@@ -1221,5 +1207,5 @@ class TestLoadModelCheckpointPriority:
         model = Transformer(cfg.to_model_config(), rngs=nnx.Rngs(0))
         self._make_checkpoint(run, model, "best_model_weights.msgpack")
 
-        loaded_model, weights_path = _load_model(cfg, str(run), seed=0)
+        _, _, weights_path = load_model(str(run), seed=0)
         assert "best_model_weights" in weights_path

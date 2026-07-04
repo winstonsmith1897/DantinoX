@@ -1,3 +1,12 @@
+"""Device meshes and data/tensor-parallel helpers.
+
+``make_mesh`` / ``make_tp_mesh`` build 1-D (data) and 2-D (data × model)
+meshes; ``replicate`` / ``shard_batch`` place pytrees on them;
+``apply_tp_sharding`` shards weights Megatron-style (column-parallel qkv /
+up_proj, row-parallel o_proj / down_proj).  ``in_mesh_context`` is the single
+place that inspects the active mesh — layers use it to decide whether to emit
+the tensor-parallel all-reduce.
+"""
 from __future__ import annotations
 
 from typing import TypeVar
@@ -13,6 +22,23 @@ _T = TypeVar("_T")
 # Axis names used by the two parallelism dimensions
 DATA_AXIS = "data"
 TP_AXIS   = "model"
+
+
+def in_mesh_context() -> bool:
+    """True when a device mesh is active (set via ``jax.sharding.set_mesh``).
+
+    Used by row-parallel layers to decide whether to emit the
+    ``with_sharding_constraint`` that triggers the tensor-parallel all-reduce.
+    Isolates the mesh-introspection API in one place: prefer the public
+    ``jax.sharding.get_abstract_mesh`` and fall back to the private module on
+    older JAX versions.
+    """
+    try:
+        mesh = jax.sharding.get_abstract_mesh()
+    except AttributeError:  # pragma: no cover - JAX < 0.5
+        from jax._src.mesh import get_concrete_mesh
+        mesh = get_concrete_mesh()
+    return bool(getattr(mesh, "axis_names", ()))
 
 
 def make_mesh(n_devices: int = 0) -> Mesh:

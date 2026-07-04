@@ -159,8 +159,8 @@ def test_kv_cache_initial_shapes(mha_diff_cfg):
     assert cache[2] is not None, "k2 cache not populated (differential)"
 
     B, H, G, T, D = cache[0].shape
-    assert T == mha_diff_cfg.max_context
-    assert D == mha_diff_cfg.head_size
+    assert mha_diff_cfg.max_context == T
+    assert mha_diff_cfg.head_size == D
 
 
 def test_kv_cache_accumulation(mha_diff_cfg):

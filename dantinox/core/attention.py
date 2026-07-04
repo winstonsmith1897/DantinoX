@@ -1,14 +1,71 @@
+"""Attention variants for the unified Transformer backbone.
+
+Public API
+----------
+``KVCache`` / ``MLACache``
+    Typed per-layer cache containers (pytrees; flow through jit unchanged).
+``BaseAttention``
+    Shared plumbing: RoPE tables, causal/sliding-window masking (built on the
+    fly — no O(max_context²) buffers), no-sink gating, dropout, output
+    projection.
+``MHAAttention`` / ``GQAAttention``
+    One shared forward pass (``_StandardAttention``); GQA is simply
+    ``kv_heads < n_heads``.  Supports LoRA, FlashAttention, differential
+    attention, KV-cache, and dual-cache prefix injection.
+``MLAAttention``
+    DeepSeek-style latent attention.  ``inference_mode`` switches to the
+    absorbed path, which caches only the compressed latent and is numerically
+    identical to the explicit path.
+``build_attention``
+    String-keyed factory used by ``Block``.
+
+Every variant shares one call signature::
+
+    y, new_cache = attn(x, use_cache, kv_cache, cache_index,
+                        deterministic, is_causal, prefix_kv)
+
+The modules are paradigm-agnostic: causal vs bidirectional is chosen per call
+via ``is_causal``.  Blocks live in block.py, decoding loops in generation.py.
+"""
 from __future__ import annotations
 
 import math
+from typing import NamedTuple
 
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from jax.sharding import PartitionSpec as P
 
-from .config import Config
+from .config import Config, ModelConfig
 from .lora import LoRALinear, call_linear
+from .sharding import in_mesh_context
+
+# ── Per-layer cache containers ────────────────────────────────────────────────
+# These document the (previously positional) cache protocol.  Both are pytrees,
+# so they flow through jit / fori_loop carries exactly like plain tuples, and
+# existing code that indexes cache[0] / cache[1] keeps working.
+
+class KVCache(NamedTuple):
+    """AR KV cache for standard (MHA/GQA) attention.
+
+    ``k`` / ``v`` have shape ``[B, kv_heads, 1, max_context, head_size]``.
+    ``k2`` holds the second key projection when differential attention is
+    active, ``None`` otherwise.
+    """
+    k: jnp.ndarray
+    v: jnp.ndarray
+    k2: jnp.ndarray | None = None
+
+
+class MLACache(NamedTuple):
+    """Absorbed-MLA inference cache: compressed latent + decoupled RoPE keys.
+
+    ``c_kv``:   ``[B, max_context, down_dim_kv]``
+    ``k_rope``: ``[B, 1, 1, max_context, rope_dim]``
+    """
+    c_kv: jnp.ndarray
+    k_rope: jnp.ndarray
 
 
 # ── Abstract base ─────────────────────────────────────────────────────────────
@@ -24,7 +81,7 @@ class BaseAttention(nnx.Module):
     produce prefix KV tensors override ``extract_kv``; the default returns None.
     """
 
-    def __init__(self, config: Config, rngs: nnx.Rngs) -> None:
+    def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
         self.max_context    = config.max_context
         self.head_size      = config.head_size
         self.n_heads        = config.n_heads
@@ -34,25 +91,21 @@ class BaseAttention(nnx.Module):
         self.use_rotary     = config.use_rotary_pos
         self.use_flash      = config.use_flash_attention
         self.sliding_window = config.sliding_window
+        self.context_window = config.context_window
         self.inference      = config.inference
 
-        self._rope_scale    = getattr(config, "rope_scale_factor", 1.0)
+        self._rope_scale    = config.rope_scale_factor
 
         self.attn_dropout  = nnx.Dropout(config.dropout_rate, rngs=rngs)
         self.resid_dropout = nnx.Dropout(config.dropout_rate, rngs=rngs)
-        self.tp_size: int  = getattr(config, "tp_size", 1)
-
-
+        self.tp_size: int  = config.tp_size
 
         # Output projection (with optional LoRA)
-        _use_lora = (
-            getattr(config, "use_lora", False)
-            and getattr(config, "lora_targets", "attention") in ("attention", "all")
-        )
+        _use_lora = config.use_lora and config.lora_targets in ("attention", "all")
         _lk = dict(
-            rank=getattr(config, "lora_rank", 8),
-            alpha=getattr(config, "lora_alpha", 16.0),
-            dropout_rate=getattr(config, "lora_dropout", 0.0),
+            rank=config.lora_rank,
+            alpha=config.lora_alpha,
+            dropout_rate=config.lora_dropout,
             rngs=rngs,
         )
         self.o_proj: nnx.Linear | LoRALinear = (
@@ -64,16 +117,9 @@ class BaseAttention(nnx.Module):
         if self.no_sink:
             self.W = nnx.Linear(self.dim, self.dim, rngs=rngs)
 
-        # Causal mask buffer
-        self.tril = jnp.tril(jnp.ones((self.max_context, self.max_context), dtype=bool))
-
-        if self.sliding_window:
-            table = (
-                jnp.arange(self.max_context)[:, None]
-                - jnp.arange(self.max_context)[None, :]
-            )
-            mask        = (table <= config.context_window) & (table >= 0)
-            self.window = jnp.where(mask, 0.0, -1e9)
+        # Causal / sliding-window masks are built on the fly in
+        # ``_apply_attn_mask`` — storing them here would cost O(max_context²)
+        # memory per layer.
 
         # RoPE frequency table (angle[1,1,1,T,C//2]); subclasses may override.
         self.angle = self._compute_angle(self.max_context, self.head_size)
@@ -144,12 +190,17 @@ class BaseAttention(nnx.Module):
         S: int,
         is_causal: bool,
     ) -> jnp.ndarray:
+        # Query i sits at absolute position cache_index + i; keys occupy 0..S-1.
+        # Masks are computed on the fly (O(T·S) per call) rather than stored as
+        # O(max_context²) per-layer buffers.
+        q_pos = cache_index + jnp.arange(T)[:, None]
+        k_pos = jnp.arange(S)[None, :]
         if is_causal:
-            mask = jax.lax.dynamic_slice(self.tril, (cache_index, 0), (T, S))
-            attn = attn + jnp.where(mask, 0.0, -1e9)
+            attn = attn + jnp.where(k_pos <= q_pos, 0.0, -1e9)
         if self.sliding_window:
-            wm   = jax.lax.dynamic_slice(self.window, (cache_index, 0), (T, S))
-            attn = attn + wm
+            dist      = q_pos - k_pos
+            in_window = (dist >= 0) & (dist <= self.context_window)
+            attn      = attn + jnp.where(in_window, 0.0, -1e9)
         return attn
 
     def _apply_gate(self, y: jnp.ndarray, x: jnp.ndarray) -> jnp.ndarray:
@@ -189,16 +240,13 @@ class _StandardAttention(BaseAttention):
     Both support LoRA, Flash Attention, KV-cache, and dual-cache prefix injection.
     """
 
-    def __init__(self, config: Config, rngs: nnx.Rngs) -> None:
+    def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
         super().__init__(config, rngs)
-        _use_lora = (
-            getattr(config, "use_lora", False)
-            and getattr(config, "lora_targets", "attention") in ("attention", "all")
-        )
+        _use_lora = config.use_lora and config.lora_targets in ("attention", "all")
         _lk = dict(
-            rank=getattr(config, "lora_rank", 8),
-            alpha=getattr(config, "lora_alpha", 16.0),
-            dropout_rate=getattr(config, "lora_dropout", 0.0),
+            rank=config.lora_rank,
+            alpha=config.lora_alpha,
+            dropout_rate=config.lora_dropout,
             rngs=rngs,
         )
         qkv_out = self.dim + 2 * self.kv_heads * self.head_size
@@ -206,7 +254,7 @@ class _StandardAttention(BaseAttention):
             LoRALinear(self.dim, qkv_out, use_bias=False, **_lk)
             if _use_lora else nnx.Linear(self.dim, qkv_out, use_bias=False, rngs=rngs)
         )
-        self.differential = getattr(config, "differential", False)
+        self.differential = config.differential
 
         if self.differential:
             q2k2_out = self.dim + self.kv_heads * self.head_size
@@ -219,7 +267,7 @@ class _StandardAttention(BaseAttention):
             self.lambda_k1 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
             self.lambda_q2 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
             self.lambda_k2 = nnx.Param(jnp.zeros((self.n_heads, self.head_size)))
-            self.lambda_init: float = getattr(config, "lambda_init", 0.8)
+            self.lambda_init: float = config.lambda_init
             self.diff_norm = nnx.RMSNorm(self.head_size, rngs=rngs)
 
     # ── λ computation (paper eq.) ─────────────────────────────────────────────
@@ -246,9 +294,9 @@ class _StandardAttention(BaseAttention):
         T: int,
         k: jnp.ndarray,
         v: jnp.ndarray,
-        k2: jnp.ndarray | None, 
+        k2: jnp.ndarray | None,
         is_differential:bool = False
-    ) -> tuple[tuple, jnp.ndarray, jnp.ndarray]:
+    ) -> tuple[KVCache, jnp.ndarray, jnp.ndarray, jnp.ndarray | None]:
         k2c = None
         if kv_cache[0] is None:
             kc = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
@@ -270,7 +318,7 @@ class _StandardAttention(BaseAttention):
             if is_differential:
                 k2c = jax.lax.dynamic_update_slice(kv_cache[2], k2, (0, 0, 0, cache_index, 0))
 
-        return (kc, vc, k2c), kc, vc, k2c
+        return KVCache(kc, vc, k2c), kc, vc, k2c
 
     # ── Dual-cache: extract prefix KV ─────────────────────────────────────────
 
@@ -350,7 +398,7 @@ class _StandardAttention(BaseAttention):
             y   = self._apply_gate(y, x)
             out = call_linear(self.o_proj, y, deterministic=deterministic)
             # All-reduce partial sums from row-parallel o_proj across TP devices.
-            if self.tp_size > 1:
+            if self.tp_size > 1 and in_mesh_context():
                 out = jax.lax.with_sharding_constraint(out, P(None, None, None))
             return self.resid_dropout(out, deterministic=deterministic), kv_cache
 
@@ -400,7 +448,7 @@ class _StandardAttention(BaseAttention):
         y   = y.reshape(B, T, self.dim)
         y   = self._apply_gate(y, x)
         out = call_linear(self.o_proj, y, deterministic=deterministic)
-        if self.tp_size > 1:
+        if self.tp_size > 1 and in_mesh_context():
             out = jax.lax.with_sharding_constraint(out, P(None, None, None))
         return self.resid_dropout(out, deterministic=deterministic), kv_cache
 
@@ -427,9 +475,9 @@ class MLAAttention(BaseAttention):
     cache stores the compact latent rather than the full-sized KV tensors.
     """
 
-    def __init__(self, config: Config, rngs: nnx.Rngs) -> None:
+    def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
         super().__init__(config, rngs)
-        self.rope_dim    = config.rope_dim if hasattr(config, "rope_dim") else self.head_size // 2
+        self.rope_dim    = config.rope_dim
         self.down_dim_q  = config.down_dim_q
         self.down_dim_kv = config.down_dim_kv
 
@@ -457,7 +505,7 @@ class MLAAttention(BaseAttention):
         T: int,
         c_kv: jnp.ndarray,
         k_rope: jnp.ndarray,
-    ) -> tuple[tuple, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    ) -> tuple[MLACache, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
         """Returns (new_kv_cache, k_rope_cache, c_cache, c_cache).
 
         The last two values are both the latent ``c_cache``: in the absorbed
@@ -474,7 +522,7 @@ class MLAAttention(BaseAttention):
             r_cache = jax.lax.dynamic_update_slice(
                 kv_cache[1], k_rope, (0, 0, 0, cache_index, 0)
             )
-        return (c_cache, r_cache), r_cache, c_cache, c_cache
+        return MLACache(c_cache, r_cache), r_cache, c_cache, c_cache
 
     # ── Forward pass ──────────────────────────────────────────────────────────
 
@@ -513,20 +561,28 @@ class MLAAttention(BaseAttention):
             )
             v = v_up
         else:
-            # Inference path: absorbed projection (latent cache)
+            # Inference path: the KV cache stores only the compressed latent
+            # c_kv (down_dim_kv per position) — the up-projections for K and V
+            # are folded into the attention einsums instead of materialising
+            # full-size K/V tensors.  Queries are materialised per head, which
+            # is cheap (query length ≪ cache length) and lets the up_q bias
+            # apply naturally.  Including the up_k / up_v biases below keeps
+            # this path numerically identical to the explicit training path.
             if use_cache:
                 kv_cache, k_rope, k, v = self._update_mla_cache(
                     kv_cache, cache_index, B, T, c_kv, k_rope
                 )
             else:
                 k = v = c_kv
-            q_proj    = self.up_q.kernel.reshape(
-                self.down_dim_q, self.kv_heads, self.n_heads // self.kv_heads, self.head_size
-            )
-            k_proj    = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
-            attn_proj = jnp.einsum("qngh, knh -> ngqk", q_proj, k_proj)
-            attn_proj = jnp.einsum("btq, ngqk -> btngk", q, attn_proj)
-            attn      = jnp.einsum("btngk, bsk -> bngts", attn_proj, k)
+            G    = self.n_heads // self.kv_heads
+            q_up = self.up_q(q).reshape(B, T, self.kv_heads, G, self.head_size)
+            W_k  = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
+            # score[t, s] = q_up[t] · (c_kv[s] W_k + b_k)
+            qWk  = jnp.einsum("btngh, knh -> btngk", q_up, W_k)
+            attn = jnp.einsum("btngk, bsk -> bngts", qWk, k)
+            if self.up_k.bias is not None:
+                b_k  = self.up_k.bias[...].reshape(self.kv_heads, self.head_size)
+                attn = attn + jnp.einsum("btngh, nh -> bngt", q_up, b_k)[..., None]
             attn_rope = q_rope @ jnp.swapaxes(k_rope, -2, -1)
             attn      = (attn + attn_rope) / math.sqrt(self.head_size + self.rope_dim)
 
@@ -536,19 +592,18 @@ class MLAAttention(BaseAttention):
         attn = self.attn_dropout(attn, deterministic=deterministic)
 
         if self.inference:
-            L   = jnp.einsum("bngts, bsd -> bngtd", attn, v)
-            W_v = self.up_v.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
-            if self.no_sink:
-                y_heads = jnp.einsum("bngtd, dnh -> bngth", L, W_v)
-                y   = jnp.transpose(y_heads, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
-                y   = self._apply_gate(y, x)
-                out = call_linear(self.o_proj, y, deterministic=deterministic)
-            else:
-                W_o  = self.o_proj.kernel.reshape(  # type: ignore[union-attr]
-                    self.kv_heads, self.n_heads // self.kv_heads, self.head_size, self.dim
+            # Weighted sum over the latent cache, then a single up-projection.
+            L       = jnp.einsum("bngts, bsd -> bngtd", attn, v)
+            W_v     = self.up_v.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
+            y_heads = jnp.einsum("bngtd, dnh -> bngth", L, W_v)
+            if self.up_v.bias is not None:
+                # Softmax rows sum to 1, so the value bias passes through as-is.
+                y_heads = y_heads + self.up_v.bias[...].reshape(
+                    1, self.kv_heads, 1, 1, self.head_size
                 )
-                W_vo = jnp.einsum("dnh, nghc -> dngc", W_v, W_o)
-                out  = jnp.einsum("bngtd, dngc -> btc", L, W_vo)
+            y   = jnp.transpose(y_heads, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
+            y   = self._apply_gate(y, x)
+            out = call_linear(self.o_proj, y, deterministic=deterministic)
         else:
             y   = attn @ v
             y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.dim)
@@ -560,7 +615,7 @@ class MLAAttention(BaseAttention):
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 
-def build_attention(config: Config, rngs: nnx.Rngs) -> BaseAttention:
+def build_attention(config: ModelConfig | Config, rngs: nnx.Rngs) -> BaseAttention:
     """Return the attention variant specified by ``config.attention_type``.
 
     ``"auto"`` falls back to the legacy ``config.mla`` / ``config.kv_heads``
@@ -582,6 +637,15 @@ def build_attention(config: Config, rngs: nnx.Rngs) -> BaseAttention:
 
 
 # Backward-compatible shim for code that does `from dantinox.core.attention import Attention`
-def Attention(config: Config, rngs: nnx.Rngs) -> BaseAttention:
+def Attention(config: ModelConfig | Config, rngs: nnx.Rngs) -> BaseAttention:
     """Deprecated — use ``build_attention()`` or a concrete attention class."""
+    import warnings
+
+    warnings.warn(
+        "dantinox.core.attention.Attention() is deprecated; use build_attention() "
+        "or a concrete class (MHAAttention / GQAAttention / MLAAttention). "
+        "It will be removed in v1.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return build_attention(config, rngs)

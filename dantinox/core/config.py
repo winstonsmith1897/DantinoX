@@ -1,3 +1,28 @@
+"""All serialisable configuration for DantinoX models and training runs.
+
+This module owns configuration and nothing else — it deliberately imports no
+JAX so that reading/writing configs stays cheap.
+
+Public classes
+--------------
+``ModelConfig``
+    Architecture of the unified ``Transformer`` (model.py).  The ``paradigm``
+    field ("ar" | "discrete" | "continuous" | "embedder") selects the
+    training/inference strategy; everything else describes the backbone.
+``TrainingConfig``
+    Optimisation, dataset, tokenizer, and multi-GPU settings — *how* to train,
+    never *what* the model is.
+``FlowMatchingConfig``
+    Architecture of the continuous flow-matching model (flow.py).
+``Config`` (deprecated)
+    Monolithic legacy config kept for old checkpoints, YAML files, and the
+    CLI.  Bridged losslessly to the split configs via ``Config.from_parts`` /
+    ``to_model_config`` / ``to_flow_config``; the bridge is driven by the
+    module-level rename tables so a new field can never be silently dropped.
+
+Old serialized key names (e.g. ``elf_n_steps``) are remapped on load via
+``_LEGACY_KEY_RENAMES`` so historical ``config.yaml`` files keep working.
+"""
 from __future__ import annotations
 
 import os
@@ -5,7 +30,6 @@ from dataclasses import asdict, dataclass, fields
 from typing import Any
 
 import yaml
-
 
 # ── ANSI color helpers (used by ModelConfig.__repr__) ────────────────────────
 # Self-contained; no import from _ui.py to keep config.py import-cost low.
@@ -23,6 +47,19 @@ def _Cazr(s: str) -> str: return _C(39,  s)  # azure    — mode / secondary
 def _Ccyn(s: str) -> str: return _C(51,  s)  # cyan     — numbers
 def _Cwht(s: str) -> str: return (f"\033[97m{s}\033[0m" if _ansi_ok() else s)
 def _Cdim(s: str) -> str: return (f"\033[2m{s}\033[0m"  if _ansi_ok() else s)
+
+
+# ── Legacy serialized-key renames ─────────────────────────────────────────────
+# Field names that changed across library versions.  Applied in every
+# ``from_dict`` so config.yaml files written by older versions keep loading.
+_LEGACY_KEY_RENAMES: dict[str, str] = {
+    "elf_n_steps": "flow_n_steps",
+    "elf_cfg_scale": "flow_cfg_scale",
+}
+
+
+def _remap_legacy_keys(d: dict[str, Any]) -> dict[str, Any]:
+    return {_LEGACY_KEY_RENAMES.get(k, k): v for k, v in d.items()}
 
 
 # ── ModelConfig ────────────────────────────────────────────────────────────────
@@ -67,6 +104,8 @@ class ModelConfig:
     sliding_window: bool = False
     context_window: int = 4
     no_sink: bool = False
+    differential: bool = False    # differential attention (Ye et al., 2025)
+    lambda_init: float = 0.8      # λ_init for differential attention
 
     # ── MLA-specific ──────────────────────────────────────────────────────────
     down_dim_q: int = 256
@@ -96,12 +135,13 @@ class ModelConfig:
     mask_token_id: int = 4
     noise_schedule: str = "linear"  # "linear" | "cosine" | "sqrt"
 
-    # ── ELF (continuous flow-matching) ───────────────────────────────────────
-    # Set embed_dim > 0 to enable ELF mode; must match the frozen T5 encoder.
+    # ── Continuous flow-matching (ELF recipe) ────────────────────────────────
+    # Set embed_dim > 0 to enable flow-matching mode; must match the frozen
+    # T5 encoder.
     embed_dim: int = 0              # 0 = standard transformer; 768 for t5-base
     bottleneck_dim: int = 128       # projection between embed space and model_dim
-    elf_n_steps: int = 32           # ODE denoising steps at inference
-    elf_cfg_scale: float = 1.5      # classifier-free guidance scale
+    flow_n_steps: int = 32           # ODE denoising steps at inference
+    flow_cfg_scale: float = 1.5      # classifier-free guidance scale
     sde_gamma: float = 0.0          # SDE noise re-injection (0 = pure ODE)
     t5_model_name: str = "t5-base"  # frozen T5 encoder variant
 
@@ -131,7 +171,7 @@ class ModelConfig:
         elif self.paradigm in ("discrete", "continuous"):
             self.causal = False
 
-        # For continuous (ELF) paradigm, vocab_size is fixed by the T5 tokenizer.
+        # For the continuous flow-matching paradigm, vocab_size is fixed by the T5 tokenizer.
         # All T5 variants share the same 32100-token SentencePiece vocabulary.
         if self.paradigm == "continuous" and self.vocab_size is None:
             self.vocab_size = 32100
@@ -156,6 +196,18 @@ class ModelConfig:
             )
         if self.attention not in ("mha", "gqa", "mla"):
             raise ValueError(f"attention must be 'mha', 'gqa', or 'mla'; got {self.attention!r}")
+        if self.attention == "mla":
+            # Decoupled RoPE is part of the MLA architecture: the attention
+            # module always builds and applies the rope projections.
+            if self.pos_encoding != "rotary":
+                raise ValueError(
+                    f"attention='mla' requires pos_encoding='rotary'; got {self.pos_encoding!r}"
+                )
+            if self.rope_dim > self.head_size:
+                raise ValueError(
+                    f"rope_dim ({self.rope_dim}) must be <= head_size ({self.head_size}) "
+                    "when using MLA with rotary positional encoding"
+                )
         if self.ffn not in ("mlp", "moe"):
             raise ValueError(f"ffn must be 'mlp' or 'moe'; got {self.ffn!r}")
         if self.norm not in ("rmsnorm", "layernorm"):
@@ -173,9 +225,9 @@ class ModelConfig:
         if self.tp_size < 1:
             raise ValueError(f"tp_size must be >= 1; got {self.tp_size}")
         if self.lora_targets not in ("attention", "ffn", "all"):
-            raise ValueError(f"lora_targets must be 'attention', 'ffn', or 'all'")
+            raise ValueError("lora_targets must be 'attention', 'ffn', or 'all'")
         if self.lora_rank < 1:
-            raise ValueError(f"lora_rank must be >= 1")
+            raise ValueError("lora_rank must be >= 1")
         if self.embed_pooling not in ("auto", "mean", "last", "cls"):
             raise ValueError(
                 f"embed_pooling must be 'auto', 'mean', 'last', or 'cls'; "
@@ -247,6 +299,15 @@ class ModelConfig:
     def model_type(self) -> str:
         return "autoregressive" if self.causal else "diffusion"
 
+    # Deprecated ELF-branded names (paradigm-level names are flow_*):
+    @property
+    def elf_n_steps(self) -> int:
+        return self.flow_n_steps
+
+    @property
+    def elf_cfg_scale(self) -> float:
+        return self.flow_cfg_scale
+
     # ── Serialisation ─────────────────────────────────────────────────────────
 
     def to_dict(self) -> dict[str, Any]:
@@ -254,6 +315,7 @@ class ModelConfig:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ModelConfig:
+        d = _remap_legacy_keys(d)
         valid = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in valid})
 
@@ -271,7 +333,7 @@ class ModelConfig:
         with open(path, "w") as f:
             yaml.dump(self.to_dict(), f)
 
-    def replace(self, **kwargs) -> "ModelConfig":
+    def replace(self, **kwargs) -> ModelConfig:
         """Return a new ModelConfig with selected fields overridden."""
         from dataclasses import replace as _replace
         return _replace(self, **kwargs)
@@ -368,15 +430,15 @@ class ModelConfig:
             )
 
         elif self.paradigm == "continuous":
-            L.append(_sec("continuous / ELF"))
+            L.append(_sec("continuous flow-matching"))
             L.append(
                 f"  embed_dim={_Ccyn(str(self.embed_dim))}"
                 f"  ·  bottleneck={_Ccyn(str(self.bottleneck_dim))}"
                 f"  ·  T5={_Cwht(self.t5_model_name)}"
             )
             L.append(
-                f"  n_steps={_Ccyn(str(self.elf_n_steps))}"
-                f"  ·  cfg_scale={_Ccyn(str(self.elf_cfg_scale))}"
+                f"  n_steps={_Ccyn(str(self.flow_n_steps))}"
+                f"  ·  cfg_scale={_Ccyn(str(self.flow_cfg_scale))}"
                 f"  ·  sde_γ={_Ccyn(str(self.sde_gamma))}"
             )
 
@@ -451,9 +513,9 @@ class TrainingConfig:
 
     def __post_init__(self) -> None:
         if self.lr_schedule not in ("cosine", "linear", "constant", "wsd"):
-            raise ValueError(f"lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd'")
+            raise ValueError("lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd'")
         if self.n_devices < 0:
-            raise ValueError(f"n_devices must be >= 0")
+            raise ValueError("n_devices must be >= 0")
         if self.tp_size < 1:
             raise ValueError(f"tp_size must be >= 1; got {self.tp_size}")
         if not 0.0 <= self.val_frac < 1.0:
@@ -461,7 +523,7 @@ class TrainingConfig:
         if self.grad_accum < 1:
             raise ValueError(f"grad_accum must be >= 1; got {self.grad_accum}")
 
-    def replace(self, **kwargs) -> "TrainingConfig":
+    def replace(self, **kwargs) -> TrainingConfig:
         """Return a new TrainingConfig with selected fields overridden."""
         from dataclasses import replace as _replace
         return _replace(self, **kwargs)
@@ -493,6 +555,56 @@ class TrainingConfig:
 # Trainer, CLI, and existing YAML configs use this.
 # New experiments should use ModelConfig + TrainingConfig separately.
 
+# Field-name bridge between the split configs and the legacy Config.
+# ``Config.from_parts`` / ``Config.to_model_config`` / ``Config.to_flow_config``
+# copy every dataclass field automatically: same-named fields directly, the
+# renames below via these tables.  Only fields listed in the *_SPECIAL sets are
+# bridged by dedicated logic; adding a new field to ModelConfig/FlowMatchingConfig with
+# a matching (or mapped) name in Config is therefore sufficient — it can no
+# longer be silently dropped by the conversion.
+
+# ModelConfig field → legacy Config field (renames only)
+_MODEL_TO_LEGACY_RENAMES: dict[str, str] = {
+    "dropout": "dropout_rate",
+    "use_flash": "use_flash_attention",
+    "rope_scale": "rope_scale_factor",
+    "inference_mode": "inference",
+    "top_k": "top_k_mlp",
+    "moe_balance_coeff": "alpha_balance",
+    "norm": "norm_type",
+    "attention": "attention_type",
+}
+# Bridged by dedicated logic (paradigm/causal ↔ model_type, ffn ↔ use_moe,
+# pos_encoding ↔ three booleans, lora_targets "ffn" ↔ "mlp"):
+_MODEL_SPECIAL_FIELDS = frozenset({"paradigm", "causal", "ffn", "pos_encoding", "lora_targets"})
+# New-API-only fields with no legacy counterpart (embedder paradigm):
+_MODEL_ONLY_FIELDS = frozenset({"embed_pooling", "embed_temperature"})
+
+# FlowMatchingConfig field → legacy Config field (renames only)
+_FLOW_TO_LEGACY_RENAMES: dict[str, str] = {
+    "model_dim": "dim",
+    "max_seq_len": "max_context",
+    "attention": "attention_type",
+    "norm": "norm_type",
+    "dropout": "dropout_rate",
+    "top_k": "top_k_mlp",
+    "moe_balance_coeff": "alpha_balance",
+}
+_FLOW_SPECIAL_FIELDS = frozenset({"ffn", "pos_encoding", "kv_heads"})
+
+_MODEL_TYPE_FROM_PARADIGM: dict[str, str] = {
+    "ar": "autoregressive",
+    "discrete": "diffusion",
+    "continuous": "elf",
+    "embedder": "autoregressive",
+}
+_PARADIGM_FROM_MODEL_TYPE: dict[str, str] = {
+    "autoregressive": "ar",
+    "diffusion": "discrete",
+    "elf": "continuous",
+}
+
+
 @dataclass
 class Config:
     """Monolithic config kept for backward compatibility.
@@ -505,17 +617,19 @@ class Config:
     """
 
     # ── Architecture ──────────────────────────────────────────────────────────
+    # Defaults are kept identical to ModelConfig so the legacy and split-config
+    # APIs build the same model when a field is not specified.
     dim: int = 512
     n_heads: int = 16
     head_size: int = 32
-    num_blocks: int = 20
-    vocab_size: int = 200
+    num_blocks: int = 12
+    vocab_size: int | None = None
     max_context: int = 512
-    kv_heads: int = 4
+    kv_heads: int | None = None
     weight_tying: bool = True
     activation: str = "gelu"
-    gradient_checkpointing: bool = True
-    dropout_rate: float = 0.15
+    gradient_checkpointing: bool = False
+    dropout_rate: float = 0.0
     use_swiglu: bool = True
 
     # ── Model type & attention variant ────────────────────────────────────────
@@ -524,12 +638,12 @@ class Config:
 
     # ── Diffusion (discrete — LLaDA / MDLM) ─────────────────────────────────
     diffusion_steps: int = 1000
-    noise_schedule: str = "cosine"
+    noise_schedule: str = "linear"
     mask_token_id: int = 4
     num_sampling_steps: int = 50
     time_emb_dim: int = 256
 
-    # ── ELF (continuous flow-matching) ────────────────────────────────────────
+    # ── Continuous flow-matching (ELF recipe) ─────────────────────────────────
     # Used when model_type = "elf".  dim/n_heads/head_size/num_blocks/
     # max_context/vocab_size/dropout_rate are shared with the existing fields.
     embed_dim:            int   = 512    # token embedding & flow-space dimension
@@ -547,10 +661,10 @@ class Config:
     self_cond_prob:       float =  0.5   # probability of using self-conditioning
     cfg_scale_min:        float =  0.5   # CFG scale w ~ power-dist in [min, max]
     cfg_scale_max:        float =  5.0
-    elf_cfg_scale:        float =  1.0   # CFG scale at inference time
-    elf_n_steps:          int   = 64     # denoising steps at inference time
+    flow_cfg_scale:        float =  1.0   # CFG scale at inference time
+    flow_n_steps:          int   = 64     # denoising steps at inference time
     sde_gamma:            float =  0.0   # SDE noise re-injection (0 = pure ODE)
-    t5_model_name:        str   = "t5-base"  # frozen T5 embedder (ELF §3.1)
+    t5_model_name:        str   = "t5-base"  # frozen T5 embedder (ELF recipe §3.1)
 
     # ── MoE ───────────────────────────────────────────────────────────────────
     use_moe: bool = False
@@ -567,7 +681,7 @@ class Config:
     absolute_pos: bool = False
     sliding_window: bool = False
     context_window: int = 4
-    no_sink: bool = True
+    no_sink: bool = False
     differential: bool = False
     lambda_init: float = 0.8
     use_flash_attention: bool = False
@@ -596,19 +710,19 @@ class Config:
     streaming: bool = False
 
     # ── Training ──────────────────────────────────────────────────────────────
-    lr: float = 0.005
-    batch_size: int = 128
-    grad_accum: int = 16
+    lr: float = 3e-4
+    batch_size: int = 32
+    grad_accum: int = 1
     seed: int = 42
     optimizer: str = "adamw"
-    epochs: int = 1000
-    warmup_steps: int = 420
+    epochs: float = 100
+    warmup_steps: int = 400
     grad_clip: float = 1.0
     patience: int = 0
     use_bf16: bool = False
 
     # ── Normalisation ─────────────────────────────────────────────────────────
-    norm_type: str = "layernorm"
+    norm_type: str = "rmsnorm"
 
     # ── RoPE ──────────────────────────────────────────────────────────────────
     rope_scale_factor: float = 1.0
@@ -634,7 +748,7 @@ class Config:
 
     def __post_init__(self) -> None:
         if self.kv_heads is None:
-            self.kv_heads = self.n_heads // 4
+            self.kv_heads = self.n_heads   # same as ModelConfig: default is MHA
 
         if self.attention_type == "auto":
             if self.mla:
@@ -658,35 +772,39 @@ class Config:
             raise ValueError(
                 f"n_heads ({self.n_heads}) must be divisible by kv_heads ({self.kv_heads})"
             )
-        if self.mla and self.use_rotary_pos and self.rope_dim > self.head_size:
-            raise ValueError(
-                f"rope_dim ({self.rope_dim}) must be <= head_size ({self.head_size}) "
-                "when using MLA with rotary positional encoding"
-            )
+        if self.mla:
+            # Decoupled RoPE is part of the MLA architecture (see ModelConfig).
+            if not self.use_rotary_pos:
+                raise ValueError("attention_type='mla' requires use_rotary_pos=True")
+            if self.rope_dim > self.head_size:
+                raise ValueError(
+                    f"rope_dim ({self.rope_dim}) must be <= head_size ({self.head_size}) "
+                    "when using MLA with rotary positional encoding"
+                )
         if self.model_type not in ("autoregressive", "diffusion", "elf"):
-            raise ValueError(f"model_type must be 'autoregressive', 'diffusion', or 'elf'")
+            raise ValueError("model_type must be 'autoregressive', 'diffusion', or 'elf'")
         if self.attention_type not in ("mha", "gqa", "mla"):
-            raise ValueError(f"attention_type must be 'mha', 'gqa', or 'mla'")
+            raise ValueError("attention_type must be 'mha', 'gqa', or 'mla'")
         if self.noise_schedule not in ("cosine", "linear", "sqrt"):
-            raise ValueError(f"noise_schedule must be 'cosine', 'linear', or 'sqrt'")
+            raise ValueError("noise_schedule must be 'cosine', 'linear', or 'sqrt'")
         if self.diffusion_steps < 1:
-            raise ValueError(f"diffusion_steps must be >= 1")
+            raise ValueError("diffusion_steps must be >= 1")
         if self.num_sampling_steps < 1:
-            raise ValueError(f"num_sampling_steps must be >= 1")
+            raise ValueError("num_sampling_steps must be >= 1")
         if self.norm_type not in ("layernorm", "rmsnorm"):
-            raise ValueError(f"norm_type must be 'layernorm' or 'rmsnorm'")
+            raise ValueError("norm_type must be 'layernorm' or 'rmsnorm'")
         if self.lr_schedule not in ("cosine", "linear", "constant", "wsd"):
-            raise ValueError(f"lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd'")
+            raise ValueError("lr_schedule must be 'cosine', 'linear', 'constant', or 'wsd'")
         if self.rope_scale_factor <= 0:
-            raise ValueError(f"rope_scale_factor must be > 0")
+            raise ValueError("rope_scale_factor must be > 0")
         if self.lora_targets not in ("attention", "mlp", "all"):
-            raise ValueError(f"lora_targets must be 'attention', 'mlp', or 'all'")
+            raise ValueError("lora_targets must be 'attention', 'mlp', or 'all'")
         if self.lora_rank < 1:
-            raise ValueError(f"lora_rank must be >= 1")
+            raise ValueError("lora_rank must be >= 1")
         if self.n_devices < 0:
-            raise ValueError(f"n_devices must be >= 0")
+            raise ValueError("n_devices must be >= 0")
         if self.tp_size < 1:
-            raise ValueError(f"tp_size must be >= 1")
+            raise ValueError("tp_size must be >= 1")
         if self.moe_latent and not (0 < self.moe_latent_dim < self.dim):
             raise ValueError(
                 f"moe_latent_dim ({self.moe_latent_dim}) must be in (0, dim={self.dim})"
@@ -696,14 +814,23 @@ class Config:
     def causal(self) -> bool:
         return self.model_type == "autoregressive"
 
+    # Deprecated ELF-branded names (paradigm-level names are flow_*):
+    @property
+    def elf_n_steps(self) -> int:
+        return self.flow_n_steps
+
+    @property
+    def elf_cfg_scale(self) -> float:
+        return self.flow_cfg_scale
+
     @classmethod
     def from_parts(
         cls,
-        model_config: "ModelConfig | ELFConfig",
-        training_config: "TrainingConfig | None" = None,
+        model_config: ModelConfig | FlowMatchingConfig,
+        training_config: TrainingConfig | None = None,
         **overrides: Any,
-    ) -> "Config":
-        """Merge a ``ModelConfig``/``ELFConfig`` and a ``TrainingConfig`` into a
+    ) -> Config:
+        """Merge a ``ModelConfig``/``FlowMatchingConfig`` and a ``TrainingConfig`` into a
         monolithic ``Config`` understood by the Trainer.
 
         This is the bridge between the new split-config API and the
@@ -712,87 +839,38 @@ class Config:
         """
         kw: dict[str, Any] = {}
 
-        if isinstance(model_config, ELFConfig):
+        if isinstance(model_config, FlowMatchingConfig):
             e = model_config
+            for f in fields(FlowMatchingConfig):
+                if f.name in _FLOW_SPECIAL_FIELDS:
+                    continue
+                kw[_FLOW_TO_LEGACY_RENAMES.get(f.name, f.name)] = getattr(e, f.name)
             kw.update(
                 model_type="elf",
-                dim=e.model_dim,
-                n_heads=e.n_heads,
-                head_size=e.head_size,
-                num_blocks=e.num_blocks,
-                vocab_size=e.vocab_size,
-                max_context=e.max_seq_len,
-                kv_heads=e.n_heads,
-                attention_type="mha",
-                norm_type=e.norm,
-                dropout_rate=e.dropout,
-                gradient_checkpointing=e.gradient_checkpointing,
+                kv_heads=e.kv_heads if e.kv_heads is not None else e.n_heads,
+                use_moe=(e.ffn == "moe"),
                 use_rotary_pos=(e.pos_encoding == "rotary"),
                 trainable_pos=(e.pos_encoding == "learned"),
                 absolute_pos=(e.pos_encoding == "absolute"),
                 weight_tying=False,
-                embed_dim=e.embed_dim,
-                bottleneck_dim=e.bottleneck_dim,
-                time_emb_dim=e.time_emb_dim,
-                num_time_tokens=e.num_time_tokens,
-                num_cfg_tokens=e.num_cfg_tokens,
-                num_mode_tokens=e.num_mode_tokens,
-                denoiser_pmean=e.denoiser_pmean,
-                denoiser_pstd=e.denoiser_pstd,
-                denoiser_noise_scale=e.denoiser_noise_scale,
-                decoder_pmean=e.decoder_pmean,
-                decoder_pstd=e.decoder_pstd,
-                decoder_noise_scale=e.decoder_noise_scale,
-                denoiser_prob=e.denoiser_prob,
-                self_cond_prob=e.self_cond_prob,
-                cfg_scale_min=e.cfg_scale_min,
-                cfg_scale_max=e.cfg_scale_max,
-                t5_model_name=e.t5_model_name,
                 tokenizer_type="t5",
             )
         else:
             m = model_config
+            for f in fields(ModelConfig):
+                if f.name in _MODEL_SPECIAL_FIELDS or f.name in _MODEL_ONLY_FIELDS:
+                    continue
+                kw[_MODEL_TO_LEGACY_RENAMES.get(f.name, f.name)] = getattr(m, f.name)
+            if m.paradigm is not None:
+                model_type = _MODEL_TYPE_FROM_PARADIGM[m.paradigm]
+            else:
+                model_type = "autoregressive" if m.causal else "diffusion"
             kw.update(
-                model_type="autoregressive" if m.causal else "diffusion",
-                dim=m.dim,
-                n_heads=m.n_heads,
-                head_size=m.head_size,
-                num_blocks=m.num_blocks,
-                vocab_size=m.vocab_size,
-                max_context=m.max_context,
-                kv_heads=m.kv_heads if m.kv_heads is not None else m.n_heads,
-                attention_type=m.attention,
+                model_type=model_type,
                 use_moe=(m.ffn == "moe"),
-                norm_type=m.norm,
                 use_rotary_pos=(m.pos_encoding == "rotary"),
                 trainable_pos=(m.pos_encoding == "learned"),
                 absolute_pos=(m.pos_encoding == "absolute"),
-                dropout_rate=m.dropout,
-                weight_tying=m.weight_tying,
-                gradient_checkpointing=m.gradient_checkpointing,
-                tp_size=m.tp_size,
-                use_flash_attention=m.use_flash,
-                rope_scale_factor=m.rope_scale,
-                sliding_window=m.sliding_window,
-                context_window=m.context_window,
-                no_sink=m.no_sink,
-                down_dim_q=m.down_dim_q,
-                down_dim_kv=m.down_dim_kv,
-                rope_dim=m.rope_dim,
-                inference=m.inference_mode,
-                expansion=m.expansion,
-                use_swiglu=m.use_swiglu,
-                activation=m.activation,
-                n_experts=m.n_experts,
-                top_k_mlp=m.top_k,
-                alpha_balance=m.moe_balance_coeff,
-                moe_latent=m.moe_latent,
-                moe_latent_dim=m.moe_latent_dim,
-                mask_token_id=m.mask_token_id,
-                use_lora=m.use_lora,
-                lora_rank=m.lora_rank,
-                lora_alpha=m.lora_alpha,
-                lora_dropout=m.lora_dropout,
                 lora_targets="mlp" if m.lora_targets == "ffn" else m.lora_targets,
             )
 
@@ -802,7 +880,7 @@ class Config:
                 k: v for k, v in asdict(training_config).items() if k in t_valid
             })
 
-        if isinstance(model_config, ELFConfig):
+        if isinstance(model_config, FlowMatchingConfig):
             # The frozen T5 encoder consumes T5 token IDs — any other tokenizer
             # would feed it garbage. Override whatever the TrainingConfig says.
             kw["tokenizer_type"] = "t5"
@@ -810,119 +888,70 @@ class Config:
         kw.update(overrides)
         return cls(**kw)
 
-    def to_elf_config(self) -> "ELFConfig":
-        """Convert to ``ELFConfig`` for use with ``ELFTransformer``.
-
-        Shared fields (dim, n_heads, head_size, …) map directly; ELF-specific
-        fields (embed_dim, bottleneck_dim, …) are read from the ELF section.
-        """
+    def _pos_encoding_str(self) -> str:
+        """Collapse the three legacy positional booleans into the canonical string."""
+        if self.trainable_pos:
+            return "learned"
+        if self.absolute_pos:
+            return "absolute"
         if self.use_rotary_pos:
-            pos = "rotary"
-        elif self.trainable_pos:
-            pos = "learned"
-        elif self.absolute_pos:
-            pos = "absolute"
-        else:
-            pos = "none"
+            return "rotary"
+        return "none"
 
-        return ELFConfig(
-            embed_dim=self.embed_dim,
-            bottleneck_dim=self.bottleneck_dim,
-            model_dim=self.dim,
-            n_heads=self.n_heads,
-            head_size=self.head_size,
-            num_blocks=self.num_blocks,
-            vocab_size=self.vocab_size,
-            max_seq_len=self.max_context,
-            pos_encoding=pos,
-            norm=self.norm_type,
-            dropout=self.dropout_rate,
-            attention=self.attention_type,
+    def to_flow_config(self) -> FlowMatchingConfig:
+        """Convert to ``FlowMatchingConfig`` for use with ``FlowMatchingTransformer``.
+
+        Every ``FlowMatchingConfig`` field is populated from its legacy counterpart via
+        the module-level rename table, so a field added to ``FlowMatchingConfig`` (with
+        a matching Config field) round-trips automatically.
+        """
+        kw: dict[str, Any] = {}
+        for f in fields(FlowMatchingConfig):
+            if f.name in _FLOW_SPECIAL_FIELDS:
+                continue
+            kw[f.name] = getattr(self, _FLOW_TO_LEGACY_RENAMES.get(f.name, f.name))
+        return FlowMatchingConfig(
+            **kw,
+            ffn="moe" if self.use_moe else "mlp",
+            pos_encoding=self._pos_encoding_str(),
             kv_heads=self.kv_heads if self.attention_type == "gqa" else None,
-            down_dim_q=self.down_dim_q,
-            down_dim_kv=self.down_dim_kv,
-            rope_dim=self.rope_dim,
-            time_emb_dim=self.time_emb_dim,
-            num_time_tokens=self.num_time_tokens,
-            num_cfg_tokens=self.num_cfg_tokens,
-            num_mode_tokens=self.num_mode_tokens,
-            denoiser_pmean=self.denoiser_pmean,
-            denoiser_pstd=self.denoiser_pstd,
-            denoiser_noise_scale=self.denoiser_noise_scale,
-            decoder_pmean=self.decoder_pmean,
-            decoder_pstd=self.decoder_pstd,
-            decoder_noise_scale=self.decoder_noise_scale,
-            denoiser_prob=self.denoiser_prob,
-            self_cond_prob=self.self_cond_prob,
-            cfg_scale_min=self.cfg_scale_min,
-            cfg_scale_max=self.cfg_scale_max,
-            t5_model_name=self.t5_model_name,
-            gradient_checkpointing=self.gradient_checkpointing,
         )
 
-    def to_model_config(self) -> ModelConfig:
-        """Convert to a ``ModelConfig`` for use with the new ``Transformer`` API."""
-        if self.trainable_pos:
-            pos = "learned"
-        elif self.absolute_pos:
-            pos = "absolute"
-        elif self.use_rotary_pos:
-            pos = "rotary"
-        else:
-            pos = "none"
+    def to_elf_config(self) -> FlowMatchingConfig:
+        """Deprecated alias of :meth:`to_flow_config` (removed in v1.0)."""
+        import warnings
 
+        warnings.warn(
+            "Config.to_elf_config() is deprecated; use Config.to_flow_config().",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.to_flow_config()
+
+    def to_model_config(self) -> ModelConfig:
+        """Convert to a ``ModelConfig`` for use with the new ``Transformer`` API.
+
+        The inverse of ``Config.from_parts``: every ``ModelConfig`` field is
+        read from its legacy counterpart via the module-level rename table, so
+        ``ModelConfig → Config → ModelConfig`` is the identity on all fields.
+        """
+        kw: dict[str, Any] = {}
+        for f in fields(ModelConfig):
+            if f.name in _MODEL_SPECIAL_FIELDS or f.name in _MODEL_ONLY_FIELDS:
+                continue
+            kw[f.name] = getattr(self, _MODEL_TO_LEGACY_RENAMES.get(f.name, f.name))
         return ModelConfig(
-            dim=self.dim,
-            n_heads=self.n_heads,
-            head_size=self.head_size,
-            num_blocks=self.num_blocks,
-            vocab_size=self.vocab_size,
-            max_context=self.max_context,
-            attention=self.attention_type,
+            **kw,
+            paradigm=_PARADIGM_FROM_MODEL_TYPE.get(self.model_type),
+            causal=self.causal,
             ffn="moe" if self.use_moe else "mlp",
-            norm=self.norm_type,
-            pos_encoding=pos,
-            causal=(self.model_type == "autoregressive"),
-            dropout=self.dropout_rate,
-            weight_tying=self.weight_tying,
-            gradient_checkpointing=self.gradient_checkpointing,
-            tp_size=self.tp_size,
-            kv_heads=self.kv_heads,
-            use_flash=self.use_flash_attention,
-            rope_scale=self.rope_scale_factor,
-            sliding_window=self.sliding_window,
-            context_window=self.context_window,
-            no_sink=self.no_sink,
-            down_dim_q=self.down_dim_q,
-            down_dim_kv=self.down_dim_kv,
-            rope_dim=self.rope_dim,
-            inference_mode=self.inference,
-            expansion=self.expansion,
-            use_swiglu=self.use_swiglu,
-            activation=self.activation,
-            n_experts=self.n_experts,
-            top_k=self.top_k_mlp,
-            moe_balance_coeff=self.alpha_balance,
-            moe_latent=self.moe_latent,
-            moe_latent_dim=self.moe_latent_dim,
-            mask_token_id=self.mask_token_id,
-            noise_schedule=self.noise_schedule,
-            embed_dim=self.embed_dim,
-            bottleneck_dim=self.bottleneck_dim,
-            elf_n_steps=self.elf_n_steps,
-            elf_cfg_scale=self.elf_cfg_scale,
-            sde_gamma=self.sde_gamma,
-            t5_model_name=self.t5_model_name,
-            use_lora=self.use_lora,
-            lora_rank=self.lora_rank,
-            lora_alpha=self.lora_alpha,
-            lora_dropout=self.lora_dropout,
+            pos_encoding=self._pos_encoding_str(),
             lora_targets="ffn" if self.lora_targets == "mlp" else self.lora_targets,
         )
 
     def __repr__(self) -> str:
         attn = self.attention_type.upper()
-        mode = {"autoregressive": "AR", "diffusion": "Diffusion", "elf": "ELF"}.get(
+        mode = {"autoregressive": "AR", "diffusion": "Diffusion", "elf": "Flow-Matching"}.get(
             self.model_type, self.model_type
         )
         moe  = "+MoE" if self.use_moe else ""
@@ -936,6 +965,7 @@ class Config:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Config:
+        d = _remap_legacy_keys(d)
         valid = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in valid})
 
@@ -954,13 +984,15 @@ class Config:
             yaml.dump(self.to_dict(), f)
 
 
-# ── ELFConfig ─────────────────────────────────────────────────────────────────
+# ── FlowMatchingConfig ─────────────────────────────────────────────────────────────────
 
 @dataclass
-class ELFConfig:
-    """Architecture config for ELF (Embedded Language Flows).
+class FlowMatchingConfig:
+    """Architecture config for the continuous flow-matching paradigm.
 
-    Analogous to ModelConfig but for the continuous flow-matching paradigm.
+    Analogous to ModelConfig but for continuous flow-matching.  The current
+    implementation follows the ELF recipe (Hu et al., 2026); ``ELFConfig``
+    remains available as a deprecated alias of this class.
     The forward process is ``z_t = t·x + (1−t)·ε`` (t=0→noise, t=1→data).
     The network predicts clean embeddings x̂ (x-prediction).
 
@@ -968,10 +1000,10 @@ class ELFConfig:
     -----------
     ::
 
-        config = ELFConfig(embed_dim=512, bottleneck_dim=128,
+        config = FlowMatchingConfig(embed_dim=512, bottleneck_dim=128,
                            model_dim=768, n_heads=12, head_size=64,
                            num_blocks=12, vocab_size=32_000)
-        model  = ELFTransformer(config, rngs=nnx.Rngs(42))
+        model  = FlowMatchingTransformer(config, rngs=nnx.Rngs(42))
     """
 
     # ── Embedding / bottleneck space ──────────────────────────────────────────
@@ -1023,8 +1055,8 @@ class ELFConfig:
 
     # ── Inference ─────────────────────────────────────────────────────────────
     sde_gamma:     float = 1.0   # SDE noise re-injection scale (0 = ODE)
-    elf_n_steps:   int   = 32    # number of flow-matching integration steps
-    elf_cfg_scale: float = 1.5   # default CFG guidance scale for generation
+    flow_n_steps:   int   = 32    # number of flow-matching integration steps
+    flow_cfg_scale: float = 1.5   # default CFG guidance scale for generation
 
     # ── FFN / MoE ─────────────────────────────────────────────────────────────
     ffn:              str   = "mlp"   # "mlp" | "moe"
@@ -1075,8 +1107,17 @@ class ELFConfig:
         """Total number of control tokens prepended to each sequence."""
         return self.num_time_tokens + self.num_cfg_tokens + self.num_mode_tokens
 
+    # Deprecated ELF-branded names (paradigm-level names are flow_*):
+    @property
+    def elf_n_steps(self) -> int:
+        return self.flow_n_steps
+
+    @property
+    def elf_cfg_scale(self) -> float:
+        return self.flow_cfg_scale
+
     def to_model_config(self) -> ModelConfig:
-        """Return the inner transformer's ModelConfig (used internally by ELFTransformer)."""
+        """Return the inner transformer's ModelConfig (used internally by FlowMatchingTransformer)."""
         return ModelConfig(
             dim=self.model_dim,
             n_heads=self.n_heads,
@@ -1108,12 +1149,13 @@ class ELFConfig:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "ELFConfig":
+    def from_dict(cls, d: dict[str, Any]) -> FlowMatchingConfig:
+        d = _remap_legacy_keys(d)
         valid = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in valid})
 
     @classmethod
-    def from_yaml(cls, path: str) -> "ELFConfig":
+    def from_yaml(cls, path: str) -> FlowMatchingConfig:
         with open(path) as f:
             raw = yaml.safe_load(f)
         flat: dict[str, Any] = {}
@@ -1128,7 +1170,14 @@ class ELFConfig:
 
     def __repr__(self) -> str:
         return (
-            f"ELFConfig(embed={self.embed_dim}, bottleneck={self.bottleneck_dim}, "
+            f"FlowMatchingConfig(embed={self.embed_dim}, bottleneck={self.bottleneck_dim}, "
             f"dim={self.model_dim}, heads={self.n_heads}, blocks={self.num_blocks}, "
             f"vocab={self.vocab_size}, seq={self.max_seq_len})"
         )
+
+
+# ── Deprecated alias ──────────────────────────────────────────────────────────
+# The paradigm is "continuous flow-matching"; ELF (Hu et al., 2026) is the
+# recipe currently implemented.  Kept so old imports and pickles keep working;
+# removed in v1.0.
+ELFConfig = FlowMatchingConfig

@@ -92,7 +92,12 @@ from benchmarks.trained_analysis import (
     _val_ppl,
 )
 from dantinox.core.config import Config
-from dantinox.core.diffusion import NoiseSchedule, corrupt, make_noise_schedule, masked_cross_entropy
+from dantinox.core.diffusion import (
+    NoiseSchedule,
+    corrupt,
+    make_noise_schedule,
+    masked_cross_entropy,
+)
 
 # T5 encoder cache: model_name → T5ContextualEncoder (loaded once, shared)
 _T5_ENCODER_CACHE: dict[str, Any] = {}
@@ -428,7 +433,7 @@ def _eval_elf_decoder_bpb(
         L     = x_ids.shape[1]
         try:
             embs      = t5_enc.encode(x_ids)              # [1, L, embed_dim]
-            norm_embs = model.encode(embs)                 # normalize via ELFEmbedder stats
+            norm_embs = model.encode(embs)                 # normalize via FlowEmbedder stats
             logits    = _elf_decoder_forward(model, norm_embs)  # [1, L, vocab_size]
             log_p     = jax.nn.log_softmax(logits[0])     # [L, V]
             # Reconstruction target: predict each token from its own embedding

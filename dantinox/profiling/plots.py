@@ -137,8 +137,8 @@ def plot_3d_surface(
     Returns:
         ``plotly.graph_objects.Figure``
     """
-    import plotly.graph_objects as go
     import numpy as np
+    import plotly.graph_objects as go
 
     grid_key, source = _resolve_metric(metric)
     grid = _extract_grid(profile, source)
@@ -223,8 +223,8 @@ def plot_3d_compare(
     Returns:
         ``plotly.graph_objects.Figure``
     """
-    import plotly.graph_objects as go
     import numpy as np
+    import plotly.graph_objects as go
 
     grid_key, source = _resolve_metric(metric)
     profiles = getattr(report, "profiles", [report])
@@ -412,7 +412,7 @@ _MARKERS: dict[str, str] = {
 _NICE: dict[str, str] = {
     "AR":         "Autoregressive",
     "Discrete":   "Masked Diffusion (LLaDA)",
-    "Continuous": "Continuous Diffusion (ELF)",
+    "Continuous": "Continuous Flow-Matching",
 }
 
 
@@ -451,7 +451,6 @@ def _mpl_save_or_show(fig, show: bool, output: str | None) -> None:
 
 def _paradigm_iter(df: Any):
     """Yield (paradigm, sub-DataFrame) in canonical order."""
-    import pandas as pd
     seen = set(df["paradigm"].unique())
     for par in _PARADIGMS:
         if par in seen:
@@ -502,8 +501,8 @@ def plot_3d_from_df(
         fig = plot_3d_from_df(batch_df, z="e2e_ms", mode="scatter")
         fig = plot_3d_from_df(steps_df, z="tps", y_col="steps")
     """
-    import plotly.graph_objects as go
     import numpy as np
+    import plotly.graph_objects as go
 
     traces = []
     paradigms = [p for p in _PARADIGMS if p in df[paradigm_col].unique()]
@@ -877,7 +876,6 @@ def plot_composite(
         ``(fig, axes)``  — 2×2 axes array.
     """
     import matplotlib.pyplot as plt
-    import numpy as np
 
     _mpl_style()
     fig, axes = plt.subplots(2, 2, figsize=(11, 8))

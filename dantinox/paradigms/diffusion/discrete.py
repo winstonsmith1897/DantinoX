@@ -16,10 +16,17 @@ from dantinox.core.diffusion import (
 )
 from dantinox.core.generation import (
     diffusion_generate as _diffusion_generate,
+)
+from dantinox.core.generation import (
     fast_dllm_generate as _fast_dllm_generate,
+)
+from dantinox.core.generation import (
     stream_diffusion_generate as _stream_diffusion_generate,
+)
+from dantinox.core.generation import (
     stream_fast_dllm_generate as _stream_fast_dllm_generate,
 )
+
 # _fast_dllm_generate and _stream_fast_dllm_generate are used by generate/stream
 # when block_size is provided.
 from dantinox.core.model import Transformer
@@ -84,6 +91,15 @@ class DiscreteParadigm(ParadigmBase):
             self._noise_schedule = model_config.noise_schedule
             self._mask_token_id  = model_config.mask_token_id
         self._schedule: NoiseSchedule = make_noise_schedule(self._noise_schedule)
+
+    @property
+    def diffusion_config(self):
+        """Return a lightweight namespace with noise_schedule and mask_token_id."""
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            noise_schedule=self._noise_schedule,
+            mask_token_id=self._mask_token_id,
+        )
 
     # ── Paradigm contract ─────────────────────────────────────────────────────
 

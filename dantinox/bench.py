@@ -14,7 +14,6 @@ from dantinox.benchmarking import (
     BenchmarkConfig,
     BenchmarkSuite,
     LatencyTask,
-    PerplexityTask,
     ThroughputTask,
 )
 from dantinox.exceptions import BenchmarkError
@@ -71,10 +70,11 @@ class BenchmarkRunner:
         """
         import os
         import traceback
+
         import pandas as pd
-        from dantinox.core.config import Config
-        from dantinox.core.model import Transformer
         from flax import nnx
+
+        from dantinox.core.model import Transformer
         from dantinox.paradigms.ar import ARParadigm
 
         if not os.path.isdir(self.runs_dir):

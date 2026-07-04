@@ -68,7 +68,6 @@ from dantinox.core.diffusion import (
     NoiseSchedule,
     confidence_unmask_factor,
     confidence_unmask_threshold,
-    corrupt,
     make_noise_schedule,
 )
 from dantinox.core.model import DiffusionTransformer
@@ -342,7 +341,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"\nSaved {len(df)} rows → {out_path}")
         _print_summary(df)
     except ImportError:
-        import csv, io
+        import csv
+        import io
         buf = io.StringIO()
         if rows:
             w = csv.DictWriter(buf, fieldnames=rows[0].keys())

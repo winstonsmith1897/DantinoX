@@ -1,0 +1,133 @@
+%% ── Section 3: DantinoX Architecture ────────────────────────────────────────
+%%
+%% Cite keys:
+%%   ainslie-etal-2023-gqa  ·  austin-etal-2021-structured  ·
+%%   bradbury-etal-2018-jax  ·  deepseekv2-2024  ·  fedus-etal-2022-switch  ·
+%%   heek-etal-2024-flax  ·  hu-etal-2026-elf  ·  nie-etal-2024-llada  ·
+%%   vaswani-etal-2017-attention  ·  hu-etal-2022-lora  ·  raffel-etal-2020-t5
+%%   li-etal-2022-diffusion-lm  ·  lovelace-etal-2023-ld4lg  ·
+%%   lee-etal-2026-flm  ·  chen-etal-2026-langflow  ·
+%%   lou-etal-2023-discrete  ·  sahoo-etal-2024-mdlm
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\section{DantinoX Architecture}
+
+AR, discrete diffusion, and flow-matching models are typically developed in
+separate codebases, conflating paradigm properties with implementation choices.
+DantinoX eliminates this confound: a single shared backbone is parameterised by
+attention type, feed-forward variant, positional encoding, normalisation, and
+optional LoRA adapters; the generation paradigm is selected via a single
+\texttt{paradigm} field, leaving all weights, hyperparameters, training loop,
+and hardware layout unchanged.
+
+\paragraph{Backbone.}
+The shared backbone (Figure~\ref{fig:backbone}) is a pre-norm transformer with
+$L$ identical blocks.
+Each block contains a self-attention sublayer and a feed-forward sublayer
+connected by residual paths.
+
+Three attention mechanisms are available.
+\textbf{Multi-Head Attention}
+(MHA; \citealt{vaswani-etal-2017-attention}) serves as the reference
+configuration.
+\textbf{Grouped-Query Attention} (GQA; \citealt{ainslie-etal-2023-gqa})
+partitions the $n_\mathrm{heads}$ query heads into groups that share a single
+KV head, reducing the KV-cache by a factor of
+$n_\mathrm{heads}/k_\mathrm{heads}$ at no cost to generation quality.
+\textbf{Multi-Head Latent Attention} (MLA; \citealt{deepseekv2-2024}) stores a
+low-dimensional latent vector per token and reconstructs keys and values
+on-the-fly, reducing KV-cache size by a factor that depends on the chosen
+latent dimension.
+All three support Flash Attention, sliding-window context, and differential
+attention as optional drop-in enhancements.
+
+The feed-forward slot accepts either a dense MLP with SwiGLU or GELU activation
+or a sparse Mixture-of-Experts layer \citep{fedus-etal-2022-switch} with top-$k$
+routing.
+Positional encoding is selected from RoPE, sinusoidal, learned, or none.
+Normalisation is either RMSNorm or LayerNorm.
+LoRA adapters \citep{hu-etal-2022-lora} can be attached to any projection
+matrix in the backbone without modifying the shared weights.
+
+\paragraph{Generation Paradigms.}
+Each paradigm head connects to the backbone output
+$\mathbf{h} \in \mathbb{R}^{B \times T \times D}$
+(Figure~\ref{fig:paradigms}).
+The three paradigms differ in attention masking, training objective, and
+inference procedure; the backbone is unchanged.
+
+\noindent\textbf{Autoregressive (AR).}
+A causal mask restricts each position to its left context.
+The training objective is next-token cross-entropy over all positions.
+At inference, a static KV-cache confines each decoding step to a single forward
+pass over the new token alone, holding additional memory at $\mathcal{O}(1)$
+per step.
+Greedy, top-$k$, and nucleus sampling are supported.
+
+\noindent\textbf{Discrete Diffusion.}
+DantinoX follows the LLaDA formulation \citep{nie-etal-2024-llada} for this
+paradigm.
+Building on prior masked diffusion language models
+\citep{austin-etal-2021-structured,lou-etal-2023-discrete,sahoo-etal-2024-mdlm},
+LLaDA is the first to scale masked diffusion to 8B parameters from scratch while
+achieving performance competitive with autoregressive models, and it establishes the
+$(1/t)$-weighted cross-entropy—an upper bound on the negative log-likelihood—as the
+standard principled training objective.
+The backbone runs with bidirectional attention.
+During training, tokens are independently replaced by a \texttt{[MASK]} symbol
+with probability $p_\mathrm{mask}(t)$ under a linear, cosine, or $\sqrt{\cdot}$
+schedule \citep{austin-etal-2021-structured}.
+The loss is a $(1/t)$-weighted cross-entropy over masked positions
+\citep{nie-etal-2024-llada}.
+At inference, $S$ reverse-diffusion passes unmask positions in order of
+predicted confidence.
+Four decoding strategies are provided: \texttt{sample}, \texttt{greedy},
+\texttt{confidence}, and \texttt{factor}.
+A block-generation mode denoises one fixed-width window at a time using a
+DualCache that stores prefix and suffix KV states in separate buffers,
+yielding a 1.4--2.1$\times$ throughput gain over global denoising
+(Section~\ref{sec:results}).
+
+\noindent\textbf{Continuous Flow-Matching.}
+DantinoX follows the ELF formulation \citep{hu-etal-2026-elf} for this
+paradigm.
+Unlike prior continuous DLMs that apply per-step token-level cross-entropy
+supervision along the denoising trajectory
+\citep{li-etal-2022-diffusion-lm,nie-etal-2024-llada} or require a separate
+decoder for final discretization \citep{lovelace-etal-2023-ld4lg}, and unlike
+concurrent flow-based language models
+\citep{lee-etal-2026-flm,chen-etal-2026-langflow}, ELF keeps the trajectory
+entirely in continuous embedding space and discretizes only at the final step
+via a shared-weight network.
+The paradigm operates in the embedding space of a frozen T5 encoder
+\citep{raffel-etal-2020-t5}.
+The forward process is
+$\mathbf{z}_t = t\,\mathbf{x} + (1{-}t)\,\boldsymbol\varepsilon$,
+$t \sim \mathcal{U}[0,1]$,
+where $\mathbf{x}$ is a normalised T5 embedding and
+$\boldsymbol\varepsilon \sim \mathcal{N}(\mathbf{0},\mathbf{I})$.
+The backbone learns the corresponding velocity field with a combined MSE
+and cross-entropy loss \citep{hu-etal-2026-elf}.
+Inference integrates the ODE by Euler steps; Classifier-Free Guidance is
+controlled by a scalar \texttt{cfg\_scale} parameter.
+
+\paragraph{Training.}
+A \texttt{ModelConfig} object specifies the backbone architecture; wrapping it
+in \texttt{Paradigm} selects the generation paradigm.
+A \texttt{TrainingConfig} object specifies optimiser, schedule, batch size,
+and hardware layout.
+A single \texttt{Trainer(paradigm, tcfg).fit()} call launches training
+(Listing~\ref{lst:training}).
+
+\paragraph{Inference and Benchmarking.}
+\texttt{Generator} reads the \texttt{ModelConfig} from a checkpoint directory
+and dispatches to the appropriate algorithm—KV-cache decoding for AR,
+reverse diffusion for discrete, and ODE integration for continuous flow-matching—without requiring
+paradigm-specific code from the caller (Listing~\ref{lst:inference}).
+\texttt{dx.count\_flops} computes an analytical per-component FLOPs breakdown
+covering attention, FFN, and embedding layers without executing any GPU kernel.
+\texttt{dx.profile} additionally measures wall-clock latency and Model FLOP
+Utilisation (MFU) over configurable warm-up and measurement windows.
+At the system level, \texttt{BenchmarkSuite.default()} sweeps throughput,
+latency, and perplexity across batch sizes and sequence lengths and writes
+structured CSV output for the analyses reported in Section~\ref{sec:results}.

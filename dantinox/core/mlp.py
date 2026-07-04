@@ -1,10 +1,21 @@
+"""Dense feed-forward network for the transformer block.
+
+``MLP`` is the default FFN: up-projection → activation (SwiGLU by default,
+any ``jax.nn`` activation via ``config.activation``) → down-projection →
+dropout, with optional LoRA on both projections and a tensor-parallel
+all-reduce on the output.  It returns ``(out, 0.0)`` so it is call-compatible
+with ``MoE`` (whose second element is the load-balancing loss).
+
+The sparse counterpart lives in moe.py; block wiring in block.py.
+"""
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from jax.sharding import PartitionSpec as P
 
-from .config import Config
+from .config import Config, ModelConfig
 from .lora import LoRALinear, call_linear
+from .sharding import in_mesh_context
 
 
 class Activation(nnx.Module):
@@ -21,13 +32,18 @@ class Swiglu(nnx.Module):
         return jax.nn.silu(gate) * data
 
 class MLP(nnx.Module):
-    def __init__(self, config: Config, rngs: nnx.Rngs, in_dim: int | None = None):
+    def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs, in_dim: int | None = None):
 
         intermediate_dim = config.dim * config.expansion
         up_proj_dim = intermediate_dim * 2 if config.use_swiglu else intermediate_dim
 
-        _use_lora_mlp = getattr(config, "use_lora", False) and getattr(config, "lora_targets", "attention") in ("mlp", "all")
-        _lora_kw: dict = dict(rank=getattr(config, "lora_rank", 8), alpha=getattr(config, "lora_alpha", 16.0), dropout_rate=getattr(config, "lora_dropout", 0.0), rngs=rngs)
+        _use_lora_mlp = config.use_lora and config.lora_targets in ("mlp", "ffn", "all")
+        _lora_kw: dict = dict(
+            rank=config.lora_rank,
+            alpha=config.lora_alpha,
+            dropout_rate=config.lora_dropout,
+            rngs=rngs,
+        )
 
         input_dim: int = config.dim if in_dim is None else in_dim
         self.up_proj: nnx.Linear | LoRALinear = (
@@ -40,8 +56,7 @@ class MLP(nnx.Module):
         )
         self.activation = Swiglu() if config.use_swiglu else Activation(config.activation)
         self.dropout    = nnx.Dropout(config.dropout_rate, rngs=rngs)
-        self.mlp_loss   = 0
-        self.tp_size: int = getattr(config, "tp_size", 1)
+        self.tp_size: int = config.tp_size
 
     def __call__(self, x: jnp.ndarray, deterministic: bool = False) -> tuple[jnp.ndarray, float]:
         x = call_linear(self.up_proj, x, deterministic=deterministic)
@@ -50,6 +65,8 @@ class MLP(nnx.Module):
         # All-reduce partial sums from row-parallel down_proj across TP devices.
         # with_sharding_constraint tells XLA the output must be fully replicated,
         # which triggers an all-reduce over the model-parallel axis.
-        if self.tp_size > 1:
+        if self.tp_size > 1 and in_mesh_context():
             x = jax.lax.with_sharding_constraint(x, P(None, None, None))
-        return self.dropout(x, deterministic=deterministic), self.mlp_loss
+        # Dense MLP has no auxiliary loss; the 0.0 keeps the (out, aux)
+        # contract shared with MoE.
+        return self.dropout(x, deterministic=deterministic), 0.0

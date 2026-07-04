@@ -92,6 +92,7 @@ class Chart(ABC):
         out_path: Path,
     ) -> Path:
         import matplotlib.pyplot as plt
+
         from dantinox.visualization.style import apply_style
 
         apply_style(config.style)
@@ -152,6 +153,7 @@ class Chart(ABC):
         Calls ``_render_mpl_multi(data, config, fig, axes)`` instead.
         """
         import matplotlib.pyplot as plt
+
         from dantinox.visualization.style import apply_style
 
         apply_style(config.style)
