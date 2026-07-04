@@ -230,25 +230,6 @@ class BaseAttention(nnx.Module):
         raise NotImplementedError(f"{type(self).__name__} must implement __call__")
 
 
-def _apply_linear_attention(q: jnp.ndarray, k: jnp.ndarray, v: jnp.ndarray) -> jnp.ndarray:
-    """Non-causal linear attention (Katharopoulos et al., 2020), O(T) in sequence length.
-
-    ``q``/``k``/``v`` are grouped-head tensors ``[B, kv_heads, G, T, head_size]``
-    (b=batch, k=kv_heads, g=group, t=tokens, h/j=head_size). Since there is no
-    causal mask, ``kv`` is accumulated once over all tokens rather than
-    prefix-summed, giving the same ``[B, kv_heads, G, T, head_size]`` output
-    layout as the softmax path.
-    """
-    fn = lambda x: jax.nn.elu(x) + 1
-    q, k = map(fn, (q, k))
-
-    kv      = jnp.einsum('bkgth, bkgtj -> bkghj', k, v)
-    num     = jnp.einsum('bkgth, bkghj -> bkgtj', q, kv)
-    k_denom = jnp.sum(k, axis=3)  # sum over tokens -> [B, kv_heads, G, head_size]
-    denom   = jnp.einsum('bkgth, bkgh -> bkgt', q, k_denom)
-    return num / (denom[..., None] + 1e-6)
-
-
 # ── Standard attention (MHA and GQA share the same forward pass) ──────────────
 
 class _StandardAttention(BaseAttention):
@@ -303,6 +284,27 @@ class _StandardAttention(BaseAttention):
             - jnp.exp((lq2 * lk2).sum(-1))
             + self.lambda_init
         )  # [n_heads]
+
+    # ── Linear attention (bidirectional only) ─────────────────────────────────
+
+    @staticmethod
+    def _apply_linear_attention(q: jnp.ndarray, k: jnp.ndarray, v: jnp.ndarray) -> jnp.ndarray:
+        """Non-causal linear attention (Katharopoulos et al., 2020), O(T) in sequence length.
+
+        ``q``/``k``/``v`` are grouped-head tensors ``[B, kv_heads, G, T, head_size]``
+        (b=batch, k=kv_heads, g=group, t=tokens, h/j=head_size). Since there is no
+        causal mask, ``kv`` is accumulated once over all tokens rather than
+        prefix-summed, giving the same ``[B, kv_heads, G, T, head_size]`` output
+        layout as the softmax path.
+        """
+        fn = lambda x: jax.nn.elu(x) + 1
+        q, k = map(fn, (q, k))
+
+        kv      = jnp.einsum('bkgth, bkgtj -> bkghj', k, v)
+        num     = jnp.einsum('bkgth, bkghj -> bkgtj', q, kv)
+        k_denom = jnp.sum(k, axis=3)  # sum over tokens -> [B, kv_heads, G, head_size]
+        denom   = jnp.einsum('bkgth, bkgh -> bkgt', q, k_denom)
+        return num / (denom[..., None] + 1e-6)
 
     # ── KV-cache update ───────────────────────────────────────────────────────
 
@@ -448,9 +450,9 @@ class _StandardAttention(BaseAttention):
 
         # Linear attention fast path (bidirectional only — no causal masking support)
         if not is_causal and self.use_linear_attention:
-            y = _apply_linear_attention(q, k, v)
+            y = self._apply_linear_attention(q, k, v)
             if self.differential:
-                y2  = _apply_linear_attention(q2, k2, v)
+                y2  = self._apply_linear_attention(q2, k2, v)
                 lam = self._compute_lambda().reshape(self.kv_heads, -1)[None, :, :, None, None]  # [1, kv_heads, G, 1, 1]
                 y   = y - lam * y2
             y   = jnp.transpose(y, (0, 3, 1, 2, 4)).reshape(B, T, self.n_heads, self.head_size)

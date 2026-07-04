@@ -1,7 +1,5 @@
 % Generation quality table — Small scale (512-d, 12-layer), all three paradigms
 % Needs: booktabs, xcolor (colortbl)
-% NOTE: AR rows and mean±std values pending — AR training + multi-seed eval in
-% progress; numbers below are seed-42 values for Diffusion/Flow-Matching.
 \begin{table}[t]
 \centering
 \footnotesize
@@ -17,9 +15,9 @@
 % ── Autoregressive ────────────────────────────────────────────────────────────
 \rowcolor{gray!10}
 \multicolumn{6}{@{}l}{\textbf{Autoregressive}} \\
-\quad MHA (67M)  & TODO & TODO & TODO & TODO & TODO \\
-\quad GQA (TODO) & TODO & TODO & TODO & TODO & TODO \\
-\quad MLA (TODO) & TODO & TODO & TODO & TODO & TODO \\
+\quad MHA (67M)  & 0.17{\tiny$\pm$.03} & \textbf{1216}{\tiny$\pm$5} & \textbf{0.697}{\tiny$\pm$.000} & 0.007{\tiny$\pm$.000} & 0.052{\tiny$\pm$.000} \\
+\quad GQA (62M)  & 0.18{\tiny$\pm$.06} & 1233{\tiny$\pm$3}          & 0.688{\tiny$\pm$.001}          & 0.005{\tiny$\pm$.000} & 0.050{\tiny$\pm$.004} \\
+\quad MLA (65M)  & 0.07{\tiny$\pm$.01} & 1860{\tiny$\pm$3}          & 0.682{\tiny$\pm$.001}          & \textbf{0.003}{\tiny$\pm$.000} & 0.020{\tiny$\pm$.002} \\
 %
 \midrule
 %
