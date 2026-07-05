@@ -52,6 +52,7 @@ on the same Transformer architecture, with a single trainer and zero boilerplate
    paradigms/fast-dllm
    paradigms/confidence
    paradigms/comparison
+   paradigms/retriever
 
 .. toctree::
    :maxdepth: 2
@@ -61,6 +62,8 @@ on the same Transformer architecture, with a single trainer and zero boilerplate
    training/index
    training/autoregressive
    training/diffusion
+   training/continuous
+   training/retriever
    training/optimizers
    training/sweeps
    training/multi-gpu
@@ -74,6 +77,7 @@ on the same Transformer architecture, with a single trainer and zero boilerplate
    inference/index
    inference/autoregressive
    inference/diffusion
+   inference/continuous
    inference/kv-cache
 
 .. toctree::
@@ -85,6 +89,7 @@ on the same Transformer architecture, with a single trainer and zero boilerplate
    tutorials/first-model
    tutorials/diffusion-lm
    tutorials/lora-fine-tuning
+   tutorials/retriever-rag
    tutorials/benchmarking
    tutorials/hub
 
