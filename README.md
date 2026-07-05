@@ -4,10 +4,10 @@
 
 *"Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura..."*
 
-A research-grade JAX/Flax NNX transformer library for **autoregressive**,
-**discrete diffusion**, and **continuous flow-matching** language models.
-
-Three paradigms. One trainer. Zero boilerplate.
+A research-grade JAX/Flax NNX transformer library for **autoregressive (AR)**,
+**discrete masked diffusion**, and **continuous flow-matching** language models —
+one modular Transformer backbone, one trainer, one streaming generator, zero
+paradigm-specific boilerplate.
 
 <br>
 
@@ -28,9 +28,32 @@ Three paradigms. One trainer. Zero boilerplate.
 
 ## Overview
 
-**DantinoX** is a modular, research-focused library for building and training transformer language models in pure JAX. It supports three generation paradigms on the same backbone — autoregressive (AR), masked discrete diffusion (LLaDA), and continuous flow-matching (ELF) — and provides a systematic benchmarking suite for comparing them.
+Comparing autoregressive decoding, masked diffusion, and continuous
+flow-matching fairly is hard: each paradigm typically lives in its own
+codebase, so any measured difference may reflect tokenizer, initialization,
+or training-loop details rather than the paradigm itself. **DantinoX**
+removes that confound by separating the model *backbone* (attention,
+feed-forward, normalisation, positional encoding) from the *generation
+method*. Selecting a paradigm — AR, masked discrete diffusion (LLaDA), or
+continuous flow-matching (ELF) — is a single configuration field; the
+weights, tokenizer, and training loop stay identical across all three,
+enabling controlled cross-paradigm research within one API for training,
+streaming inference, and benchmarking.
 
-The library ships as an installable Python package with a unified CLI, a three-level programmatic API, typed configuration dataclasses, and a full test suite.
+DantinoX targets **researchers** running controlled paradigm/attention
+ablations without editing model code, **educators** who want one readable
+codebase covering AR + diffusion + flow-matching, and **practitioners** who
+need architectural variants (GQA, MLA, MoE, LoRA) without rewriting the
+trainer. It is the only framework we're aware of that unifies all three
+generation paradigms on a single JAX/Flax backbone alongside MHA/GQA/MLA
+attention, LoRA, multi-GPU scaling, and an integrated benchmarking suite —
+see the [framework comparison](https://dantinox.readthedocs.io/en/latest/vs-transformers/#framework-landscape)
+for how this compares to HuggingFace, MaxText, Levanter, OpenLM, torchtune,
+Fairseq, xLM, and dLLM.
+
+The library ships as an installable Python package with a unified CLI, a
+three-level programmatic API, typed configuration dataclasses, and a full
+test suite.
 
 ---
 
@@ -38,15 +61,15 @@ The library ships as an installable Python package with a unified CLI, a three-l
 
 | Layer | What you get |
 |:------|:-------------|
-| **Attention** | MHA · GQA · MLA (Multi-Latent) · Flash Attention · Sliding Window |
-| **Feed-Forward** | Dense MLP (SwiGLU / GELU) · Sparse Mixture-of-Experts (Top-K) |
-| **Position** | Rotary (RoPE) · Absolute Sinusoidal · Learned |
-| **Paradigms** | Autoregressive · Masked Diffusion (LLaDA) · ELF Continuous Flow-Matching |
-| **Training** | Paradigm-agnostic `Trainer` · AdamW / Lion / Muon / Adafactor · WSD / Cosine / Linear LR · Gradient accumulation · Multi-GPU JAX SPMD |
-| **Inference** | Static KV-cache · Fast-dLLM DualCache (1.4–2.1× speedup for diffusion) · Streaming |
-| **Fine-tuning** | Built-in LoRA (`use_lora=True`) · Auto-frozen base weights · `merge_lora()` |
-| **Benchmarking** | `BenchmarkSuite` · Throughput / Latency / Perplexity tasks · CSV + 21 plots |
-| **Integration** | HuggingFace Hub push/pull · W&B sweeps · Full CLI · Colab notebooks |
+| **Attention** | MHA · GQA · MLA (Multi-Head Latent) · Flash Attention · Sliding Window · Gated (attention-sink suppression) · Linear (bidirectional-only, O(T)) · Differential |
+| **Feed-Forward** | Dense MLP (SwiGLU / GELU) · Sparse Mixture-of-Experts (Top-K) · LatentMoE (bottleneck-dimension experts) |
+| **Position** | Rotary (RoPE, with NTK-aware scaling) · Absolute Sinusoidal · Learned · None |
+| **Paradigms** | Autoregressive · Masked Diffusion (LLaDA) · Continuous Flow-Matching (ELF recipe) |
+| **Training** | Paradigm-agnostic `Trainer` · AdamW / Lion / Muon / Adafactor / Adam · WSD / Cosine / Linear / Constant LR · Gradient accumulation & clipping · bfloat16 · Multi-GPU JAX SPMD (data + tensor parallel) |
+| **Inference** | Static KV-cache · Fast-dLLM DualCache (1.4–2.1× speedup for diffusion) · Euler ODE/SDE + Classifier-Free Guidance for flow-matching · Streaming |
+| **Fine-tuning** | Built-in LoRA (`use_lora=True`) · Auto-frozen base weights · `merge_lora()` for zero-overhead deployment |
+| **Benchmarking** | `BenchmarkSuite` · Throughput / Latency / Perplexity tasks · `count_flops` (zero-execution FLOPs) · `profile` (latency + MFU) · CSV + plots |
+| **Integration** | HuggingFace Hub push/pull · W&B sweeps · 14-subcommand CLI · Colab notebooks |
 
 ---
 
@@ -97,12 +120,19 @@ run_dir = dx.fit("discrete", "data/wiki.txt",
                  tokenizer_type="bpe", tokenizer_path="t5-base",
                  lr=1e-4, epochs=20)
 
-# ELF — continuous flow-matching in embedding space
+# Continuous Flow-Matching (ELF recipe) — operates in a frozen T5 embedding space
 run_dir = dx.fit("continuous", "data/wiki.txt",
-                 embed_dim=512, bottleneck_dim=128,
+                 embed_dim=768, bottleneck_dim=128,
                  dim=512, n_heads=8, head_size=64, num_blocks=12,
-                 vocab_size=32_128, elf_cfg_scale=1.5, lr=1e-4, epochs=30)
+                 flow_cfg_scale=1.5, lr=1e-4, epochs=30)
 ```
+
+> Unrecognized keyword arguments to `dx.fit()` are silently ignored rather
+> than raising an error — double check field names against the
+> [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration/)
+> if a value doesn't seem to take effect (e.g. the field is `dim`/`flow_cfg_scale`
+> on `ModelConfig`, not `model_dim`/`elf_cfg_scale`, which only exist on the
+> standalone `FlowMatchingConfig`).
 
 ### Explicit Paradigm API
 
@@ -118,10 +148,11 @@ model    = paradigm.build_model(nnx.Rngs(42))
 # Train
 run_dir = dx.Trainer(paradigm).fit("data/wiki.txt")
 
-# Generate
-gen  = dx.Generator(run_dir)
-text = gen.generate("In the beginning", max_new_tokens=200, top_p=0.9)
-print(text)
+# Streaming inference — auto-dispatches to the right paradigm (KV-cache decode
+# for AR, reverse diffusion for discrete, ODE/SDE integration for continuous)
+gen = dx.Generator(run_dir, seed=42)
+for chunk in gen.stream("In the beginning", max_new_tokens=200, top_p=0.9):
+    print(chunk, end="", flush=True)
 ```
 
 ### CLI
@@ -144,6 +175,12 @@ dantinox find-lr --config configs/default_config.yaml --data_path wiki.txt --plo
 # Run hyperparameter sweep (W&B)
 dantinox sweep --sweep_config configs/sweep.yaml --data_path wiki.txt
 
+# Print FLOPs / parameter count for a checkpoint or config
+dantinox profile --run_dir runs/ar_mha_512d
+
+# Evaluate generation quality (Distinct-N, Rep-4, MAUVE)
+dantinox eval --run_dir runs/ar_mha_512d
+
 # Full inference benchmark suite
 dantinox infbench --trained --eval
 
@@ -151,62 +188,79 @@ dantinox infbench --trained --eval
 dantinox push --run_dir runs/ar_mha_512d --repo my-org/my-model
 dantinox pull --repo my-org/my-model --local_dir runs/downloaded
 
+# Declarative training from a single workflow YAML
+dantinox run workflow.yaml
+
+# Export a checkpoint to a StableHLO binary (Python-free inference)
+dantinox export runs/ar_mha_512d model.stablehlo
+
 # Generate benchmark plots
 dantinox plot --in_csv results/benchmark.csv --out_dir plots/
 ```
+
+All 14 subcommands (`train`, `generate`, `sweep`, `benchmark`, `find-lr`,
+`push`, `pull`, `infbench`, `merge-lora`, `profile`, `run`, `export`, `eval`,
+`plot`) are documented in the [CLI Reference](https://dantinox.readthedocs.io/en/latest/cli/).
 
 ---
 
 ## Project Structure
 
+Everything importable lives under the installable `dantinox/` package —
+there is no separate top-level `core/`/`utils/` package (a couple of empty
+stub directories with those names exist at the repo root for legacy reasons
+but are unused; the real code is `dantinox/core/`, `dantinox/utils/`, etc.).
+
 ```
 DantinoX/
-├── core/                        # Neural network primitives
-│   ├── config.py                # ModelConfig · TrainingConfig · Config · ELFConfig
-│   ├── model.py                 # Transformer · DiffusionTransformer
-│   ├── elf.py                   # ELFTransformer (continuous flow-matching)
-│   ├── attention.py             # MHA / GQA / MLA + RoPE + KV-cache
-│   ├── block.py                 # Transformer block (Attention + FFN + Norm)
-│   ├── mlp.py                   # Dense MLP (SwiGLU / GELU)
-│   ├── moe.py                   # Sparse MoE with load-balancing loss
-│   ├── diffusion.py             # NoiseSchedule · make_noise_schedule
-│   ├── lora.py                  # LoRAParam · merge_lora
-│   └── generation.py            # generate · diffusion_generate · elf_generate · fast_dllm_generate
-│
-├── dantinox/                    # Installable library package
-│   ├── cli.py                   # 9 subcommands: train/generate/sweep/benchmark/infbench/find-lr/push/pull/plot
+├── dantinox/                        # Installable library package
+│   ├── core/                        # Neural-network primitives (paradigm-agnostic)
+│   │   ├── config.py                # ModelConfig · TrainingConfig · Config · FlowMatchingConfig
+│   │   ├── model.py                 # Transformer (DiffusionTransformer is an alias)
+│   │   ├── flow.py                  # FlowMatchingTransformer, FlowEmbedder (continuous flow-matching)
+│   │   ├── attention.py             # MHA / GQA / MLA + RoPE + KV-cache + Flash/Gated/Linear/Differential
+│   │   ├── block.py                 # Block: pre-norm residual (Attention + FFN + Norm)
+│   │   ├── mlp.py                   # Dense MLP (SwiGLU / GELU)
+│   │   ├── moe.py                   # Sparse MoE + LatentMoE with load-balancing loss
+│   │   ├── diffusion.py             # NoiseSchedule · make_noise_schedule · corrupt · masked_cross_entropy
+│   │   ├── lora.py                  # LoRALinear · LoRAParam · merge_lora
+│   │   ├── generation.py            # generate · diffusion_generate · fast_dllm_generate · flow_generate
+│   │   └── sharding.py              # make_mesh · shard_batch — multi-GPU SPMD
+│   │
 │   ├── paradigms/
-│   │   ├── paradigm.py          # Paradigm (unified factory — public API)
-│   │   ├── base.py              # ParadigmBase (ABC)
-│   │   ├── ar.py                # ARParadigm
-│   │   ├── embedder.py          # EmbedderParadigm
+│   │   ├── paradigm.py              # Paradigm (unified dispatcher — public API)
+│   │   ├── base.py                  # ParadigmBase (ABC): build_model, loss_fn, generate
+│   │   ├── ar.py                    # ARParadigm
+│   │   ├── embedder.py              # EmbedderParadigm
 │   │   └── diffusion/
-│   │       ├── discrete.py      # DiscreteParadigm (LLaDA)
-│   │       └── continuous.py    # ContinuousParadigm (ELF)
+│   │       ├── discrete.py          # DiscreteParadigm (LLaDA)
+│   │       └── continuous.py        # ContinuousParadigm (ELF recipe)
+│   │
 │   ├── training/
-│   │   ├── trainer.py           # Trainer — JIT loop, checkpointing, multi-GPU
-│   │   └── optimizer.py         # build_optimizer · build_schedule
-│   ├── benchmarking/            # BenchmarkSuite · BenchmarkTask · ThroughputTask · LatencyTask
-│   ├── profiling/               # LatencyTracker · count_flops
-│   ├── visualization/           # Visualizer · chart registry
-│   └── hub.py                   # push · pull (HuggingFace Hub)
+│   │   ├── trainer.py               # Trainer — JIT loop, checkpointing, multi-GPU (this is `dx.Trainer`)
+│   │   └── optimizer.py             # build_optimizer · build_schedule (AdamW/Lion/Muon/Adafactor)
+│   │
+│   ├── benchmarking/                 # BenchmarkSuite · BenchmarkTask · Throughput/Latency/Perplexity tasks
+│   ├── profiling/                    # count_flops · LatencyTracker · profile
+│   ├── visualization/                 # Visualizer · chart registry
+│   ├── utils/                        # Tokenizers (char/BPE/T5), T5 encoder, data pipeline helpers
+│   ├── generator.py                  # Generator — paradigm-agnostic streaming inference
+│   ├── trainer.py                    # Legacy Config-driven Trainer (backs the `dantinox train` CLI)
+│   ├── hub.py                        # push · pull (HuggingFace Hub)
+│   └── cli.py                        # 14 subcommands (see CLI section above)
 │
-├── utils/
-│   ├── tokenizer.py             # CharTokenizer · BPETokenizer
-│   └── helpers.py               # Loss helpers, batch sampling
+├── benchmarks/                       # Stand-alone benchmark/ablation scripts
+│   ├── inference_sweep.py            # Random-model sweep (13 groups)
+│   ├── trained_analysis.py           # Throughput on real checkpoints
+│   └── generation_quality.py         # Distinct-N, Rep-4, MAUVE
 │
-├── benchmarks/                  # Stand-alone benchmark scripts
-│   ├── inference_sweep.py       # Random-model sweep (13 groups)
-│   ├── trained_analysis.py      # Throughput on real checkpoints
-│   └── generation_quality.py    # Distinct-N, Rep-4, MAUVE
-│
-├── configs/                     # YAML templates
+├── configs/                          # YAML templates
 │   ├── default_config.yaml
 │   ├── diffusion_base.yaml
 │   └── sweep.yaml
 │
-├── docs/                        # MkDocs Material documentation
-├── tests/                       # Pytest test suite
+├── docs/                              # Documentation (built via Sphinx/RTD; docs/index.rst is the toctree)
+├── tests/                             # Pytest test suite
 ├── pyproject.toml
 └── mkdocs.yml
 ```
@@ -215,7 +269,9 @@ DantinoX/
 
 ## Configuration
 
-All settings are typed dataclasses. The `Config` class is the flat, CLI-compatible form; `ModelConfig` + `TrainingConfig` is the preferred split API for new code.
+All settings are typed dataclasses. The `Config` class is the flat,
+CLI-compatible form; `ModelConfig` + `TrainingConfig` is the preferred split
+API for new code (and the one used throughout this README and the paper).
 
 ```python
 from dantinox.core.config import Config
@@ -237,6 +293,13 @@ cfg = Config(
     use_bf16=True, n_devices=4,
 )
 ```
+
+> Note: `attention_type` above is correct for the **legacy** `Config` class.
+> The modern `ModelConfig` uses the shorter field name `attention` instead
+> (e.g. `dx.ModelConfig(attention="gqa", ...)`) — passing `attention_type=`
+> to `ModelConfig` raises `TypeError`. See the
+> [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration/)
+> for the full field mapping between the two config schemas.
 
 Key constraint: `dim` must equal `n_heads × head_size`.
 
@@ -281,16 +344,24 @@ tokens = fast_dllm_generate(model, prefix, gen_len=256, schedule=schedule,
                              block_size=32, steps_per_block=20)
 ```
 
-### ELF — Continuous Flow-Matching
+### Continuous Flow-Matching (ELF recipe)
 
-Euler ODE from Gaussian noise to clean token embeddings:
+Euler ODE (or SDE, with `gamma > 0`) from Gaussian noise to clean token
+embeddings in a frozen T5 encoder's embedding space, with Classifier-Free
+Guidance via `cfg_scale`:
 
 ```python
-from dantinox.core.generation import elf_generate
+from dantinox.core.generation import flow_generate
 
-tokens = elf_generate(model, gen_len=128, batch_size=4,
-                      n_steps=64, cfg_scale=1.5, seed=42)
+tokens = flow_generate(model, gen_len=128, batch_size=4,
+                       n_steps=64, cfg_scale=1.5, gamma=0.0, seed=42)
 ```
+
+> `elf_generate` is a deprecated alias of `flow_generate` (same for
+> `core.elf` vs `core.flow`, and `ELFConfig`/`ELFTransformer` vs
+> `FlowMatchingConfig`/`FlowMatchingTransformer`) — still functional, removed
+> in v1.0. Prefix/conditional generation is not yet supported for this
+> paradigm; it currently only generates unconditionally from pure noise.
 
 ---
 
@@ -330,6 +401,12 @@ report = BenchmarkSuite.default().run(paradigm, model, save_csv="results.csv")
 print(report.summary())
 ```
 
+`BenchmarkSuite.default()` sweeps latency, throughput, and energy across
+batch sizes and sequence lengths for whichever paradigm you pass in — this
+is the same call used to produce the paper's inference-efficiency and
+hardware-roofline results across AR, discrete diffusion, and continuous
+flow-matching on one shared backbone.
+
 Or use the full inference sweep via CLI:
 
 ```bash
@@ -360,42 +437,57 @@ JAX_PLATFORM_NAME=cpu python -m pytest tests/ -v
 
 Tests run entirely on CPU and cover:
 
-- Forward-pass shapes for MHA, GQA, MLA, MoE, LoRA, Diffusion, ELF
+- Forward-pass shapes for MHA, GQA, MLA, MoE, LatentMoE, LoRA, Diffusion, Flow-Matching
 - KV-cache correctness and accumulation
 - Weight tying between embedding and LM head
 - JIT compilation stability
-- `Config` / `ModelConfig` / `ELFConfig` validation and round-trip serialisation
+- `Config` / `ModelConfig` / `FlowMatchingConfig` validation and round-trip serialisation
 
 ### Code Quality
 
 | Tool | Checks |
 |:-----|:-------|
 | **ruff** | Style (E/W), imports (I), pyupgrade (UP), bugbear (B), simplify (SIM) |
-| **mypy** | Full type annotation coverage across `dantinox/`, `core/`, `utils/` |
+| **mypy** | Full type annotation coverage across `dantinox/` |
 | **pytest** | Unit tests, CPU-only, session-scoped fixtures |
 
 ---
 
 ## Documentation
 
-Full documentation is built with MkDocs Material:
+Full documentation is built with Sphinx and hosted on ReadTheDocs (there is
+also an `mkdocs.yml` in the repo for local browsing, but the hosted site at
+`dantinox.readthedocs.io` builds from `docs/index.rst`'s `toctree`, not
+`mkdocs.yml`'s `nav`):
 
 ```bash
 pip install "dantinox[docs]"
 mkdocs serve          # local preview at http://127.0.0.1:8000
-mkdocs gh-deploy      # deploy to GitHub Pages
 ```
 
 Key sections: [Quickstart](https://dantinox.readthedocs.io/en/latest/quickstart/) · [Paradigms](https://dantinox.readthedocs.io/en/latest/paradigms/) · [Configuration](https://dantinox.readthedocs.io/en/latest/configuration/) · [CLI](https://dantinox.readthedocs.io/en/latest/cli/) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/)
 
 ---
 
-## Citation
+## Paper
+
+DantinoX is described in *"DantinoX: A Unified Framework for Multi-Paradigm
+Language Modeling"* (Simoni, Fontana, Rossolini, and Saracino). The paper
+validates the library with two fully automated evaluations produced entirely
+by its own pipeline: **open-ended generation quality** (MAUVE, PPL, lexical
+diversity, conditional BLEU) across all nine paradigm × attention
+combinations at Small scale (512-d, 12-layer), and **inference efficiency**
+(latency, throughput, energy, hardware roofline) across all three paradigms
+on a Large backbone (1024-d, 16-layer) on a single A100-40GB GPU. See
+[Experiments & Results](https://dantinox.readthedocs.io/en/latest/paper/)
+for the full breakdown.
 
 ```bibtex
 @software{dantinox2026,
-  author  = {Simoni, Marco},
-  title   = {DantinoX: A Unified {JAX}/Flax Framework for {AR}, Masked Diffusion, and Flow-Matching Language Models},
+  author  = {Simoni, Marco and Fontana, Aleksandar and Rossolini, Giulio
+             and Saracino, Andrea},
+  title   = {{D}antino{X}: A Unified Framework for Multi-Paradigm Language
+             Modeling},
   year    = {2026},
   url     = {https://github.com/winstonsmith1897/DantinoX},
 }
