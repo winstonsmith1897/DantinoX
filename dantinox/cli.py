@@ -25,6 +25,7 @@ import dataclasses
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 from dantinox import __version__
 from dantinox.core.config import Config
@@ -52,7 +53,7 @@ def _str2bool(v: str) -> bool:
     raise argparse.ArgumentTypeError(f"Boolean value expected, got {v!r}")
 
 
-def _auto_cast(v: str):
+def _auto_cast(v: str) -> int | float | str:
     """Cast to int/float when possible, else keep as str (argparse type helper
     for Config fields whose default is None, e.g. ``vocab_size: int | None``)."""
     for cast in (int, float):
@@ -100,7 +101,7 @@ def _apply_overrides(config: Config, args: argparse.Namespace) -> Config:
 
 # ─── subcommand handlers ────────────────────────────────────────────────────
 
-def _legacy_trainer(config: Config):
+def _legacy_trainer(config: Config) -> Any:
     """Build the legacy monolithic-Config trainer without its deprecation
     warning — the CLI intentionally drives this engine until the paradigm
     Trainer reaches feature parity (wandb sweeps, find-lr)."""
@@ -154,6 +155,10 @@ def _cmd_generate(args: argparse.Namespace) -> None:
     print(f"Prompt: {args.prompt}")
     print("-" * 40)
 
+    # Declared once as Any: mutually-exclusive branches below build one of
+    # several unrelated model classes (Transformer, DiffusionTransformer,
+    # FlowMatchingTransformer) depending on model_type.
+    _model: Any
     if model_type == "autoregressive":
         from dantinox.generator import Generator
 
@@ -243,7 +248,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         )
         elapsed = time.time() - t0
         token_ids = _out[0].tolist()
-        text = _tokenizer.decode(token_ids, skip_special_tokens=True)
+        text = str(_tokenizer.decode(token_ids, skip_special_tokens=True))
         print(text)
         print("-" * 40)
         print(f"Generated {len(token_ids)} tokens in {elapsed:.2f}s "
@@ -290,7 +295,7 @@ def _cmd_generate(args: argparse.Namespace) -> None:
         )
         elapsed = time.time() - t0
         token_ids = _out[0].tolist()
-        text = _tokenizer.decode(token_ids, skip_special_tokens=True)
+        text = str(_tokenizer.decode(token_ids, skip_special_tokens=True))
         print(text)
         print("-" * 40)
         print(f"Generated {len(token_ids)} tokens in {elapsed:.2f}s "
@@ -579,6 +584,9 @@ def _cmd_merge_lora(args: argparse.Namespace) -> None:
 
     model_type = flat.get("model_type", "autoregressive")
     rngs = nnx.Rngs(42)
+    # Declared once as Any: mutually-exclusive branches build one of several
+    # unrelated model classes depending on model_type.
+    model: Any
     if model_type == "elf":
         from dantinox.core.flow import FlowMatchingTransformer
         model = FlowMatchingTransformer(cfg.to_flow_config(), rngs=rngs)
@@ -644,6 +652,9 @@ def _cmd_profile(args: argparse.Namespace) -> None:
 
     model_type = flat.get("model_type", "autoregressive")
     rngs = nnx.Rngs(42)
+    # Declared once as Any: mutually-exclusive branches build one of several
+    # unrelated model classes depending on model_type.
+    model: Any
     if model_type == "elf":
         from dantinox.core.flow import FlowMatchingTransformer
         model = FlowMatchingTransformer(cfg.to_flow_config(), rngs=rngs)
@@ -667,8 +678,7 @@ def _cmd_profile(args: argparse.Namespace) -> None:
     print(f"  Parameters  : {total_params:,}  ({total_params / 1e6:.2f} M)")
 
     try:
-        model_cfg = cfg.to_model_config() if hasattr(cfg, "to_model_config") else cfg
-        flops = count_flops(model_cfg, seq_len=args.seq_len, batch_size=args.batch_size)
+        flops = count_flops(cfg.to_model_config(), seq_len=args.seq_len, batch_size=args.batch_size)
         print(f"\n  seq_len={args.seq_len}  batch_size={args.batch_size}")
         print(f"  {flops}")
     except Exception as exc:
@@ -705,7 +715,7 @@ def _cmd_run(args: argparse.Namespace) -> None:
     _TYPE_MAP    = {"autoregressive": "ar", "diffusion": "discrete", "elf": "continuous"}
 
     model_kw = {k: v for k, v in arch.items() if k in model_fields}
-    paradigm = dx.build(_TYPE_MAP.get(model_type, model_type), **model_kw)
+    paradigm = dx.build(str(_TYPE_MAP.get(model_type, model_type)), **model_kw)
     logging.getLogger(__name__).info(
         "Paradigm: %s  config=%s", type(paradigm).__name__, paradigm.config
     )
@@ -744,9 +754,9 @@ def _cmd_run(args: argparse.Namespace) -> None:
     logging.getLogger(__name__).info("AutoDataPipeline ready: %s", data_pipe)
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
-    from dantinox.training.callbacks import WandbCallback
+    from dantinox.training.callbacks import BaseCallback, WandbCallback
 
-    callbacks = []
+    callbacks: list[BaseCallback] = []
     if track.get("use_wandb", False):
         wandb_project = track.get("project", "dantinox")
         callbacks.append(WandbCallback(project=wandb_project))

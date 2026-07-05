@@ -13,6 +13,7 @@ When ``paradigm`` is not set, the selection falls back to inspecting
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
 
 from dantinox.core.config import ModelConfig
@@ -88,7 +89,7 @@ class Paradigm(ParadigmBase):
     def build_model(self, rngs: Any) -> Any:
         return self._impl.build_model(rngs)
 
-    def loss_fn(self, model: Any, batch: Any, rng: Any, **kwargs: Any) -> Any:
+    def loss_fn(self, model: Any, batch: Any, rng: Any, **kwargs: Any) -> Any:  # type: ignore[override]
         return self._impl.loss_fn(model, batch, rng, **kwargs)
 
     def generate(self, model: Any, *args: Any, **kwargs: Any) -> Any:
@@ -100,16 +101,16 @@ class Paradigm(ParadigmBase):
     # reaching __getattr__.  We must override them explicitly as properties so
     # they delegate to the inner implementation.
 
-    @property  # type: ignore[override]
-    def provides_batch_extras(self) -> bool:
+    @property
+    def provides_batch_extras(self) -> bool:  # type: ignore[override]
         return self._impl.provides_batch_extras
 
-    @property  # type: ignore[override]
-    def diffusion_config(self):
+    @property
+    def diffusion_config(self) -> Any:
         return self._impl.diffusion_config
 
-    @property  # type: ignore[override]
-    def requires_shifted_targets(self) -> bool:
+    @property
+    def requires_shifted_targets(self) -> bool:  # type: ignore[override]
         return self._impl.requires_shifted_targets
 
     # ── ParadigmBase hook overrides ───────────────────────────────────────────
@@ -124,7 +125,7 @@ class Paradigm(ParadigmBase):
 
     # ── Streaming (discrete + continuous only) ────────────────────────────────
 
-    def stream(self, model: Any, *args: Any, **kwargs: Any):
+    def stream(self, model: Any, *args: Any, **kwargs: Any) -> Iterator[Any]:
         """Yield ``(step, total, tokens)`` after each generation step.
 
         Only available for ``"discrete"`` and ``"continuous"`` paradigms.
@@ -159,7 +160,7 @@ class Paradigm(ParadigmBase):
         from dantinox.paradigms.diffusion.continuous import ContinuousParadigm
         from dantinox.paradigms.diffusion.discrete import DiscreteParadigm
         from dantinox.paradigms.embedder import EmbedderParadigm
-        _map = {
+        _map: dict[type, str] = {
             ARParadigm: "ar",
             DiscreteParadigm: "discrete",
             ContinuousParadigm: "continuous",

@@ -51,7 +51,7 @@ class TrainingCurveChart(Chart):
         ax.legend()
 
 
-def _load_df(data: Any):
+def _load_df(data: Any) -> Any:
     import pandas as pd
     if isinstance(data, str):
         return pd.read_csv(data)

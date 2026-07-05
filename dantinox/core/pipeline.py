@@ -84,6 +84,9 @@ def pipeline(
     log.info("Config: %s  model_kind=%s", cfg, kind)
 
     # ── Tokenizer ──────────────────────────────────────────────────────────────
+    # Declared once as Any: falls back to a transformers AutoTokenizer (a
+    # different, unrelated class) when no native tokenizer.json is present.
+    tokenizer: Any
     tok_path = os.path.join(local_dir, "tokenizer.json")
     if os.path.exists(tok_path):
         tokenizer = load_tokenizer_from_file(tok_path)

@@ -121,6 +121,7 @@ class EmbedderParadigm(ParadigmBase):
         model: Transformer,
         batch: jnp.ndarray,
         rng: jax.Array,
+        embeddings: jnp.ndarray | None = None,  # unused: embedder has no batch extras
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         """SimCSE: encode the same batch twice with dropout → InfoNCE."""
         # Two forward passes — NNX advances the dropout RNG between calls,

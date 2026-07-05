@@ -56,6 +56,7 @@ Quick-start
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import flax.nnx as nnx
 import jax
@@ -421,7 +422,7 @@ class FlowMatchingTransformer(nnx.Module, pytree=False):
         vocab_size:     int,
         max_seq_len:    int,
         rngs:           nnx.Rngs,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> FlowMatchingTransformer:
         """Construct an ``FlowMatchingTransformer`` from individual hyperparameters.
 

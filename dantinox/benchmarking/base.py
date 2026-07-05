@@ -58,7 +58,7 @@ class SuiteReport:
 
     # ── Conversion ────────────────────────────────────────────────────────────
 
-    def to_dataframe(self):
+    def to_dataframe(self) -> Any:
         """Return a ``pandas.DataFrame`` with one row per task."""
         import pandas as pd
         return pd.DataFrame([r.to_dict() for r in self.results])

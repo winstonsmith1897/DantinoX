@@ -89,6 +89,18 @@ dantinox --version
 
     [Details →](#eval)
 
+-   :material-file-cog-outline: **run**
+
+    Declarative training from a single self-contained workflow YAML (dataset + architecture + training + tracking).
+
+    [Details →](#run)
+
+-   :material-export: **export**
+
+    Export a checkpoint to a StableHLO binary for Python-free inference.
+
+    [Details →](#export)
+
 </div>
 
 ---
@@ -592,6 +604,79 @@ dantinox eval --run_dir runs/diffusion_512d_28k
 | `distinct_1` | 0–1 | Fraction of unique unigrams across all samples (higher = more diverse) |
 | `distinct_2` | 0–1 | Fraction of unique bigrams (higher = more diverse) |
 | `rep_4` | 0–1 | Fraction of 4-grams repeated within the same sample (lower = less repetitive) |
+
+---
+
+## run
+
+Train a model from a single self-contained workflow YAML file — the declarative alternative to hand-assembling `--config`/`--data_path`/CLI overrides for `train`. The YAML groups `dataset`, `architecture`, `training`, and `tracking` sections in one place.
+
+```bash
+dantinox run workflow.yaml
+```
+
+### Arguments
+
+| Flag | Default | Description |
+|:-----|:-------:|:------------|
+| `workflow` | **required** | Path to the workflow YAML file (positional argument). |
+| `--run_dir` | auto-generated | Output run directory. Auto-generates a timestamped directory under `runs/` if omitted. |
+
+### Workflow YAML structure
+
+```yaml
+dataset:
+  name: wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  text_column: text
+architecture:
+  model_type: autoregressive   # autoregressive | diffusion | elf
+  dim: 512
+  n_heads: 8
+  head_size: 64
+training:
+  batch_size: 32
+  grad_accum: 4
+  epochs: 1
+tracking:
+  use_wandb: true
+  project: dantinox
+```
+
+### Examples
+
+```bash
+dantinox run workflow.yaml
+dantinox run workflow.yaml --run_dir runs/my_experiment
+```
+
+---
+
+## export
+
+Export a trained checkpoint to a StableHLO binary — a portable, ahead-of-time-compiled artifact that can run inference without a Python/JAX runtime.
+
+```bash
+dantinox export runs/ar_mha_512d model.stablehlo
+```
+
+### Arguments
+
+| Flag | Default | Description |
+|:-----|:-------:|:------------|
+| `checkpoint` | **required** | Run directory containing `config.yaml` and weights (positional argument). |
+| `output` | **required** | Output path for the `.stablehlo` binary (positional argument). |
+| `--batch_size` | `1` | Batch size baked into the compiled export. |
+| `--seq_len` | `cfg.max_context` | Sequence length baked into the compiled export. |
+| `--seed` | `42` | PRNG seed used for parameter initialisation when the checkpoint has no saved weights. |
+
+### Examples
+
+```bash
+dantinox export runs/ar_mha_512d model.stablehlo
+dantinox export runs/diffusion_512d_28k model.stablehlo --batch_size 4 --seq_len 1024
+```
 
 ---
 

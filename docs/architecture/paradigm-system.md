@@ -81,7 +81,7 @@ Called outside training. Each paradigm implements its own decode strategy:
 
 ### `num_parameters(model)`
 
-A shared helper (not abstract). Counts `nnx.Param` leaves. Override in subclasses if the model has non-standard parameter structures (e.g., `ContinuousParadigm` overrides this for `ELFTransformer`).
+A shared helper (not abstract). Counts `nnx.Param` leaves. Override in subclasses if the model has non-standard parameter structures (e.g., `ContinuousParadigm` overrides this for `FlowMatchingTransformer`).
 
 ---
 
@@ -163,7 +163,7 @@ p = dx.Paradigm(dx.ModelConfig(
     dim=512, n_heads=8, head_size=64, num_blocks=12,
     vocab_size=32_128,
 ))
-embedder = p.build_embedder()   # frozen T5 encoder
+embedder = p.build_embedder(rngs=nnx.Rngs(0))   # frozen T5 encoder
 ```
 
 **`loss_fn` requires pre-computed embeddings:**

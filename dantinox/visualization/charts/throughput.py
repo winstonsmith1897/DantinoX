@@ -82,7 +82,7 @@ class ThroughputBatchChart(Chart):
             ax.legend(title="Model type")
 
 
-def _to_df(data: Any):
+def _to_df(data: Any) -> Any:
     import pandas as pd
 
     from dantinox.benchmarking.base import SuiteReport

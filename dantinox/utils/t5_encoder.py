@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from typing import Any
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 
-def _import_flax_t5():
+def _import_flax_t5() -> Any:
     """Import FlaxT5EncoderModel avoiding transformers' lazy-loader gate.
 
     transformers/__init__.py only re-exports Flax classes when is_flax_available()
@@ -27,7 +28,7 @@ def _import_flax_t5():
     return mod.FlaxT5EncoderModel
 
 
-def _import_pt_t5():
+def _import_pt_t5() -> Any:
     """Import T5EncoderModel (PyTorch) via the submodule path."""
     spec = importlib.util.find_spec("transformers.models.t5.modeling_t5")
     if spec is None:

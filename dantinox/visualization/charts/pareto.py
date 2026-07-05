@@ -118,7 +118,7 @@ def _scale_sizes(col: Any) -> list[float]:
     return [80.0] * len(v)
 
 
-def _to_df(data: Any):
+def _to_df(data: Any) -> Any:
     import pandas as pd
 
     from dantinox.benchmarking.base import SuiteReport

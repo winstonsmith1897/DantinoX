@@ -47,15 +47,22 @@ The following symbols are importable directly from `dantinox`:
 ### Configs
 - `ModelConfig` — model architecture configuration
 - `TrainingConfig` — training hyperparameters
-- `ELFConfig` — ELF flow-matching configuration
 - `Config` — legacy unified config (backward-compat)
 
+`ELFConfig` (flow-matching architecture config, aliased to `FlowMatchingConfig`)
+is **not** re-exported at the top level — import it from the submodule
+instead: `from dantinox.core.config import FlowMatchingConfig` (or the
+deprecated alias `ELFConfig` from the same module).
+
 ### Paradigms
-- `Paradigm` — abstract base
+- `Paradigm` — unified paradigm dispatcher (selects AR/discrete/continuous/embedder from `ModelConfig.paradigm`)
 - `ARParadigm` — autoregressive
 - `DiscreteParadigm` — LLaDA-style masked diffusion
-- `DiscreteConfig` — diffusion hyperparameters
 - `ContinuousParadigm` — ELF flow-matching
+- `EmbedderParadigm` — contrastive text-embedding paradigm
+
+`DiscreteConfig` (masked-diffusion hyperparameters) is **not** re-exported at
+the top level — import it directly: `from dantinox.paradigms.diffusion.discrete import DiscreteConfig`.
 
 ### Training
 - `Trainer` — paradigm-agnostic training harness

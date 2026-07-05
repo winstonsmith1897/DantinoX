@@ -139,7 +139,7 @@ class Embedder:
 
     # ── Integration helpers ───────────────────────────────────────────────────
 
-    def as_langchain_embeddings(self):
+    def as_langchain_embeddings(self) -> Any:
         """Return a LangChain-compatible ``Embeddings`` object.
 
         Usage::
@@ -163,7 +163,7 @@ class Embedder:
 
         return _LCEmbeddings()
 
-    def as_chroma_fn(self):
+    def as_chroma_fn(self) -> Any:
         """Return a ChromaDB ``EmbeddingFunction``.
 
         Usage::
@@ -191,7 +191,7 @@ class Embedder:
         cls,
         run_dir: str,
         *,
-        paradigm=None,
+        paradigm: Any = None,
         pooling: str = "auto",
         normalize: bool = True,
         pad_id: int = 0,

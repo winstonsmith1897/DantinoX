@@ -121,7 +121,9 @@ class EmbedderTrainer:
             model = self.paradigm.build_model(rngs)
 
         steps_per_epoch = max(len(pairs) // cfg.batch_size, 1)
-        total_steps     = steps_per_epoch * cfg.epochs
+        # cfg.epochs may be a genuine float (fractional epochs); step counts
+        # and the epoch range below must stay integers.
+        total_steps     = int(steps_per_epoch * cfg.epochs)
         optimizer       = build_optimizer(model, cfg, total_steps)
 
         # ── JIT-compiled step ─────────────────────────────────────────────────
@@ -135,7 +137,7 @@ class EmbedderTrainer:
             anchor_ids: jnp.ndarray,
             pos_ids: jnp.ndarray,
         ) -> jnp.ndarray:
-            def _loss(m):
+            def _loss(m: Any) -> Any:
                 out_a = m.encode_hidden(anchor_ids, pooling=pooling,
                                         normalize=True, deterministic=False)
                 out_p = m.encode_hidden(pos_ids,    pooling=pooling,
@@ -157,7 +159,7 @@ class EmbedderTrainer:
         best_loss = float("inf")
         max_len   = self.paradigm.config.max_context
 
-        for epoch in range(1, cfg.epochs + 1):
+        for epoch in range(1, int(cfg.epochs) + 1):
             rng.shuffle(pairs)   # type: ignore[arg-type]
             epoch_losses: list[float] = []
 

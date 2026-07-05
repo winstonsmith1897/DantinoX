@@ -156,14 +156,24 @@ It transforms Gaussian noise into clean token embeddings using an Euler ODE solv
 run_dir = dx.fit(
     "continuous",
     "data/wiki.txt",
-    embed_dim=768,     # dimension of the continuous embedding space
-    model_dim=512,     # internal Transformer dimension
+    embed_dim=768,      # dimension of the continuous embedding space
+    dim=512,            # internal Transformer dimension (not `model_dim` — that
+                        # name only exists on the standalone FlowMatchingConfig)
     n_heads=8, head_size=64, num_blocks=12,
-    elf_cfg_scale=1.5, # Classifier-Free Guidance scale (0 = no guidance)
+    flow_cfg_scale=1.5, # Classifier-Free Guidance scale (not `elf_cfg_scale`)
     lr=1e-4,
     epochs=30,
 )
 ```
+
+!!! warning "Unknown kwargs are silently dropped"
+    `dx.fit()`/`dx.sweep()` split `**kwargs` by matching them against
+    `ModelConfig`/`TrainingConfig` field names; a misspelled or non-existent
+    field name (e.g. `model_dim` or `elf_cfg_scale` above) is silently
+    discarded rather than raising an error — the run will use the default
+    value for that field instead. Double-check field names against
+    [Configuration Reference](configuration.md) if a value doesn't seem to
+    take effect.
 
 **When to use it:** Experimental paradigm for research on discrete flow-matching.
 Requires more data and more training epochs than AR or diffusion.
@@ -176,6 +186,7 @@ If you need more control — for example to customise the optimiser or access th
 
 ```python title="explicit_training.py"
 import dantinox as dx
+import jax
 from flax import nnx
 
 # Separate architecture config from training config
@@ -183,7 +194,9 @@ model_cfg    = dx.ModelConfig(
     paradigm="ar",          # "ar" | "discrete" | "continuous" | "embedder"
     dim=512, n_heads=8, head_size=64,
     num_blocks=12, vocab_size=32_000,
-    attention_type="gqa",   # use Grouped-Query Attention instead of MHA
+    attention="gqa",        # use Grouped-Query Attention instead of MHA
+                            # (NOT attention_type= — that's a read-only
+                            # compatibility property, not a constructor arg)
     kv_heads=2,             # 2 KV heads shared across 8 query heads
 )
 
@@ -206,7 +219,9 @@ run_dir = dx.Trainer(paradigm, training_cfg).fit("data/wiki.txt")
 
 # Load and generate
 model  = dx.load(run_dir, paradigm=paradigm)
-tokens = paradigm.generate(model, prompt_ids, rng=nnx.Rngs(0))
+tokens = paradigm.generate(model, prompt_ids, rng=jax.random.PRNGKey(0))
+# Note: `rng` must be a raw jax.Array PRNG key here, not an nnx.Rngs object —
+# generate() eventually calls jax.random.* directly on it.
 ```
 
 ---
@@ -373,13 +388,13 @@ or resume from where it stopped with `--resume`.
 
 -   :material-console: **CLI Reference**
 
-    All 12 subcommands with complete argument tables.
+    All 14 subcommands with complete argument tables.
 
     [CLI →](cli.md)
 
 -   :material-file-cog: **Configuration**
 
-    Every field of `ModelConfig`, `TrainingConfig`, `Config`, and `ELFConfig` explained in detail.
+    Every field of `ModelConfig`, `TrainingConfig`, `Config`, and `FlowMatchingConfig` explained in detail.
 
     [Configuration →](configuration.md)
 

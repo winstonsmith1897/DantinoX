@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Iterator
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -119,7 +120,7 @@ def _sample_logit(
     return tok_id, new_key
 
 
-def _remap_expert_keys(obj, _parent_key=None):
+def _remap_expert_keys(obj: Any, _parent_key: Any = None) -> Any:
     """Fix old checkpoints where MoE experts were stored as {0: ..., 1: ...}.
 
     _ExpertList now uses named attributes (e0, e1, …). Only remap dicts with
@@ -143,7 +144,7 @@ def _prune_stale_keys(pure: dict, ref: dict, _path: tuple = ()) -> dict:
     model itself, so skipping them is safe. Handles int/str key mismatches
     from msgpack round-tripping.
     """
-    def _match(key):
+    def _match(key: Any) -> Any:
         if key in ref:
             return key
         try:
@@ -167,7 +168,7 @@ def _prune_stale_keys(pure: dict, ref: dict, _path: tuple = ()) -> dict:
 
 # ── Checkpoint loader ─────────────────────────────────────────────────────────
 
-def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Tokenizer]:
+def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Any, Tokenizer]:
     """Return (config, model, tokenizer) loaded from a local run directory."""
     config_path = os.path.join(run_dir, "config.yaml")
 
@@ -247,6 +248,8 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
         config.vocab_size = tokenizer.vocab_size
 
     rngs = nnx.Rngs(seed)
+    # Declared once as Any: the two branches build unrelated model classes.
+    model: Any
     if config.model_type == "elf":
         from dantinox.core.flow import FlowMatchingTransformer
         model = FlowMatchingTransformer(config.to_flow_config(), rngs=rngs)
@@ -325,7 +328,9 @@ class Generator:
         self.config, self.model, self.tokenizer = _load_checkpoint(local_dir, seed)
 
     def __repr__(self) -> str:
-        attn = "MLA" if self.config.mla else ("GQA" if self.config.kv_heads < self.config.n_heads else "MHA")
+        attn = "MLA" if self.config.mla else (
+            "GQA" if (self.config.kv_heads or self.config.n_heads) < self.config.n_heads else "MHA"
+        )
         return f"Generator(run_dir={self.run_dir!r}, attn={attn}, seed={self.seed})"
 
     def _bpe_fix(self, text: str) -> str:
@@ -384,14 +389,14 @@ class Generator:
         """
         if not self.config.causal:
             if self.config.model_type == "elf":
-                tokens = _flow_generate(
+                flow_tokens = _flow_generate(
                     self.model, gen_len=max_new_tokens,
                     n_steps=n_steps,
                     cfg_scale=getattr(self.config, "flow_cfg_scale", 1.0),
                     gamma=getattr(self.config, "sde_gamma", 0.0),
                     seed=self.seed,
                 )
-                return self._bpe_fix(self.tokenizer.decode(tokens[0].tolist()))
+                return self._bpe_fix(self.tokenizer.decode(flow_tokens[0].tolist()))
             if use_blocks:
                 return self._fast_dllm_generate(
                     prompt, max_new_tokens=max_new_tokens,
@@ -741,7 +746,9 @@ class Generator:
     ) -> str:
         """Block-wise masked-diffusion via Fast-dLLM DualCache (Wu et al., 2025)."""
         tokens = self.tokenizer.encode(prompt)
-        prefix = jnp.array([tokens], dtype=jnp.int32) if tokens else None
+        # fast_dllm_generate requires a real (possibly zero-length) array —
+        # unlike diffusion_generate it does not accept prefix=None.
+        prefix = jnp.array([tokens], dtype=jnp.int32) if tokens else jnp.zeros((1, 0), dtype=jnp.int32)
         schedule = make_noise_schedule(self.config.noise_schedule)
         mask_id = self.config.mask_token_id
 
@@ -776,7 +783,9 @@ class Generator:
         block starts.  Masked positions shown as ``░``.
         """
         tokens = self.tokenizer.encode(prompt)
-        prefix = jnp.array([tokens], dtype=jnp.int32) if tokens else None
+        # stream_fast_dllm_generate requires a real (possibly zero-length)
+        # array — unlike diffusion_generate it does not accept prefix=None.
+        prefix = jnp.array([tokens], dtype=jnp.int32) if tokens else jnp.zeros((1, 0), dtype=jnp.int32)
         schedule = make_noise_schedule(self.config.noise_schedule)
         mask_id = self.config.mask_token_id
         prefix_text = self.tokenizer.decode(tokens)
@@ -810,7 +819,10 @@ class Generator:
         if tok_mask is not None:
             if mask_id != tok_mask:
                 ids = [tok_mask if t == mask_id else t for t in ids]
-            return self.tokenizer.decode_display(ids, mask_symbol=mask_symbol)
+            # decode_display is specific to masking-aware tokenizers (Char/BPE),
+            # not part of the generic Tokenizer protocol; guarded by the
+            # tok_mask check above (only mask-token tokenizers reach here).
+            return self.tokenizer.decode_display(ids, mask_symbol=mask_symbol)  # type: ignore[attr-defined]
         out: list[str] = []
         run: list[int] = []
         for t in ids:
@@ -835,9 +847,9 @@ class Generator:
         Each yielded chunk is ``\\r[step/total] <current decoded sequence>`` showing
         all token positions evolving simultaneously through the ODE steps.
         """
-        steps = n_steps or getattr(self.config, "flow_n_steps", 64)
-        cfg_w = getattr(self.config, "flow_cfg_scale", 1.0)
-        gamma = getattr(self.config, "sde_gamma", 0.0)
+        steps: int = n_steps or self.config.flow_n_steps
+        cfg_w = self.config.flow_cfg_scale
+        gamma = self.config.sde_gamma
 
         prev_len = 0
         for step, total, cur_tokens in _stream_flow_generate(

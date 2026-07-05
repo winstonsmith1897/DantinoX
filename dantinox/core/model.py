@@ -142,11 +142,11 @@ class Transformer(nnx.Module, pytree=False):
         return self.moe_balance_coeff
 
     @property
-    def lm_head(self):
+    def lm_head(self) -> nnx.Linear | None:
         return self.head
 
     @property
-    def wte(self):
+    def wte(self) -> nnx.Embed:
         return self.embed
 
     # ── Forward pass ──────────────────────────────────────────────────────────
@@ -174,10 +174,10 @@ class Transformer(nnx.Module, pytree=False):
         # Block-level caches: (None, None) sentinel = "create cache on first step".
         # After the first step each block returns a KVCache / MLACache;
         # subsequent calls pass those back in.
-        block_caches: tuple = (
-            caches if use_cache
-            else tuple((None, None) for _ in range(self.num_blocks))
-        )
+        if caches is not None:
+            block_caches: tuple = caches
+        else:
+            block_caches = tuple((None, None) for _ in range(self.num_blocks))
         prefix_kvs: tuple = (
             dual_cache.prefix_kvs if dual_cache is not None
             else (None,) * self.num_blocks

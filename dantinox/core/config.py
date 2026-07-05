@@ -334,7 +334,7 @@ class ModelConfig:
         with open(path, "w") as f:
             yaml.dump(self.to_dict(), f)
 
-    def replace(self, **kwargs) -> ModelConfig:
+    def replace(self, **kwargs: Any) -> ModelConfig:
         """Return a new ModelConfig with selected fields overridden."""
         from dataclasses import replace as _replace
         return _replace(self, **kwargs)
@@ -524,7 +524,7 @@ class TrainingConfig:
         if self.grad_accum < 1:
             raise ValueError(f"grad_accum must be >= 1; got {self.grad_accum}")
 
-    def replace(self, **kwargs) -> TrainingConfig:
+    def replace(self, **kwargs: Any) -> TrainingConfig:
         """Return a new TrainingConfig with selected fields overridden."""
         from dataclasses import replace as _replace
         return _replace(self, **kwargs)

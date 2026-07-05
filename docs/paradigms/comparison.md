@@ -31,14 +31,20 @@ The primary controlled variable at inference time is the decoding procedure: AR 
 
 | | AR (`Transformer`) | Diffusion (`DiffusionTransformer`) |
 |---|---|---|
-| Class | `core.model.Transformer` | `core.model.DiffusionTransformer` |
-| Block type | `ARBlock` | `DiffusionBlock` |
+| Class | `core.model.Transformer` | `core.model.DiffusionTransformer` (alias of `Transformer` — a single unified class serves both paradigms) |
+| Block type | `Block` | `DiffusionBlock` (alias of `Block`) |
 | Attention mask | Causal | Full (bidirectional) |
-| Time conditioning | — | `AdaLayerNorm` (DiT-style) |
-| Extra parameters | — | `TimeEmbedding` MLP |
+| Time conditioning | — | **None.** DantinoX's LLaDA-style diffusion does not condition on `t` at all — no `AdaLayerNorm`, no time-embedding MLP. (`AdaLayerNorm` exists in `core/block.py` but is unused dead code for this paradigm; see [Discrete Diffusion](diffusion.md).) |
+| Extra parameters | — | None beyond the shared backbone |
 | KV-cache type | Static KV | DualCache (prefix + suffix) |
 | Decode step cost | $O(T_{\text{gen}})$ | $O(T_{\text{gen}})$ (block-wise) |
 | Total decode cost | $O(T_{\text{gen}}^2)$ | $O(K \cdot B \cdot N_{\text{steps}})$ |
+
+`Transformer` and `DiffusionTransformer` are literally the same class
+(`DiffusionTransformer = Transformer` in `core/model.py`), and likewise
+`DiffusionBlock = Block` in `core/block.py` — this is the point of DantinoX's
+"single backbone" design: the paradigm only changes which attention mask and
+loss function are used, not which classes are instantiated.
 
 ---
 
@@ -163,12 +169,20 @@ Beyond perplexity, which measures the model's confidence over held-out reference
 
 | Model | Distinct-1 ↑ | Distinct-2 ↑ | Rep-4 ↓ | Notes |
 |:------|:-----------:|:-----------:|:-------:|:------|
-| Diff MHA 512d 12b (28K steps) | 0.467 | 0.808 | 0.004 | Mixed EN/FR/DE, Wikipedia structure |
-| ELF MHA 512d 12b (9.5K steps) | 0.365 | 0.851 | 0.002 | Coherent English prose, early training |
+| Diff MHA 512d 12b (28K steps) | 0.467 | 0.808 | 0.004 | Intermediate checkpoint snapshot, mixed EN/FR/DE, Wikipedia structure — **not** the paper's reported Table 2 numbers (different training budget/seed count) |
+| ELF MHA 512d 12b (9.5K steps) | 0.365 | 0.851 | 0.002 | Intermediate checkpoint snapshot, early training — **not** the paper's reported Table 2 numbers |
 | AR MHA 256d 12b | — | — | — | Run `generation_quality.py` to populate |
 | Diff MHA 256d 12b | — | — | — | |
 | AR GQA 256d 12b | — | — | — | |
 | Diff GQA 256d 12b | — | — | — | |
+
+!!! warning "These two populated rows are ad-hoc snapshots, not the paper's results"
+    The `Diff MHA 512d 12b` and `ELF MHA 512d 12b` rows above were captured
+    from one-off intermediate checkpoints (28K and 9.5K steps respectively)
+    during development, and use a different metric set (Distinct-1/2, Rep-4
+    only, no MAUVE/BLEU-4cond, no seed averaging). They should **not** be
+    read as reproducing the paper's Small-scale generation-quality table —
+    see the authoritative numbers below.
 
 !!! note "Populating this table"
     Run the generation quality evaluation for your trained checkpoints:
@@ -189,6 +203,38 @@ Beyond perplexity, which measures the model's confidence over held-out reference
     Source: `results/generation_quality.csv`.
 
 From theory, masked diffusion models with bidirectional context are expected to exhibit higher Distinct-2 and MAUVE scores at matched parameter counts, at the cost of requiring multiple denoising steps. The confidence sweep (stage B3) explores the Pareto frontier between generation quality and throughput by varying the per-token confidence threshold τ.
+
+### Paper's reported results (authoritative)
+
+The EMNLP System Demo paper reports all nine paradigm × attention
+combinations trained under one identical recipe (WikiText-103, Muon
+optimizer, SentencePiece/T5 tokenizer, effective batch of 256 sequences of
+512 tokens) at Small scale (512-d, 12-layer, ~65–82M params). Metrics are
+mean ± std over 3 generation seeds, 100 unconditional 128-token samples,
+matched inference budget of 64 steps per paradigm:
+
+| Arch (Params) | MAUVE ↑ | PPL<sub>GPT-2</sub> ↓ | Distinct-2 ↑ | Rep-4 ↓ | BLEU-4<sub>cond</sub> ↑ |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| **Autoregressive** | | | | | |
+| MHA (67M) | 0.17±.03 | **1216**±5 | **0.697**±.000 | 0.007±.000 | 0.052±.000 |
+| GQA (62M) | 0.18±.06 | 1233±3 | 0.688±.001 | 0.005±.000 | 0.050±.004 |
+| MLA (65M) | 0.07±.01 | 1860±3 | 0.682±.001 | **0.003**±.000 | 0.020±.002 |
+| **Discrete Diffusion** | | | | | |
+| MHA (70M) | 0.20±.04 | 1834±43 | 0.728±.006 | 0.019±.010 | 0.029±.000 |
+| GQA (65M) | 0.12±.00 | 1777±57 | 0.733±.003 | **0.006**±.000 | 0.030±.003 |
+| MLA (70M) | 0.15±.05 | 1803±1 | 0.720±.008 | 0.020±.009 | 0.033±.003 |
+| **Continuous Flow-Matching** | | | | | |
+| MHA (82M) | 0.80±.04 | 234.6±2.0 | **0.627**±.001 | **0.007**±.000 | — |
+| GQA (77M) | 0.69±.09 | 188.0±0.4 | 0.562±.001 | 0.027±.000 | — |
+| MLA (79M) | 0.78±.07 | **156.3**±0.3 | 0.538±.001 | 0.107±.000 | — |
+
+BLEU-4<sub>cond</sub> is "—" for Flow-Matching: the ELF formulation supports
+prefix conditioning in principle, but DantinoX's current implementation does
+not yet expose it (planned future work). At this scale, Flow-Matching is the
+most fluent (lowest PPL, highest MAUVE), Diffusion the most lexically
+diverse, and AR gives the most accurate/least-repetitive conditional
+continuations — the paper makes no claim that these rankings persist at
+larger scale or on other corpora.
 
 ---
 
@@ -243,7 +289,7 @@ from dantinox.core.diffusion import make_noise_schedule
 schedule    = make_noise_schedule(diff_cfg)
 tokens_diff = fast_dllm_generate(
     diff_model, prompt_ids, gen_len=128,
-    schedule=schedule, mask_token_id=0,
+    schedule=schedule, mask_token_id=4,
     block_size=32, steps_per_block=20,
     confidence_threshold=0.9,
 )
@@ -266,10 +312,11 @@ model:
 diffusion:
   diffusion_steps: 1000
   noise_schedule: "cosine"
-  mask_token_id: 0
+  mask_token_id: 4
   num_sampling_steps: 50
-  time_emb_dim: 256
 ```
+
+(`time_emb_dim` is not used by diffusion — it belongs to the ELF/flow-matching fields; see [Configuration Reference](../configuration.md).)
 
 All other fields — `dim`, `n_heads`, `num_blocks`, `kv_heads`, `mla`, `use_moe` —
 are shared.  This enables **controlled comparisons** where the only variable

@@ -8,6 +8,37 @@ DantinoX and HuggingFace Transformers serve different goals. This page helps you
 
 ---
 
+## Framework landscape
+
+HuggingFace is the most common single comparison point, but it's one of
+several frameworks in the broader "language-modeling library" landscape.
+The paper's Table 1 places DantinoX against eight of them — production
+frameworks (HuggingFace, MaxText), reproducible-pretraining frameworks
+(Levanter, OpenLM, torchtune, Fairseq), and non-autoregressive-specific
+libraries (xLM, dLLM):
+
+| Framework | Ecosystem | AR | Discrete | Contin. | Attention variants | LoRA | Multi-GPU | Bench. suite |
+|---|---|:---:|:---:|:---:|---|:---:|:---:|:---:|
+| HuggingFace | PyTorch / JAX | ✓ | ✗ | ✗ | MHA, GQA, MLA | ✓ | ✓ | ✗ |
+| MaxText | JAX / Flax | ✓ | ✗ | ✗ | MHA, GQA | ✓ | ✓ | ✗ |
+| Levanter | JAX / Flax | ✓ | ✗ | ✗ | MHA, GQA | ✓ | ✓ | ✗ |
+| OpenLM | PyTorch | ✓ | ✗ | ✗ | MHA | ✗ | ✓ | ✗ |
+| torchtune | PyTorch | ✓ | ✗ | ✗ | MHA, GQA | ✓ | ✓ | ✗ |
+| Fairseq | PyTorch | ✓ | ✗ | ✗ | MHA | ✗ | ✓ | ✗ |
+| xLM | PyTorch | ✓ | ✓ | ✗ | MHA | ✗ | ✓ | ✗ |
+| dLLM | PyTorch | ✗ | ✓ | ✗ | MHA | ✓ | ✓ | ✗ |
+| **DantinoX (ours)** | **JAX / Flax** | **✓** | **✓** | **✓** | **MHA, GQA, MLA** | **✓** | **✓** | **✓** |
+
+DantinoX is the only framework in this table that combines all three
+generation paradigms (AR, discrete diffusion, continuous flow-matching) on
+one backbone with all three attention variants, LoRA, multi-GPU scaling, and
+an integrated benchmarking suite — most other tools offer these in
+isolation. The rest of this page focuses specifically on HuggingFace
+Transformers, since it's the most likely starting point for readers coming
+from an existing PyTorch/AR workflow.
+
+---
+
 ## At a glance
 
 | | **DantinoX** | **HuggingFace Transformers** |

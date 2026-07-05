@@ -9,7 +9,7 @@ the tensor-parallel all-reduce.
 """
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import flax.nnx as nnx
 import jax
@@ -33,6 +33,7 @@ def in_mesh_context() -> bool:
     ``jax.sharding.get_abstract_mesh`` and fall back to the private module on
     older JAX versions.
     """
+    mesh: Any
     try:
         mesh = jax.sharding.get_abstract_mesh()
     except AttributeError:  # pragma: no cover - JAX < 0.5
@@ -103,7 +104,7 @@ def apply_tp_sharding(model: nnx.Module, mesh: Mesh) -> None:
     """
     n_tp = mesh.shape[TP_AXIS]
 
-    def _put(arr, spec: P) -> jax.Array:
+    def _put(arr: Any, spec: P) -> jax.Array:
         return jax.device_put(arr, NamedSharding(mesh, spec))
 
     # Column-parallel: output (last) axis sharded
@@ -113,7 +114,7 @@ def apply_tp_sharding(model: nnx.Module, mesh: Mesh) -> None:
 
     state = nnx.state(model)
 
-    def _shard(path, leaf):
+    def _shard(path: Any, leaf: Any) -> Any:
         if leaf is None or not isinstance(leaf, jax.Array):
             return leaf
 

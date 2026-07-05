@@ -77,7 +77,7 @@ def _draw_pareto_frontier(ax: Any, latency: Any, throughput: Any) -> None:
         ax.plot(xs, ys, "k--", alpha=0.35, linewidth=1.2, label="Pareto frontier")
 
 
-def _to_df(data: Any):
+def _to_df(data: Any) -> Any:
     import pandas as pd
 
     from dantinox.benchmarking.base import SuiteReport

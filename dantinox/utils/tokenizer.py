@@ -5,7 +5,11 @@ from typing import Any, Protocol
 
 
 class Tokenizer(Protocol):
-    vocab_size: int
+    # Read-only in the protocol: some implementations (e.g. the frozen T5
+    # SentencePiece tokenizer) expose vocab_size as a property, while others
+    # store it as a plain mutable attribute — both satisfy a read-only member.
+    @property
+    def vocab_size(self) -> int: ...
 
     def encode(self, s: str) -> list[int]: ...
     def decode(self, tokens: list[int]) -> str: ...
@@ -93,7 +97,8 @@ class BPETokenizer:
                 ``None`` hides mask tokens entirely (they are skipped).
         """
         mask_id = self.tokenizer.token_to_id("[MASK]")
-        result, run = [], []
+        result: list[str] = []
+        run: list[int] = []
         for t in tokens:
             if t == mask_id:
                 if run:
@@ -130,10 +135,10 @@ class T5SentencePieceTokenizer:
         self._tok = self._load(model_name)
 
     @staticmethod
-    def _load(model_name: str):
+    def _load(model_name: str) -> Any:
         # Try transformers T5TokenizerFast (tokenizer-only import, no torch models)
         try:
-            from transformers import T5TokenizerFast
+            from transformers import T5TokenizerFast  # type: ignore[attr-defined]
             return T5TokenizerFast.from_pretrained(model_name)
         except Exception:
             pass
@@ -161,7 +166,7 @@ class T5SentencePieceTokenizer:
         # SentencePieceProcessor fallback
         return self._tok.EncodeAsIds(text)
 
-    def decode(self, tokens) -> str:
+    def decode(self, tokens: list[int] | Any) -> str:
         if not isinstance(tokens, list):
             tokens = list(tokens)
         if hasattr(self._tok, "decode"):
@@ -184,7 +189,7 @@ class T5SentencePieceTokenizer:
             return tid if tid != 0 else None
         return None
 
-    def decode_display(self, tokens, mask_symbol: str | None = '▒') -> str:
+    def decode_display(self, tokens: list[int] | Any, mask_symbol: str | None = '▒') -> str:
         """Decode tokens for display, optionally rendering mask positions.
 
         Args:
@@ -194,7 +199,8 @@ class T5SentencePieceTokenizer:
         if not isinstance(tokens, list):
             tokens = list(tokens)
         mask_id = self.mask_token_id
-        result, run = [], []
+        result: list[str] = []
+        run: list[int] = []
         for t in tokens:
             if t == mask_id:
                 if run:
@@ -219,7 +225,7 @@ class T5SentencePieceTokenizer:
         return cls(model_name=data.get("model_name", "t5-base"))
 
 
-def get_tokenizer(tokenizer_type: str, **kwargs) -> Tokenizer:
+def get_tokenizer(tokenizer_type: str, **kwargs: Any) -> Tokenizer:
     if tokenizer_type == "char":
         return CharTokenizer()
     elif tokenizer_type == "bpe":

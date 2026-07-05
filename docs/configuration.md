@@ -27,12 +27,13 @@ title: Configuration Reference
 
     [Jump to Config →](#config-monolithic)
 
--   :material-wave: **ELFConfig**
+-   :material-wave: **FlowMatchingConfig**
 
-    Architecture config for `ELFTransformer`.
-    Use when constructing ELF models directly.
+    Architecture config for `FlowMatchingTransformer` (the continuous
+    flow-matching / ELF-recipe paradigm). `ELFConfig` is a deprecated alias
+    for the same class.
 
-    [Jump to ELFConfig →](#elfconfig)
+    [Jump to FlowMatchingConfig →](#flowmatchingconfig)
 
 </div>
 
@@ -242,28 +243,33 @@ The field names below are what Config uses; where the name differs from ModelCon
 | `dim` | `int` | `512` | |
 | `n_heads` | `int` | `16` | |
 | `head_size` | `int` | `32` | |
-| `num_blocks` | `int` | `20` | |
+| `num_blocks` | `int` | `12` | |
 | `vocab_size` | `int\|None` | `None` | Auto-set from tokenizer by `Trainer.fit()`; required for direct model construction. |
 | `max_context` | `int` | `512` | |
-| `kv_heads` | `int` | `4` | GQA KV heads. |
+| `kv_heads` | `int\|None` | `None` | GQA KV heads. `None` → resolves to `n_heads` (standard MHA) in `__post_init__`. |
 | `model_type` | `str` | `"autoregressive"` | `"autoregressive"` · `"diffusion"` · `"elf"` |
 | `attention_type` | `str` | `"auto"` | `"mha"` · `"gqa"` · `"mla"` · `"auto"` (derived) |
-| `norm_type` | `str` | `"layernorm"` | `"layernorm"` · `"rmsnorm"` |
-| `dropout_rate` | `float` | `0.15` | Equivalent to `ModelConfig.dropout` |
+| `norm_type` | `str` | `"rmsnorm"` | `"layernorm"` · `"rmsnorm"` |
+| `dropout_rate` | `float` | `0.0` | Equivalent to `ModelConfig.dropout` |
 | `weight_tying` | `bool` | `True` | |
 | `use_swiglu` | `bool` | `True` | |
 | `activation` | `str` | `"gelu"` | |
-| `gradient_checkpointing` | `bool` | `True` | |
+| `gradient_checkpointing` | `bool` | `False` | |
 
 ### Diffusion (LLaDA) fields
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
 | `diffusion_steps` | `int` | `1000` | Total noise levels `T`. |
-| `noise_schedule` | `str` | `"cosine"` | `"cosine"` · `"linear"` · `"sqrt"`. |
+| `noise_schedule` | `str` | `"linear"` | `"linear"` · `"cosine"` · `"sqrt"`. |
 | `mask_token_id` | `int` | `4` | Token ID used as the MASK symbol. |
 | `num_sampling_steps` | `int` | `50` | Denoising steps at inference (≤ `diffusion_steps`). |
-| `time_emb_dim` | `int` | `256` | Time-step embedding dimension for `AdaLayerNorm`. |
+
+Discrete diffusion in DantinoX has **no time conditioning** — the backbone is
+a plain bidirectional transformer with no `AdaLayerNorm` and no time-embedding
+MLP (`core/diffusion.py` explicitly runs "bidirectional transformer, no
+AdaLayerNorm"). `time_emb_dim` (below) belongs to the ELF/flow-matching fields,
+not diffusion, even though it's stored on the same monolithic `Config` object.
 
 ### ELF (continuous flow) fields
 
@@ -274,6 +280,7 @@ The field names below are what Config uses; where the name differs from ModelCon
     |:------|:-----|:-------:|:------------|
     | `embed_dim` | `int` | `512` | Token embedding / flow-space dimension. |
     | `bottleneck_dim` | `int` | `128` | Bottleneck between embed space and transformer. |
+    | `time_emb_dim` | `int` | `256` | Sinusoidal embedding dimension for `t` and the CFG scale `w`, projected into control tokens (not `AdaLayerNorm` — ELF uses control tokens, not adaptive norm conditioning). |
     | `num_time_tokens` | `int` | `4` | Control tokens encoding timestep `t`. |
     | `num_cfg_tokens` | `int` | `4` | Control tokens encoding CFG scale `w`. |
     | `num_mode_tokens` | `int` | `4` | Control tokens encoding denoiser/decode mode. |
@@ -315,7 +322,7 @@ The field names below are what Config uses; where the name differs from ModelCon
 | `use_flash_attention` | `bool` | `False` | Flash Attention kernel. |
 | `sliding_window` | `bool` | `False` | Sliding-window attention. |
 | `context_window` | `int` | `4` | Window blocks for sliding-window attention. |
-| `no_sink` | `bool` | `True` | Disable attention sink. |
+| `no_sink` | `bool` | `False` | Enable gated attention / attention-sink suppression (Qiu et al. 2026). |
 
 ??? note "MLA fields (Config) — expand for details"
     Only relevant when `attention_type="mla"`.
@@ -332,13 +339,13 @@ The field names below are what Config uses; where the name differs from ModelCon
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
-| `lr` | `float` | `0.005` | Peak learning rate. |
-| `batch_size` | `int` | `128` | Micro-batch size per device. |
-| `grad_accum` | `int` | `16` | Gradient accumulation steps. |
-| `epochs` | `int` | `1000` | Max training epochs. |
-| `warmup_steps` | `int` | `420` | Warmup steps. |
+| `lr` | `float` | `0.0003` | Peak learning rate. |
+| `batch_size` | `int` | `32` | Micro-batch size per device. |
+| `grad_accum` | `int` | `1` | Gradient accumulation steps. |
+| `epochs` | `int` | `100` | Max training epochs. |
+| `warmup_steps` | `int` | `400` | Warmup steps. |
 | `lr_schedule` | `str` | `"cosine"` | LR schedule: `"cosine"` · `"linear"` · `"constant"` · `"wsd"`. |
-| `optimizer` | `str` | `"adamw"` | Optimizer. |
+| `optimizer` | `str` | `"adamw"` | `"adamw"` · `"adafactor"` · `"lion"` · `"adam"` · `"muon"`. |
 | `grad_clip` | `float` | `1.0` | Gradient clipping. |
 | `patience` | `int` | `0` | Early stopping patience. |
 | `use_bf16` | `bool` | `False` | bfloat16 precision. |
@@ -366,21 +373,28 @@ The field names below are what Config uses; where the name differs from ModelCon
 
 ---
 
-## ELFConfig
+## FlowMatchingConfig
 
-Dedicated architecture config for `ELFTransformer`. Use this class when instantiating ELF models directly rather than through the `Config` + `Trainer` pipeline.
+Dedicated architecture config for `FlowMatchingTransformer` (`core/flow.py`),
+the continuous flow-matching paradigm that follows the ELF recipe
+(Hu et al., 2026). Use this class when instantiating flow-matching models
+directly rather than through the `Config`/`ModelConfig` + `Trainer` pipeline.
+`ELFConfig`, `ELFTransformer`, and `dantinox.core.elf` are deprecated aliases
+for `FlowMatchingConfig`, `FlowMatchingTransformer`, and `dantinox.core.flow`
+respectively — they still work but emit a `DeprecationWarning` and will be
+removed in v1.0.
 
 ```python
-from dantinox.core.config import ELFConfig
-from dantinox.core.elf import ELFTransformer
+from dantinox.core.config import FlowMatchingConfig
+from dantinox.core.flow import FlowMatchingTransformer
 from flax import nnx
 
-cfg   = ELFConfig(
+cfg   = FlowMatchingConfig(
     embed_dim=512, bottleneck_dim=128,
     model_dim=768, n_heads=12, head_size=64,
     num_blocks=12, vocab_size=32128,
 )
-model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
+model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))
 ```
 
 !!! abstract "Key constraint"
@@ -392,9 +406,9 @@ model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
 | `bottleneck_dim` | `int` | `128` | Bottleneck between embed space and transformer hidden dim. |
 | `model_dim` | `int` | `768` | Transformer hidden dim. Must equal `n_heads × head_size`. |
 | `n_heads` | `int` | `12` | Attention heads. |
-| `head_size` | `int` | `64` | Per-head dimension. |
+| `head_size` | `int\|None` | `None` | Per-head dimension; must be set explicitly (or leave `None` and let `__post_init__` derive it from `model_dim`/`n_heads`). |
 | `num_blocks` | `int` | `12` | Transformer layers. |
-| `vocab_size` | `int\|None` | `None` | Vocabulary size. **Auto-set from the T5 tokenizer by `Trainer.fit()`.** Required for direct `ELFTransformer` construction. |
+| `vocab_size` | `int\|None` | `None` | Vocabulary size. **Auto-set from the T5 tokenizer by `Trainer.fit()`.** Required for direct `FlowMatchingTransformer` construction. |
 | `max_seq_len` | `int` | `1024` | Max sequence length (excluding control tokens). |
 | `pos_encoding` | `str` | `"rotary"` | Positional encoding. |
 | `norm` | `str` | `"rmsnorm"` | Normalisation type. |
@@ -402,6 +416,10 @@ model = ELFTransformer(cfg, rngs=nnx.Rngs(42))
 | `gradient_checkpointing` | `bool` | `True` | Recompute activations in backward pass. |
 | `time_emb_dim` | `int` | `256` | Sinusoidal embedding dim for `t` and `w`. |
 | `num_time_tokens` | `int` | `4` | Time control tokens. |
+| `t5_model_name` | `str` | `"t5-base"` | Frozen HuggingFace T5 encoder used to produce embeddings. |
+| `flow_n_steps` | `int` | `32` | Default number of Euler ODE integration steps at inference. |
+| `flow_cfg_scale` | `float` | `1.5` | Default Classifier-Free Guidance scale. |
+| `attention`, `ffn`, `n_experts`, `top_k`, `moe_latent`, ... | — | — | Same attention/FFN/MoE toggles as `ModelConfig` (MHA/GQA/MLA, dense/MoE/LatentMoE) — see [Core Layers](architecture/core.md) for the full set. |
 | `num_cfg_tokens` | `int` | `4` | CFG scale control tokens. |
 | `num_mode_tokens` | `int` | `4` | Mode control tokens. |
 | `sde_gamma` | `float` | `1.0` | SDE noise re-injection at inference (`0` = pure ODE). |
@@ -473,7 +491,7 @@ tokenizer_path: t5-base
 
 -   :material-console: **CLI Reference**
 
-    All 9 CLI subcommands with full argument tables.
+    All 14 CLI subcommands with full argument tables.
 
     [→ CLI Reference](cli.md)
 

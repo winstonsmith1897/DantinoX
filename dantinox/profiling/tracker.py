@@ -36,6 +36,7 @@ Backward-compatible names: ``LatencyTracker``, ``ProfilingResult``, ``profile_fn
 from __future__ import annotations
 
 import contextlib
+import functools
 import math
 import statistics
 import threading
@@ -162,11 +163,10 @@ class LatencyMetric:
             for sl in sls:
                 try:
                     x = get_batch_fn(bs, sl)
-                    # Bind `x` as a default arg: _warmup calls this immediately
-                    # (not deferred), but this keeps it correct even if that
-                    # ever changes, instead of relying on late-binding closure
-                    # semantics over the loop variable.
-                    _warmup(lambda x=x: model_fn(x), self.n_warmup)
+                    # functools.partial binds `x` by value, not by late-binding
+                    # closure reference, so this stays correct even if _warmup
+                    # is ever changed to defer/store the callable.
+                    _warmup(functools.partial(model_fn, x), self.n_warmup)
                     times_s: list[float] = []
                     for _ in range(self.n_measure):
                         _jax_barrier()
@@ -265,8 +265,8 @@ class ThroughputMetric:
         self,
         n_warmup:    int              = 5,
         n_measure:   int              = 20,
-        batch_sizes: int | list[int]  = None,
-        seq_lens:    int | list[int]  = None,
+        batch_sizes: int | list[int] | None = None,
+        seq_lens:    int | list[int] | None = None,
     ) -> None:
         self.n_warmup    = n_warmup
         self.n_measure   = n_measure
@@ -320,7 +320,7 @@ class ThroughputMetric:
     ) -> float | None:
         try:
             x = get_batch_fn(bs, sl)
-            _warmup(lambda: model_fn(x), self.n_warmup)
+            _warmup(functools.partial(model_fn, x), self.n_warmup)
             times_s: list[float] = []
             for _ in range(self.n_measure):
                 _jax_barrier()

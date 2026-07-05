@@ -31,13 +31,19 @@ import jax
 
 log = logging.getLogger(__name__)
 
-# XlaRuntimeError was added in JAX 0.4.14; guard the import so the module
-# works on older installs where only RuntimeError is available.
+# XlaRuntimeError was added in JAX 0.4.14 and renamed to JaxRuntimeError in
+# later releases; try both so the specific JAX/XLA runtime error is always
+# caught by name rather than relying on it merely subclassing RuntimeError.
+_CATCHABLE: tuple[type[BaseException], ...] = (RuntimeError,)
 try:
-    from jax.errors import XlaRuntimeError as _XlaRuntimeError
-    _CATCHABLE: tuple[type[BaseException], ...] = (RuntimeError, _XlaRuntimeError)
+    from jax.errors import JaxRuntimeError as _JaxRuntimeError
+    _CATCHABLE = (RuntimeError, _JaxRuntimeError)
 except ImportError:
-    _CATCHABLE = (RuntimeError,)
+    try:
+        from jax.errors import XlaRuntimeError as _XlaRuntimeError  # type: ignore[attr-defined]
+        _CATCHABLE = (RuntimeError, _XlaRuntimeError)
+    except ImportError:
+        pass
 
 # Lower-cased substrings that identify GPU/TPU memory-exhaustion messages
 # across JAX, XLA, CUDA, and TPU backends.

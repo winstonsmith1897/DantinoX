@@ -44,9 +44,11 @@ The `noise_schedule` setting controls whether $t$ is sampled uniformly or with a
 
 | `noise_schedule` | Masking probability from $t$ | Notes |
 |:----------------|:----------------------------:|:------|
-| `"linear"` | $p_{\text{mask}} = t$ | Uniform masking, simplest baseline |
-| `"cosine"` | $p_{\text{mask}} = 1 - \cos^2(\pi t / 2)$ | Slow near $t=0$, faster near $t=1$; better quality |
-| `"sqrt"` | $p_{\text{mask}} = 1 - \sqrt{1 - t}$ | Intermediate behaviour |
+| `"linear"` | $p_{\text{mask}} = t$ | Uniform masking, simplest baseline (default) |
+| `"cosine"` | $p_{\text{mask}} = 1 - \dfrac{\cos^2\!\left(\frac{t+s}{1+s}\cdot\frac{\pi}{2}\right)}{\cos^2\!\left(\frac{s}{1+s}\cdot\frac{\pi}{2}\right)}$, with shift $s = 0.008$ | Slow near $t=0$, faster near $t=1$; better quality |
+| `"sqrt"` | $p_{\text{mask}} = \sqrt{t}$ | Front-loads masking — more tokens masked even at small $t$ |
+
+(Exact formulas per `dantinox/core/diffusion.py::corrupt` / `make_noise_schedule`.)
 
 ---
 
@@ -86,12 +88,23 @@ $$
 
 where $L$ is `max_context`. For typical context lengths (≥128), this resolves to `t_min = 0.05`, meaning at least ~26 tokens are masked per sequence. This keeps gradients stable while still covering the full denoising range.
 
+!!! warning "This floor only applies to the legacy `Trainer`"
+    The `t_min = max(1/L, 0.05)` floor above is implemented in the **legacy**
+    `dantinox/trainer.py` pipeline (`Trainer(config).fit(...)`, driving the
+    `dantinox train` CLI). The modern `DiscreteParadigm.loss_fn` — used via
+    `dx.Trainer(dx.Paradigm(dx.ModelConfig(paradigm="discrete", ...)), tcfg)`,
+    the API shown in the paper — samples `t ~ U[0, 1]` with **no floor**, and
+    `masked_cross_entropy` only clamps the `1/t` weight with a tiny epsilon
+    (`t_safe = max(t, 1e-6)`), not 0.05. The two pipelines are not numerically
+    equivalent near `t → 0`; which one applies depends on whether you train
+    through the legacy `Config`/`Trainer` path or the `ModelConfig`/`Paradigm` path.
+
 ### Per-sequence noise levels
 
 Each sequence in the micro-batch gets its own independently sampled $t$:
 
 ```python
-t_batch = jax.random.uniform(key, (batch_size,), minval=t_min, maxval=1.0)
+t_batch = jax.random.uniform(key, (batch_size,), minval=t_min, maxval=1.0)  # legacy Trainer
 ```
 
 This means each step optimises the ELBO at multiple noise levels simultaneously, reducing gradient variance compared to using a single $t$ for the entire batch.
@@ -244,8 +257,8 @@ dantinox generate \
 |:------|:----:|:-------:|:------------|
 | `model_type` | `str` | `"autoregressive"` | Must be `"diffusion"` |
 | `causal` | `bool` | `true` | Must be `false` for diffusion |
-| `noise_schedule` | `str` | `"cosine"` | `"cosine"` \| `"linear"` \| `"sqrt"` |
-| `mask_token_id` | `int` | `0` | Vocabulary ID of the `[MASK]` token |
+| `noise_schedule` | `str` | `"linear"` | `"linear"` \| `"cosine"` \| `"sqrt"` |
+| `mask_token_id` | `int` | `4` | Vocabulary ID of the `[MASK]` token |
 | `num_sampling_steps` | `int` | `50` | Reverse-diffusion steps at inference |
 | `diffusion_steps` | `int` | `1000` | Forward-process steps (for schedule) |
 

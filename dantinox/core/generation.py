@@ -302,6 +302,10 @@ def stream_diffusion_generate(
     if prefix is not None and prefix.shape[1] > 0:
         dual_cache = model.compute_prefix_cache(prefix)  # type: ignore[attr-defined]
 
+    # schedule always comes from make_noise_schedule(), which populates
+    # alpha_bar; the None default only exists for NoiseSchedule's own
+    # construction convenience.
+    assert schedule.alpha_bar is not None
     x_t       = jnp.full((B, gen_len), mask_token_id, dtype=jnp.int32)
     T         = schedule.alpha_bar.shape[0] - 1
     step_size = max(1, T // max(num_sampling_steps, 1))
@@ -456,6 +460,7 @@ def stream_fast_dllm_generate(
     B        = prefix.shape[0]
     T_prefix = prefix.shape[1]
     T_total  = T_prefix + gen_len
+    assert schedule.alpha_bar is not None  # always set by make_noise_schedule()
     T_diff   = int(schedule.alpha_bar.shape[0]) - 1
 
     x = jnp.concatenate([

@@ -99,7 +99,7 @@ def make_noise_schedule(config_or_name: Config | str, n_steps: int | None = None
         T     = n_steps or 1000
     else:
         sched = config_or_name.noise_schedule
-        T     = n_steps or getattr(config_or_name, "diffusion_steps", 1000)
+        T     = n_steps or int(getattr(config_or_name, "diffusion_steps", 1000))
 
     ts = np.linspace(0.0, 1.0, T + 1, dtype=np.float32)
 

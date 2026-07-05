@@ -154,7 +154,7 @@ class Trainer:
         with open(sweep_yaml) as f:
             sweep_cfg = yaml.safe_load(f)
 
-        sweep_id = wandb.sweep(sweep_cfg, project=wandb_project)
+        sweep_id = wandb.sweep(sweep_cfg, project=wandb_project)  # type: ignore[attr-defined]
         log.info("W&B sweep created — id=%s  project=%s", sweep_id, wandb_project)
 
         base_training_cfg = self.config
@@ -164,7 +164,7 @@ class Trainer:
         train_fields = {f.name for f in dataclasses.fields(_TrainingConfig)}
 
         def _agent_fn() -> None:
-            run = wandb.init()
+            run = wandb.init()  # type: ignore[attr-defined]
             wc  = dict(run.config)
 
             train_overrides = {k: v for k, v in wc.items() if k in train_fields}
@@ -197,11 +197,11 @@ class Trainer:
                     rows = list(_csv.DictReader(lf))
                 if rows:
                     best = min(float(r["val_loss"]) for r in rows)
-                    wandb.log({"best_val_loss": best})
+                    wandb.log({"best_val_loss": best})  # type: ignore[attr-defined]
 
-            wandb.finish()
+            wandb.finish()  # type: ignore[attr-defined]
 
-        wandb.agent(sweep_id, function=_agent_fn, count=count)
+        wandb.agent(sweep_id, function=_agent_fn, count=count)  # type: ignore[attr-defined]
         return sweep_id
 
     def fit(
@@ -446,7 +446,7 @@ class Trainer:
         @nnx.jit
         def _step(model: Any, optimizer: nnx.Optimizer, batch: jnp.ndarray,
                   rng: jax.Array) -> jnp.ndarray:
-            def _loss(m):
+            def _loss(m: Any) -> Any:
                 return paradigm.loss_fn(m, batch, rng)
             (loss, _), grads = nnx.value_and_grad(
                 _loss, has_aux=True, argnums=_grad_argnums
@@ -457,7 +457,7 @@ class Trainer:
         @nnx.jit
         def _step_extras(model: Any, optimizer: nnx.Optimizer, batch: jnp.ndarray,
                          extras: jnp.ndarray, rng: jax.Array) -> jnp.ndarray:
-            def _loss(m):
+            def _loss(m: Any) -> Any:
                 return paradigm.loss_fn(m, batch, rng, embeddings=extras)
             (loss, _), grads = nnx.value_and_grad(
                 _loss, has_aux=True, argnums=_grad_argnums
@@ -820,7 +820,7 @@ class _Prefetcher:
         self._rng        = rng
         self._future     = self._submit()   # warm up one batch ahead
 
-    def _submit(self):
+    def _submit(self) -> Any:
         return self._pool.submit(
             _sample_batch, self._tokens, self._batch_size, self._sample_len, self._rng
         )

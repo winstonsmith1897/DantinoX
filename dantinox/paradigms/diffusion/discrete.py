@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -93,7 +94,7 @@ class DiscreteParadigm(ParadigmBase):
         self._schedule: NoiseSchedule = make_noise_schedule(self._noise_schedule)
 
     @property
-    def diffusion_config(self):
+    def diffusion_config(self) -> Any:
         """Return a lightweight namespace with noise_schedule and mask_token_id."""
         from types import SimpleNamespace
         return SimpleNamespace(
@@ -111,6 +112,7 @@ class DiscreteParadigm(ParadigmBase):
         model: Transformer,
         batch: jnp.ndarray,
         rng: jax.Array,
+        embeddings: jnp.ndarray | None = None,  # unused: discrete diffusion has no batch extras
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         mask_id = self._mask_token_id
         rng_t, rng_corrupt = jax.random.split(rng)
@@ -124,7 +126,7 @@ class DiscreteParadigm(ParadigmBase):
         )
         return loss, {"loss": loss, "aux_loss": out.aux_loss}
 
-    def generate(
+    def generate(  # type: ignore[override]
         self,
         model: Transformer,
         prompt: jnp.ndarray,
@@ -200,7 +202,7 @@ class DiscreteParadigm(ParadigmBase):
         steps_per_block: int = 50,
         use_dual_cache: bool = True,
         refresh_interval: int | None = None,
-    ):
+    ) -> Iterator[tuple[int, int, jnp.ndarray]]:
         """Yields ``(step, total, x_gen)`` after each denoising step.
 
         Args:

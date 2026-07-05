@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
 
 import jax
@@ -144,7 +145,7 @@ class ContinuousParadigm(ParadigmBase):
 
     # ── Generation ────────────────────────────────────────────────────────────
 
-    def generate(
+    def generate(  # type: ignore[override]
         self,
         model: FlowMatchingTransformer,
         prompt: jnp.ndarray | None = None,
@@ -164,9 +165,9 @@ class ContinuousParadigm(ParadigmBase):
         to providing a *prompt* and *rng*.
         """
         from dantinox.paradigms.ar import _seed_from
-        steps  = n_steps   or getattr(self.config, "flow_n_steps", 64)
-        cfg_w  = cfg_scale or getattr(self.config, "flow_cfg_scale", 1.0)
-        sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
+        steps: int   = n_steps   or self.config.flow_n_steps
+        cfg_w: float = cfg_scale or self.config.flow_cfg_scale
+        sde_g: float = gamma if gamma is not None else self.config.sde_gamma
         length = max_new_tokens or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
                                     else self.config.max_seq_len)
         if batch_size is None:
@@ -192,12 +193,12 @@ class ContinuousParadigm(ParadigmBase):
         n_steps: int | None = None,
         cfg_scale: float | None = None,
         gamma: float | None = None,
-    ):
+    ) -> Iterator[tuple[int, int, jnp.ndarray]]:
         """Like ``generate`` but yields ``(step, total, tokens)`` after each ODE step."""
         from dantinox.paradigms.ar import _seed_from
-        steps  = n_steps   or getattr(self.config, "flow_n_steps", 64)
-        cfg_w  = cfg_scale or getattr(self.config, "flow_cfg_scale", 1.0)
-        sde_g  = gamma if gamma is not None else getattr(self.config, "sde_gamma", 0.0)
+        steps: int   = n_steps   or self.config.flow_n_steps
+        cfg_w: float = cfg_scale or self.config.flow_cfg_scale
+        sde_g: float = gamma if gamma is not None else self.config.sde_gamma
         length = max_new_tokens or (prompt.shape[1] if prompt is not None and prompt.ndim == 2
                                     else self.config.max_seq_len)
         batch  = prompt.shape[0] if prompt is not None and prompt.ndim == 2 else 1

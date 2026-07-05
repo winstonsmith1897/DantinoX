@@ -50,6 +50,11 @@ def count_flops(
     Logit projection (unembed):
         2BT·V·D
     """
+    if config.vocab_size is None:
+        raise ValueError(
+            "count_flops(config, ...) requires config.vocab_size to be set "
+            "(it is None until a tokenizer is attached, e.g. via Trainer.fit())."
+        )
     B = batch_size
     T = seq_len
     D = config.dim

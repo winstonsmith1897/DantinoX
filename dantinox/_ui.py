@@ -71,12 +71,14 @@ def _row(label: str, value: str, lw: int = 12) -> str:
 
 def _cfg_dim(cfg: Any) -> int:
     """Return the transformer backbone width from either ModelConfig or FlowMatchingConfig."""
-    return getattr(cfg, "dim", None) or getattr(cfg, "model_dim", 512)
+    dim = getattr(cfg, "dim", None)
+    return int(dim) if dim is not None else int(getattr(cfg, "model_dim", 512))
 
 
 def _cfg_ctx(cfg: Any) -> int:
     """Return max context length from either ModelConfig or FlowMatchingConfig."""
-    return getattr(cfg, "max_context", None) or getattr(cfg, "max_seq_len", 512)
+    ctx = getattr(cfg, "max_context", None)
+    return int(ctx) if ctx is not None else int(getattr(cfg, "max_seq_len", 512))
 
 
 def _cfg_use_moe(cfg: Any) -> bool:
@@ -352,7 +354,7 @@ def print_compile_hint(epoch: int) -> None:
         )
 
 
-def make_epoch_bar(epoch: int, n_epochs: int, total: int):
+def make_epoch_bar(epoch: int, n_epochs: int, total: int) -> Any:
     """Return a plain tqdm progress bar for one training epoch.
 
     ``tqdm.auto`` picks the Jupyter widget in notebooks and the plain

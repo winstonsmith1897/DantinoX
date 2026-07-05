@@ -133,7 +133,9 @@ def _is_default_constructible(cls: type) -> bool:
     """True if the class can be constructed with no arguments."""
     import inspect
     try:
-        sig    = inspect.signature(cls.__init__)
+        # Deliberately introspecting the concrete class's own __init__
+        # (whatever subclass cls is) — that's the whole point of this check.
+        sig    = inspect.signature(cls.__init__)  # type: ignore[misc]
         params = [
             p for p in sig.parameters.values()
             if p.name != "self" and p.default is inspect.Parameter.empty

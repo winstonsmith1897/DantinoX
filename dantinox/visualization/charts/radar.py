@@ -99,7 +99,7 @@ class RadarChart(Chart):
         ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1))
 
 
-def _to_df(data: Any):
+def _to_df(data: Any) -> Any:
     import pandas as pd
 
     from dantinox.benchmarking.base import SuiteReport

@@ -48,6 +48,7 @@ Three levels of API
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
+from typing import Any
 
 try:
     __version__: str = _pkg_version("dantinox")
@@ -134,25 +135,25 @@ banner(__version__)
 # Defined before the public API functions that reference them.
 
 
-def _build_ar(config, kwargs):
+def _build_ar(config: ModelConfig | None, kwargs: dict[str, Any]) -> Paradigm:
     if config is None:
         config = ModelConfig(**{**kwargs, "paradigm": "ar"})
     return Paradigm(config)
 
 
-def _build_discrete(config, kwargs):
+def _build_discrete(config: ModelConfig | None, kwargs: dict[str, Any]) -> Paradigm:
     if config is None:
         config = ModelConfig(**{**kwargs, "paradigm": "discrete"})
     return Paradigm(config)
 
 
-def _build_continuous(config, kwargs):
+def _build_continuous(config: ModelConfig | None, kwargs: dict[str, Any]) -> Paradigm:
     if config is None:
         config = ModelConfig(**{**kwargs, "paradigm": "continuous"})
     return Paradigm(config)
 
 
-def _build_embedder(config, kwargs):
+def _build_embedder(config: ModelConfig | None, kwargs: dict[str, Any]) -> Paradigm:
     import warnings
     if "pooling" in kwargs:
         warnings.warn(
@@ -195,7 +196,7 @@ def _split_kwargs(kwargs: dict) -> tuple[dict, dict]:
 def build(
     paradigm: str,
     config: ModelConfig | None = None,
-    **model_kwargs,
+    **model_kwargs: Any,
 ) -> Paradigm:
     """Construct a Paradigm from a string name and optional ``ModelConfig``.
 
@@ -235,7 +236,7 @@ def train(
     *,
     run_dir: str | None = None,
     training_config: TrainingConfig | None = None,
-    **training_kwargs,
+    **training_kwargs: Any,
 ) -> str:
     """Train *paradigm* on *data_source* and return the run directory.
 
@@ -279,7 +280,7 @@ def fit(
     *,
     run_dir: str | None = None,
     training_config: TrainingConfig | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> str:
     """One-call shortcut: build paradigm, train, return run directory.
 
@@ -313,7 +314,7 @@ def profile(
     *,
     n_warmup: int = 5,
     n_runs: int = 20,
-    model=None,
+    model: Any = None,
 ) -> ProfilingResult:
     """Profile a model: FLOPs + latency + throughput.
 
@@ -336,6 +337,11 @@ def profile(
 
     if model is not None:
         import jax
+        if config.vocab_size is None:
+            raise ValueError(
+                "dx.profile(..., model=...) requires config.vocab_size to be set "
+                "so sample token ids can be generated in range."
+            )
         rng = jax.random.PRNGKey(0)
         x   = jax.random.randint(rng, (batch_size, seq_len), 0, config.vocab_size)
 
@@ -355,7 +361,7 @@ def load(
     run_dir: str,
     paradigm: Paradigm | None = None,
     checkpoint: str = "best",
-):
+) -> Any:
     """Load a checkpoint from *run_dir* and return the NNX model.
 
     Args:
@@ -412,14 +418,14 @@ def load(
 
 
 def sweep(
-    paradigm,
+    paradigm: Any,
     sweep_yaml: str,
     data_source: str | None = None,
     *,
     wandb_project: str = "DantinoX",
     count: int | None = None,
     training_config: "TrainingConfig | None" = None,
-    **training_kwargs,
+    **training_kwargs: Any,
 ) -> str:
     """One-call sweep shortcut: build paradigm, create trainer, run W&B sweep.
 
@@ -470,7 +476,7 @@ def quick_generate(
     prompt: str,
     *,
     paradigm: Paradigm | None = None,
-    tokenizer=None,
+    tokenizer: Any = None,
     max_new_tokens: int = 200,
     temperature: float = 1.0,
     use_cache: bool = True,

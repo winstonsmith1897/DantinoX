@@ -108,6 +108,12 @@ disallow_untyped_defs = false
 module = "dantinox.trainer"
 disallow_untyped_defs = false
 
+# Profiling adapters/plots: many tiny dynamically-typed helper closures
+# (model adapters, matplotlib panels) where full annotations add little value.
+[[tool.mypy.overrides]]
+module = ["dantinox.profiling.runner", "dantinox.profiling.plots", "dantinox.profiling.tracker"]
+disallow_untyped_defs = false
+
 [[tool.mypy.overrides]]
 module = "dantinox.plots.*"
 ignore_errors = true

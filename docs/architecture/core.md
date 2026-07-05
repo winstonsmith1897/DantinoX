@@ -12,6 +12,17 @@ All three attention variants live in `core/attention.py` and share the same
 abstract base class `BaseAttention`. The variant is selected by
 `config.attention_type` (`"mha"`, `"gqa"`, `"mla"`, or `"auto"`). The module provides shared infrastructure for RoPE positional encoding, causal/sliding-window masking, no-sink gating, dropout, and native LoRA integration.
 
+> **Naming note.** This page documents the internal `core/` layer, which reads
+> `config.attention_type`, `config.norm_type`, `config.use_flash_attention`,
+> `config.rope_scale_factor`, `config.inference`, and `config.top_k_mlp` — these
+> are the field names on the legacy `Config` object. If you are using the
+> modern split API from the paper (`dx.ModelConfig` + `dx.TrainingConfig`),
+> the equivalent *constructor* arguments are named `attention`, `norm`,
+> `use_flash`, `rope_scale`, `inference_mode`, and `top_k` respectively —
+> `ModelConfig` exposes the longer names above only as read-only compatibility
+> properties for code shared with `core/`, so e.g. `dx.ModelConfig(attention_type="gqa")`
+> raises `TypeError`; use `dx.ModelConfig(attention="gqa")` instead.
+
 ### Selection guide
 
 | Mode | `config.attention_type` | `config.kv_heads` | KV-cache memory per token per layer |
@@ -504,8 +515,13 @@ as a single array. After merging, the model can be loaded into a standard
 | `config.lora_targets` | Layers adapted |
 |---|---|
 | `"attention"` (default) | `qkv` and `o_proj` in every attention block |
-| `"mlp"` | `up_proj` and `down_proj` in every FFN block |
+| `"ffn"` | `up_proj` and `down_proj` in every FFN block |
 | `"all"` | Both attention and FFN layers |
+
+> The value above (`"ffn"`) is for `ModelConfig`. The legacy `Config` object
+> uses the same three-way split but spells the FFN option `"mlp"` instead —
+> `ModelConfig.replace(...)`/YAML round-tripping between the two translates
+> `"ffn"` ↔ `"mlp"` automatically.
 
 ---
 
@@ -626,7 +642,7 @@ The factory handles both the new explicit `attention_type` string and the legacy
 
 ---
 
-## No-sink gating (attention sink suppression)
+## No-sink gating (gated attention / attention sink suppression)
 
 When `config.no_sink=True`, a learned gating signal is applied to the attention
 output before the residual connection:
@@ -639,11 +655,15 @@ def _apply_gate(self, y, x):
     return y * jax.nn.sigmoid(self.W(x)) if self.no_sink else y
 ```
 
-This is inspired by the "attention sink" phenomenon (Xiao et al. 2023), where
-certain tokens attract disproportionately large attention weights and act as
-"sink" tokens. The gating mechanism allows the model to suppress the output
-from such positions when the original input `x` does not warrant a strong
-response.
+This is the library's **gated attention** variant (Qiu et al. 2026,
+"Gated Attention for Large Language Models: Non-linearity, Sparsity, and
+Attention-Sink-Free"), listed alongside Flash/sliding-window/linear/differential
+attention as one of the drop-in attention enhancements in the paper. It targets
+the "attention sink" phenomenon (Xiao et al. 2023), where certain tokens
+attract disproportionately large attention weights and act as "sink" tokens.
+The sigmoid gate lets the model suppress the output from such positions when
+the original input `x` does not warrant a strong response, adding the
+non-linearity and sparsity that give the mechanism its name.
 
 ---
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import jax
@@ -87,6 +88,6 @@ def _infer_vocab(paradigm: Any) -> int:
     return 32_000
 
 
-def _warmup_fn(fn, n: int) -> None:
+def _warmup_fn(fn: Callable[[], Any], n: int) -> None:
     for _ in range(n):
         jax.block_until_ready(fn())

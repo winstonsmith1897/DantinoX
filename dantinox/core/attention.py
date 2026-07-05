@@ -143,7 +143,7 @@ class BaseAttention(nnx.Module):
         degree   = jnp.einsum("i,j->ij", P, inv_freq)
         return degree[None, None, None, :, :]
 
-    def _apply_rope_grouped(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
+    def _apply_rope_grouped(self, x: jnp.ndarray, cache_index: int | jax.Array) -> jnp.ndarray:
         """Apply RoPE to a [B, H, G, T, D] grouped-head tensor."""
         T     = x.shape[3]
         angle = jax.lax.dynamic_slice_in_dim(self.angle, cache_index, T, axis=3)
@@ -153,7 +153,7 @@ class BaseAttention(nnx.Module):
         out = out.at[..., 1::2].set(x[..., 0::2] * sin_a + x[..., 1::2] * cos_a)
         return out
 
-    def _apply_rope_thd(self, x: jnp.ndarray, cache_index: int) -> jnp.ndarray:
+    def _apply_rope_thd(self, x: jnp.ndarray, cache_index: int | jax.Array) -> jnp.ndarray:
         """Apply RoPE to a [B, T, H, D] Flash-Attention tensor."""
         T     = x.shape[1]
         angle = jax.lax.dynamic_slice_in_dim(
@@ -194,7 +194,7 @@ class BaseAttention(nnx.Module):
     def _apply_attn_mask(
         self,
         attn: jnp.ndarray,
-        cache_index: int,
+        cache_index: int | jax.Array,
         T: int,
         S: int,
         is_causal: bool,
@@ -218,7 +218,7 @@ class BaseAttention(nnx.Module):
     # ── Dual-cache interface (opt-in) ─────────────────────────────────────────
 
     def extract_kv(
-        self, x: jnp.ndarray, cache_index: int
+        self, x: jnp.ndarray, cache_index: int | jax.Array
     ) -> tuple[jnp.ndarray, jnp.ndarray] | None:
         """Return (k, v) tensors for prefix caching; ``None`` if unsupported."""
         return None
@@ -230,7 +230,7 @@ class BaseAttention(nnx.Module):
         x: jnp.ndarray,
         use_cache: bool,
         kv_cache: tuple,
-        cache_index: int,
+        cache_index: int | jax.Array,
         deterministic: bool = False,
         is_causal: bool = True,
         prefix_kv: tuple[jnp.ndarray, jnp.ndarray] | None = None,
@@ -321,7 +321,7 @@ class _StandardAttention(BaseAttention):
     def _update_kv_cache(
         self,
         kv_cache: tuple,
-        cache_index: int,
+        cache_index: int | jax.Array,
         B: int,
         T: int,
         k: jnp.ndarray,
@@ -358,7 +358,7 @@ class _StandardAttention(BaseAttention):
     # ── Dual-cache: extract prefix KV ─────────────────────────────────────────
 
     def extract_kv(
-        self, x: jnp.ndarray, cache_index: int
+        self, x: jnp.ndarray, cache_index: int | jax.Array
     ) -> tuple[jnp.ndarray, jnp.ndarray]:
         """Compute and return (k, v) in grouped layout [B, kv_heads, 1, T, head_size]."""
         B, T, _ = x.shape
@@ -377,7 +377,7 @@ class _StandardAttention(BaseAttention):
         x: jnp.ndarray,
         use_cache: bool,
         kv_cache: tuple,
-        cache_index: int,
+        cache_index: int | jax.Array,
         deterministic: bool = False,
         is_causal: bool = True,
         prefix_kv: tuple[jnp.ndarray, jnp.ndarray] | None = None,
@@ -570,7 +570,7 @@ class MLAAttention(BaseAttention):
     def _update_mla_cache(
         self,
         kv_cache: tuple,
-        cache_index: int,
+        cache_index: int | jax.Array,
         B: int,
         T: int,
         c_kv: jnp.ndarray,
@@ -601,7 +601,7 @@ class MLAAttention(BaseAttention):
         x: jnp.ndarray,
         use_cache: bool,
         kv_cache: tuple,
-        cache_index: int,
+        cache_index: int | jax.Array,
         deterministic: bool = False,
         is_causal: bool = True,
         prefix_kv: tuple | None = None,

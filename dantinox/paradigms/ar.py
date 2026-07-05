@@ -46,6 +46,7 @@ class ARParadigm(ParadigmBase):
         model: Transformer,
         batch: jnp.ndarray,
         rng: jax.Array,
+        embeddings: jnp.ndarray | None = None,  # unused: AR has no batch extras
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         x, y = batch[:, :-1], batch[:, 1:]
         out  = model(x)
@@ -53,7 +54,7 @@ class ARParadigm(ParadigmBase):
         aux  = out.aux_loss
         return ce + aux, {"ce_loss": ce, "aux_loss": aux}
 
-    def generate(
+    def generate(  # type: ignore[override]
         self,
         model: Transformer,
         prompt: jnp.ndarray,

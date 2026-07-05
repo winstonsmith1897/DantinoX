@@ -17,7 +17,7 @@ DantinoX is organized in three decoupled layers. Understanding this layering is 
 │  Benchmarking BenchmarkTask plugins · Visualizer chart registry │
 ├─────────────────────────────────────────────────────────────────┤
 │  Core         Transformer · Attention (MHA/GQA/MLA)             │
-│               MLP · MoE · LoRA · ELFTransformer · sharding      │
+│               MLP · MoE · LoRA · FlowMatchingTransformer · sharding │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -29,14 +29,14 @@ DantinoX is organized in three decoupled layers. Understanding this layering is 
 
 | Module | Contents |
 | :--- | :--- |
-| `core/config.py` | `Config`, `ModelConfig`, `TrainingConfig`, `ELFConfig` — single source of truth |
+| `core/config.py` | `Config`, `ModelConfig`, `TrainingConfig`, `FlowMatchingConfig` — single source of truth |
 | `core/model.py` | `Transformer`: embedding → blocks → output norm → LM head |
 | `core/attention.py` | `Attention`: MHA, GQA, MLA with RoPE, KV cache, Flash Attention |
 | `core/block.py` | `Block`: pre-norm residual · Attention + FFN |
 | `core/mlp.py` | Dense MLP with SwiGLU/GELU |
 | `core/moe.py` | Sparse MoE with top-K routing and load-balancing loss |
 | `core/lora.py` | `LoRALinear`, `LoRAParam` — type-level weight freezing |
-| `core/elf.py` | `ELFTransformer`, `ELFEmbedder` — continuous flow-matching |
+| `core/flow.py` | `FlowMatchingTransformer`, `FlowEmbedder`, `flow_loss` — continuous flow-matching (ELF recipe). `core/elf.py` is a deprecated import shim kept for backward compatibility. |
 | `core/diffusion.py` | Noise schedules, `corrupt()`, `masked_cross_entropy()` |
 | `core/generation.py` | AR decode loop, diffusion reverse pass, ELF denoising |
 | `core/sharding.py` | `make_mesh`, `replicate`, `shard_batch` — multi-GPU SPMD |

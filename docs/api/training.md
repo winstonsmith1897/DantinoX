@@ -1,8 +1,24 @@
 # `dantinox.trainer` — Training API Reference
 
-This page is the complete reference for the `Trainer` class in
-`dantinox/trainer.py`. Every parameter, every internal step, and every
-helper function is explained here in detail.
+This page is the complete reference for the **legacy** `Trainer` class in
+`dantinox/trainer.py` — the `Config`-driven trainer backing the
+`dantinox train` CLI / YAML workflow (`Trainer(config).fit(data_path, ...)`).
+
+> **This is not `dx.Trainer`.** The symbol re-exported at the top level
+> (`from dantinox import Trainer`, used in the paper's API — see Figure 3 /
+> [Configuration Reference](../configuration.md)) resolves to
+> `dantinox.training.trainer.Trainer`, a different, paradigm-agnostic class
+> with the signature `Trainer(paradigm, training_config).fit(data_source, ...)`,
+> used as `dx.Trainer(dx.Paradigm(dx.ModelConfig(...)), dx.TrainingConfig(...)).fit(dataset)`.
+> It is driven entirely through `Paradigm.loss_fn`/`generate`/`build_model`
+> rather than the `model_type` dispatch described below — see
+> [Paradigm System](../architecture/paradigm-system.md) for its design and
+> [Configuration Reference](../configuration.md) for `TrainingConfig` fields.
+> The two classes share the same name but are not interchangeable; this page
+> only covers the legacy one.
+
+Every parameter, every internal step, and every
+helper function of the legacy trainer is explained here in detail.
 
 ---
 
@@ -10,7 +26,9 @@ helper function is explained here in detail.
 
 `Trainer` is a single class that handles the full training lifecycle for all
 three DantinoX model families: autoregressive (`Transformer`), masked-diffusion
-(`DiffusionTransformer`), and continuous flow-matching (`ELFTransformer`).
+(`DiffusionTransformer`, an alias of `Transformer`), and continuous
+flow-matching (`FlowMatchingTransformer`; `ELFTransformer` is a deprecated
+alias of the same class).
 
 ```
 Trainer.fit(data_path)
@@ -19,7 +37,7 @@ Trainer.fit(data_path)
     ├─ 2. max_train_tokens cap      → fixed compute budget
     ├─ 3. 90 / 10 train/val split
     ├─ 4. _build_optimizer          → schedule + gradient clipping
-    ├─ 5. _create_model             → Transformer | DiffusionTransformer | ELFTransformer
+    ├─ 5. _create_model             → Transformer | DiffusionTransformer | FlowMatchingTransformer
     ├─ 6. _cast_params(bfloat16)    → before JIT compilation
     ├─ 7. nnx.Optimizer(wrt=...)    → LoRA vs full-param training
     ├─ 8. make_mesh / shard_batch   → multi-GPU data parallelism
@@ -56,15 +74,15 @@ and the training procedure in one flat namespace. The relevant fields are:
 | `dim` | `int` | `512` | Hidden dimension of the transformer |
 | `n_heads` | `int` | `16` | Number of query attention heads |
 | `head_size` | `int` | `32` | Dimension per head; must satisfy `dim == n_heads * head_size` |
-| `num_blocks` | `int` | `20` | Number of transformer blocks |
+| `num_blocks` | `int` | `12` | Number of transformer blocks |
 | `vocab_size` | `int\|None` | `None` | Vocabulary size. Auto-set from the tokenizer inside `fit()`; required only for direct model construction. |
 | `max_context` | `int` | `512` | Maximum sequence length |
-| `kv_heads` | `int` | `4` | KV heads for GQA; set equal to `n_heads` for MHA |
+| `kv_heads` | `int\|None` | `None` | KV heads for GQA. `None` → resolves to `n_heads` (MHA) in `__post_init__`. |
 | `model_type` | `str` | `"autoregressive"` | `"autoregressive"`, `"diffusion"`, or `"elf"` |
 | `attention_type` | `str` | `"auto"` | `"mha"`, `"gqa"`, `"mla"`, or `"auto"` (derived) |
-| `norm_type` | `str` | `"layernorm"` | `"layernorm"` or `"rmsnorm"` |
+| `norm_type` | `str` | `"rmsnorm"` | `"layernorm"` or `"rmsnorm"` |
 | `use_swiglu` | `bool` | `True` | Use SwiGLU activation in FFN |
-| `gradient_checkpointing` | `bool` | `True` | Wrap blocks with `nnx.remat` |
+| `gradient_checkpointing` | `bool` | `False` | Wrap blocks with `nnx.remat` |
 | `use_lora` | `bool` | `False` | Enable LoRA adapter training |
 | `lora_rank` | `int` | `8` | LoRA rank `r` |
 | `lora_alpha` | `float` | `16.0` | LoRA scaling factor `α` |
@@ -73,11 +91,11 @@ and the training procedure in one flat namespace. The relevant fields are:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `lr` | `float` | `0.005` | Peak learning rate |
-| `batch_size` | `int` | `128` | Total batch size per optimizer step |
-| `grad_accum` | `int` | `16` | Gradient accumulation steps |
-| `epochs` | `int` | `1000` | Training epochs |
-| `warmup_steps` | `int` | `420` | Linear warmup length; capped at 30 % of `total_steps` |
+| `lr` | `float` | `0.0003` | Peak learning rate |
+| `batch_size` | `int` | `32` | Total batch size per optimizer step |
+| `grad_accum` | `int` | `1` | Gradient accumulation steps |
+| `epochs` | `int` | `100` | Training epochs |
+| `warmup_steps` | `int` | `400` | Linear warmup length; capped at 30 % of `total_steps` |
 | `lr_schedule` | `str` | `"cosine"` | `"cosine"`, `"linear"`, `"constant"`, or `"wsd"` |
 | `optimizer` | `str` | `"adamw"` | Optimizer name (see table below) |
 | `grad_clip` | `float` | `1.0` | Global gradient norm clipping; `0` disables |
@@ -317,11 +335,13 @@ model = _create_model(config, rngs)
 | `config.model_type` | Class instantiated |
 |---|---|
 | `"autoregressive"` (default) | `core.model.Transformer(config, rngs=rngs)` |
-| `"diffusion"` | `core.model.DiffusionTransformer(config, rngs=rngs)` |
-| `"elf"` | `core.elf.ELFTransformer(config.to_elf_config(), rngs=rngs)` |
+| `"diffusion"` | `core.model.DiffusionTransformer(config, rngs=rngs)` (alias of `Transformer`) |
+| `"elf"` | `core.flow.FlowMatchingTransformer(config.to_flow_config(), rngs=rngs)` |
 
-For ELF, `config.to_elf_config()` first converts the flat `Config` into an
-`ELFConfig` dataclass that contains only ELF-relevant fields.
+For the flow-matching paradigm, `config.to_flow_config()` first converts the
+flat `Config` into a `FlowMatchingConfig` dataclass that contains only the
+flow-relevant fields. (`core.elf.ELFTransformer` and `config.to_elf_config()`
+are deprecated aliases of the same class/method.)
 
 ---
 
@@ -546,10 +566,12 @@ block, so only one `train_step` is compiled per `fit` call.
 
         def _loss(model, emb_i, x_i, key):
             embeddings = model.encode(emb_i)   # channel-wise normalise
-            loss, aux  = elf_loss(model, embeddings, x_i, key, _elf_config)
+            loss, aux  = flow_loss(model, embeddings, x_i, key, _flow_config)
             return loss, aux["den_loss"]
         ...
     ```
+
+    (`elf_loss` is a deprecated alias of `flow_loss`.)
 
     The ELF step takes a *pre-computed T5 embedding* `full_emb` instead of raw
     tokens. T5 is a large encoder-only model that is kept *outside* JIT — its

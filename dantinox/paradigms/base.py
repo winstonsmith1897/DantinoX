@@ -41,6 +41,19 @@ class ParadigmBase(ABC):
     # computed outside JIT and passed to ``loss_fn(..., embeddings=...)``.
     provides_batch_extras: bool = False
 
+    def __init__(self, config: Any) -> None:
+        """Every concrete paradigm accepts its architecture config positionally.
+
+        Declared here (not abstract) so callers can do
+        ``type(some_paradigm)(new_config)`` — e.g. the W&B sweep agent
+        rebuilding a paradigm with overridden hyperparameters — without a
+        static type error, even though this base implementation is never
+        actually used (each subclass overrides it; some, like
+        ``EmbedderParadigm``, add further keyword-only arguments with
+        defaults, so calling with just ``config`` remains valid everywhere).
+        """
+        self.config = config
+
     @abstractmethod
     def build_model(self, rngs: Any) -> Any:
         """Construct and return the NNX model for this paradigm.
@@ -57,12 +70,20 @@ class ParadigmBase(ABC):
         model: Any,
         batch: jnp.ndarray,
         rng: jax.Array,
+        embeddings: jnp.ndarray | None = None,
     ) -> tuple[jnp.ndarray, dict[str, Any]]:
         """Compute the scalar training loss for one batch.
 
         The model is passed explicitly so ``nnx.value_and_grad`` can
         differentiate through it without the paradigm needing to be an
         NNX module itself.
+
+        Args:
+            embeddings: Per-batch extras from ``prepare_batch``, only passed
+                when ``provides_batch_extras`` is True (e.g. pre-computed T5
+                embeddings for the continuous flow-matching paradigm).
+                Ignored by paradigms that don't declare
+                ``provides_batch_extras = True``.
 
         Returns:
             (scalar_loss, metrics_dict)  where metrics_dict holds any
@@ -109,7 +130,7 @@ class ParadigmBase(ABC):
         return sum(x.size for x in jax.tree_util.tree_leaves(params))
 
     @property
-    def diffusion_config(self):
+    def diffusion_config(self) -> Any:
         """Diffusion-specific configuration.  Returns None for non-diffusion paradigms."""
         return None
 

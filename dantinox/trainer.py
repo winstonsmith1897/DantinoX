@@ -344,7 +344,9 @@ class Trainer:
 
         tokens_per_step = config.batch_size * config.max_context
         steps_per_epoch = max(1, len(train_data) // tokens_per_step)
-        total_steps = steps_per_epoch * config.epochs
+        # config.epochs may be a genuine float (fractional epochs); step
+        # counts must stay integers — range()/tqdm below require it.
+        total_steps = int(steps_per_epoch * config.epochs)
 
         tx = _build_optimizer(config, total_steps)
         rngs = nnx.Rngs(config.seed)
@@ -436,6 +438,7 @@ class Trainer:
                 _xb, _ = get_batch(train_data, config.batch_size, config.max_context, _sub)
                 _stat_batches.append(_xb)
             _emb_mean, _emb_std = _t5_encoder.compute_norm_stats(_stat_batches)
+            assert isinstance(model, FlowMatchingTransformer)
             model.embedder.emb_mean.value = _emb_mean
             model.embedder.emb_std.value  = _emb_std
             log.info(
@@ -626,7 +629,7 @@ class Trainer:
                     for _ in range(config.eval_iters):
                         key, sub = jax.random.split(key)
                         x, y = get_batch(d, 1, config.max_context, sub)
-                        loss_val, b, _ = eval_step(model, x, y)
+                        loss_val, b, _ = eval_step(model, x, y)  # type: ignore[call-arg]
                         losses.append(float(loss_val))
                         bals.append(float(b))
                     out[split] = sum(losses) / len(losses)

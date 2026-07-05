@@ -124,12 +124,14 @@ class WandbCallback(BaseCallback):
 
         cfg_dict: dict[str, Any] = {}
         if dataclasses.is_dataclass(config):
-            cfg_dict = dataclasses.asdict(config)
+            # config is always a real instance here (never a bare dataclass
+            # type); is_dataclass()'s stub just can't narrow that statically.
+            cfg_dict = dataclasses.asdict(config)  # type: ignore[arg-type]
         elif hasattr(config, "to_dict"):
             cfg_dict = config.to_dict()
         cfg_dict.update(self._config_overrides)
 
-        self._run = wandb.init(
+        self._run = wandb.init(  # type: ignore[attr-defined]
             project=self._project,
             name=self._name,
             tags=self._tags,
@@ -152,12 +154,12 @@ class WandbCallback(BaseCallback):
         if self._run is None:
             return
         import wandb
-        wandb.log({"epoch": epoch, **metrics}, step=step)
+        wandb.log({"epoch": epoch, **metrics}, step=step)  # type: ignore[attr-defined]
 
     def on_train_end(self) -> None:
         """Flush and close the W&B run."""
         if self._run is not None:
             import wandb
-            wandb.finish()
+            wandb.finish()  # type: ignore[attr-defined]
             log.info("WandbCallback: run finished")
             self._run = None
