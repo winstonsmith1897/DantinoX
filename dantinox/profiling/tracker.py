@@ -394,7 +394,11 @@ class _PowerSampler:
         import numpy as np
         if len(self._ts) < 2:
             return 0.0
-        trap = getattr(np, "trapezoid", np.trapz)
+        # np.trapz was removed in numpy 2.0 in favour of np.trapezoid; getattr's
+        # default arg is evaluated eagerly, so `getattr(np, "trapezoid", np.trapz)`
+        # would raise AttributeError on numpy >= 2.0 before trapezoid is even
+        # checked. hasattr first avoids evaluating the removed name at all.
+        trap = np.trapezoid if hasattr(np, "trapezoid") else np.trapz  # type: ignore[attr-defined]
         return float(trap(self._w, self._ts))
 
     def mean_watts(self) -> float:

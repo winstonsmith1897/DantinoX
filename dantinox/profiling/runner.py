@@ -219,7 +219,7 @@ class RunsProfiler:
         runs:             str | list[str],
         filter_config:    dict[str, Any] | None = None,
         metrics:          list[str] | None      = None,
-        batch_sizes:      list[int]             = None,
+        batch_sizes:      list[int] | None      = None,
         seq_len:          int                   = 256,
         n_warmup:         int                   = 5,
         n_measure:        int                   = 50,
@@ -640,14 +640,24 @@ class _FlowAdapter(_ModelAdapter):
 
     def make_forward_fn(self, batch_size: int, seq_len: int):
         import jax
+        import jax.numpy as jnp
         model     = self._model
         t5_encode = self._t5_encoder.encode
         x         = self.get_batch_fn()(batch_size, seq_len)
         emb       = t5_encode(x)
+        b         = x.shape[0]
+        # See model_fn(): FlowMatchingTransformer.__call__ requires
+        # (z_t, x_prev, t, cfg_scale, is_decode).
+        x_prev    = jnp.zeros((b, *emb.shape[1:]))
+        t         = jnp.zeros(b)
+        cfg_scale = jnp.ones(b)
+        is_decode = jnp.zeros(b, dtype=bool)
 
         def _fn():
             emb_n = model.encode(emb)
-            return jax.block_until_ready(model(emb_n, deterministic=True))
+            return jax.block_until_ready(
+                model(emb_n, x_prev, t, cfg_scale, is_decode, deterministic=True)
+            )
 
         return _fn
 
@@ -699,6 +709,7 @@ def _load_adapter(run_dir: str, cfg: dict[str, Any]) -> _ModelAdapter:
     rngs       = nnx.Rngs(42)
 
     # ── Build model skeleton ──────────────────────────────────────────────────
+    model: Any
     if model_type == "elf":
         from dantinox.core.flow import FlowMatchingTransformer
         elf_cfg = config.to_flow_config()
@@ -746,7 +757,7 @@ def _load_t5_encoder(model_name: str):
     for _noisy in ("httpx", "transformers", "huggingface_hub"):
         _logging.getLogger(_noisy).setLevel(_logging.WARNING)
     import jax.numpy as jnp
-    from transformers import AutoTokenizer, FlaxT5EncoderModel
+    from transformers import AutoTokenizer, FlaxT5EncoderModel  # type: ignore[attr-defined]
 
     class _T5Enc:
         def __init__(self):

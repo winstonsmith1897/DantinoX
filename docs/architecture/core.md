@@ -161,7 +161,6 @@ if prefix_kv is not None:
     k = jnp.concatenate([pk, k], axis=3)  # [B, kv_heads, 1, T_pre+T, head_size]
     v = jnp.concatenate([pv, v], axis=3)
 ```
-
 ## Feed-Forward Network (FFN)
 
 The FFN in `core/mlp.py` sits after the attention sub-layer inside each
@@ -223,30 +222,20 @@ consistently achieves lower perplexity than GELU at the same FLOP budget.
 ### Sparse Mixture-of-Experts (MoE)
 
 MoE (`core/moe.py`) replaces the dense FFN with `n_experts` independent MLP
-modules and a learned router that selects the top-K experts for each token.
+modules and a learned router that selects the top-K experts for each token. 
+DantinoX implements this via the `MoE` class, returning both the computed output and an auxiliary load-balancing loss.
 
-```python
-class MoE(nnx.Module):
-    def __init__(self, config, rngs):
-        self.n_experts = config.n_experts          # (1)!
-        self.experts   = nnx.List([MLP(config, rngs) for _ in range(n_experts)])
-        self.router    = nnx.Linear(config.dim, n_experts, use_bias=False, rngs=rngs)
-        self.top_k_mlp = config.top_k_mlp         # (2)!
-```
+#### Routing Mechanism
 
-1. Total number of experts (default `4`).
-2. Number of experts activated per token (default `2`).
-
-**Router.** For each token vector $\mathbf{x} \in \mathbb{R}^d$, the router
+For each token vector $\mathbf{x} \in \mathbb{R}^d$, the router
 computes a softmax distribution over experts:
 
 $$\mathbf{p} = \text{softmax}(W_r \mathbf{x}) \in \mathbb{R}^N$$
 
-The top-K indices and their probabilities are selected, then re-normalised
-so the weights sum to 1:
+The top-K indices (`config.top_k_mlp`, default 2) and their probabilities are selected, then re-normalised so the weights sum to 1:
 
 ```python
-probs = jax.nn.softmax(self.router(x))
+probs = jax.nn.softmax(x_routed, axis=-1)
 values, indices = jax.lax.top_k(probs, self.top_k_mlp)
 values = values / jnp.sum(values, axis=-1, keepdims=True)
 ```
@@ -255,34 +244,49 @@ The output is a weighted sum of the K selected expert outputs:
 
 $$\mathbf{y} = \sum_{i \in \text{top-K}} p_i \cdot \text{Expert}_i(\mathbf{x})$$
 
-**Load-balancing loss.** Without regularisation, the router collapses to
-always routing every token to the same expert. The auxiliary loss prevents this:
-
-$$\mathcal{L}_{\text{bal}} = \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i$$
-
-where $N$ is the number of experts, $f_i$ is the fraction of tokens routed to
-expert $i$, $P_i$ is the mean router probability for expert $i$, and $\alpha$ =
-`config.alpha_balance` (default `0.1`) is a coefficient that controls the
-strength of the regularisation.
-
-In DantinoX:
-
-```python
-expert_mean_prob = jnp.mean(probs.reshape(B*T, N), axis=0)  # P_i
-freq = jnp.mean(jnp.sum(one_hot(indices, N), axis=2), axis=(0, 1))  # f_i
-moe_loss = jnp.sum(freq * expert_mean_prob) * N              # * N = α already included
-```
-
-The loss is added to the main loss with `model.alpha_balance` as the coefficient
-inside `train_step`.
-
 **Why K=2 is standard.** Using K=1 gives no gradient through the discrete
 top-1 selection (only the selected expert receives a gradient). K=2 provides
 a soft gradient through both selected experts and empirically achieves better
 load balance. K > 2 reduces the sparsity benefit; K=2 is the Mixtral and
 Switch-Transformer default.
 
+#### Load-Balancing Loss
+
+Without regularisation, the router collapses to always routing every token to the same expert. The Switch-Transformer auxiliary loss prevents this:
+
+$$\mathcal{L}_{\text{bal}} = \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i$$
+
+where $N$ is the number of experts, $f_i$ is the fraction of tokens routed to
+expert $i$, $P_i$ is the mean router probability for expert $i$, and $\alpha$ is a coefficient applied later in the training loop.
+
+In DantinoX, this is elegantly vectorized across the batch and sequence lengths:
+
+```python
+expert_mean_prob = jnp.mean(jnp.reshape(probs, (B * T, self.n_experts)), axis=0)
+freq = jnp.mean(jnp.sum(jax.nn.one_hot(indices, self.n_experts), axis=2), axis=(0, 1))
+moe_loss = jnp.sum(freq * expert_mean_prob) * self.n_experts
+```
+
 ---
+
+### Latent MoE
+
+DantinoX supports **Latent MoE** by setting `config.moe_latent=True`. When active, the experts do not operate in the standard model dimension (`config.dim`). Instead, the input is down-projected to a smaller bottleneck (`config.moe_latent_dim`) before entering the experts, and up-projected back to the model dimension afterward.
+
+```python
+if self.moe_latent:
+    x = self.down_proj(x) # x goes from config.dim -> latent_dim
+```
+
+Crucially, the routing probabilities (`x_routed`) are computed from the original, uncompressed input vector, preserving the full contextual representation for the routing decision. Latent MoE allows for a massive parameter count in the expert layer while tightly controlling compute overhead and memory bandwidth.
+
+---
+
+### Implementation Details
+
+**Checkpoint-Safe Expert Lists:** Instead of storing the MLP instances in a standard Python list, DantinoX uses a custom `_ExpertList` `nnx.Module` container. This dynamically assigns each expert to a named attribute (`e0`, `e1`, `e2`, etc.). This ensures that when JAX/Flax serializes the model, the experts receive stable string keys in the checkpoint state dicts, preventing silent migration breaks.
+
+**Dense Compute Masking:** Currently, the forward pass evaluates every expert on *every* token, multiplying the unselected ones by zero using a boolean mask (`mask = (indices == i)`). This exact and mathematically equivalent approach operates at $O(N)$ FLOPs (where $N$ is the number of experts). While this is robust and simple for research scale, deploying top-K FLOP savings for massive models in production would require a custom XLA dispatch/combine kernel.---
 
 ## Normalisation
 
