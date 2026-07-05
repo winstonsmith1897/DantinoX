@@ -30,6 +30,7 @@ via ``is_causal``.  Blocks live in block.py, decoding loops in generation.py.
 from __future__ import annotations
 
 import math
+import warnings
 from typing import NamedTuple
 
 import flax.nnx as nnx
@@ -370,6 +371,13 @@ class _StandardAttention(BaseAttention):
         prefix_kv: tuple[jnp.ndarray, jnp.ndarray] | None = None,
     ) -> tuple[jnp.ndarray, tuple]:
         B, T, _ = x.shape
+        if self.use_linear_attention and is_causal:
+            warnings.warn(
+                f"{type(self).__name__}: use_linear_attention=True is ignored because "
+                "is_causal=True — linear attention only supports bidirectional "
+                "(is_causal=False) calls; falling back to softmax/Flash attention.",
+                stacklevel=2,
+            )
         q_size  = self.dim
         kv_size = self.kv_heads * self.head_size
         q, k, v = jax.lax.split(call_linear(self.qkv, x, deterministic=deterministic), (q_size, kv_size, kv_size), axis=-1)
@@ -678,8 +686,6 @@ def build_attention(config: ModelConfig | Config, rngs: nnx.Rngs) -> BaseAttenti
 # Backward-compatible shim for code that does `from dantinox.core.attention import Attention`
 def Attention(config: ModelConfig | Config, rngs: nnx.Rngs) -> BaseAttention:
     """Deprecated — use ``build_attention()`` or a concrete attention class."""
-    import warnings
-
     warnings.warn(
         "dantinox.core.attention.Attention() is deprecated; use build_attention() "
         "or a concrete class (MHAAttention / GQAAttention / MLAAttention). "
