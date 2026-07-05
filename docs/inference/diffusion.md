@@ -21,7 +21,7 @@ tokens = fast_dllm_generate(
     prefix    = prefix_ids,      # [B, T_prefix] — pass zeros for unconditional
     gen_len   = 256,
     schedule  = schedule,
-    mask_token_id = 0,
+    mask_token_id = 4,
 
     # Block-wise parameters
     block_size      = 32,        # default: 32
@@ -49,7 +49,7 @@ from dantinox.core.generation import diffusion_generate
 tokens = diffusion_generate(
     model, prefix, gen_len=128,
     schedule      = schedule,
-    mask_token_id = 0,
+    mask_token_id = 4,
     num_sampling_steps = 50,
     temperature   = 1.0,
     seed          = 42,

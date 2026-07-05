@@ -169,6 +169,7 @@ nav:
           - Overview: inference/index.md
           - AR Generation: inference/autoregressive.md
           - Diffusion Generation: inference/diffusion.md
+          - Continuous Flow-Matching Generation: inference/continuous.md
           - KV-Cache Mechanics: inference/kv-cache.md
       - Tutorials:
           - Overview: tutorials/index.md

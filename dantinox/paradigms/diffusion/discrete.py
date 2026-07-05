@@ -83,15 +83,26 @@ class DiscreteParadigm(ParadigmBase):
             raise ValueError(
                 "DiscreteParadigm requires a bidirectional model (config.causal=False)."
             )
-        self.model_config = model_config
-        self.config       = model_config  # alias for _paradigm_config() in Trainer
+        self.model_config     = model_config
+        self.config           = model_config  # alias for _paradigm_config() in Trainer
+        self._diffusion_config = diffusion_config
         if diffusion_config is not None:
             self._noise_schedule = diffusion_config.noise_schedule
-            self._mask_token_id  = diffusion_config.mask_token_id
         else:
             self._noise_schedule = model_config.noise_schedule
-            self._mask_token_id  = model_config.mask_token_id
         self._schedule: NoiseSchedule = make_noise_schedule(self._noise_schedule)
+
+    @property
+    def _mask_token_id(self) -> int:
+        # Read live from model_config rather than caching at construction
+        # time: Trainer.fit() auto-syncs config.mask_token_id from the
+        # tokenizer's real mask position *after* the paradigm is built (the
+        # user constructs `Paradigm(config)` before calling `.fit()`), so a
+        # value cached in __init__ would silently keep the stale default
+        # (mask_token_id=4) instead of the tokenizer's actual [MASK] id.
+        if self._diffusion_config is not None:
+            return self._diffusion_config.mask_token_id
+        return self.model_config.mask_token_id
 
     @property
     def diffusion_config(self) -> Any:

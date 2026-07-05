@@ -198,11 +198,11 @@ The library is designed to be used at different levels of abstraction, from the 
 DantinoX/
 │
 ├── core/                        ← Neural primitives (Attention, FFN, MoE, LoRA, …)
-│   ├── config.py                   ModelConfig · TrainingConfig · Config · ELFConfig
-│   ├── model.py                    Transformer · DiffusionTransformer
-│   ├── elf.py                      ELFTransformer
+│   ├── config.py                   ModelConfig · TrainingConfig · Config · FlowMatchingConfig
+│   ├── model.py                    Transformer · DiffusionTransformer (alias)
+│   ├── flow.py                     FlowMatchingTransformer (continuous flow-matching)
 │   ├── attention.py                MHA / GQA / MLA + RoPE + KV-cache
-│   ├── block.py                    TransformerBlock (Attention + FFN + Norm)
+│   ├── block.py                    Block (Attention + FFN + Norm); DiffusionBlock is an alias
 │   ├── mlp.py                      Dense MLP (SwiGLU / GELU)
 │   ├── moe.py                      Sparse MoE with load-balancing loss
 │   ├── diffusion.py                NoiseSchedule · make_noise_schedule

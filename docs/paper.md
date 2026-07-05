@@ -12,9 +12,44 @@ title: Experiments & Results
 
 DantinoX is a unified, configurable framework for systematically comparing autoregressive (AR), masked discrete diffusion, and continuous flow-matching (ELF) language models under strictly identical training conditions. This page documents the experimental design, training matrix, and evaluation pipeline.
 
+!!! info "Scope of this page vs. the published paper"
+    This page documents the **Part A/B ablation suite** (`scripts/run_full_emnlp.sh`
+    and the `benchmarks/*.py` scripts it drives) — a broader internal research
+    pipeline that trains **AR and Discrete Diffusion only** (no continuous
+    flow-matching stage) across ~180 checkpoints, using **Lion/AdamW**
+    optimizers on **2× A100 40GB** for training. It is a real, working
+    pipeline, but it is **not** the exact methodology behind the headline
+    numbers in the EMNLP System Demo paper.
+
+    The paper's own reported results are narrower and cover all **three**
+    paradigms:
+
+    - **Generation quality (Table 2):** all 9 paradigm × attention
+      combinations (AR / Discrete Diffusion / Continuous Flow-Matching ×
+      MHA / GQA / MLA) trained with the **Muon** optimizer on WikiText-103 at
+      Small scale (512-d, 12-layer, ~65–82M params) — see
+      [Comparison — Paper's reported results](paradigms/comparison.md#papers-reported-results-authoritative)
+      for the full table.
+    - **Inference efficiency (Figure 4):** a `BenchmarkSuite.default()` sweep
+      of latency/throughput/energy for all three paradigms on a Large backbone
+      (1024-d, 16-layer, ~130M params), measured on a **single A100-40GB**
+      in bf16 — the paper's stated Limitations section is explicit that all
+      efficiency numbers come from one GPU, not two.
+
+    If you're looking to reproduce the paper's exact published tables/figures,
+    use the `dx.count_flops` / `dx.profile` / `BenchmarkSuite.default()` API
+    (see [Architecture Overview](architecture.md#the-core-layer)) rather than
+    `run_full_emnlp.sh`, which serves the wider ablation study below.
+
 ---
 
 ## Research Questions
+
+The RQs below scope the Part A/B ablation suite (AR vs. Diffusion only, per
+the note above) — the published paper additionally answers a parallel
+question for continuous flow-matching (RQ1'): under the same recipe, how does
+ELF's generation quality and inference-efficiency profile compare to AR and
+Discrete Diffusion? (Answered in Table 2 / Figure 4 of the paper.)
 
 - **RQ1 — Quality–efficiency tradeoff (AR vs. Diffusion):** Under identical architectures and training budgets, does masked diffusion achieve competitive perplexity relative to autoregressive LM, and at what throughput cost?
 
@@ -112,7 +147,9 @@ After training, the pipeline runs three sequential stages.
 ```bash
 # Full pipeline: training → benchmarks → evaluation → figures
 # Estimated wall time: 6–10 hours (training dominates)
-# Hardware: 2× NVIDIA A100 40 GB
+# Hardware: 2× NVIDIA A100 40 GB for the Part A/B training suites below.
+# (The paper's own published efficiency numbers — Figure 4 — were measured
+# on a single A100-40GB; see the scope note above.)
 bash scripts/run_full_emnlp.sh
 
 # Skip training — run benchmarks on existing checkpoints only
@@ -150,9 +187,10 @@ If you use DantinoX in your work, please cite:
 
 ```bibtex
 @software{dantinox2026,
-  author  = {Simoni, Marco},
-  title   = {DantinoX: A Unified {JAX}/Flax Framework for Autoregressive
-             and Masked Diffusion Language Models},
+  author  = {Simoni, Marco and Fontana, Aleksandar and Rossolini, Giulio
+             and Saracino, Andrea},
+  title   = {{D}antino{X}: A Unified Framework for Multi-Paradigm Language
+             Modeling},
   year    = {2026},
   url     = {https://github.com/winstonsmith1897/DantinoX},
 }
