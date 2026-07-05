@@ -621,12 +621,19 @@ class _FlowAdapter(_ModelAdapter):
         t5_encode = self._t5_encoder.encode
 
         def _fn(x):
-            emb = t5_encode(x)                            # [B, L, E]
+            emb   = t5_encode(x)                          # [B, L, E]
             emb_n = model.encode(emb)                     # normalise
-            t   = jnp.zeros(x.shape[0])                   # t=0 → clean
-            x_t = emb_n                                    # use clean emb as x_t
+            b     = x.shape[0]
+            # FlowMatchingTransformer.__call__ requires (z_t, x_prev, t,
+            # cfg_scale, is_decode); a representative denoiser-mode step is
+            # enough to profile latency/FLOPs (the scalar values of t /
+            # cfg_scale / is_decode don't change the forward pass's cost).
+            x_prev    = jnp.zeros_like(emb_n)
+            t         = jnp.zeros(b)
+            cfg_scale = jnp.ones(b)
+            is_decode = jnp.zeros(b, dtype=bool)
             return jax.block_until_ready(
-                model(x_t, deterministic=True)
+                model(emb_n, x_prev, t, cfg_scale, is_decode, deterministic=True)
             )
 
         return _fn

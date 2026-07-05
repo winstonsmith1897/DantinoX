@@ -8,6 +8,13 @@ from flax import nnx
 
 from dantinox.core.config import FlowMatchingConfig, ModelConfig
 from dantinox.core.flow import FlowEmbedder, FlowMatchingTransformer, flow_loss
+from dantinox.core.generation import (
+    flow_generate as _flow_generate,
+)
+from dantinox.core.generation import (
+    stream_flow_generate as _stream_flow_generate,
+)
+from dantinox.paradigms.base import ParadigmBase
 
 
 def _elf_config_from_model_config(m: ModelConfig) -> FlowMatchingConfig:
@@ -35,13 +42,6 @@ def _elf_config_from_model_config(m: ModelConfig) -> FlowMatchingConfig:
         sde_gamma=m.sde_gamma,
         t5_model_name=m.t5_model_name,
     )
-from dantinox.core.generation import (
-    flow_generate as _flow_generate,
-)
-from dantinox.core.generation import (
-    stream_flow_generate as _stream_flow_generate,
-)
-from dantinox.paradigms.base import ParadigmBase
 
 
 class ContinuousParadigm(ParadigmBase):

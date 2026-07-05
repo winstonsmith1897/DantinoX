@@ -162,7 +162,11 @@ class LatencyMetric:
             for sl in sls:
                 try:
                     x = get_batch_fn(bs, sl)
-                    _warmup(lambda: model_fn(x), self.n_warmup)
+                    # Bind `x` as a default arg: _warmup calls this immediately
+                    # (not deferred), but this keeps it correct even if that
+                    # ever changes, instead of relying on late-binding closure
+                    # semantics over the loop variable.
+                    _warmup(lambda x=x: model_fn(x), self.n_warmup)
                     times_s: list[float] = []
                     for _ in range(self.n_measure):
                         _jax_barrier()
@@ -369,7 +373,8 @@ class _PowerSampler:
 
     def start(self) -> None:
         self._running = True
-        self._ts.clear(); self._w.clear()
+        self._ts.clear()
+        self._w.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
@@ -399,7 +404,9 @@ class _PowerSampler:
         return (self._ts[-1] - self._ts[0]) if len(self._ts) >= 2 else 0.0
 
     def idle_watts(self, window_s: float = 0.5) -> float:
-        self.start(); time.sleep(window_s); self.stop()
+        self.start()
+        time.sleep(window_s)
+        self.stop()
         return self.mean_watts()
 
 
@@ -425,13 +432,16 @@ class EnergyMetric:
             return _nan
 
         idle_w = ps.idle_watts(window_s=0.5)
-        fn(); _jax_barrier()  # warmup
+        fn()
+        _jax_barrier()  # warmup
 
         ps.start()
         n_runs = 0
         t_start = time.perf_counter()
         while time.perf_counter() - t_start < self.min_window_s:
-            fn(); _jax_barrier(); n_runs += 1
+            fn()
+            _jax_barrier()
+            n_runs += 1
         ps.stop()
 
         gross_j = ps.joules()
@@ -857,7 +867,8 @@ class LatencyTracker:
         )
 
     def reset(self) -> None:
-        self._elapsed_s.clear(); self._tokens.clear()
+        self._elapsed_s.clear()
+        self._tokens.clear()
 
     def __len__(self) -> int:
         return len(self._elapsed_s)

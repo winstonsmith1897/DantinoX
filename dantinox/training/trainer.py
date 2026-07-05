@@ -26,6 +26,7 @@ from dantinox.core.sharding import (
     shard_batch,
 )
 from dantinox.paradigms.base import ParadigmBase as _ParadigmBase
+from dantinox.paradigms.paradigm import Paradigm
 from dantinox.training.callbacks import BaseCallback
 from dantinox.training.optimizer import _model_has_lora, build_optimizer
 
@@ -357,10 +358,7 @@ class Trainer:
             )
         n_dp = n_total // tp   # data-parallel replicas (each holds one model shard group)
 
-        if tp > 1:
-            mesh = make_tp_mesh(n_tp=tp, n_dp=n_dp)
-        else:
-            mesh = make_mesh(n_dp)
+        mesh = make_tp_mesh(n_tp=tp, n_dp=n_dp) if tp > 1 else make_mesh(n_dp)
 
         # n_dev controls batch sharding — always the DP count, never total devices
         n_dev = n_dp
@@ -498,7 +496,8 @@ class Trainer:
         # ── Training loop ─────────────────────────────────────────────────────
         import time as _time
         base_key = jax.random.PRNGKey(cfg.seed)
-        for cb in self.callbacks: cb.on_train_begin(cfg)  # ① callback hook
+        for cb in self.callbacks:  # ① callback hook
+            cb.on_train_begin(cfg)
         log_rows: list[dict] = []
         log_every = 10  # host syncs for the progress bar, once per N steps
 
@@ -534,7 +533,8 @@ class Trainer:
                     loss_host = float(loss)  # single host sync, shared by both uses
                     if step % log_every == 0:
                         pbar.set_postfix(loss=f"{loss_host:.4f}")
-                    for cb in self.callbacks: cb.on_step_end(step, {"train_loss": loss_host}, epoch)  # ② callback hook
+                    for cb in self.callbacks:  # ② callback hook
+                        cb.on_step_end(step, {"train_loss": loss_host}, epoch)
             pbar.close()
             prefetcher.close()
 
@@ -586,7 +586,8 @@ class Trainer:
         log.info("Training complete.  Best val loss: %.4f  Run dir: %s",
                  best_loss, run_dir)
         _ui.print_training_done(best_loss, run_dir)
-        for cb in self.callbacks: cb.on_train_end()  # ③ callback hook
+        for cb in self.callbacks:  # ③ callback hook
+            cb.on_train_end()
         return run_dir
 
 
@@ -595,8 +596,6 @@ class Trainer:
 
 def _paradigm_from_legacy_config(cfg: Config) -> tuple[Paradigm, TrainingConfig]:
     """Split a monolithic legacy ``Config`` into (Paradigm, TrainingConfig)."""
-    from dantinox.paradigms.paradigm import Paradigm
-
     train_cfg = TrainingConfig.from_dict(cfg.to_dict())
     if cfg.model_type == "elf":
         train_cfg.tokenizer_type = "t5"  # the frozen T5 encoder needs T5 IDs

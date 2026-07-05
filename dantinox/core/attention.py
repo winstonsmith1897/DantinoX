@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import flax.nnx as nnx
 import jax
@@ -84,7 +84,11 @@ class BaseAttention(nnx.Module):
 
     def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
         self.max_context    = config.max_context
-        self.head_size      = config.head_size
+        # ModelConfig.head_size is `int | None` in the dataclass but is always
+        # resolved to a concrete int by ModelConfig.__post_init__ before any
+        # model is built; narrow it once here instead of at every use site.
+        assert config.head_size is not None, "config.head_size must be resolved before building attention"
+        self.head_size: int = config.head_size
         self.n_heads        = config.n_heads
         self.dim            = config.dim
         self.kv_heads       = config.kv_heads if config.kv_heads is not None else config.n_heads
@@ -104,7 +108,10 @@ class BaseAttention(nnx.Module):
 
         # Output projection (with optional LoRA)
         _use_lora = config.use_lora and config.lora_targets in ("attention", "all")
-        _lk = dict(
+        # Any: heterogeneous kwargs (int/float/Rngs) splatted into LoRALinear;
+        # a homogeneous dict type would make mypy check the splat against a
+        # single type instead of per-parameter.
+        _lk: dict[str, Any] = dict(
             rank=config.lora_rank,
             alpha=config.lora_alpha,
             dropout_rate=config.lora_dropout,
@@ -167,7 +174,7 @@ class BaseAttention(nnx.Module):
         T: int,
         q: jnp.ndarray,
         k: jnp.ndarray,
-        v: jnp.ndarray | None,
+        v: jnp.ndarray,
     ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
         """Reshape flat QKV vectors into grouped [B, kv_heads, G, T, head_size]."""
         def _reshape(x: jnp.ndarray, h: int) -> jnp.ndarray:
@@ -245,7 +252,7 @@ class _StandardAttention(BaseAttention):
     def __init__(self, config: ModelConfig | Config, rngs: nnx.Rngs) -> None:
         super().__init__(config, rngs)
         _use_lora = config.use_lora and config.lora_targets in ("attention", "all")
-        _lk = dict(
+        _lk: dict[str, Any] = dict(
             rank=config.lora_rank,
             alpha=config.lora_alpha,
             dropout_rate=config.lora_dropout,
@@ -298,8 +305,10 @@ class _StandardAttention(BaseAttention):
         prefix-summed, giving the same ``[B, kv_heads, G, T, head_size]`` output
         layout as the softmax path.
         """
-        fn = lambda x: jax.nn.elu(x) + 1
-        q, k = map(fn, (q, k))
+        def _feature_map(x: jnp.ndarray) -> jnp.ndarray:
+            return jax.nn.elu(x) + 1
+
+        q, k = map(_feature_map, (q, k))
 
         kv      = jnp.einsum('bkgth, bkgtj -> bkghj', k, v)
         num     = jnp.einsum('bkgth, bkghj -> bkgtj', q, kv)
@@ -327,6 +336,8 @@ class _StandardAttention(BaseAttention):
             kc = kc.at[:, :, :, :T, :].set(k)
             vc = vc.at[:, :, :, :T, :].set(v)
             if is_differential:
+                # Callers only pass is_differential=True together with a real k2.
+                assert k2 is not None
                 k2c = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k2.dtype)
                 k2c = k2c.at[:, :, :, :T, :].set(k2)
         else:
@@ -339,6 +350,7 @@ class _StandardAttention(BaseAttention):
                 (cache_index, cache_index),
             )
             if is_differential:
+                assert k2 is not None
                 k2c = jax.lax.dynamic_update_slice(kv_cache[2], k2, (0, 0, 0, cache_index, 0))
 
         return KVCache(kc, vc, k2c), kc, vc, k2c
@@ -382,6 +394,12 @@ class _StandardAttention(BaseAttention):
         kv_size = self.kv_heads * self.head_size
         q, k, v = jax.lax.split(call_linear(self.qkv, x, deterministic=deterministic), (q_size, kv_size, kv_size), axis=-1)
 
+        # Declared once as Optional: k2/q2 only exist when differential
+        # attention is active, but every later use is itself guarded by
+        # self.differential (a construction-time constant), so they are never
+        # read while None.
+        q2: jnp.ndarray | None = None
+        k2: jnp.ndarray | None = None
         if self.differential:
             q2, k2  = jax.lax.split(call_linear(self.q2k2, x, deterministic=deterministic), (q_size, kv_size), axis=-1)
         # Flash Attention fast path (causal training, no cache, no prefix injection)
@@ -397,6 +415,7 @@ class _StandardAttention(BaseAttention):
             v_fa = v.reshape(B, T, self.kv_heads, self.head_size)
 
             if self.differential:
+                assert q2 is not None and k2 is not None
                 q2_fa = q2.reshape(B, T, self.n_heads, self.head_size)
                 k2_fa = k2.reshape(B, T, self.kv_heads, self.head_size)
 
@@ -435,15 +454,17 @@ class _StandardAttention(BaseAttention):
         # General path (cache / sliding window / bidirectional diffusion)
         q, k, v = self.reshape_head(B, T, q, k, v)
         if self.differential:
+            assert q2 is not None and k2 is not None
             q2, k2, _ = self.reshape_head(B, T, q2, k2, k2)
-        else:
-            k2 = None
 
         if self.use_rotary:
             q = self._apply_rope_grouped(q, cache_index)
             k = self._apply_rope_grouped(k, cache_index)
 
             if self.differential:
+                # self.differential is fixed at construction, so this branch
+                # runs iff the one at line 449 did — q2/k2 are real arrays here.
+                assert q2 is not None and k2 is not None
                 q2 = self._apply_rope_grouped(q2, cache_index)
                 k2 = self._apply_rope_grouped(k2, cache_index)
 
@@ -460,6 +481,7 @@ class _StandardAttention(BaseAttention):
         if not is_causal and self.use_linear_attention:
             y = self._apply_linear_attention(q, k, v)
             if self.differential:
+                assert q2 is not None and k2 is not None
                 y2  = self._apply_linear_attention(q2, k2, v)
                 lam = self._compute_lambda().reshape(self.kv_heads, -1)[None, :, :, None, None]  # [1, kv_heads, G, 1, 1]
                 y   = y - lam * y2
@@ -479,6 +501,7 @@ class _StandardAttention(BaseAttention):
         attn = jax.nn.softmax(attn)
 
         if self.differential:
+            assert q2 is not None and k2 is not None
             attn2 = q2 @ jnp.swapaxes(k2, -2, -1) / math.sqrt(self.head_size)
             attn2 = self._apply_attn_mask(attn2, cache_index, T, S, is_causal)
             attn2 = jax.nn.softmax(attn2)

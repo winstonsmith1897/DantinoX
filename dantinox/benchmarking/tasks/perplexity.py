@@ -51,11 +51,17 @@ class PerplexityTask(BenchmarkTask):
                 metrics={"perplexity": float("nan"), "eval_loss": float("nan")},
             )
 
-        tokens     = _load_tokens(self.data_source)
         seq_len    = config.eval_seq_len
         bs         = config.eval_batch_size
         n_batches  = config.eval_batches
         vocab_size = _infer_vocab(paradigm)
+        # Clamp to vocab_size: this task encodes bytes as pseudo-tokens (no
+        # real tokenizer dependency), which only stays in-range for
+        # vocab_size >= 256. Models with a smaller vocab (e.g. tiny
+        # char-tokenizer demos) would otherwise index the embedding table
+        # out of bounds, which JAX does not raise on — it silently returns
+        # NaN rows that poison the loss into a NaN perplexity with no error.
+        tokens = _load_tokens(self.data_source, vocab_size)
 
         if len(tokens) < seq_len + 1:
             log.warning("[perplexity] corpus too short (%d tokens)", len(tokens))
@@ -65,7 +71,7 @@ class PerplexityTask(BenchmarkTask):
             )
 
         total_loss = 0.0
-        for i in range(n_batches):
+        for _i in range(n_batches):
             rng, rng_b = jax.random.split(rng)
             batch      = _sample_batch(tokens, bs, seq_len, rng_b)
             loss, _    = paradigm.loss_fn(model, batch, rng_b)
@@ -86,12 +92,16 @@ class PerplexityTask(BenchmarkTask):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _load_tokens(path: str) -> list[int]:
-    """Minimal character-level tokenization for eval purposes."""
+def _load_tokens(path: str, vocab_size: int) -> list[int]:
+    """Minimal character-level tokenization for eval purposes.
+
+    Maps each character to ``ord(c) % vocab_size`` so every id is a valid
+    embedding index for the model under test, regardless of its vocab size.
+    """
     try:
         with open(path, encoding="utf-8") as f:
             text = f.read()
-        return [ord(c) % 256 for c in text]
+        return [ord(c) % vocab_size for c in text]
     except FileNotFoundError:
         log.error("[perplexity] file not found: %s", path)
         return []

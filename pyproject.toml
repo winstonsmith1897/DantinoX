@@ -68,6 +68,9 @@ markers      = [
 [tool.ruff]
 line-length    = 100
 target-version = "py310"
+# Same exemption as [tool.interrogate]: these are terse, throwaway plotting
+# scripts, not library code.
+exclude        = ["dantinox/plots/", "dantinox/bench.py", "dantinox/plotting.py"]
 
 [tool.ruff.lint]
 select = [

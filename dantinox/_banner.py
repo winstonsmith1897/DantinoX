@@ -49,7 +49,6 @@ def _render() -> list[str]:
     lines = []
     for row in range(5):
         parts = []
-        seen: dict[str, int] = {}          # track repeated letters
         for ch in _TEXT:
             col = _GRAD.get(ch, 255)
             parts.append(f"\033[38;5;{col}m{_G[ch][row]}\033[0m")

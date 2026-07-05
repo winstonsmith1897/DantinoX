@@ -65,7 +65,7 @@ class LatencyChart(Chart):
 
 
 def _draw_pareto_frontier(ax: Any, latency: Any, throughput: Any) -> None:
-    points = sorted(zip(latency, throughput))
+    points = sorted(zip(latency, throughput, strict=True))
     frontier: list[tuple] = []
     best_tps = -float("inf")
     for lat, tps in points:
@@ -73,7 +73,7 @@ def _draw_pareto_frontier(ax: Any, latency: Any, throughput: Any) -> None:
             frontier.append((lat, tps))
             best_tps = tps
     if len(frontier) > 1:
-        xs, ys = zip(*frontier)
+        xs, ys = zip(*frontier, strict=True)
         ax.plot(xs, ys, "k--", alpha=0.35, linewidth=1.2, label="Pareto frontier")
 
 

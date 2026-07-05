@@ -278,7 +278,6 @@ def print_sharding_summary(model_cfg: Any, n_dev: int, tp_size: int) -> None:
     else:
         # ── Tensor-parallelism (+ optional DP) ───────────────────────────
         dim    = _cfg_dim(model_cfg)
-        n_h    = getattr(model_cfg, "n_heads", 8)
         vocab  = getattr(model_cfg, "vocab_size", None) or "V"
         exp    = getattr(model_cfg, "expansion", 4)
         swiglu = getattr(model_cfg, "use_swiglu", True)
@@ -299,7 +298,7 @@ def print_sharding_summary(model_cfg: Any, n_dev: int, tp_size: int) -> None:
         L.append(sep)
 
         tp = tp_size
-        d, h = dim, n_h
+        d = dim
         # FFN width depends on SwiGLU (gate+up split) vs plain MLP
         ffn_w = exp * d // 2 if swiglu else exp * d
 

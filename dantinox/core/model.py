@@ -109,7 +109,7 @@ class Transformer(nnx.Module, pytree=False):
         if cfg.pos_encoding == "learned":
             self.wpe: nnx.Embed = nnx.Embed(cfg.max_context, cfg.dim, rngs=rngs)
         elif cfg.pos_encoding == "absolute":
-            self.wpe: jnp.ndarray = self._build_sinusoidal(cfg.max_context, cfg.dim)  # type: ignore[assignment]
+            self.wpe = self._build_sinusoidal(cfg.max_context, cfg.dim)  # type: ignore[assignment,no-redef]
 
     # ── Positional encoding helpers ────────────────────────────────────────────
 

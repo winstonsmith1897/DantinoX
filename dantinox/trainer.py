@@ -17,9 +17,7 @@ from tqdm import tqdm
 
 from dantinox.core.config import Config
 from dantinox.core.diffusion import (
-    NoiseSchedule,
     corrupt,
-    make_noise_schedule,
     masked_cross_entropy,
 )
 from dantinox.core.flow import FlowMatchingTransformer, flow_loss
@@ -357,7 +355,6 @@ class Trainer:
 
         is_diffusion = config.model_type == "diffusion"
         is_elf       = config.model_type == "elf"
-        schedule: NoiseSchedule | None = make_noise_schedule(config) if is_diffusion else None
 
         # LoRA: only train adapter params; base weights are frozen nnx.Param
         wrt_type = LoRAParam if getattr(config, "use_lora", False) else nnx.Param

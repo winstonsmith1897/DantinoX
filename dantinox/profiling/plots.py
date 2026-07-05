@@ -603,7 +603,8 @@ def plot_scale(
                 color=_COLORS.get(par, "#555"),
                 marker=_MARKERS.get(par, "o"),
                 lw=2.0, ms=6.5, label=_NICE.get(par, par))
-    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
     ax.set_xlabel("Model parameters (M)")
     ax.set_ylabel("Throughput (k tok/s)")
     ax.set_title("(a) Scale: throughput vs model size", fontweight="bold")
@@ -814,7 +815,7 @@ def plot_dtype(
         bars = ax.bar(x + offset, vals, W,
                       color=BAR_COLORS[i % len(BAR_COLORS)],
                       label=dtype, zorder=3)
-        for bar, v in zip(bars, vals):
+        for bar, v in zip(bars, vals, strict=True):
             if v > 0:
                 ax.text(bar.get_x() + bar.get_width() / 2, v + 0.03,
                         f"{v:.1f}k", ha="center", va="bottom", fontsize=7.5)
@@ -889,7 +890,8 @@ def plot_composite(
                     color=_COLORS.get(par, "#555"), marker=_MARKERS.get(par, "o"),
                     lw=2.0, ms=5.5, label=_NICE.get(par, par))
         ax.set_xscale("log")
-        ax.set_xlabel("Parameters (M)"); ax.set_ylabel("MFU %")
+        ax.set_xlabel("Parameters (M)")
+        ax.set_ylabel("MFU %")
         ax.legend(fontsize=7)
     ax.set_title("(a) Hardware utilisation (MFU %)", fontweight="bold")
 
@@ -902,7 +904,8 @@ def plot_composite(
                      color=_COLORS.get(par, "#555"), marker=_MARKERS.get(par, "o"),
                      lw=2.0, ms=5.5, label=_NICE.get(par, par))
         ax2.set_xscale("log")
-        ax2.set_xlabel("Parameters (M)"); ax2.set_ylabel("Single-step latency (ms)")
+        ax2.set_xlabel("Parameters (M)")
+        ax2.set_ylabel("Single-step latency (ms)")
         ax2.legend(fontsize=7)
     ax2.set_title("(b) Step latency vs model size", fontweight="bold")
 
@@ -925,8 +928,10 @@ def plot_composite(
                                  textcoords="offset points", xytext=(5, 4), fontsize=6.5,
                                  color=_COLORS.get(par, "#555"))
         ax3.axvline(slo_ms, color="#888888", lw=1.0, ls=":", label=f"{slo_ms:.0f} ms SLO")
-        ax3.set_xscale("log"); ax3.set_yscale("log")
-        ax3.set_xlabel("Per-request latency (ms)"); ax3.set_ylabel("Throughput (k tok/s)")
+        ax3.set_xscale("log")
+        ax3.set_yscale("log")
+        ax3.set_xlabel("Per-request latency (ms)")
+        ax3.set_ylabel("Throughput (k tok/s)")
         ax3.legend(fontsize=7)
     ax3.set_title("(c) Serving Pareto frontier", fontweight="bold")
 
@@ -945,7 +950,8 @@ def plot_composite(
                      lw=1.5, alpha=0.5)
         if not math.isnan(ar_tps):
             ax4.axhline(ar_tps / 1e3, color=_COLORS["AR"], lw=1.5, ls="--", label="AR baseline")
-        ax4.set_xlabel("Diffusion steps"); ax4.set_ylabel("Throughput (k tok/s)")
+        ax4.set_xlabel("Diffusion steps")
+        ax4.set_ylabel("Throughput (k tok/s)")
         ax4.legend(fontsize=7)
     ax4.set_title("(d) Quality-speed knob: diffusion steps", fontweight="bold")
 

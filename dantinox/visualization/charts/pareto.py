@@ -98,7 +98,7 @@ class ParetoChart(Chart):
 
 def _draw_pareto_2d(ax: Any, x: Any, y: Any) -> None:
     """Draw the Pareto frontier for (max x, min y) optimum."""
-    pts = sorted(zip(x, y), key=lambda p: p[0])
+    pts = sorted(zip(x, y, strict=True), key=lambda p: p[0])
     frontier: list[tuple] = []
     best_y = float("inf")
     for xi, yi in pts:
@@ -106,7 +106,7 @@ def _draw_pareto_2d(ax: Any, x: Any, y: Any) -> None:
             frontier.append((xi, yi))
             best_y = yi
     if len(frontier) > 1:
-        xs, ys = zip(*frontier)
+        xs, ys = zip(*frontier, strict=True)
         ax.plot(xs, ys, "k--", alpha=0.3, linewidth=1.2, zorder=2)
 
 

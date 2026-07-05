@@ -10,7 +10,7 @@ here. For the system-level design see the [Architecture overview](../architectur
 
 All three attention variants live in `core/attention.py` and share the same
 abstract base class `BaseAttention`. The variant is selected by
-`config.attention_type` (`"mha"`, `"gqa"`, `"mla"`, or `"auto"`).
+`config.attention_type` (`"mha"`, `"gqa"`, `"mla"`, or `"auto"`). The module provides shared infrastructure for RoPE positional encoding, causal/sliding-window masking, no-sink gating, dropout, and native LoRA integration.
 
 ### Selection guide
 
@@ -25,209 +25,142 @@ and the relative values of `n_heads` and `kv_heads`.
 
 ---
 
-### Multi-Head Attention (MHA)
+### Multi-Head (MHA) and Grouped-Query Attention (GQA)
 
-MHA is the original attention mechanism (Vaswani et al. 2017). Every attention
-head has its own set of key and value projections. The full forward pass:
+MHA is the original attention mechanism (Vaswani et al. 2017) where every attention head has its own set of key and value projections. GQA (Ainslie et al. 2023) reduces the number of key-value projections relative to query projections, sharing each KV head across a group of `n_heads // kv_heads` query heads to drastically save KV-cache memory during autoregressive generation.
 
-$$\mathbf{Q} = \mathbf{x} W_Q, \quad \mathbf{K} = \mathbf{x} W_K, \quad \mathbf{V} = \mathbf{x} W_V$$
+In DantinoX, both MHA and GQA share the exact same forward pass via the `_StandardAttention` class. The distinction is purely structural based on the `kv_heads` parameter. 
 
-$$\text{Attn}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{softmax}\!\left(\frac{\mathbf{Q}\mathbf{K}^\top}{\sqrt{d_h}}\right) \mathbf{V}$$
-
-where $d_h$ = `head_size` is the dimension per head. The scaling by
-$1/\sqrt{d_h}$ prevents the dot products from growing so large that the
-softmax saturates into regions with vanishing gradients.
-
-In DantinoX, all three projections are fused into a single `qkv` linear layer
-that maps from `dim` to `dim + 2 × kv_heads × head_size`:
+The projections are fused into a single `qkv` linear layer, which natively supports **Low-Rank Adaptation (LoRA)** if `config.use_lora` targets the attention blocks:
 
 ```python
 qkv_out = self.dim + 2 * self.kv_heads * self.head_size
-self.qkv = nnx.Linear(self.dim, qkv_out, use_bias=False, rngs=rngs)
+self.qkv = (
+    LoRALinear(self.dim, qkv_out, use_bias=False, **_lk)
+    if _use_lora else nnx.Linear(self.dim, qkv_out, use_bias=False, rngs=rngs)
+)
 ```
 
-The output is split with `jax.lax.split` at inference time.
+During Flash Attention, GQA is handled by repeating the KV heads to match the query count before calling the fused kernel. In the general (non-Flash) path, the grouped layout `[B, kv_heads, G, T, head_size]` is preserved, and the matmul is broadcast automatically.
 
 ---
 
-### Grouped-Query Attention (GQA)
+### Differential Attention
 
-GQA (Ainslie et al. 2023) reduces the number of key-value projections relative
-to query projections. Instead of `n_heads` independent KV heads, there are
-`kv_heads < n_heads` heads. Each KV head is shared by a group of
-`n_heads // kv_heads` query heads.
+If `config.differential=True`, `_StandardAttention` activates Differential Attention to mitigate attention noise. This requires computing a second set of queries and keys via an additional projection (`q2k2`). 
 
-**Why it saves KV-cache memory.** In autoregressive generation, the K and V
-tensors for all previous tokens must be kept in memory. With MHA this grows as
-`2 × n_heads × d_h` values per token per layer. With GQA it is
-`2 × kv_heads × d_h`. For a model with `n_heads=16`, `kv_heads=4`, the KV
-cache is 4× smaller, which directly translates to longer generation contexts
-or smaller VRAM requirements.
+The attention scores are penalized by subtracting a second attention map, scaled by a set of learnable per-head vectors $\lambda$:
 
-The implementation uses `MHAAttention` and `GQAAttention` classes which are
-both subclasses of `_StandardAttention` and share the same forward pass code —
-the only difference is the value of `kv_heads`.
+$$\lambda = \exp(\lambda_{q1} \cdot \lambda_{k1}) - \exp(\lambda_{q2} \cdot \lambda_{k2}) + \lambda_{\text{init}}$$
 
-During Flash Attention, GQA is handled by expanding the KV heads to match
-the query count before calling the fused kernel:
+The final attention map is computed as:
 
-```python
-if self.kv_heads < self.n_heads:
-    g    = self.n_heads // self.kv_heads
-    k_fa = jnp.repeat(k_fa, g, axis=2)
-    v_fa = jnp.repeat(v_fa, g, axis=2)
-```
+$$\text{Attn} = \text{softmax}(Q_1 K_1^\top) - \lambda \cdot \text{softmax}(Q_2 K_2^\top)$$
 
-In the general (non-Flash) path the grouped layout is preserved in memory and
-the `q @ k.T` matmul is broadcast automatically.
+The output is then normalized using an `RMSNorm` layer (`diff_norm`) and scaled by $(1 - \lambda_{\text{init}})$. This feature is fully supported across both the standard decoding path and the Flash Attention fast path.
+
+---
+
+### Linear Attention
+
+For purely bidirectional contexts (e.g., non-causal encoder architectures or diffusion models), DantinoX supports $O(T)$ Linear Attention (Katharopoulos et al., 2020) via `config.use_linear_attention`. 
+
+Instead of computing the $T \times T$ attention matrix, queries and keys are projected into a positive feature space using an ELU-based mapping:
+
+$$\phi(x) = \text{elu}(x) + 1$$
+
+The key-value product is accumulated once over the sequence length, avoiding the standard causal prefix-sum. 
+
+> **Warning: Bidirectional Only** > Linear attention is strictly ignored if `is_causal=True`. The module will emit a warning and automatically fall back to standard softmax or Flash Attention.
 
 ---
 
 ### Multi-Head Latent Attention (MLA)
 
 MLA (DeepSeek-V2) compresses keys and values to a low-dimensional latent space
-before caching. This makes the KV cache dramatically smaller.
+before caching, making the KV cache dramatically smaller.
 
 #### Latent compression
 
 $$\mathbf{c}_{KV} = \mathrm{Norm}(W_{DKV}\,\mathbf{x})$$
 
-where $W_{DKV}$ maps from `dim` to `down_dim_kv` (`config.down_dim_kv`,
-default 256). The compressed latent $\mathbf{c}_{KV}$ is `down_dim_kv`
-scalars per token — typically 3 to 20 times smaller than the full KV tensors.
-
-Only $\mathbf{c}_{KV}$ is stored in the KV cache, not the full K and V
-matrices. Full K and V are re-expanded from $\mathbf{c}_{KV}$ on demand
-during the forward pass:
-
-```python
-self.down_kv = nnx.Linear(config.dim, config.down_dim_kv, rngs=rngs)
-self.up_k    = nnx.Linear(config.down_dim_kv, head_size * kv_heads, rngs=rngs)
-self.up_v    = nnx.Linear(config.down_dim_kv, head_size * kv_heads, rngs=rngs)
-```
-
-Queries undergo the same treatment with `down_dim_q` (`config.down_dim_q`):
-
-$$\mathbf{c}_{Q} = \mathrm{Norm}(W_{DQ}\,\mathbf{x}), \quad \mathbf{q} = W_{UQ}\,\mathbf{c}_{Q}$$
-
-A separate small RoPE component (`rope_dim`, default 32) is appended to Q and K
-to preserve relative positional information that would otherwise be lost in the
-latent projection.
+The compressed latent $\mathbf{c}_{KV}$ is `down_dim_kv` scalars per token — typically 3 to 20 times smaller than the full KV tensors. Only $\mathbf{c}_{KV}$ is stored in the cache. Full K and V are re-expanded on demand during the forward pass. Queries undergo the same treatment with `down_dim_q`. A separate small RoPE component is appended to preserve relative positional information.
 
 #### Weight absorption at inference
 
-When `config.inference=True`, MLA avoids materialising the full K and V tensors
-entirely, instead absorbing the up-projection weights into the attention score
-computation. The K up-projection is folded into the Q-K dot product:
+When `config.inference=True`, MLA avoids materialising the full K and V tensors entirely. Because $\mathbf{c}_{KV}$ is used as both the key-side and value-side operand, the up-projection weights are absorbed directly into the `jnp.einsum` computations. 
 
-$$A_{QK} = W_{UQ}^\top W_{UK}$$
-
-and the V up-projection into the context-output product:
-
-$$W_{VO} = W_{UV} W_O$$
-
-Both absorbed products are computed once from the weight tensors and applied
-via `jnp.einsum`. The cache stores only the low-dimensional latent
-$\mathbf{c}_{KV}$, never the full K or V:
+The DantinoX implementation correctly handles biases during this absorption to remain numerically identical to the explicit training path:
 
 ```python
-# Absorbed path (inference):
-q_proj    = self.up_q.kernel.reshape(down_dim_q, kv_heads, g, head_size)
-k_proj    = self.up_k.kernel.reshape(down_dim_kv, kv_heads, head_size)
-attn_proj = jnp.einsum("qngh, knh -> ngqk", q_proj, k_proj)
-attn_proj = jnp.einsum("btq, ngqk -> btngk", q, attn_proj)
-attn      = jnp.einsum("btngk, bsk -> bngts", attn_proj, k)  # k is c_kv cache
+# Inference path: Up-projections folded into einsums
+G    = self.n_heads // self.kv_heads
+q_up = self.up_q(q).reshape(B, T, self.kv_heads, G, self.head_size)
+W_k  = self.up_k.kernel.reshape(self.down_dim_kv, self.kv_heads, self.head_size)
+
+# score[t, s] = q_up[t] · (c_kv[s] W_k + b_k)
+qWk  = jnp.einsum("btngh, knh -> btngk", q_up, W_k)
+attn = jnp.einsum("btngk, bsk -> bngts", qWk, k) # k is the c_kv cache
+
+if self.up_k.bias is not None:
+    b_k  = self.up_k.bias[...].reshape(self.kv_heads, self.head_size)
+    attn = attn + jnp.einsum("btngh, nh -> bngt", q_up, b_k)[..., None]
 ```
 
-!!! warning "Training vs inference mode"
-    Set `config.inference=False` during training (the default). Set
-    `config.inference=True` for generation. The weights are identical; only
-    the computation graph changes. Forgetting to switch modes gives correct
-    results but suboptimal performance.
+A similar absorption happens for the output projection over the values (`W_v`). 
+
+> **Tip: Training vs inference mode** > Set `config.inference=False` during training. Set `config.inference=True` for generation. The weights are identical, but the computation graph changes entirely.
 
 ---
 
 ### Flash Attention
 
-Flash Attention (Dao et al. 2022) is a hardware-aware algorithm that computes
-the exact same attention output as the standard formulation but avoids
-materialising the full $T \times T$ attention matrix.
+Flash Attention (Dao et al. 2022) is a hardware-aware algorithm that computes the exact same attention output but avoids materialising the full $O(T^2)$ matrix in HBM, reducing memory complexity to $O(T)$.
 
-**Tiling algorithm.** The $Q$, $K$, and $V$ matrices are divided into tiles
-that fit in SRAM (the on-chip memory of the GPU SM). The softmax is computed
-incrementally across tiles using a running maximum trick. At no point is the
-full $O(T^2)$ matrix written to HBM. Memory complexity drops from $O(T^2)$ to
-$O(T)$.
-
-In DantinoX, Flash Attention is activated when all of the following hold:
-
+In DantinoX, Flash Attention is triggered via `jax.nn.dot_product_attention` when all the following conditions are met:
 1. `config.use_flash_attention=True`
-2. `use_cache=False` (training, not AR generation)
+2. `use_cache=False` (training/forward pass, not AR decoding)
 3. `sliding_window=False`
 4. `is_causal=True`
-5. `prefix_kv=None` (no diffusion dual-cache)
+5. `prefix_kv=None` (no diffusion dual-cache active)
 
-Under these conditions `fit` calls the JAX fused kernel directly:
-
-```python
-y = jax.nn.dot_product_attention(q_fa, k_fa, v_fa, is_causal=True)
-```
-
-`jax.nn.dot_product_attention` dispatches to the `cudnn` or `xla` Flash
-Attention backend depending on the hardware and JAX version (≥ 0.4.25).
-
-!!! tip "When to enable Flash Attention"
-    Enable for medium-to-large models training with long sequences
-    (`max_context >= 512`). The memory saving grows quadratically with
-    sequence length, so for `max_context=2048` Flash Attention uses ~16×
-    less activation memory for the attention computation than the standard path.
+It seamlessly supports Differential Attention by computing `q2_fa` and `k2_fa`, calculating the secondary attention map, and blending them before the final projection.
 
 ---
 
-### Static KV-Cache (XLA-compatible)
+### Positional Encoding & Gate Mechanics
 
-The KV-cache enables efficient autoregressive generation by reusing the K and V
-tensors computed for all previous tokens.
+**RoPE (Rotary Positional Embeddings):** The base class dynamically computes causal and sliding-window masks on the fly to avoid O(max_context²) memory bloat. RoPE frequencies are precomputed once into an `angle` table. During the forward pass, `_apply_rope_grouped` or `_apply_rope_thd` dynamically slices the precomputed table based on the current `cache_index`, ensuring robust positional alignment during token-by-token generation.
 
-**Pre-allocated buffers.** The cache is a pair of zero-filled arrays of shape
-`[B, kv_heads, 1, max_context, head_size]` allocated the first time
-`use_cache=True` is passed:
+**No-Sink Gating:** If `config.no_sink=True`, DantinoX applies an Attention Sink gating mechanism to the final attention output $y$ before the projection layer:
+
+$$y = y \cdot \sigma(W(x))$$
+
+---
+
+### Static KV-Cache & Prefix Injection
+
+The KV-cache enables efficient autoregressive generation. DantinoX uses strictly typed `NamedTuple` objects (`KVCache` and `MLACache`) to flow through JAX `jit` boundaries and `fori_loop` constructs transparently.
+
+**Pre-allocated buffers:** The cache consists of zero-filled arrays allocated on the first call. XLA requires shapes to be statically known at compile time, preventing dynamic growth.
 
 ```python
 if kv_cache[0] is None:
     kc = jnp.zeros((B, self.kv_heads, 1, self.max_context, self.head_size), dtype=k.dtype)
     vc = jnp.zeros_like(kc)
-    kc = kc.at[:, :, :, :T, :].set(k)   # prefill
-    vc = vc.at[:, :, :, :T, :].set(v)
 ```
+*Note: If Differential Attention is active, `KVCache` also tracks `k2c` for the secondary key projections.*
 
-**`dynamic_update_slice` for decode.** At each decode step (one new token,
-`T=1`), the new K and V vectors are inserted at position `cache_index` using
-`jax.lax.dynamic_update_slice`:
+**`dynamic_update_slice` for decode:** At each decode step (`T=1`), the new vectors are inserted at `cache_index`. XLA handles this natively without recompilation.
+
+**Dual-Cache Prefix Injection:** DantinoX supports opt-in prefix caching for diffusion architectures. By passing a `prefix_kv` tuple, the model concatenates external keys and values to the sequence axis dynamically:
 
 ```python
-kc = jax.lax.dynamic_update_slice(kc, k, (0, 0, 0, cache_index, 0))
-vc = jax.lax.dynamic_update_slice(vc, v, (0, 0, 0, cache_index, 0))
+if prefix_kv is not None:
+    pk, pv = prefix_kv
+    k = jnp.concatenate([pk, k], axis=3)  # [B, kv_heads, 1, T_pre+T, head_size]
+    v = jnp.concatenate([pv, v], axis=3)
 ```
-
-`dynamic_update_slice` is a primitive that XLA understands natively. It writes
-a small tensor into a position of a larger tensor that is determined at runtime
-(`cache_index` is a dynamic value).
-
-**Why "static" shapes?** XLA requires every tensor's shape to be known at
-compile time. If the cache array grew dynamically (like a Python list), XLA
-would need to recompile for every new length. Using a fixed-size pre-allocated
-buffer means the shape is always `[B, kv_heads, 1, max_context, head_size]`,
-so compilation happens exactly once. The `cache_index` counter advances at
-runtime without triggering recompilation.
-
-**MLA cache.** For MLA the cache stores the compressed latent
-$\mathbf{c}_{KV}$ of shape `[B, max_context, down_dim_kv]` plus a small RoPE
-component `[B, 1, 1, max_context, rope_dim]`. This is the storage saving:
-instead of `2 × kv_heads × head_size` values per token, MLA stores
-`down_dim_kv + rope_dim` values.
-
----
 
 ## Feed-Forward Network (FFN)
 

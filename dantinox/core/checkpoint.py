@@ -80,7 +80,7 @@ def load_raw_state(weights_path: str) -> dict:
     return raw
 
 
-def load_config(run_dir: str):
+def load_config(run_dir: str) -> Any:
     """Read ``config.yaml`` and detect its format from its keys.
 
     Returns a ``Config`` (legacy monolithic, detected by ``model_type``),
@@ -130,7 +130,7 @@ def model_kind(cfg: Any) -> str:
     raise TypeError(f"Unsupported config type: {type(cfg).__name__}")
 
 
-def build_model(cfg: Any, rngs) -> Any:
+def build_model(cfg: Any, rngs: Any) -> Any:
     """Instantiate the model class matching *cfg* (uninitialised weights)."""
     from .config import Config, FlowMatchingConfig
 

@@ -591,7 +591,7 @@ def _cmd_merge_lora(args: argparse.Namespace) -> None:
     nnx.update(model, state_dict)
 
     # Merge LoRA adapters: fuse each LoRALinear's low-rank delta into the base kernel
-    for path, module in nnx.iter_modules(model):
+    for _path, module in nnx.iter_modules(model):
         if isinstance(module, LoRALinear):
             fused = module.merge_weights()
             module.base.kernel.value = fused

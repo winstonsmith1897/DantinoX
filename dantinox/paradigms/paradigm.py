@@ -145,7 +145,9 @@ class Paradigm(ParadigmBase):
         try:
             impl = object.__getattribute__(self, '_impl')
         except AttributeError:
-            raise AttributeError(name)
+            # Suppress the confusing "_impl not found" context; the caller
+            # asked for `name`, not `_impl`.
+            raise AttributeError(name) from None
         return getattr(impl, name)
 
     # ── Introspection ─────────────────────────────────────────────────────────

@@ -17,10 +17,10 @@ from dantinox.core.generation import (
     diffusion_generate as _diffusion_generate,
 )
 from dantinox.core.generation import (
-    flow_generate as _flow_generate,
+    fast_dllm_generate as _fast_dllm_generate,
 )
 from dantinox.core.generation import (
-    fast_dllm_generate as _fast_dllm_generate,
+    flow_generate as _flow_generate,
 )
 from dantinox.core.generation import (
     generate as _generate,
@@ -29,10 +29,10 @@ from dantinox.core.generation import (
     stream_diffusion_generate as _stream_diffusion_generate,
 )
 from dantinox.core.generation import (
-    stream_flow_generate as _stream_flow_generate,
+    stream_fast_dllm_generate as _stream_fast_dllm_generate,
 )
 from dantinox.core.generation import (
-    stream_fast_dllm_generate as _stream_fast_dllm_generate,
+    stream_flow_generate as _stream_flow_generate,
 )
 from dantinox.core.model import Transformer
 from dantinox.exceptions import CheckpointError
@@ -135,6 +135,36 @@ def _remap_expert_keys(obj, _parent_key=None):
     return obj
 
 
+def _prune_stale_keys(pure: dict, ref: dict, _path: tuple = ()) -> dict:
+    """Drop checkpoint entries that no longer exist in the model's state tree.
+
+    Older checkpoints may carry deterministic buffers (e.g. the causal-mask
+    ``tril`` removed by an attention refactor); they are recomputed by the
+    model itself, so skipping them is safe. Handles int/str key mismatches
+    from msgpack round-tripping.
+    """
+    def _match(key):
+        if key in ref:
+            return key
+        try:
+            alt = int(key) if isinstance(key, str) else str(key)
+        except (ValueError, TypeError):
+            return None
+        return alt if alt in ref else None
+
+    out = {}
+    for k, v in pure.items():
+        rk = _match(k)
+        if rk is None:
+            log.debug("Skipping stale checkpoint key: %s", "/".join(map(str, _path + (k,))))
+            continue
+        if isinstance(v, dict) and isinstance(ref[rk], dict):
+            out[k] = _prune_stale_keys(v, ref[rk], _path + (k,))
+        else:
+            out[k] = v
+    return out
+
+
 # ── Checkpoint loader ─────────────────────────────────────────────────────────
 
 def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Tokenizer]:
@@ -234,6 +264,7 @@ def _load_checkpoint(run_dir: str, seed: int) -> tuple[Config, Transformer, Toke
             nnx.update(model, state_dict)
         else:
             state = nnx.state(model, nnx.Not(nnx.RngState))
+            state_dict = _prune_stale_keys(state_dict, state.to_pure_dict())
             state.replace_by_pure_dict(state_dict)
             nnx.update(model, state)
     else:
@@ -645,7 +676,7 @@ class Generator:
         prev_len = 0
         if not n_steps:
             n_steps = max_new_tokens
-        for step, total, x_t in _stream_diffusion_generate(
+        for _step, _total, x_t in _stream_diffusion_generate(
             self.model, prefix, gen_len=max_new_tokens,
             schedule=schedule, mask_token_id=mask_id,
             seed=self.seed, num_sampling_steps=n_steps,
@@ -752,7 +783,7 @@ class Generator:
         prefix_display = prefix_text.replace("\n", "↵").replace("\r", "")
 
         prev_len = 0
-        for step, total, x_gen in _stream_fast_dllm_generate(
+        for _step, _total, x_gen in _stream_fast_dllm_generate(
             self.model, prefix, gen_len=max_new_tokens,
             schedule=schedule, mask_token_id=mask_id,
             block_size=block_size, steps_per_block=steps_per_block,

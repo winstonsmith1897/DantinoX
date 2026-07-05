@@ -83,11 +83,12 @@ class ParadigmBase(ABC):
 
     # ── Optional training hooks ───────────────────────────────────────────────
 
-    def on_train_start(self, model: Any, sample_batches: list[Any]) -> None:
+    def on_train_start(self, model: Any, sample_batches: list[Any]) -> None:  # noqa: B027
         """One-time setup before training starts (default: no-op).
 
-        *sample_batches* is a small list of token batches drawn from the
-        training set, for paradigms that need data-dependent initialisation.
+        Intentionally concrete, not abstract: most paradigms have nothing to
+        do here. *sample_batches* is a small list of token batches drawn from
+        the training set, for paradigms that need data-dependent initialisation.
         """
 
     def prepare_batch(self, batch: Any) -> Any:

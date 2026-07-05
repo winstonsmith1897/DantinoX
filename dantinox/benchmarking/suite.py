@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from pathlib import Path
@@ -134,16 +135,12 @@ class BenchmarkSuite:
 
 def _extract_model_meta(paradigm: Any, model: Any) -> dict[str, Any]:
     meta: dict[str, Any] = {"paradigm": type(paradigm).__name__}
-    try:
+    with contextlib.suppress(Exception):
         meta["n_params"] = paradigm.num_parameters(model)
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         cfg = getattr(paradigm, "config", None) or getattr(paradigm, "model_config", None)
         if cfg is not None:
             meta["dim"]        = getattr(cfg, "dim", None)
             meta["num_blocks"] = getattr(cfg, "num_blocks", None)
             meta["n_heads"]    = getattr(cfg, "n_heads", None)
-    except Exception:
-        pass
     return {k: v for k, v in meta.items() if v is not None}

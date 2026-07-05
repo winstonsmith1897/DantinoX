@@ -531,6 +531,9 @@ __all__ = [
     # paradigms
     "Paradigm",
     "EmbedderParadigm",
+    "ARParadigm",
+    "ContinuousParadigm",
+    "DiscreteParadigm",
     "info_nce_loss",
     # training
     "Trainer",
@@ -543,6 +546,7 @@ __all__ = [
     "count_flops",
     "profile_fn",
     # benchmarking
+    "BenchmarkRunner",
     "BenchmarkConfig",
     "BenchmarkResult",
     "BenchmarkTask",
@@ -555,6 +559,7 @@ __all__ = [
     "Chart",
     "RenderConfig",
     "Visualizer",
+    "Plotter",
     "TrainingCurveChart",
     "ThroughputChart",
     "ThroughputBatchChart",

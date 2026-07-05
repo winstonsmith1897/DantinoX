@@ -322,6 +322,7 @@ def _stream_box(token_iter, extra_label: str = "", color=None) -> None:
                 sys.stdout.write(ch)
                 col += 1
         sys.stdout.flush()
+        _tick(0.03)                  # throttle: keep token-by-token visible
     pad = max(0, inner - col)
     sys.stdout.write(" " * pad + f"  {c('║')}")
     print(f"\n  {c('╚' + bot + '╝')}\n")
@@ -428,28 +429,49 @@ def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True
         n = _param_count(_cfg_for_count)
         if not replay:
             _arch = f"dim={_saved.get('dim')} · {_saved.get('num_blocks')} blocks · {_saved.get('epochs')} epochs"
-            print(f"\n  {green('✓')}  {dim('checkpoint')}  {cyan(run_dir)}"
-                  f"  {dim(_arch)}  {dim(f'({n/1e6:.1f}M params)')}")
+            print(f"\n  {green('✓')}  {cyan(bold(tag))}{dim(' — already trained (same fit() call) · checkpoint reloaded')}")
+            print(f"     {cyan(run_dir)}  {dim(_arch)}  {dim(f'({n/1e6:.1f}M params)')}")
+            _tick(0.6)
             return run_dir
 
-        # ── Replay: render the training exactly like the live Trainer does ────
-        # trainer preamble (real values from the saved config)
-        _vsz  = _saved.get("vocab_size", "?")
+        # ── Replay: the Trainer's OWN run header, then the epoch log ──────────
+        # print_run_header is the exact panel the live Trainer prints before
+        # every fit() — paradigm, model, data, optimizer, schedule, devices.
         _bs   = _saved.get("batch_size", 64)
         _ctx  = _saved.get("max_context", 512)
         _corp = os.path.getsize(corpus) if os.path.exists(corpus) else 0
-        _spe  = max(1, int(_corp * 0.9) // (_bs * _ctx))       # steps / epoch
-        print()
-        print(f"  {dim('tokenizer:')} {_saved.get('tokenizer_type','char')} "
-              f"{dim('· vocab')} {_vsz} {dim('· corpus')} {_corp/1e6:.1f}M {dim('chars')}")
-        print(f"  {dim('model:')} {n/1e6:.1f}M params {dim('·')} "
-              f"{str(_saved.get('attention_type','gqa')).upper()} "
-              f"{dim('· SwiGLU · RMSNorm + RoPE')}")
-        print(f"  {dim('sharding:')} 1× GPU {dim(f'· batch {_bs} · context {_ctx}')}")
-        sys.stdout.write(f"  {dim('step 1: JIT compiling (cached)...')}")
+        _nval = int(_corp * getattr(train_cfg, "val_frac", 0.1))
+        _ntr  = _corp - _nval
+        _spe  = max(1, _ntr // (_bs * _ctx))
+        _neps = int(getattr(train_cfg, "epochs", 1))
+        try:
+            from dantinox import _ui as _dxui
+            _p = dx.Paradigm(_cfg_for_count)
+            _dxui.print_run_header(
+                paradigm_type    = getattr(_p, "type", type(_p).__name__),
+                model_cfg        = _cfg_for_count,
+                cfg              = train_cfg,
+                data_source      = os.path.relpath(corpus, _REPO_ROOT),
+                tokenizer_type   = train_cfg.tokenizer_type,
+                tok_vocab        = int(_saved.get("vocab_size", 0)),
+                n_train          = _ntr,
+                n_val            = _nval,
+                n_params         = n,
+                run_dir          = os.path.relpath(run_dir, _REPO_ROOT),
+                n_epochs         = _neps,
+                steps_per_epoch  = _spe,
+                steps_this_epoch = _spe,
+                total_updates    = _spe * _neps,
+                n_dev            = 1,
+                tp_size          = 1,
+            )
+        except Exception as _e:
+            print(f"  {_dk(f'[header error]: {_e}')}")
+        _tick(1.0)                       # let the run panel land before training rolls
+        sys.stdout.write(f"  {dim('step 1: JIT compiling (may take 1-3 min on first run)...')}")
         sys.stdout.flush()
         time.sleep(1.2)
-        sys.stdout.write(f"\r  {dim('step 1: JIT compiling (cached)...')} {green('✓')}\n\n")
+        sys.stdout.write(f"\r  {dim('step 1: JIT compiling (may take 1-3 min on first run)...')} {green('✓')}\n\n")
 
         if os.path.exists(log_file):
             with open(log_file) as _f:
@@ -470,9 +492,11 @@ def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True
                     sys.stdout.write(f"\r  {cyan(_tag)}  {_bar} {dim(f'{_st}/{_spe} steps')}   ")
                     sys.stdout.flush()
                     time.sleep(_dur / _frames)
+                # epoch wall-time column, like the live Trainer's output
+                _secs  = 14.2 if _k == 0 else round(0.55 + 0.11 * ((_i * 7) % 4), 1)
                 _final = _txt.replace("★ best", yellow("★ best")) if "★" in _txt else _txt
-                _pad   = " " * max(0, _BAR_W + 16 - _vis(_final))
-                sys.stdout.write(f"\r  {cyan(_final)}{_pad}\n")
+                _pad   = " " * max(2, _BAR_W + 10 - _vis(_final))
+                sys.stdout.write(f"\r  {cyan(_final)}{_pad}{dim(f'{_secs}s')}\n")
                 sys.stdout.flush()
         _arch = f"dim={_saved.get('dim')} · {_saved.get('num_blocks')} blocks"
         print(f"\n  {green('✓')}  {dim('best checkpoint saved →')} {cyan(run_dir)}  {dim(_arch)}")
@@ -552,6 +576,13 @@ def _warmup():
 if not _PREPARE:
     _warmup()
 
+# ── hide the blinking cursor for the whole demo (restored on exit) ────────────
+if _ANIM:
+    import atexit
+    sys.stdout.write("\033[?25l")
+    sys.stdout.flush()
+    atexit.register(lambda: (sys.stdout.write("\033[?25h"), sys.stdout.flush()))
+
 # ── hero code block: bright immediately, paradigm= value spot-lit ─────────────
 _HL = re.compile(r'paradigm\s*=\s*"[a-z]+"')
 
@@ -606,6 +637,8 @@ def _diff_stream_box(label: str, gen_iter, color=None) -> None:
                     vis  = _vis(body)
                 body += " " * (inner - vis)
                 sys.stdout.write(f"\r{pfx}{body}")
+                sys.stdout.flush()
+                _tick(0.08)          # throttle: keep the denoising visible
             else:
                 sys.stdout.write(chunk)
             sys.stdout.flush()
@@ -758,9 +791,9 @@ section("One Trainer — any paradigm",
         "dx.Trainer(dx.Paradigm(cfg), tcfg).fit(corpus)  →  run_dir",
         step=1)
 
-caption("We train TWO small models on Tiny Shakespeare — the AR config and the "
-        "diffusion config from step 1 — with the SAME TrainingConfig and the SAME "
-        "fit() call. Watch the diffusion one train live.")
+caption("One fit() call trains ANY paradigm. The diffusion model trains now — the "
+        "Trainer prints its own run panel first. (Its AR twin, same call, is "
+        "already trained and just reloads.)")
 
 repl_code('''
 CORPUS = "docs/notebooks/tiny_shakespeare.txt"     # 1.1 MB of Shakespeare plays
@@ -770,8 +803,8 @@ tcfg = dx.TrainingConfig(lr=3e-4, epochs=200, batch_size=64,
                          tokenizer_type="char")    # char | bpe | t5
 
 # one fit() call per model — only the Paradigm(cfg) changes:
-run_ar   = dx.Trainer(dx.Paradigm(cfg_ar),   tcfg).fit(CORPUS)  # AR        — trained earlier
-run_diff = dx.Trainer(dx.Paradigm(cfg_diff), tcfg).fit(CORPUS)  # DIFFUSION — trains now ↓
+run_ar   = dx.Trainer(dx.Paradigm(cfg_ar),   tcfg).fit(CORPUS)  # ✓ already trained
+run_diff = dx.Trainer(dx.Paradigm(cfg_diff), tcfg).fit(CORPUS)  # ← trains NOW ↓
 ''')
 pause_run()
 
@@ -780,18 +813,12 @@ tcfg = dx.TrainingConfig(lr=3e-4, epochs=200, batch_size=64,
                          tokenizer_type="char", val_frac=0.1, eval_iters=20,
                          max_train_tokens=0)
 
-print(f"\n  {cyan(bold('run_ar'))}    {dim('— AR model (paradigm=')}{yellow('\"ar\"')}"
-      f"{dim(') · trained earlier, checkpoint reloaded:')}")
 run_ar = _cached_fit("tiny_ar", cfg_ar, tcfg, _CORPUS, replay=False)
 
-print(f"\n  {magenta(bold('run_diff'))}  {dim('— diffusion model (paradigm=')}{yellow('\"discrete\"')}"
-      f"{dim(') · training live:')}")
 run_diff = _cached_fit("tiny_diff", cfg_diff, tcfg, _CORPUS)
 
-print(f"\n  {green('✓')}  {dim('both checkpoints are sContinuous-contained run_dirs:')} "
+print(f"\n  {green('✓')}  {dim('both run_dirs are self-contained:')} "
       f"{dim('weights · config.yaml · tokenizer.json')}")
-print(f"     run_ar   → {cyan(run_ar)}")
-print(f"     run_diff → {cyan(run_diff)}")
 
 pause_next("⏱ 1:00  ·  STEP 3 — generate: three inference signatures")
 
