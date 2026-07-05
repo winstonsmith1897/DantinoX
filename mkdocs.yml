@@ -160,6 +160,7 @@ nav:
           - Overview: training/index.md
           - Autoregressive: training/autoregressive.md
           - Diffusion: training/diffusion.md
+          - Continuous Flow-Matching: training/continuous.md
           - Embedder (Retriever): training/retriever.md
           - Optimizers & Schedules: training/optimizers.md
           - Hyperparameter Sweeps: training/sweeps.md

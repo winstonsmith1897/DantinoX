@@ -10,18 +10,29 @@ Set `model_type: "diffusion"` to train a masked discrete diffusion model.
 
 ## Loss Function
 
-Masked cross-entropy ELBO, evaluated only at `[MASK]` positions:
+$(1/t)$-weighted masked cross-entropy ELBO, evaluated only at `[MASK]` positions
+(the model is conditioned on $x_t$ only — **not** on $t$ itself):
 
 $$
-\mathcal{L}_{\text{ELBO}} = -\frac{1}{|\mathcal{M}|} \sum_{i \in \mathcal{M}} \log p_\theta(x_0^{(i)} \mid x_t, t)
+\mathcal{L}_{\text{ELBO}} = \frac{1}{t}\cdot\frac{1}{|\mathcal{M}|} \sum_{i \in \mathcal{M}} -\log p_\theta(x_0^{(i)} \mid x_t)
 $$
 
 At each training step:
 
-1. Sample a random timestep $t \sim \text{Uniform}(1, T)$ per sample.
-2. Corrupt the input $x_0 \to x_t$ using the noise schedule.
-3. Feed $(x_t, t)$ to the bidirectional `DiffusionTransformer`.
-4. Compute masked CE on the predicted $p_\theta(x_0 \mid x_t, t)$.
+1. Sample a continuous noise level $t \sim \text{Uniform}(0, 1)$ per sample.
+2. Corrupt the input $x_0 \to x_t$ using the noise schedule (mask each token with probability $p_{\text{mask}}(t)$).
+3. Feed $x_t$ **alone** — not $t$ — to the bidirectional `DiffusionTransformer`.
+4. Compute the $(1/t)$-weighted masked CE on the predicted $p_\theta(x_0 \mid x_t)$.
+
+!!! warning "The model does not see t"
+    DantinoX's LLaDA-style diffusion has **no time conditioning at all** — no
+    `AdaLayerNorm`, no time-embedding MLP. The model learns to denoise purely
+    from the pattern of `[MASK]` tokens in the input, which implicitly
+    encodes the noise level. `t` is only used to weight the loss and to
+    determine the masking probability during corruption — it is never passed
+    into the model's forward pass. See
+    [Discrete Diffusion](../paradigms/diffusion.md#the-denoising-model) for
+    details.
 
 ---
 
@@ -50,9 +61,8 @@ model:
 diffusion:
   diffusion_steps: 1000       # total forward-process steps T
   noise_schedule: "cosine"    # "cosine" | "linear" | "sqrt"
-  mask_token_id: 0            # vocabulary ID of [MASK]
+  mask_token_id: 4            # vocabulary ID of [MASK]
   num_sampling_steps: 50      # fast reverse-diffusion steps at inference
-  time_emb_dim: 256           # TimeEmbedding MLP output dimension
 
 training:
   lr: 0.001
@@ -86,18 +96,17 @@ schedule = make_noise_schedule(config)   # NoiseSchedule(alpha_bar=[T+1])
 
 ---
 
-## Time Embedding
+## No Time Conditioning
 
-Each transformer block receives a time-step conditioning vector computed by:
-
-```
-t (integer) → sinusoidal(t, model_dim) → Linear → SiLU → Linear → c
-```
-
-where `c ∈ ℝ^{time_emb_dim}` is used by `AdaLayerNorm` to modulate scale and shift.
-
-Larger `time_emb_dim` improves the model's ability to distinguish fine-grained
-timestep differences; 256 is a good default for models up to ~50M parameters.
+Unlike many diffusion models (and unlike DantinoX's own continuous
+flow-matching paradigm), discrete diffusion here has **no time-conditioning
+pathway at all**: no sinusoidal time embedding, no `AdaLayerNorm`, no
+control tokens. `time_emb_dim` is a real config field, but it belongs to the
+continuous flow-matching paradigm (see
+[Continuous Flow-Matching Training](continuous.md#config-reference)) — it has
+no effect here even if set on a shared `Config` object. The model
+distinguishes noise levels purely from *how many* tokens are masked in the
+input, which is itself a function of `t` through the noise schedule.
 
 ---
 
@@ -106,18 +115,19 @@ timestep differences; 256 is a good default for models up to ~50M parameters.
 The diffusion `train_step` (simplified):
 
 ```python
-# Sample random timestep per sample
-t   = jax.random.randint(rng, (B,), 1, config.diffusion_steps + 1)
+# Sample a continuous per-sample noise level t in [t_min, 1]
+t = jax.random.uniform(rng_t, (B,), minval=t_min, maxval=1.0)
 
-# Corrupt: replace tokens with [MASK] at rate 1 - alpha_bar[t]
-x_t = corrupt(x0, t, rng, schedule, config.mask_token_id)
+# Corrupt: mask each token independently with probability p_mask(t)
+x_t = corrupt(x0, t, rng_c, config.noise_schedule, config.mask_token_id)
 
-# Forward pass (bidirectional, with AdaLayerNorm conditioning on t)
-out  = model(x_t, t, deterministic=False)
+# Forward pass — bidirectional, no time conditioning of any kind
+out = model(x_t, deterministic=False)
 
-# ELBO loss — only at masked positions
+# (1/t)-weighted ELBO — cross-entropy only at masked positions
 loss = masked_cross_entropy(out.logits, x0, x_t, config.mask_token_id,
-                            out.aux_loss, model.alpha_balance)
+                            t_float=t, aux_loss=out.aux_loss,
+                            alpha_balance=model.alpha_balance)
 ```
 
 ---

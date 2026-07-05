@@ -20,7 +20,7 @@ The model predicts the clean embedding **x** from the noisy **z_t** (x-predictio
 Input tokens [B, T]
        │
        ▼
-  ELFEmbedder (frozen T5)
+  FlowEmbedder (frozen T5)
        │
   embeddings [B, T, embed_dim]
        │
@@ -28,7 +28,7 @@ Input tokens [B, T]
   │   z_t = t·x + (1-t)·ε                  │  noise injection
   └────┬────────────────────────────────────┘
        │
-  ELFTransformer (bidirectional)
+  FlowMatchingTransformer (bidirectional)
   with control tokens:
     - [TIME]: timestep t
     - [CFG]:  classifier-free guidance scale
@@ -61,8 +61,10 @@ cfg = dx.ModelConfig(
     head_size=64,
     num_blocks=12,
     vocab_size=32_128,
-    elf_n_steps=64,         # ODE integration steps at generation time
-    elf_cfg_scale=1.5,      # classifier-free guidance weight
+    flow_n_steps=64,        # ODE integration steps at generation time
+    flow_cfg_scale=1.5,     # classifier-free guidance weight
+    # NOT elf_n_steps=/elf_cfg_scale= — those are read-only compatibility
+    # properties, not constructor arguments.
 )
 
 paradigm = dx.Paradigm(cfg)
@@ -81,7 +83,7 @@ from dantinox.training.trainer import Trainer
 from dantinox.core.config import TrainingConfig
 
 # Pre-compute embeddings once per batch in a custom trainer loop
-# or integrate ELFEmbedder into a custom Paradigm subclass that
+# or integrate FlowEmbedder into a custom Paradigm subclass that
 # pre-fetches embeddings before calling loss_fn.
 
 trainer = Trainer(paradigm, TrainingConfig(lr=1e-4, epochs=10, optimizer="adamw"))
@@ -90,7 +92,7 @@ run_dir = trainer.fit("data/wiki.txt")
 
 !!! warning "Embeddings must be pre-computed"
     `ContinuousParadigm.loss_fn` raises `ValueError` if `embeddings=None`.
-    Use `ELFEmbedder` or a custom data pipeline that produces `[B, T, embed_dim]` arrays.
+    Use `FlowEmbedder` or a custom data pipeline that produces `[B, T, embed_dim]` arrays.
 
 ---
 
@@ -115,16 +117,19 @@ tokens = paradigm.generate(
 
 ## Configuration reference
 
-| `ELFConfig` field | Default | Description |
+| `FlowMatchingConfig` field | Default | Description |
 | :--- | :--- | :--- |
-| `embed_dim` | `768` | T5 embedding dimension |
-| `model_dim` | `512` | Transformer hidden dimension |
-| `n_heads` | `8` | Attention heads |
-| `head_size` | `64` | Head dimension |
+| `embed_dim` | `512` | T5 embedding dimension |
+| `model_dim` | `768` | Transformer hidden dimension |
+| `n_heads` | `12` | Attention heads |
+| `head_size` | `None` | Head dimension (derived from `model_dim`/`n_heads` if unset) |
 | `num_blocks` | `12` | Transformer layers |
-| `vocab_size` | `32_128` | Vocabulary size (must match T5 tokenizer) |
-| `elf_n_steps` | `64` | ODE integration steps at inference |
-| `elf_cfg_scale` | `1.0` | Classifier-free guidance weight (1.0 = no CFG) |
+| `vocab_size` | `None` | Vocabulary size (must match T5 tokenizer) |
+| `flow_n_steps` | `32` | ODE integration steps at inference (`ELFConfig`/`elf_n_steps` are deprecated aliases) |
+| `flow_cfg_scale` | `1.5` | Classifier-free guidance weight (`elf_cfg_scale` is a deprecated alias); `1.0` = no CFG |
+
+(`ELFConfig` itself is a deprecated alias for `FlowMatchingConfig` — same
+fields, same defaults, still works but emits a `DeprecationWarning`.)
 
 ---
 
