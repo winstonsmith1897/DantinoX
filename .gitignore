@@ -84,3 +84,8 @@ examples/demo_simple_gen.py
 
 
 trials/
+docs/_build/
+
+
+*.tokenizer.json
+*.tokens.npy

@@ -231,8 +231,11 @@ def _tokenize_pad(
     max_len: int,
     pad_id: int = 0,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
+    # Pad every batch to the fixed `max_len` (not the batch's own longest
+    # sequence) so `_step`'s @nnx.jit trace is reused across steps instead of
+    # recompiling on every shape change.
     encoded = [tokenizer.encode(t)[:max_len] for t in texts]
-    T    = max(len(e) for e in encoded)
+    T    = max_len
     ids  = np.full((len(encoded), T), pad_id, dtype=np.int32)
     mask = np.zeros((len(encoded), T), dtype=bool)
     for i, e in enumerate(encoded):
@@ -266,7 +269,10 @@ def _save_tokenizer(tokenizer: Any, run_dir: str) -> None:
 
 def _save_config(config: Any, run_dir: str) -> None:
     cfg_path = os.path.join(run_dir, "config.yaml")
-    if hasattr(config, "to_yaml"):
-        config.to_yaml(cfg_path)
-    elif hasattr(config, "save"):
-        config.save(cfg_path)
+    if hasattr(config, "save_yaml"):
+        config.save_yaml(cfg_path)
+    else:
+        log.warning(
+            "Config has no save_yaml() method — config.yaml not written. "
+            "Embedder.from_run() / dx.load() will fail to reload this run."
+        )
