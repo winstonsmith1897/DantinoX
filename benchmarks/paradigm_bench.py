@@ -797,7 +797,7 @@ def run_continuous(exp: dict, n_warmup: int, n_trials: int, n_e2e: int) -> dict:
             embed_dim=dim, bottleneck_dim=max(32, dim // 2),
             model_dim=dim, n_heads=n_heads, head_size=head_size,
             num_blocks=blocks, vocab_size=VOCAB_SIZE, max_seq_len=G,
-            gradient_checkpointing=False, dropout=0.0,
+            dropout=0.0,
             **_attn_kwargs(exp["size"], exp["attn"], ar_cache=False),
         )
         model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))

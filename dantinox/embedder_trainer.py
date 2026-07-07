@@ -119,6 +119,7 @@ class EmbedderTrainer:
         if model is None:
             rngs  = nnx.Rngs(cfg.seed)
             model = self.paradigm.build_model(rngs)
+        model.gradient_checkpointing = cfg.gradient_checkpointing
 
         steps_per_epoch = max(len(pairs) // cfg.batch_size, 1)
         # cfg.epochs may be a genuine float (fractional epochs); step counts

@@ -334,6 +334,7 @@ class Trainer:
 
         # ── Model & optimizer ─────────────────────────────────────────────────
         model = paradigm.build_model(rngs)
+        model.gradient_checkpointing = cfg.gradient_checkpointing
         if cfg.use_bf16:
             _cast_params(model, jnp.bfloat16)
 

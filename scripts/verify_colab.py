@@ -76,7 +76,7 @@ def _cfg_elf(size, sl=256):
     return ELFConfig(embed_dim=d, bottleneck_dim=max(32, d//2),
                      model_dim=d, n_heads=nh, head_size=hs, num_blocks=nb,
                      vocab_size=VOCAB, max_seq_len=sl,
-                     gradient_checkpointing=False, dropout=0.0)
+                     dropout=0.0)
 
 def _params_m(model):
     _, st = nnx.split(model)

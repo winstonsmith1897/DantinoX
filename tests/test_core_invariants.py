@@ -85,11 +85,13 @@ def test_legacy_yaml_keys_still_load(tmp_path):
 
 def test_default_configs_agree():
     """Bare Config() and bare ModelConfig() must describe the same architecture."""
+    # gradient_checkpointing is intentionally excluded: it lives on TrainingConfig
+    # now, not ModelConfig, so it no longer has a shared-architecture meaning here.
     c, m = Config(), ModelConfig()
     assert (c.norm_type, c.no_sink, c.noise_schedule, c.num_blocks, c.kv_heads,
-            c.attention_type, c.dropout_rate, c.gradient_checkpointing) == (
+            c.attention_type, c.dropout_rate) == (
         m.norm, m.no_sink, m.noise_schedule, m.num_blocks, m.kv_heads,
-        m.attention, m.dropout, m.gradient_checkpointing,
+        m.attention, m.dropout,
     )
 
 

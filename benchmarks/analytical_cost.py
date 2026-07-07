@@ -219,8 +219,7 @@ def _selftest() -> None:
 
     ecfg = FlowMatchingConfig(embed_dim=512, bottleneck_dim=128, model_dim=512,
                      n_heads=8, head_size=64, num_blocks=12,
-                     vocab_size=32128, max_seq_len=T,
-                     gradient_checkpointing=False)
+                     vocab_size=32128, max_seq_len=T)
     emodel = FlowMatchingTransformer(ecfg, rngs=nnx.Rngs(0))
     ecm = CostModel.from_model(emodel, ecfg)
     print(f"\nELF step B={B} T={T}: {ecm.elf_step(B, T):,.0f} GFLOPs "

@@ -94,7 +94,6 @@ class ModelConfig:
     # ── Shared regularisation ─────────────────────────────────────────────────
     dropout: float = 0.0
     weight_tying: bool = True
-    gradient_checkpointing: bool = False
     tp_size: int = 1
 
     # ── Attention ─────────────────────────────────────────────────────────────
@@ -133,7 +132,7 @@ class ModelConfig:
     paradigm: str | None = None   # "ar" | "discrete" | "continuous" | "embedder"
 
     # ── Diffusion (discrete) ─────────────────────────────────────────────────
-    mask_token_id: int = 4
+    mask_token_id: int = -1  # sentinel: auto-synced from the tokenizer by Trainer.fit()
     noise_schedule: str = "linear"  # "linear" | "cosine" | "sqrt"
 
     # ── Continuous flow-matching (ELF recipe) ────────────────────────────────
@@ -410,7 +409,6 @@ class ModelConfig:
         L.append(
             f"  dropout={_Ccyn(str(self.dropout))}"
             f"  ·  weight_tying={_Ccyn(str(self.weight_tying))}"
-            f"  ·  grad_ckpt={_Ccyn(str(self.gradient_checkpointing))}"
         )
         extras: list[str] = []
         if self.use_flash:
@@ -484,6 +482,7 @@ class TrainingConfig:
     grad_clip: float = 1.0
     seed: int = 42
     use_bf16: bool = False
+    gradient_checkpointing: bool = False  # recompute block activations on backward (saves VRAM)
     patience: int = 0              # early stopping: epochs without val improvement (0 = off)
     eval_iters: int = 20
     val_frac: float = 0.1          # fraction of tokens held out for validation
@@ -1024,7 +1023,6 @@ class FlowMatchingConfig:
     pos_encoding:           str   = "rotary"  # "rotary" | "absolute" | "learned" | "none"
     norm:                   str   = "rmsnorm" # "rmsnorm" | "layernorm"
     dropout:                float = 0.0
-    gradient_checkpointing: bool  = True
 
     # ── Backbone attention (mirrors ModelConfig) ──────────────────────────────
     attention: str        = "mha"   # "mha" | "gqa" | "mla"

@@ -47,7 +47,7 @@ class DiscreteConfig:
     """
 
     noise_schedule: str = "linear"
-    mask_token_id: int = 4
+    mask_token_id: int = -1  # sentinel: auto-synced from the tokenizer by Trainer.fit()
 
     def __post_init__(self) -> None:
         if self.noise_schedule not in ("linear", "cosine", "sqrt"):
@@ -67,7 +67,8 @@ class DiscreteParadigm(ParadigmBase):
     Quick-start::
 
         cfg      = ModelConfig(dim=512, n_heads=8, num_blocks=12,
-                               causal=False, noise_schedule="cosine", mask_token_id=4)
+                               causal=False, noise_schedule="cosine")
+        # mask_token_id auto-detected from the tokenizer at Trainer.fit() time
         paradigm = DiscreteParadigm(cfg)
 
     A ``DiscreteConfig`` is still accepted as a second positional argument

@@ -686,7 +686,25 @@ class Trainer:
                         t1 = time.time()
                         dt = (t1 - t0) * 1000 / 50
                         t0 = t1
-                        losses, key = estimate_loss(key)
+                        try:
+                            losses, key = estimate_loss(key)
+                        except Exception as exc:
+                            # Eval can transiently OOM right after the train
+                            # step's compiled program is first cached (both
+                            # live in VRAM simultaneously at that instant),
+                            # even when train_step itself compiles and runs
+                            # fine. Skip this checkpoint's eval rather than
+                            # losing the whole run to a non-training-path OOM.
+                            if "RESOURCE_EXHAUSTED" not in str(exc):
+                                raise
+                            log.warning(
+                                "step %d: eval OOM (%s) — skipping this "
+                                "checkpoint's validation, training continues",
+                                step, type(exc).__name__,
+                            )
+                            jax.clear_caches()
+                            losses = {"train": float("nan"), "val": float("nan"),
+                                      "train_bal": 0.0, "val_bal": 0.0}
                         val_loss = losses["val"]
                         pbar.set_postfix(
                             train=f"{losses['train']:.4f}",

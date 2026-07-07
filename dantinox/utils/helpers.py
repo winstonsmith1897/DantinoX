@@ -18,7 +18,12 @@ def get_batch(
     data: jnp.ndarray, batch_size: int, max_context: int, key: jax.Array
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     ix = jax.random.randint(key, (batch_size,), 0, len(data) - max_context)
-    x = jnp.stack([data[i:i+max_context] for i in ix])
-    y = jnp.stack([data[i+1:i+max_context+1] for i in ix])
+    # Vectorized gather: a single XLA gather op instead of 2*batch_size
+    # separate dynamic-slice dispatches (the previous Python-loop version
+    # left the GPU idle between many small, serially-dispatched slices).
+    offsets = jnp.arange(max_context)
+    gather_idx = ix[:, None] + offsets[None, :]  # (batch_size, max_context)
+    x = data[gather_idx]
+    y = data[gather_idx + 1]
     return x, y
 

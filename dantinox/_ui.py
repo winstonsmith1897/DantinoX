@@ -179,7 +179,7 @@ def print_run_header(
         extras.append(f"LoRA(r={model_cfg.lora_rank}, α={model_cfg.lora_alpha})")
     if getattr(model_cfg, "use_flash", False):
         extras.append("flash-attn")
-    if getattr(model_cfg, "gradient_checkpointing", False):
+    if getattr(cfg, "gradient_checkpointing", False):
         extras.append("grad-ckpt")
     if getattr(model_cfg, "tp_size", 1) > 1:
         extras.append(f"tp={model_cfg.tp_size}")

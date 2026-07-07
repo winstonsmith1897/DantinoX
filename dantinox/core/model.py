@@ -96,7 +96,11 @@ class Transformer(nnx.Module, pytree=False):
         self.weight_tying: bool           = cfg.weight_tying
         self.causal: bool                 = cfg.causal
         self.max_context: int             = cfg.max_context
-        self.gradient_checkpointing: bool = cfg.gradient_checkpointing
+        # Not a ModelConfig field (moved to TrainingConfig): plain mutable
+        # attribute defaulting False, flipped on by Trainer.fit() when the
+        # user's TrainingConfig requests it. getattr keeps the legacy
+        # monolithic Config (which still carries this field) working too.
+        self.gradient_checkpointing: bool = getattr(cfg, "gradient_checkpointing", False)
         self.use_moe: bool                = cfg.use_moe
         self.moe_balance_coeff: float     = cfg.moe_balance_coeff
         self.pos_encoding: str            = cfg.pos_encoding

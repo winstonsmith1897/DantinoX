@@ -293,6 +293,10 @@ class FlowMatchingTransformer(nnx.Module, pytree=False):
                 "For direct model building pass vocab_size=<n> to FlowMatchingConfig."
             )
         self.config: FlowMatchingConfig = config
+        # Not a FlowMatchingConfig field (moved to TrainingConfig): plain
+        # mutable attribute defaulting False, flipped on by Trainer.fit()
+        # when the user's TrainingConfig requests it.
+        self.gradient_checkpointing: bool = getattr(config, "gradient_checkpointing", False)
 
         D  = config.model_dim
         E  = config.embed_dim
@@ -387,7 +391,7 @@ class FlowMatchingTransformer(nnx.Module, pytree=False):
         # 4. Bidirectional transformer
         # Rematerialisation only pays off when gradients flow; at inference
         # (deterministic=True) it would recompute every block for nothing.
-        use_remat = self.config.gradient_checkpointing and not deterministic
+        use_remat = self.gradient_checkpointing and not deterministic
         if use_remat:
             def _block_fn(block: object, hs: jnp.ndarray) -> tuple:
                 return block(hs, deterministic=deterministic)  # type: ignore[call-arg, operator]

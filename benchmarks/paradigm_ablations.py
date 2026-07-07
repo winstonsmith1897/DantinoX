@@ -283,7 +283,7 @@ def build_elf(attn: str, G: int, bf16: bool) -> tuple[FlowMatchingConfig, FlowMa
         embed_dim=DIM, bottleneck_dim=128, model_dim=DIM,
         n_heads=N_HEADS, head_size=HEAD_SIZE, num_blocks=BLOCKS,
         vocab_size=VOCAB, max_seq_len=G,
-        gradient_checkpointing=False, dropout=0.0,
+        dropout=0.0,
         **_attn_cfg(attn, ar_cache=False),
     )
     model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))

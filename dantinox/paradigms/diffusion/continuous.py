@@ -32,7 +32,6 @@ def _elf_config_from_model_config(m: ModelConfig) -> FlowMatchingConfig:
         pos_encoding=m.pos_encoding,
         norm=m.norm,
         dropout=m.dropout,
-        gradient_checkpointing=m.gradient_checkpointing,
         attention=m.attention,
         kv_heads=m.kv_heads,
         down_dim_q=m.down_dim_q,

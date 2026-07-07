@@ -89,3 +89,6 @@ docs/_build/
 
 *.tokenizer.json
 *.tokens.npy
+
+
+external/

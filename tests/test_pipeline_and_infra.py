@@ -91,7 +91,6 @@ def tiny_model_config():
         max_context=32,
         causal=True,
         dropout=0.0,
-        gradient_checkpointing=False,
         weight_tying=False,
     )
 
