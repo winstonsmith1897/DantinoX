@@ -148,8 +148,8 @@ nav:
       - Generation Paradigms:
           - Overview: paradigms/index.md
           - Autoregressive (AR): paradigms/autoregressive.md
-          - Masked Diffusion (LLaDA): paradigms/diffusion.md
-          - ELF Continuous Flow: paradigms/elf.md
+          - Masked Diffusion: paradigms/diffusion.md
+          - Continuous Flow-Matching: paradigms/continuous.md
           - Fast-dLLM DualCache: paradigms/fast-dllm.md
           - Confidence-Aware Decoding: paradigms/confidence.md
           - AR vs Diffusion: paradigms/comparison.md

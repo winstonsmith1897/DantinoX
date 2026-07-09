@@ -42,7 +42,7 @@ Trainer.fit(data_path)
     ├─ 7. nnx.Optimizer(wrt=...)    → LoRA vs full-param training
     ├─ 8. make_mesh / shard_batch   → multi-GPU data parallelism
     ├─ 9. resume logic              → training_cursor.json + model_weights.msgpack
-    ├─ 10. JIT train_step           → AR | Diffusion | ELF dispatch
+    ├─ 10. JIT train_step           → AR | Diffusion | Continuous Flow-Matching dispatch
     ├─ 11. gradient accumulation    → acc pattern, division by grad_accum
     ├─ 12. estimate_loss            → stratified t for diffusion
     ├─ 13. checkpointing            → best_model_weights.msgpack
@@ -519,7 +519,7 @@ block, so only one `train_step` is compiled per `fit` call.
     For MoE models, the load-balancing auxiliary loss is added to the total
     loss with weight `model.alpha_balance`.
 
-=== "Diffusion (LLaDA)"
+=== "Diffusion"
 
     ```python
     @nnx.jit
@@ -555,7 +555,7 @@ block, so only one `train_step` is compiled per `fit` call.
     gradient. Flooring at 0.05 corresponds to approximately 26 masked tokens per
     512-token sequence, keeping the gradient well-conditioned.
 
-=== "ELF (continuous flow-matching)"
+=== "Continuous Flow-Matching"
 
     ```python
     @nnx.jit
@@ -573,7 +573,7 @@ block, so only one `train_step` is compiled per `fit` call.
 
     (`elf_loss` is a deprecated alias of `flow_loss`.)
 
-    The ELF step takes a *pre-computed T5 embedding* `full_emb` instead of raw
+    The flow-matching step takes a *pre-computed T5 embedding* `full_emb` instead of raw
     tokens. T5 is a large encoder-only model that is kept *outside* JIT — its
     forward pass runs on a separate XLA computation (line 665 of trainer.py:
     `emb = _t5_encoder.encode(x)` before the JIT call). This avoids retracing
@@ -666,10 +666,10 @@ the backward pass — this keeps peak VRAM manageable even with large
     evaluation would inflate val loss because the model was never trained
     at those noise levels and the `1/t` weight is very large there.
 
-=== "ELF"
+=== "Continuous Flow-Matching"
 
     T5 embeddings are computed outside JIT (`emb = _t5_encoder.encode(x)`)
-    and then passed to `eval_step`. The ELF loss is averaged over
+    and then passed to `eval_step`. The flow-matching loss is averaged over
     `config.eval_iters` batches.
 
 ---
@@ -844,7 +844,7 @@ inspect the curve and validate the suggestion.
 !!! warning "find_lr uses only Transformer"
     The current implementation always instantiates a `Transformer` (AR model)
     regardless of `config.model_type`. Use `find_lr` to tune the LR for AR runs
-    and use the result as a starting point for diffusion/ELF runs with appropriate
+    and use the result as a starting point for diffusion/flow-matching runs with appropriate
     scaling.
 
 ---

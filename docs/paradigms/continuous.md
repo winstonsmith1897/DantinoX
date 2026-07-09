@@ -1,12 +1,12 @@
-# ELF — Continuous Flow-Matching
+# Continuous Flow-Matching
 
-ELF (Embedded Language Flows) is a continuous flow-matching paradigm that operates in the embedding space of a frozen T5 encoder rather than in token-ID space.
+Continuous flow-matching is a paradigm that operates in the embedding space of a frozen T5 encoder rather than in token-ID space, following the ELF recipe (Embedded Language Flows; Hu et al., 2026).
 
 ---
 
 ## Core idea
 
-Instead of corrupting discrete tokens (as in LLaDA), ELF defines a continuous interpolation between clean embeddings **x** and Gaussian noise **ε**:
+Instead of corrupting discrete tokens (as in discrete diffusion), this paradigm defines a continuous interpolation between clean embeddings **x** and Gaussian noise **ε**:
 
 $$z_t = t \cdot x + (1 - t) \cdot \varepsilon, \quad t \sim U(0, 1), \quad \varepsilon \sim \mathcal{N}(0, I)$$
 
@@ -20,9 +20,15 @@ The model predicts the clean embedding **x** from the noisy **z_t** (x-predictio
 Input tokens [B, T]
        │
        ▼
-  FlowEmbedder (frozen T5)
+  T5ContextualEncoder (frozen T5, outside JIT)
        │
-  embeddings [B, T, embed_dim]
+  raw embeddings [B, T, embed_dim]
+       │
+       ▼
+  FlowEmbedder.encode() — channel-wise normalise using
+  running mean/std stats (NOT a T5 forward pass itself)
+       │
+  normalised embeddings x [B, T, embed_dim]
        │
   ┌────┴────────────────────────────────────┐
   │   z_t = t·x + (1-t)·ε                  │  noise injection
@@ -76,7 +82,7 @@ embedder = paradigm.build_embedder(nnx.Rngs(0))  # frozen T5
 
 ## Training
 
-ELF requires pre-computed embeddings passed into `loss_fn`. The embedder is **not** differentiable in the training loop (it is frozen):
+This paradigm requires pre-computed embeddings passed into `loss_fn`. The embedder is **not** differentiable in the training loop (it is frozen):
 
 ```python
 from dantinox.training.trainer import Trainer
@@ -98,7 +104,7 @@ run_dir = trainer.fit("data/wiki.txt")
 
 ## Generation
 
-ELF generates by integrating the learned ODE from t=1 (pure noise) to t=0 (clean embeddings):
+Generation integrates the learned ODE from t=1 (pure noise) to t=0 (clean embeddings):
 
 ```python
 import jax
@@ -135,7 +141,7 @@ fields, same defaults, still works but emits a `DeprecationWarning`.)
 
 ## Comparison with Discrete Diffusion
 
-| | LLaDA (`DiscreteParadigm`) | ELF (`ContinuousParadigm`) |
+| | Discrete Diffusion (`DiscreteParadigm`) | Continuous Flow-Matching (`ContinuousParadigm`) |
 | :--- | :--- | :--- |
 | Representation space | Discrete token IDs | Continuous T5 embeddings |
 | Corruption | Token masking | Gaussian noise injection |

@@ -25,7 +25,7 @@ dantinox --version
 
 -   :material-text-box-outline: **generate**
 
-    Generate text from a trained checkpoint. Supports AR, Diffusion, and ELF.
+    Generate text from a trained checkpoint. Supports AR, Diffusion, and Continuous Flow-Matching.
 
     [Details →](#generate)
 
@@ -207,11 +207,11 @@ The subcommand auto-detects the model type from `config.yaml` and routes to the 
 | `--no_cache` | `False` | Disable KV cache (slower; useful for debugging). AR only. |
 | `--stream` | `False` | Stream tokens to stdout as they are produced. AR only. |
 | `--seed` | `42` | Random seed for sampling. |
-| `--n_steps` | `50` | Denoising steps. Diffusion and ELF models only. |
+| `--n_steps` | `50` | Denoising steps. Diffusion and Continuous Flow-Matching models only. |
 | `--block_size` | `32` | Token block size for Fast-dLLM DualCache. Diffusion only. |
 | `--use_dual_cache` | `True` | Enable Fast-dLLM DualCache for ~1.8× speedup. Diffusion only. |
 | `--confidence_threshold` | `0.9` | Confidence threshold for early token commitment. Diffusion only. |
-| `--cfg_scale` | `1.5` | Classifier-free guidance scale. ELF only. |
+| `--cfg_scale` | `1.5` | Classifier-free guidance scale. Continuous Flow-Matching only. |
 
 ### Examples
 

@@ -44,7 +44,7 @@ from an existing PyTorch/AR workflow.
 | | **DantinoX** | **HuggingFace Transformers** |
 |---|---|---|
 | **Framework** | JAX + Flax NNX | PyTorch (primary) |
-| **Generation paradigms** | AR + Masked Diffusion + ELF | Primarily AR |
+| **Generation paradigms** | AR + Masked Diffusion + Continuous Flow-Matching | Primarily AR |
 | **Training abstraction** | `Paradigm.loss_fn` owns the objective | `Trainer` + model `.forward()` |
 | **State management** | Functional (`nnx.state` / `nnx.update`) | Stateful (`model.parameters()`) |
 | **JIT / compilation** | XLA JIT via `jax.jit` | `torch.compile` |
@@ -163,14 +163,12 @@ from an existing PyTorch/AR workflow.
 === "DantinoX"
 
     ```python
-    import msgpack
-    from flax import nnx
-    from flax.serialization import _msgpack_ext_unpack
+    from dantinox.core.checkpoint import load_model
 
-    with open("runs/my_run/best_model_weights.msgpack", "rb") as f:
-        state = msgpack.unpackb(f.read(), ext_hook=_msgpack_ext_unpack,
-                                strict_map_key=False)
-    nnx.update(model, state)
+    # Builds the right model class from config.yaml and restores its weights —
+    # tries both current (checkpoint_best.msgpack) and legacy
+    # (best_model_weights.msgpack) filenames automatically.
+    model, cfg, weights_path = load_model("runs/my_run")
     ```
 
 === "HuggingFace"
@@ -293,7 +291,7 @@ tokens = fast_dllm_generate(
 
 !!! success "Use DantinoX when:"
     - You are researching non-autoregressive generation (masked diffusion, flow matching).
-    - You need to compare AR vs. Diffusion vs. ELF with identical architecture and training.
+    - You need to compare AR vs. Diffusion vs. Continuous Flow-Matching with identical architecture and training.
     - You need fine-grained control over attention variant (MHA/GQA/MLA), KV-cache type, or noise schedule.
     - Your training loop is JAX-native and you want zero-overhead SPMD parallelism.
     - You need the systematic benchmark suite for reproducible throughput and quality numbers.

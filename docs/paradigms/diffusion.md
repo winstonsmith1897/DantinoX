@@ -1,10 +1,10 @@
 ---
-title: Masked Diffusion (LLaDA)
+title: Discrete Diffusion
 ---
 
-# Masked Discrete Diffusion (LLaDA)
+# Discrete Diffusion
 
-DantinoX implements **LLaDA** (Large Language Diffusion with mAsking, arXiv:2502.09992): a masked discrete diffusion model for language generation. Unlike autoregressive models that generate one token at a time, LLaDA generates **all tokens in parallel**, iteratively revealing them from a fully masked starting point.
+DantinoX's masked discrete diffusion paradigm follows the LLaDA formulation (Large Language Diffusion with mAsking; Nie et al., 2024, arXiv:2502.09992). Unlike autoregressive models that generate one token at a time, discrete diffusion generates **all tokens in parallel**, iteratively revealing them from a fully masked starting point.
 
 ---
 
@@ -62,7 +62,7 @@ $$
 
 **Key architectural difference from AR:** there is **no causal mask**. Every position attends to every other position (full bidirectional attention). The model sees the entire context — both what is already unmasked and where the masks are.
 
-**No time conditioning.** Unlike many diffusion models, the DantinoX LLaDA implementation does **not** pass $t$ to the model as a conditioning input (no AdaLayerNorm, no time embedding MLP). The model learns to denoise purely from the pattern of masks in the input — which implicitly encodes the noise level. This simplification follows the LLaDA paper and works well in practice.
+**No time conditioning.** Unlike many diffusion models, the DantinoX discrete diffusion implementation does **not** pass $t$ to the model as a conditioning input (no AdaLayerNorm, no time embedding MLP). The model learns to denoise purely from the pattern of masks in the input — which implicitly encodes the noise level. This simplification follows the LLaDA paper and works well in practice.
 
 ---
 
@@ -237,9 +237,9 @@ dantinox generate \
 
 ---
 
-## Comparison: LLaDA vs standard AR
+## Comparison: Discrete Diffusion vs standard AR
 
-| Property | Autoregressive | LLaDA (Masked Diffusion) |
+| Property | Autoregressive | Discrete Diffusion |
 |:----------|:-------------:|:------------------------:|
 | Attention | Causal (left only) | Full bidirectional |
 | Generation order | Left to right, one token | All positions, parallel |

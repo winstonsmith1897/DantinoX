@@ -48,7 +48,7 @@ DantinoX is a unified, configurable framework for systematically comparing autor
 The RQs below scope the Part A/B ablation suite (AR vs. Diffusion only, per
 the note above) — the published paper additionally answers a parallel
 question for continuous flow-matching (RQ1'): under the same recipe, how does
-ELF's generation quality and inference-efficiency profile compare to AR and
+continuous flow-matching's generation quality and inference-efficiency profile compare to AR and
 Discrete Diffusion? (Answered in Table 2 / Figure 4 of the paper.)
 
 - **RQ1 — Quality–efficiency tradeoff (AR vs. Diffusion):** Under identical architectures and training budgets, does masked diffusion achieve competitive perplexity relative to autoregressive LM, and at what throughput cost?

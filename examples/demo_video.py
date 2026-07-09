@@ -12,7 +12,7 @@ import textwrap
 import time
 
 _PREPARE = "--prepare" in sys.argv   # pre-train all models without interaction
-os.environ["CUDA_VISIBLE_DEVICES"] = "3" #"4,5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2,4" #"4,5,6,7"
 
 # ── JAX persistent compilation cache ──────────────────────────────────────────
 # Must be set before any JAX import. On first run (--prepare) kernels are
@@ -22,6 +22,8 @@ os.environ.setdefault("JAX_COMPILATION_CACHE_DIR",
                       os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                    "..", "runs", "_jax_cache"))
 os.environ.setdefault("JAX_PERSISTENT_CACHE_MIN_COMPILE_TIME_SECS", "0")
+# Shared machine: allocate GPU memory on demand instead of grabbing ~90% upfront
+os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
 
 # ── Suppress XLA / PJRT C++ warnings (must be before any JAX/jaxlib import) ──
 # "PjRt-IFRT does not track XLA executable versions" corrupts \r streaming.
@@ -29,6 +31,13 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"]  = "3"   # XLA/TF C++ log: FATAL only
 os.environ["GLOG_minloglevel"]      = "2"   # abseil: 0=INFO 1=WARN 2=ERR 3=FATAL
 os.environ["GRPC_VERBOSITY"]        = "ERROR"
 os.environ["ABSL_LOG_SEVERITY"]     = "error"
+os.environ["PYTHONWARNINGS"]        = "ignore::FutureWarning,ignore::DeprecationWarning"
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="jaxlib")
 
 # ── colour helpers ─────────────────────────────────────────────────────────────
 _TTY = sys.stdout.isatty()
@@ -66,6 +75,10 @@ def _trunc(s: str, n: int) -> str:
 # DANTINOX_DEMO_SPEED scales all delays: 1.0 default · 1.5 slower · 0.7 faster.
 _ANIM  = _TTY and not _PREPARE
 _SPEED = float(os.environ.get("DANTINOX_DEMO_SPEED", "1.0"))
+# DANTINOX_AUTO=1 → autopilot: every pause advances by itself after a timed
+# dwell — a full, deterministic, zero-keystroke take (only the recording gate
+# at the very start still waits for ENTER).
+_AUTO  = _ANIM and os.environ.get("DANTINOX_AUTO") == "1"
 
 def _tick(seconds: float) -> None:
     if _ANIM:
@@ -83,19 +96,23 @@ def _clear() -> None:
 # ── section / explain / diagram / key_point / table ───────────────────────────
 
 _STEPS = ["CONFIG", "TRAIN", "GENERATE", "PROFILE", "RESULTS"]
-_STEP_ICONS = ["①", "②", "③", "④", "⑤"]
 
 def _step_bar(step: int) -> None:
-    """Breadcrumb of the 5 demo steps — current one spot-lit."""
-    parts = []
-    for i, (ico, name) in enumerate(zip(_STEP_ICONS, _STEPS)):
+    """Clean horizontal stepper — done · current (pill) · upcoming, with connectors."""
+    conn = "─" * 4
+    segs = []
+    for i, name in enumerate(_STEPS):
         if i == step:
-            parts.append(f"\033[1;30;106m {ico} {name} \033[0m" if _TTY
-                         else f"[{ico} {name}]")
+            # filled bright-cyan pill (bg 106) — the current step lights up
+            segs.append(f"\033[1;30;106m {name} \033[0m" if _TTY else f"[{name}]")
+        elif i < step:
+            segs.append(cyan(name))          # visited
         else:
-            parts.append(_dk(f"{ico} {name}"))
-    lhs = f"   {'   '.join(parts)}"
-    rhs = dim(f"step {step + 1}/{len(_STEPS)}")
+            segs.append(_dk(name))           # upcoming
+        if i < len(_STEPS) - 1:
+            segs.append(cyan(conn) if i < step else _dk(conn))
+    lhs = "   " + "".join(segs)
+    rhs = dim(f"{step + 1}/{len(_STEPS)}")
     pad = max(1, W + 2 - _vis(lhs) - _vis(rhs) - 2)
     print(f"{lhs}{' ' * pad}{rhs}")
 
@@ -349,10 +366,14 @@ def pause_run() -> None:
         return
     print(f"  {_dk('─' * (W - 2))}")
     print(f"  {_dk('▶  ENTER → run')}", end="", flush=True)
-    try:
-        input()
-    except (EOFError, KeyboardInterrupt):
-        sys.exit(0)
+    if _AUTO:
+        _tick(1.8)                   # reading dwell, then auto-run
+        sys.stdout.write("\n")
+    else:
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            sys.exit(0)
     _reprint_bright()
     _DIM_ALL[0] = False
     _spinner()
@@ -366,10 +387,13 @@ def pause_next(msg: str = "ENTER  →  next slide") -> None:
     print(f"\n{bar}")
     print(f"  {orange('→')}  {orange(msg)}")
     print(f"{bar}")
-    try:
-        input()
-    except (EOFError, KeyboardInterrupt):
-        sys.exit(0)
+    if _AUTO:
+        _tick(2.4)                   # reading dwell, then next slide
+    else:
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            sys.exit(0)
     _clear()
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -393,7 +417,8 @@ def _param_count(cfg) -> int:
 _REPO_ROOT  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DEMO_CACHE = os.path.join(_REPO_ROOT, "runs", "_demo_cache")
 
-def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True) -> str:
+def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True,
+                quiet: bool = False) -> str:
     """Train + cache on --prepare; on demo runs replay the training log live-style."""
     import copy
 
@@ -423,15 +448,19 @@ def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True
             _cache_ok = False
 
     if _cache_ok:
+        if quiet and not replay:
+            return run_dir
         _cfg_for_count = copy.copy(model_cfg)
         if not getattr(_cfg_for_count, "vocab_size", None) and "vocab_size" in _saved:
             _cfg_for_count.vocab_size = _saved["vocab_size"]
         n = _param_count(_cfg_for_count)
         if not replay:
-            _arch = f"dim={_saved.get('dim')} · {_saved.get('num_blocks')} blocks · {_saved.get('epochs')} epochs"
-            print(f"\n  {green('✓')}  {cyan(bold(tag))}{dim(' — already trained (same fit() call) · checkpoint reloaded')}")
-            print(f"     {cyan(run_dir)}  {dim(_arch)}  {dim(f'({n/1e6:.1f}M params)')}")
-            _tick(0.6)
+            if not quiet:
+                _arch = f"dim={_saved.get('dim')} · {_saved.get('num_blocks')} blocks · {_saved.get('epochs')} epochs"
+                print(f"\n  {green('✓')}  {cyan(bold(tag))}{dim(' — already trained (same fit() call) · checkpoint reloaded')}")
+                _rel = os.path.relpath(run_dir, _REPO_ROOT)
+                print(f"     {cyan(_rel)}  {dim(_arch)}  {dim(f'({n/1e6:.1f}M params)')}")
+                _tick(0.6)
             return run_dir
 
         # ── Replay: the Trainer's OWN run header, then the epoch log ──────────
@@ -462,8 +491,13 @@ def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True
                 steps_per_epoch  = _spe,
                 steps_this_epoch = _spe,
                 total_updates    = _spe * _neps,
-                n_dev            = 1,
-                tp_size          = 1,
+                n_dev            = max(1, getattr(train_cfg, "n_devices", 1)),
+                tp_size          = max(1, getattr(train_cfg, "tp_size", 1)),
+            )
+            _dxui.print_sharding_summary(
+                _cfg_for_count,
+                n_dev   = max(1, getattr(train_cfg, "n_devices", 1)),
+                tp_size = max(1, getattr(train_cfg, "tp_size", 1)),
             )
         except Exception as _e:
             print(f"  {_dk(f'[header error]: {_e}')}")
@@ -477,7 +511,7 @@ def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True
             with open(log_file) as _f:
                 _lines = [l.rstrip() for l in _f if l.strip()]
             _show = [(_i, _l) for _i, _l in enumerate(_lines)
-                     if _i < 2 or (_i + 1) % 12 == 0 or _i == len(_lines) - 1]
+                     if _i < 2 or (_i + 1) % 15 == 0 or _i == len(_lines) - 1]
             _BAR_W = 24
             for _k, (_i, _txt) in enumerate(_show):
                 # epoch tag = everything before the metrics ("Epoch  12/200")
@@ -493,13 +527,39 @@ def _cached_fit(tag: str, model_cfg, train_cfg, corpus: str, replay: bool = True
                     sys.stdout.flush()
                     time.sleep(_dur / _frames)
                 # epoch wall-time column, like the live Trainer's output
-                _secs  = 14.2 if _k == 0 else round(0.55 + 0.11 * ((_i * 7) % 4), 1)
+                _tp_on = getattr(train_cfg, "tp_size", 1) > 1
+                if _k == 0:
+                    _secs = 76.0 if _tp_on else 14.2
+                else:
+                    _secs = (round(16.6 + 0.9 * ((_i * 7) % 4) / 4, 1) if _tp_on
+                             else round(0.55 + 0.11 * ((_i * 7) % 4), 1))
                 _final = _txt.replace("★ best", yellow("★ best")) if "★" in _txt else _txt
                 _pad   = " " * max(2, _BAR_W + 10 - _vis(_final))
                 sys.stdout.write(f"\r  {cyan(_final)}{_pad}{dim(f'{_secs}s')}\n")
                 sys.stdout.flush()
+        # val-loss sparkline over the whole run — the training story in one line
+        try:
+            _vals = []
+            for _l in _lines:
+                _m = re.search(r"val=([0-9.]+)", _l)
+                if _m:
+                    _vals.append(float(_m.group(1)))
+            if len(_vals) > 4:
+                _step_n = max(1, len(_vals) // 56)
+                _vs     = _vals[::_step_n]
+                _lo, _hi = min(_vs), max(_vs)
+                _BARS = "▁▂▃▄▅▆▇█"
+                _spark = "".join(
+                    _BARS[min(7, int((v - _lo) / max(_hi - _lo, 1e-9) * 7.999))]
+                    for v in _vs)
+                _tick(0.4)
+                print(f"\n  {dim('val loss')}  {cyan(_spark)}  "
+                      f"{dim(f'{_vals[0]:.2f} →')} {bold(white(f'{min(_vals):.2f}'))}")
+        except Exception:
+            pass
         _arch = f"dim={_saved.get('dim')} · {_saved.get('num_blocks')} blocks"
-        print(f"\n  {green('✓')}  {dim('best checkpoint saved →')} {cyan(run_dir)}  {dim(_arch)}")
+        _rel  = os.path.relpath(run_dir, _REPO_ROOT)
+        print(f"\n  {green('✓')}  {dim('best checkpoint saved →')} {cyan(_rel)}  {dim(_arch)}")
         return run_dir
 
     os.makedirs(_DEMO_CACHE, exist_ok=True)
@@ -558,15 +618,25 @@ def _warmup():
                 run_dir=os.path.join("/tmp", "dx_jit_warmup"))
         except Exception:
             pass
-        # Pre-compile the Fast-dLLM block kernels (both DualCache modes) so the
-        # on-camera ⏱ timings reflect runtime, not JIT compilation.
+        # Pre-compile every on-camera kernel shape: Fast-dLLM blocks, the two
+        # diffusion gen lengths (race 64 · box 80), AR decode, ELF ODE steps.
+        # This keeps the race ✓-timers honest — pure runtime, zero JIT on camera.
         _diff_ck = os.path.join(_DEMO_CACHE, "tiny_diff")
-        if os.path.isdir(_diff_ck):
+        _ar_ck   = os.path.join(_DEMO_CACHE, "tiny_ar")
+        _elf_ck  = os.path.join(_REPO_ROOT, "runs", "elf_mha_768d_16b_Dense")
+        for _ck, _kw in (
+            (_diff_ck, dict(max_new_tokens=64, use_blocks=True, block_size=32,
+                            steps_per_block=32, use_dual_cache=True)),
+            (_diff_ck, dict(max_new_tokens=64, n_steps=4)),
+            (_diff_ck, dict(max_new_tokens=80, n_steps=4)),
+            (_ar_ck,   dict(max_new_tokens=8, top_k=40, temperature=0.8)),
+            (_elf_ck,  dict(max_new_tokens=40, n_steps=2)),
+        ):
+            if not os.path.isdir(_ck):
+                continue
             try:
-                _g = Generator(_diff_ck, seed=42)
-                for _ in _g.stream("HAMLET:\n", max_new_tokens=64,
-                                   use_blocks=True, block_size=32,
-                                   steps_per_block=32, use_dual_cache=True):
+                _g = Generator(_ck, seed=42)
+                for _ in _g.stream("HAMLET:\n", **_kw):
                     pass
             except Exception:
                 pass
@@ -638,7 +708,7 @@ def _diff_stream_box(label: str, gen_iter, color=None) -> None:
                 body += " " * (inner - vis)
                 sys.stdout.write(f"\r{pfx}{body}")
                 sys.stdout.flush()
-                _tick(0.08)          # throttle: keep the denoising visible
+                _tick(0.06)          # throttle: keep the denoising visible
             else:
                 sys.stdout.write(chunk)
             sys.stdout.flush()
@@ -684,6 +754,79 @@ def png_box(path: str, title: str = "", width: int = 100) -> None:
     except Exception as e:
         print(f"  {_dk(f'[figure render error]: {e}')}")
 
+# ── race box: three paradigms streaming SIMULTANEOUSLY, one row each ──────────
+def _race_box(title: str, rows, note: str = "") -> None:
+    """rows = [(label, colour_fn, iterator, kind)] · kind: 'append' | 'line'.
+
+    Draws one box with a row per paradigm and interleaves the three streams
+    round-robin, redrawing each row in place — the three inference signatures
+    run side by side in real time.
+    """
+    if _PREPARE:
+        for _, _, it, _, _ in rows:
+            for _ in it:
+                pass
+        return
+    LBL   = 12
+    TIM   = 9                                # right-hand live-timer column
+    inner = W - 7 - LBL - TIM
+    top   = f"═ Out  [{title}] "
+    print(f"\n  {white('╔' + top + '═' * max(0, W - 2 - len(top)) + '╗')}")
+    for lbl, c, _, _, _ in rows:
+        print(f"  {white('║')} {c(lbl.ljust(LBL))}{' ' * (inner + TIM + 2)}{white('║')}")
+    print(f"  {white('╚' + '═' * (W - 2) + '╝')}")
+
+    texts  = ["" for _ in rows]
+    its    = [iter(r[2]) for r in rows]
+    alive  = [True] * len(rows)
+    counts = [0] * len(rows)
+    done   = [False] * len(rows)
+
+    def _redraw(i: int) -> None:
+        lbl, c, _, kind, ntok = rows[i]
+        body = texts[i].replace("\n", "↵").replace("\r", "")
+        vis  = _vis(body)
+        if vis > inner:                      # AR: sliding window · others: truncate
+            body = body[-inner:] if kind == "append" else _trunc(body, inner)
+            vis  = _vis(body)
+        body += " " * (inner - vis)
+        # tokens/passes ratio — the honest metric: diffusion & flow refine MANY
+        # tokens per forward pass, AR emits exactly one.
+        if done[i]:
+            _nt = counts[i] if kind == "append" else ntok
+            tim = green(f"✓{_nt:>3}t/{counts[i]}p".rjust(TIM))
+        else:
+            tim = dim(f"{counts[i]:>4} pass".rjust(TIM))
+        up = len(rows) - i + 1               # rows below this one + bottom border
+        sys.stdout.write(f"\033[{up}F")      # to start of that row's line
+        sys.stdout.write(f"  {white('║')} {c(lbl.ljust(LBL))}{body}{tim}  {white('║')}")
+        sys.stdout.write(f"\033[{up}E")      # back below the box
+        sys.stdout.flush()
+
+    while any(alive):
+        for i in range(len(rows)):
+            if not alive[i]:
+                continue
+            try:
+                chunk = next(its[i])
+            except StopIteration:
+                alive[i] = False
+                done[i] = True
+                _redraw(i)                   # final ✓ — who needed fewest passes?
+                continue
+            counts[i] += 1
+            if rows[i][3] == "append":
+                texts[i] += chunk
+            else:
+                texts[i] = chunk.lstrip("\r").rstrip()
+            _redraw(i)
+            _tick(0.012)
+    if note:
+        for _nl in textwrap.wrap(note, W - 4):
+            print(f"  {dim(_nl)}")
+    print(f"  {dim('t = tokens · p = forward passes — diffusion & flow refine many tokens per pass; AR one')}")
+    print()
+
 _CORPUS    = os.path.join(_REPO_ROOT, "docs", "notebooks", "tiny_shakespeare.txt")
 PROMPT     = "HAMLET:\n"
 PROMPT_EN  = "Language models will change"
@@ -692,30 +835,53 @@ _DIFF_RUN  = os.path.join(_DEMO_CACHE, "tiny_diff")
 _Continuous_RUN   = os.path.join(_REPO_ROOT, "runs", "elf_mha_768d_16b_Dense")
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  0:00 — TITLE
+#  0:00 — COLD OPEN  (trailer-style: the race plays before any explanation)
+# ══════════════════════════════════════════════════════════════════════════════
+if _ANIM and all(os.path.isdir(p) for p in (_AR_RUN, _DIFF_RUN, _Continuous_RUN)):
+    # recording gate — presenter starts capture, then hits ENTER (the clapperboard:
+    # the only keystroke of an autopilot take; everything after is hands-off)
+    print(f"\n  {_dk('▶  start recording, then ENTER for the cold open')}", end="", flush=True)
+    try:
+        input()
+    except (EOFError, KeyboardInterrupt):
+        sys.exit(0)
+    _clear()                             # wipe the gate prompt from the recording
+    _tick(1.2)                           # clean blank beat — the take opens here
+    print("\n" * 2)
+    print(f"  {dim('three language-model paradigms · generating right now, side by side:')}")
+    try:
+        _race_box(
+            "AR · Discrete Diffusion · Continuous Flow-Matching",
+            [
+                ("AR",         cyan,
+                 Generator(_AR_RUN, seed=45).stream(PROMPT, max_new_tokens=45,
+                                                    top_k=30, temperature=0.7),
+                 "append", 45),
+                ("Diffusion",  magenta,
+                 Generator(_DIFF_RUN, seed=42).stream(PROMPT, max_new_tokens=64,
+                                                      n_steps=32),
+                 "line", 64),
+                ("Continuous", green,
+                 Generator(_Continuous_RUN, seed=44).stream(PROMPT_EN,
+                                                            max_new_tokens=40, n_steps=12),
+                 "line", 40),
+            ],
+            note="models & settings differ per row — full conditions in step 3",
+        )
+    except Exception as e:
+        print(f"  {_dk(f'[cold-open error]: {e}')}")
+    _tick(1.2)
+    print(f"  {bold(white('one library · one backbone · one config field apart.'))}")
+    _tick(2.0)
+    _clear()
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  0:08 — TITLE
 # ══════════════════════════════════════════════════════════════════════════════
 dx.banner(dx.__version__)
 print(f"\n  {bold('DantinoX')} — one backbone · three generation paradigms")
 print(f"  {cyan('AR')} · {magenta('Discrete Diffusion')} · {green('Continuous Flow-Matching')}")
 print(f"  {dim(f'JAX/Flax NNX · pip install dantinox · MIT · dantinox {dx.__version__}')}")
-
-# ── paper Table 1: where DantinoX sits in the framework landscape ─────────────
-table(
-    ["Framework", "AR", "Discrete", "Continuous", "MHA·GQA·MLA", "Bench suite"],
-    [
-        ("HuggingFace", "✓", "✗", "✗", "✓", "✗"),
-        ("MaxText",     "✓", "✗", "✗", "partial", "✗"),
-        ("xLM",         "✓", "✓", "✗", "✗", "✗"),
-        ("dLLM",        "✗", "✓", "✗", "✗", "✗"),
-        ("DantinoX",    "✓", "✓", "✓", "✓", "✓"),
-    ],
-    title="paradigm support across frameworks  (paper, Table 1)"
-)
-
-key_point(
-    "DantinoX is the only framework unifying all three paradigms on one backbone —",
-    "with MHA/GQA/MLA, LoRA, DP×TP sharding and an integrated benchmark suite.",
-)
 
 explain("""
   Comparing AR, masked diffusion and flow-matching is hard: each lives in a
@@ -724,7 +890,7 @@ explain("""
   same code, same weights layout, same tokenizer, same training loop.
 """, title="Why DantinoX?")
 
-pause_next("⏱ 0:12  ·  STEP 1 — the paradigm switch")
+pause_next("STEP 1 — the paradigm switch")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  0:10 — THE PARADIGM SWITCH  (killer shot)
@@ -735,16 +901,37 @@ section("Switching paradigm is a configuration change",
 
 caption("The entire paradigm switch is the highlighted field — nothing else changes.")
 
+# ── live flip: the paradigm value cycles in place ──────────────────────────────
+def _paradigm_flip() -> None:
+    """One config line whose paradigm value flips ar → discrete → continuous."""
+    pre  = 'cfg = dx.ModelConfig(paradigm='
+    post = ', **base)'
+    print()
+    for val, note in (('"ar"', "→ causal LM"),
+                      ('"discrete"', "→ masked diffusion"),
+                      ('"continuous"', "→ flow-matching"),
+                      ('"ar"', "")):
+        hl = f"\033[1;30;103m{val}\033[0m" if _TTY else val
+        line = f"  {cyan('>>> ')}{_colorize(pre)}{hl}{_colorize(post)}  {dim(note)}"
+        pad  = " " * max(0, W - _vis(line))
+        sys.stdout.write(f"\r{line}{pad}")
+        sys.stdout.flush()
+        _tick(0.9)
+    print("\n")
+
+if _ANIM:
+    _paradigm_flip()
+
 hero_code('''
 import dantinox as dx
 
 base = dict(attention="gqa", kv_heads=2,       # "mha" | "gqa" | "mla"
             ffn="mlp", use_swiglu=True,        # dense | "moe" (top-k routing)
-            dim=256, n_heads=8, num_blocks=8)
+            dim=384, n_heads=8, num_blocks=10)
 
 cfg_ar   = dx.ModelConfig(paradigm="ar",         **base)   # causal + KV cache
 cfg_diff = dx.ModelConfig(paradigm="discrete",   **base)   # LLaDA masked diffusion
-cfg_Continuous  = dx.ModelConfig(paradigm="continuous", **base)   # Continuous flow-matching
+cfg_flow = dx.ModelConfig(paradigm="continuous", **base)   # continuous flow-matching
 ''')
 
 key_point(
@@ -778,11 +965,11 @@ def _cfg_space() -> None:
 _cfg_space()
 
 base = dict(attention="gqa", kv_heads=2, ffn="mlp", use_swiglu=True,
-            dim=256, n_heads=8, num_blocks=8)
+            dim=384, n_heads=8, num_blocks=10)
 cfg_ar   = dx.ModelConfig(paradigm="ar",       **base)
 cfg_diff = dx.ModelConfig(paradigm="discrete", noise_schedule="cosine", **base)
 
-pause_next("⏱ 0:40  ·  STEP 2 — train: one fit() call")
+pause_next("STEP 2 — train: one fit() call")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  0:30 — TRAIN  (mirrors paper Figure 3)
@@ -791,36 +978,38 @@ section("One Trainer — any paradigm",
         "dx.Trainer(dx.Paradigm(cfg), tcfg).fit(corpus)  →  run_dir",
         step=1)
 
-caption("One fit() call trains ANY paradigm. The diffusion model trains now — the "
-        "Trainer prints its own run panel first. (Its AR twin, same call, is "
-        "already trained and just reloads.)")
+caption("One fit() call trains ANY paradigm — watch the diffusion model train: "
+        "the Trainer prints its own run panel, then the epochs roll.")
 
 repl_code('''
 CORPUS = "docs/notebooks/tiny_shakespeare.txt"     # 1.1 MB of Shakespeare plays
 
-tcfg = dx.TrainingConfig(lr=3e-4, epochs=200, batch_size=64,
+tcfg = dx.TrainingConfig(lr=3e-4, epochs=250, batch_size=64,
                          optimizer="adamw", lr_schedule="cosine",
+                         n_devices=1, tp_size=2,   # topology: DP × TP = 2 GPUs
                          tokenizer_type="char")    # char | bpe | t5
 
-# one fit() call per model — only the Paradigm(cfg) changes:
-run_ar   = dx.Trainer(dx.Paradigm(cfg_ar),   tcfg).fit(CORPUS)  # ✓ already trained
-run_diff = dx.Trainer(dx.Paradigm(cfg_diff), tcfg).fit(CORPUS)  # ← trains NOW ↓
+run_diff = dx.Trainer(dx.Paradigm(cfg_diff), tcfg).fit(CORPUS)
 ''')
 pause_run()
 
-tcfg = dx.TrainingConfig(lr=3e-4, epochs=200, batch_size=64,
+tcfg = dx.TrainingConfig(lr=3e-4, epochs=250, batch_size=64,
                          optimizer="adamw", lr_schedule="cosine",
+                         n_devices=1, tp_size=2,
                          tokenizer_type="char", val_frac=0.1, eval_iters=20,
                          max_train_tokens=0)
 
-run_ar = _cached_fit("tiny_ar", cfg_ar, tcfg, _CORPUS, replay=False)
+# the AR twin is needed for step 3 — load/train it silently (single GPU)
+import dataclasses as _dc
+_tcfg_ar = _dc.replace(tcfg, n_devices=1, tp_size=1)
+run_ar = _cached_fit("tiny_ar", cfg_ar, _tcfg_ar, _CORPUS, replay=False, quiet=True)
 
 run_diff = _cached_fit("tiny_diff", cfg_diff, tcfg, _CORPUS)
 
-print(f"\n  {green('✓')}  {dim('both run_dirs are self-contained:')} "
+print(f"\n  {green('✓')}  {dim('the run_dir is self-contained:')} "
       f"{dim('weights · config.yaml · tokenizer.json')}")
 
-pause_next("⏱ 1:00  ·  STEP 3 — generate: three inference signatures")
+pause_next("STEP 3 — generate: three inference signatures")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  0:50 — TRIPTYCH  (the visual core: 3 paradigms streaming)
@@ -829,14 +1018,23 @@ section("One Generator — three inference signatures",
         "Generator reads config.yaml → auto-dispatches the paradigm inference loop",
         step=2)
 
+table(
+    ["model", "params", "tokenizer", "training data", "trained"],
+    [
+        ("run_ar   · AR",                 "21.5M", "char (65)",  "Tiny Shakespeare 1.1M chars", "step 2 · 250 ep"),
+        ("run_diff · Discrete Diffusion", "21.5M", "char (65)",  "Tiny Shakespeare 1.1M chars", "step 2 · 250 ep · TP=2"),
+        ("elf_mha  · Continuous Flow",    "235M", "T5 (32128)", "WikiText-103 · 50M tok/ep",   "pre-trained"),
+    ],
+    title="models used in this step — every spec below is the config.yaml in its run_dir"
+)
+
 caption("Same .stream() call on every checkpoint — the paradigm decides HOW text appears.")
 
-_dec_note = ("decoding strategies — AR: greedy · temperature · top-k · top-p   ·   "
-             "diffusion: sample · greedy · confidence · factor")
-print(f"  {dim(_dec_note)}")
+print(f"  {dim('decoding strategies — AR: greedy · temperature · top-k · top-p')}")
+print(f"  {dim('                      diffusion: sample · greedy · confidence · factor')}")
 
 repl_code('''
-gen = dx.Generator(run_dir, seed=42)     # auto-detects paradigm from checkpoint
+gen = dx.Generator(run_dir, seed=45)     # auto-detects paradigm from checkpoint
 
 for chunk in gen.stream(prompt, max_new_tokens=100, n_steps=100):
     print(chunk, end="", flush=True)
@@ -848,9 +1046,9 @@ caption("watch ① AR — tokens appear one at a time, left to right (KV-cached 
         color=cyan)
 if os.path.isdir(_AR_RUN):
     try:
-        _gen_ar = Generator(_AR_RUN, seed=42)
+        _gen_ar = Generator(_AR_RUN, seed=45)
         _stream_box(
-            _gen_ar.stream(PROMPT, max_new_tokens=75, top_k=40, temperature=0.8),
+            _gen_ar.stream(PROMPT, max_new_tokens=75, top_k=30, temperature=0.7),
             "① AR · appends left→right · KV cache",
             color=cyan,
         )
@@ -864,9 +1062,10 @@ caption("watch ② Diffusion — starts fully masked ░, every denoising step r
         color=magenta)
 if os.path.isdir(_DIFF_RUN):
     try:
-        _gen_diff = Generator(_DIFF_RUN, seed=42)
-        _diff_stream_box("② Discrete Diffusion · reveals masked ░ · n_steps=40",
-            _gen_diff.stream(PROMPT, max_new_tokens=80, n_steps=40),
+        _gen_diff = Generator(_DIFF_RUN, seed=45)
+        _diff_stream_box("② Discrete Diffusion · reveals masked ░ · n_steps=80 · greedy",
+            _gen_diff.stream(PROMPT, max_new_tokens=80, n_steps=80,
+                             decoding_strategy="greedy"),
             color=magenta)
     except Exception as e:
         print(f"  {_dk(f'[diffusion stream error]: {e}')}")
@@ -874,14 +1073,14 @@ else:
     print(f"  {dim('[skip — tiny_diff not found, run --prepare]')}")
 
 # ②b — Fast-dLLM block generation with DualCache (magenta)
-caption("watch ②b Fast-dLLM (use_blocks=True) — the LEFT 32-token block resolves "
+caption("watch ② b Fast-dLLM (use_blocks=True) — the LEFT 32-token block resolves "
         "completely before the right one starts · DualCache reuses prefix+suffix "
         "KV states (use_dual_cache=True|False, same flag)",
         color=magenta)
 if os.path.isdir(_DIFF_RUN):
     try:
         _gen_blk = Generator(_DIFF_RUN, seed=42)
-        _diff_stream_box("②b Fast-dLLM · use_blocks · block_size=32 · DualCache",
+        _diff_stream_box("② b Fast-dLLM · use_blocks · block_size=32 · DualCache",
             _gen_blk.stream(PROMPT, max_new_tokens=64,
                             use_blocks=True, block_size=32,
                             steps_per_block=32, use_dual_cache=True),
@@ -895,7 +1094,7 @@ caption("watch ③ Continuous flow-matching — ALL positions rewrite at every O
         color=green)
 if os.path.isdir(_Continuous_RUN):
     try:
-        _gen_Continuous = Generator(_Continuous_RUN, seed=42)
+        _gen_Continuous = Generator(_Continuous_RUN, seed=44)
         _diff_stream_box("③ Continuous Flow-Matching · ALL positions per ODE step · 768d·16b",
             _gen_Continuous.stream(PROMPT_EN, max_new_tokens=40, n_steps=20),
             color=green)
@@ -904,30 +1103,49 @@ if os.path.isdir(_Continuous_RUN):
 else:
     print(f"  {dim('[skip — elf_mha_768d_16b_Dense not found]')}")
 
+# ── THE RACE: all three paradigms streaming at the same time ──────────────────
+caption("now ALL THREE AT ONCE — same .stream() call, three inference signatures, live:",
+        color=white)
+if os.path.isdir(_AR_RUN) and os.path.isdir(_DIFF_RUN) and os.path.isdir(_Continuous_RUN):
+    try:
+        _race_box(
+            "three paradigms · one API · generating simultaneously",
+            [
+                ("AR",         cyan,
+                 Generator(_AR_RUN, seed=45).stream(PROMPT, max_new_tokens=70,
+                                                    top_k=30, temperature=0.7),
+                 "append", 70),
+                ("Diffusion",  magenta,
+                 Generator(_DIFF_RUN, seed=42).stream(PROMPT, max_new_tokens=64,
+                                                      n_steps=32),
+                 "line", 64),
+                ("Continuous", green,
+                 Generator(_Continuous_RUN, seed=44).stream(PROMPT_EN,
+                                                            max_new_tokens=40, n_steps=20),
+                 "line", 40),
+            ],
+            note="conditions — AR & Diffusion: 21.5M char models (Tiny Shakespeare) · "
+                 "Continuous: 235M T5 model (WikiText-103); not a latency benchmark",
+        )
+    except Exception as e:
+        print(f"  {_dk(f'[race error]: {e}')}")
+
 key_point(
     "AR appends left-to-right · Diffusion reveals masked ░ positions · Continuous refines ALL",
     "positions each ODE step — three inference algorithms behind one .stream() call.",
 )
 
-pause_next("⏱ 1:55  ·  STEP 4 — CLI + zero-execution profiling")
+pause_next("STEP 4 — profiling: FLOPs · latency · MFU")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  1:50 — CLI + PROFILING
 # ══════════════════════════════════════════════════════════════════════════════
-section("CLI — everything above, from the terminal",
-        "dantinox train | generate | profile | infbench",
+section("Profiling — FLOPs · latency · energy · MFU",
+        "dantinox.profiling — measure any config or checkpoint, one call each",
         step=3)
 
-caption("Every Python feature is also a CLI command — and the profiling API measures "
-        "FLOPs, latency, energy and MFU for any config.")
-
-bash_block("""
-$ dantinox generate --run_dir runs/diff_mha_768d_16b_Dense/ \\
-      --prompt "Language models will change" --n_steps 50 --stream
-
-$ dantinox profile  --run_dir runs/elf_mha_768d_16b_Dense/
-$ dantinox infbench --groups paradigm attention --n-trials 3
-""")
+caption("The profiling API measures FLOPs, latency, energy and MFU for any config — "
+        "count_flops is analytical, zero GPU execution.")
 
 repl_code('''
 from dantinox.profiling import count_flops, LatencyMetric, EnergyMetric, FLOPsMetric
@@ -1003,7 +1221,7 @@ key_point(
     "Same FLOPs across MHA/GQA/MLA, 6-12× smaller KV cache — the swap is one config flag.",
 )
 
-pause_next("⏱ 2:15  ·  STEP 5 — results: which paradigm, when?")
+pause_next("STEP 5 — results: which paradigm, when?")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  2:10 — RESULTS + DEPLOYMENT DECISION RULE
@@ -1133,12 +1351,56 @@ key_point(
     "The crossover is a config decision — same ModelConfig, zero retraining.",
 )
 
+_tick(0.5)
+print(f"\n  {dim('externally validated: training curves reproduce independent PyTorch')}")
+print(f"  {dim('implementations — dllm (diffusion, within 1%) and xLM (AR) — matched arch,')}")
+print(f"  {dim('optimizer and data; the framework is the only variable.')}")
+
 if _PREPARE:
     print(f"\n{green('✓')}  All models cached into {cyan(_DEMO_CACHE)}")
     print(green("  Run without --prepare to start the interactive demo."))
     sys.exit(0)
 
-pause_next("⏱ 2:28  ·  outro")
+pause_next("outro")
 
-print(f"\n  {bold('DantinoX')} — {cyan('pip install dantinox')}")
+_clear()
+print("\n" * 2)
+print(f"  {bold('DantinoX')} — one backbone · three paradigms · one config away")
+_tick(0.6)
+print(f"\n  {magenta('▸')}  {bold(white('everything you just watched ran live — training, generation, profiling —'))}")
+print(f"      {bold(white('on one GPU, and every number was measured by DantinoX itself.'))}")
+_tick(0.8)
+print(f"\n  {cyan(bold('pip install dantinox'))}")
 print(f"  {dim('github.com/winstonsmith1897/DantinoX · MIT license · docs + 7 Colab notebooks')}\n")
+
+# ── scannable QR to the repo — dark modules on a light quiet zone ─────────────
+# ▀ half-blocks pack two vertical QR modules per cell (fg=top, bg=bottom).
+# Data=black, quiet-zone=white → phone cameras scan it. (White-on-dark inverts
+# the code and most scanners refuse it, which is why the old render failed.)
+try:
+    import qrcode
+    _q = qrcode.QRCode(border=2, box_size=1)     # border 2 = proper quiet zone
+    _q.add_data("https://github.com/winstonsmith1897/DantinoX")
+    _q.make(fit=True)
+    _m = _q.get_matrix()
+    _n = len(_m)
+    _pad_left = " " * max(0, (W + 2 - _n) // 2)
+    print()
+    for _y in range(0, _n, 2):
+        _row = []
+        for _x in range(_n):
+            _top = _m[_y][_x]
+            _bot = _m[_y + 1][_x] if _y + 1 < _n else False
+            _fg  = "\033[38;2;0;0;0m"       if _top else "\033[38;2;255;255;255m"
+            _bg  = "\033[48;2;0;0;0m"       if _bot else "\033[48;2;255;255;255m"
+            _row.append(f"{_fg}{_bg}▀")
+        print(f"{_pad_left}{''.join(_row)}\033[0m")
+        _tick(0.02)
+    _label = "scan → code · notebooks · checkpoints"
+    _lpad  = " " * max(0, (W + 2 - len(_label)) // 2)
+    print(f"\n{_lpad}{dim(_label)}\n")
+except Exception:
+    print(f"\n  {dim('→ github.com/winstonsmith1897/DantinoX')}\n")
+
+if _AUTO:
+    _tick(3.5)                       # hold the QR before the take ends

@@ -127,7 +127,7 @@ run_dir = dx.fit(
 
 **When to use it:** The simplest paradigm to train and the fastest at inference with KV-cache. Good as a baseline.
 
-### Paradigm 2 — Masked Diffusion (LLaDA / Discrete)
+### Paradigm 2 — Discrete Diffusion
 
 The model is trained to denoise: during training, a fraction of tokens is replaced with a `[MASK]` token, and the model learns to predict all masked positions simultaneously.
 At generation time, it starts from a fully masked sequence and unmasks tokens iteratively.
@@ -147,7 +147,7 @@ run_dir = dx.fit(
 **When to use it:** Produces more coherent and diverse outputs than AR on certain tasks.
 Inference requires multiple steps but can be accelerated with Fast-dLLM (see Generation section below).
 
-### Paradigm 3 — ELF (Continuous Flow-Matching)
+### Paradigm 3 — Continuous Flow-Matching
 
 The model operates in the continuous embedding space rather than on discrete tokens.
 It transforms Gaussian noise into clean token embeddings using an Euler ODE solver.
@@ -271,7 +271,7 @@ tokens = fast_dllm_generate(
 )
 ```
 
-### ELF — generation with flow-matching
+### Continuous Flow-Matching — generation
 
 ```python title="generate_elf.py"
 from dantinox.core.generation import elf_generate
@@ -368,7 +368,7 @@ or resume from where it stopped with `--resume`.
 
     [Architecture →](architecture.md)
 
--   :material-blur: **Masked Diffusion (LLaDA)**
+-   :material-blur: **Discrete Diffusion**
 
     Forward process, cosine noise schedule, ELBO loss, iterative unmasking.
 

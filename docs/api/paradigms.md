@@ -30,11 +30,11 @@ import dantinox as dx
 # Autoregressive (causal=True set automatically)
 p = dx.Paradigm(dx.ModelConfig(paradigm="ar", dim=512, n_heads=8, num_blocks=12))
 
-# Masked Diffusion / LLaDA (causal=False set automatically)
+# Discrete Diffusion (causal=False set automatically)
 p = dx.Paradigm(dx.ModelConfig(paradigm="discrete", dim=512, n_heads=8, num_blocks=12,
                                 noise_schedule="cosine", mask_token_id=4))
 
-# ELF Continuous Flow-Matching (causal=False set automatically)
+# Continuous Flow-Matching (causal=False set automatically)
 p = dx.Paradigm(dx.ModelConfig(paradigm="continuous", dim=256, n_heads=4,
                                 embed_dim=768, bottleneck_dim=128, num_blocks=6))
 
@@ -49,7 +49,7 @@ p = dx.Paradigm(dx.ModelConfig(paradigm="embedder", dim=512, n_heads=8, num_bloc
 |---|---|---|---|
 | `"ar"` | `ARParadigm` | `True` | `Transformer` (causal) |
 | `"discrete"` | `DiscreteParadigm` | `False` | `DiffusionTransformer` |
-| `"continuous"` | `ContinuousParadigm` | `False` | `ELFTransformer` |
+| `"continuous"` | `ContinuousParadigm` | `False` | `FlowMatchingTransformer` |
 | `"embedder"` | `EmbedderParadigm` | `True` | `Transformer` (pooled) |
 
 When `paradigm=None` (omitted), the implementation is auto-detected from `causal` and `embed_dim` for backward compatibility.
@@ -122,7 +122,7 @@ The implementations below are directly importable for advanced use cases or when
 
 ---
 
-### Discrete Diffusion (LLaDA)
+### Discrete Diffusion
 
 ::: dantinox.paradigms.diffusion.discrete.DiscreteParadigm
     options:
@@ -135,7 +135,7 @@ The implementations below are directly importable for advanced use cases or when
 
 ---
 
-### Continuous Flow-Matching (ELF)
+### Continuous Flow-Matching
 
 ::: dantinox.paradigms.diffusion.continuous.ContinuousParadigm
     options:
@@ -201,7 +201,7 @@ paradigm = dx.Paradigm(cfg)
 model    = paradigm.build_model(nnx.Rngs(42))
 ```
 
-### Continuous flow-matching (ELF)
+### Continuous flow-matching
 
 ```python
 import dantinox as dx

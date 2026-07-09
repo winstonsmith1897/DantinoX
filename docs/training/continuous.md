@@ -36,6 +36,13 @@ and the loss is `flow_mse_loss(v_pred, v_target)`, with `v_pred` randomly
 taken from the self-conditioned or unconditioned pass per
 `config.self_cond_prob`.
 
+Every `model(z_t, x_prev, t, w, is_decode)` call returns a
+`dantinox.core.output.FlowMatchingOutput` NamedTuple with two fields:
+`x_pred` (predicted clean embedding, used to derive the velocity `v` for the
+MSE loss above) and `logits` (token logits via the shared unembedding head,
+used for the decoder branch's cross-entropy below). `ELFOutput` is a
+deprecated alias of the same type.
+
 **Decoder branch** — cross-entropy reconstruction of discrete tokens from a
 per-token-corrupted embedding, run in decode mode (ELF Algorithm 4):
 

@@ -25,7 +25,7 @@ At each training step:
 4. Compute the $(1/t)$-weighted masked CE on the predicted $p_\theta(x_0 \mid x_t)$.
 
 !!! warning "The model does not see t"
-    DantinoX's LLaDA-style diffusion has **no time conditioning at all** — no
+    DantinoX's discrete diffusion has **no time conditioning at all** — no
     `AdaLayerNorm`, no time-embedding MLP. The model learns to denoise purely
     from the pattern of `[MASK]` tokens in the input, which implicitly
     encodes the noise level. `t` is only used to weight the loss and to

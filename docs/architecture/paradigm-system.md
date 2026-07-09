@@ -110,7 +110,7 @@ return ce + out.aux_loss, {"ce_loss": ce, "aux_loss": out.aux_loss}
 
 ---
 
-## `"discrete"` — Masked Diffusion (LLaDA)
+## `"discrete"` — Masked Diffusion
 
 **Objective:** (1/t)-weighted cross-entropy on masked positions — the LLaDA training objective.
 
@@ -145,7 +145,7 @@ The `(1/t)` weighting up-weights loss on lightly-masked inputs (small `t`) where
 
 ---
 
-## `"continuous"` — ELF Flow-Matching
+## `"continuous"` — Continuous Flow-Matching
 
 **Objective:** Flow-matching MSE in continuous embedding space.
 
@@ -175,7 +175,7 @@ loss, metrics = p.loss_fn(model, batch, rng, embeddings=embeddings)
 
 !!! warning "Embeddings are mandatory"
     Unlike AR and Discrete, `ContinuousParadigm.loss_fn` raises `ValueError` if `embeddings=None`.
-    Pre-compute them via `ELFEmbedder` before the training loop.
+    Pre-compute them via `FlowEmbedder` before the training loop.
 
 ---
 

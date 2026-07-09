@@ -14,14 +14,14 @@ Each cell installs DantinoX automatically — no local setup required.
 | # | Notebook | Topic | Est. time (T4) |
 |---|----------|-------|:--------------:|
 | 01 | [Quickstart](#01--quickstart) | AR model, attention/FFN/norm variants, Generator | ~10 min |
-| 02 | [Discrete Diffusion](#02--discrete-diffusion-llada) | LLaDA masked diffusion, block-wise generation, DualCache | ~20 min |
-| 03 | [ELF Flow-Matching](#03--elf-continuous-flow-matching) | Rectified flow in T5 embedding space, CFG guidance | ~25 min |
+| 02 | [Discrete Diffusion](#02--discrete-diffusion) | Masked diffusion (LLaDA), block-wise generation, DualCache | ~20 min |
+| 03 | [Continuous Flow-Matching](#03--continuous-flow-matching) | Rectified flow in T5 embedding space, CFG guidance | ~25 min |
 | 04 | [Benchmarking & Profiling](#04--benchmarking--profiling) | FLOPs, latency, BenchmarkSuite, Visualizer | ~15 min |
 | 05 | [LoRA Fine-Tuning](#05--lora-fine-tuning) | Adapters, rank ablation, merge, domain adaptation | ~20 min |
-| 06 | [Paradigm Profiling](#06--paradigm-profiling) | AR vs Discrete vs ELF — 2D + interactive 3D Plotly | 10–40 min |
+| 06 | [Paradigm Profiling](#06--paradigm-profiling) | AR vs Discrete vs Continuous Flow-Matching — 2D + interactive 3D Plotly | 10–40 min |
 | 07 | [Diffusion Cache Profiling](#07--diffusion-cache-profiling) | No Cache vs Prefix Cache vs Dual Cache (Fast-dLLM) | 5–25 min |
 | 08 | [Retrievers & Embedder Training](#08--retrievers--embedder-training) | SimCSE, contrastive fine-tuning, FAISS, LangChain, ChromaDB | ~25 min |
-| 10 | [Generation Quality Comparison](#10--generation-quality-comparison) | Perplexity, distinct-n, rep-n, entropy — AR vs Discrete vs ELF | ~25 min |
+| 10 | [Generation Quality Comparison](#10--generation-quality-comparison) | Perplexity, distinct-n, rep-n, entropy — AR vs Discrete vs Continuous Flow-Matching | ~25 min |
 | 11 | [Attention Head Visualization](#11--attention-head-visualization) | Causal vs bidirectional heatmaps, head entropy, layer-depth analysis | ~10 min |
 | 12 | [Custom Paradigm Tutorial](#12--custom-paradigm-tutorial) | Build SemiAR from scratch, training, generation, registry | ~20 min |
 
@@ -40,7 +40,7 @@ Each cell installs DantinoX automatically — no local setup required.
     [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/01_quickstart.ipynb){ .md-button .md-button--primary }
     [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/01_quickstart.ipynb){ .md-button }
 
--   **02 — Discrete Diffusion (LLaDA)**
+-   **02 — Discrete Diffusion**
 
     ---
 
@@ -51,11 +51,11 @@ Each cell installs DantinoX automatically — no local setup required.
     [Open in Colab](https://colab.research.google.com/github/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button .md-button--primary }
     [View on GitHub](https://github.com/winstonsmith1897/DantinoX/blob/main/docs/notebooks/02_discrete_diffusion.ipynb){ .md-button }
 
--   **03 — ELF Continuous Flow-Matching**
+-   **03 — Continuous Flow-Matching**
 
     ---
 
-    Train an ELF model with rectified flow in T5 embedding space. Covers `ELFTransformer`, logit-normal time schedule, Euler ODE generation, CFG guidance scale ablation (`w = 1.0 … 5.0`), and model-size sweep (`embed_dim=768` fixed, `dim` and `num_blocks` free).
+    Train a continuous flow-matching model (following the ELF recipe) with rectified flow in T5 embedding space. Covers `FlowMatchingTransformer`, logit-normal time schedule, Euler ODE generation, CFG guidance scale ablation (`w = 1.0 … 5.0`), and model-size sweep (`embed_dim=768` fixed, `dim` and `num_blocks` free).
 
     **~25 min &nbsp;·&nbsp; GPU (T4)**
 
@@ -88,7 +88,7 @@ Each cell installs DantinoX automatically — no local setup required.
 
     ---
 
-    Profile AR, Discrete Diffusion, and ELF side-by-side across scale, batch, dtype, and diffusion-step sweeps. Produces five 2D matplotlib benchmark figures and six interactive 3D Plotly surfaces. Exposes a `QUICK` flag for fast (~10 min) vs. full (~40 min) runs.
+    Profile AR, Discrete Diffusion, and Continuous Flow-Matching side-by-side across scale, batch, dtype, and diffusion-step sweeps. Produces five 2D matplotlib benchmark figures and six interactive 3D Plotly surfaces. Exposes a `QUICK` flag for fast (~10 min) vs. full (~40 min) runs.
 
     **10–40 min &nbsp;·&nbsp; GPU (T4 / A100)**
 
@@ -121,7 +121,7 @@ Each cell installs DantinoX automatically — no local setup required.
 
     ---
 
-    Objective comparison of AR, Discrete Diffusion, and ELF on the same corpus. Covers **perplexity** (held-out NLL), **distinct-1/2** (diversity), **rep-4** (repetition), and **output entropy**. Includes a qualitative side-by-side and a summary radar chart.
+    Objective comparison of AR, Discrete Diffusion, and Continuous Flow-Matching on the same corpus. Covers **perplexity** (held-out NLL), **distinct-1/2** (diversity), **rep-4** (repetition), and **output entropy**. Includes a qualitative side-by-side and a summary radar chart.
 
     **~25 min &nbsp;·&nbsp; GPU (T4)**
 

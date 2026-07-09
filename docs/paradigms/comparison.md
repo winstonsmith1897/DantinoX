@@ -34,7 +34,7 @@ The primary controlled variable at inference time is the decoding procedure: AR 
 | Class | `core.model.Transformer` | `core.model.DiffusionTransformer` (alias of `Transformer` — a single unified class serves both paradigms) |
 | Block type | `Block` | `DiffusionBlock` (alias of `Block`) |
 | Attention mask | Causal | Full (bidirectional) |
-| Time conditioning | — | **None.** DantinoX's LLaDA-style diffusion does not condition on `t` at all — no `AdaLayerNorm`, no time-embedding MLP. (`AdaLayerNorm` exists in `core/block.py` but is unused dead code for this paradigm; see [Discrete Diffusion](diffusion.md).) |
+| Time conditioning | — | **None.** DantinoX's discrete diffusion does not condition on `t` at all — no `AdaLayerNorm`, no time-embedding MLP. (`AdaLayerNorm` exists in `core/block.py` but is unused dead code for this paradigm; see [Discrete Diffusion](diffusion.md).) |
 | Extra parameters | — | None beyond the shared backbone |
 | KV-cache type | Static KV | DualCache (prefix + suffix) |
 | Decode step cost | $O(T_{\text{gen}})$ | $O(T_{\text{gen}})$ (block-wise) |
@@ -170,14 +170,14 @@ Beyond perplexity, which measures the model's confidence over held-out reference
 | Model | Distinct-1 ↑ | Distinct-2 ↑ | Rep-4 ↓ | Notes |
 |:------|:-----------:|:-----------:|:-------:|:------|
 | Diff MHA 512d 12b (28K steps) | 0.467 | 0.808 | 0.004 | Intermediate checkpoint snapshot, mixed EN/FR/DE, Wikipedia structure — **not** the paper's reported Table 2 numbers (different training budget/seed count) |
-| ELF MHA 512d 12b (9.5K steps) | 0.365 | 0.851 | 0.002 | Intermediate checkpoint snapshot, early training — **not** the paper's reported Table 2 numbers |
+| Flow MHA 512d 12b (9.5K steps) | 0.365 | 0.851 | 0.002 | Intermediate checkpoint snapshot, early training — **not** the paper's reported Table 2 numbers |
 | AR MHA 256d 12b | — | — | — | Run `generation_quality.py` to populate |
 | Diff MHA 256d 12b | — | — | — | |
 | AR GQA 256d 12b | — | — | — | |
 | Diff GQA 256d 12b | — | — | — | |
 
 !!! warning "These two populated rows are ad-hoc snapshots, not the paper's results"
-    The `Diff MHA 512d 12b` and `ELF MHA 512d 12b` rows above were captured
+    The `Diff MHA 512d 12b` and `Flow MHA 512d 12b` rows above were captured
     from one-off intermediate checkpoints (28K and 9.5K steps respectively)
     during development, and use a different metric set (Distinct-1/2, Rep-4
     only, no MAUVE/BLEU-4cond, no seed averaging). They should **not** be
@@ -228,7 +228,7 @@ matched inference budget of 64 steps per paradigm:
 | GQA (77M) | 0.69±.09 | 188.0±0.4 | 0.562±.001 | 0.027±.000 | — |
 | MLA (79M) | 0.78±.07 | **156.3**±0.3 | 0.538±.001 | 0.107±.000 | — |
 
-BLEU-4<sub>cond</sub> is "—" for Flow-Matching: the ELF formulation supports
+BLEU-4<sub>cond</sub> is "—" for Flow-Matching: the ELF formulation (continuous flow-matching) supports
 prefix conditioning in principle, but DantinoX's current implementation does
 not yet expose it (planned future work). At this scale, Flow-Matching is the
 most fluent (lowest PPL, highest MAUVE), Diffusion the most lexically
@@ -316,7 +316,7 @@ diffusion:
   num_sampling_steps: 50
 ```
 
-(`time_emb_dim` is not used by diffusion — it belongs to the ELF/flow-matching fields; see [Configuration Reference](../configuration.md).)
+(`time_emb_dim` is not used by diffusion — it belongs to the flow-matching fields; see [Configuration Reference](../configuration.md).)
 
 All other fields — `dim`, `n_heads`, `num_blocks`, `kv_heads`, `mla`, `use_moe` —
 are shared.  This enables **controlled comparisons** where the only variable

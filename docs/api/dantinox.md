@@ -57,8 +57,8 @@ deprecated alias `ELFConfig` from the same module).
 ### Paradigms
 - `Paradigm` — unified paradigm dispatcher (selects AR/discrete/continuous/embedder from `ModelConfig.paradigm`)
 - `ARParadigm` — autoregressive
-- `DiscreteParadigm` — LLaDA-style masked diffusion
-- `ContinuousParadigm` — ELF flow-matching
+- `DiscreteParadigm` — masked diffusion (LLaDA formulation)
+- `ContinuousParadigm` — continuous flow-matching
 - `EmbedderParadigm` — contrastive text-embedding paradigm
 
 `DiscreteConfig` (masked-diffusion hyperparameters) is **not** re-exported at

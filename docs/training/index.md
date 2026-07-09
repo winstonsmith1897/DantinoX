@@ -4,7 +4,7 @@ title: Training
 
 # Training Guide
 
-DantinoX uses a single `Trainer` class for all three paradigms (AR, Diffusion, ELF). This page explains every training option, what it does, and when to change it.
+DantinoX uses a single `Trainer` class for all three paradigms (AR, Diffusion, Continuous Flow-Matching). This page explains every training option, what it does, and when to change it.
 
 ---
 
@@ -387,7 +387,7 @@ Logged metrics: `train_loss`, `val_loss`, `step`.
 |:-----|:--------------|
 | [Autoregressive Training](autoregressive.md) | AR-specific details: causal mask, teacher-forcing, cross-entropy loss |
 | [Diffusion Training](diffusion.md) | Masked diffusion: ELBO loss, noise schedules, continuous t, 1/t weighting |
-| [Continuous Flow-Matching Training](continuous.md) | ELF recipe: frozen T5 embedder, denoiser/decoder branch losses, CFG training, self-conditioning |
+| [Continuous Flow-Matching Training](continuous.md) | Frozen T5 embedder, denoiser/decoder branch losses, CFG training, self-conditioning |
 | [Optimisers & Schedules](optimizers.md) | Deep dive into AdamW, Lion, Muon, Adafactor, WSD |
 | [Hyperparameter Sweeps](sweeps.md) | Bayesian W&B sweeps, sweep YAML format |
 | [Multi-GPU](multi-gpu.md) | SPMD data parallelism, mesh sharding, batch divisibility |

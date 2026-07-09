@@ -130,3 +130,40 @@ print(report.summary())
   latency, and perplexity across sequence lengths and batch sizes.}
 \label{lst:inference}
 \end{figure}
+
+%% ═════════════════════════════════════════════════════════════════════════════
+%%  Listing 3 — Reproducing a Cross-Paradigm Results Table
+%% ═════════════════════════════════════════════════════════════════════════════
+\begin{figure}[t]
+\begin{lstlisting}[style=dxpy]
+import dantinox as dx
+
+GRID    = [(p, a) for p in ("ar", "discrete", "continuous")
+                   for a in ("mha", "gqa", "mla")]
+N_STEPS = 64   # matched inference budget across paradigms
+
+rows = []
+for paradigm, attn in GRID:
+    for seed in (42, 43, 44):
+        cfg  = dx.ModelConfig(paradigm=paradigm, attention=attn,
+                              dim=512, n_heads=8, num_blocks=12)
+        tcfg = dx.TrainingConfig(optimizer="muon", batch_size=256,
+                                 dataset_name="wikitext", seed=seed)
+        run_dir = dx.Trainer(dx.Paradigm(cfg), tcfg).fit(
+            dataset_source="huggingface")
+
+        gen     = dx.Generator(run_dir, seed=seed)
+        samples = [gen.generate("", max_new_tokens=128, n_steps=N_STEPS)
+                  for _ in range(100)]          # gen.seed varied per call
+        rows.append(score(samples, paradigm))   # MAUVE, PPL, D-2, R-4, B-4
+
+table = aggregate(rows, group=("paradigm", "attn"))  # mean +/- std, 3 seeds
+write_latex(table, "tab_genquality_results.tex")
+\end{lstlisting}
+\vspace{-2mm}
+\caption{\textsc{DantinoX} pipeline reproducing
+  Table~\ref{tab:genquality}: one \texttt{ModelConfig}/\texttt{TrainingConfig}
+  pair per cell of the paradigm~$\times$~attention grid, trained and scored
+  through the same public API, with no paradigm-specific code.}
+\label{lst:table2}
+\end{figure}

@@ -16,7 +16,7 @@ hide:
 # DantinoX
 
 **A research-grade JAX/Flax NNX library for language model research.**
-Three generation paradigms — Autoregressive, Masked Diffusion, and ELF — on the same Transformer architecture, with a single trainer and zero boilerplate.
+Three generation paradigms — Autoregressive, Masked Diffusion, and Continuous Flow-Matching — on the same Transformer architecture, with a single trainer and zero boilerplate.
 
 <div class="hero-badges" markdown>
 [![JAX](https://img.shields.io/badge/JAX-000000?style=flat-square&logo=google&logoColor=white)](https://github.com/google/jax)
@@ -44,7 +44,7 @@ DantinoX is a research library written in pure JAX for building and training Tra
 
 The library is designed for three types of users:
 
-- **Researchers** who want to compare AR vs. Diffusion vs. ELF in a reproducible way
+- **Researchers** who want to compare AR vs. Discrete Diffusion vs. Continuous Flow-Matching in a reproducible way
 - **Students** who want to understand the internal details of a modern Transformer
 - **Engineers** who want to experiment with architectural variants (GQA, MLA, MoE, LoRA) without rewriting the trainer from scratch
 
@@ -64,9 +64,9 @@ The library is designed for three types of users:
 
     [Learn more →](paradigms/autoregressive.md)
 
--   :material-blur: **Masked Diffusion (LLaDA)**
+-   :material-blur: **Discrete Diffusion**
 
-    Generates all tokens in parallel, starting from a fully masked sequence and iteratively removing `[MASK]` tokens. Attention is bidirectional — it sees the entire sequence at once.
+    Generates all tokens in parallel, starting from a fully masked sequence and iteratively removing `[MASK]` tokens. Attention is bidirectional — it sees the entire sequence at once. Follows the LLaDA formulation (Nie et al., 2024).
 
     **Pros:** More diverse and coherent outputs on certain tasks.
 
@@ -74,15 +74,15 @@ The library is designed for three types of users:
 
     [Learn more →](paradigms/diffusion.md)
 
--   :material-wave: **ELF — Continuous Flow**
+-   :material-wave: **Continuous Flow-Matching**
 
-    Operates in the continuous embedding space rather than on discrete tokens. Transforms Gaussian noise into clean embeddings via an Euler ODE solver.
+    Operates in the continuous embedding space rather than on discrete tokens. Transforms Gaussian noise into clean embeddings via an Euler ODE solver. Follows the ELF recipe (Hu et al., 2026).
 
     **Pros:** Experimental paradigm, excellent for flow-matching research.
 
     **Cons:** More complex to train, requires more data and epochs.
 
-    [Learn more →](paradigms/elf.md)
+    [Learn more →](paradigms/continuous.md)
 
 </div>
 
@@ -118,7 +118,7 @@ The library is designed for three types of users:
 
 -   :material-cloud-sync: **Ecosystem integration**
 
-    HuggingFace Hub push/pull. W&B sweeps. Full CLI with 12 subcommands. Colab notebooks.
+    HuggingFace Hub push/pull. W&B sweeps. Full CLI with 14 subcommands. Colab notebooks.
 
 -   :material-wrench: **Analysis tools**
 
@@ -152,19 +152,21 @@ The library is designed to be used at different levels of abstraction, from the 
 
     ```python
     import dantinox as dx
+    import jax
     from flax import nnx
 
     model_cfg = dx.ModelConfig(
         paradigm="ar",
         dim=512, n_heads=8, head_size=64, num_blocks=12,
-        attention_type="gqa", kv_heads=2,
+        attention="gqa", kv_heads=2,   # NOT attention_type= (that's a
+                                       # read-only compatibility property)
     )
     train_cfg = dx.TrainingConfig(lr=3e-4, epochs=5, grad_accum=4)
 
     paradigm = dx.Paradigm(model_cfg)
     run_dir  = dx.Trainer(paradigm, train_cfg).fit("data/wiki.txt")
     model    = dx.load(run_dir, paradigm=paradigm)
-    tokens   = paradigm.generate(model, prompt_ids, rng=nnx.Rngs(0))
+    tokens   = paradigm.generate(model, prompt_ids, rng=jax.random.PRNGKey(0))
     ```
 
 === "Level 3 — Full control"
@@ -207,10 +209,15 @@ DantinoX/
 │   ├── moe.py                      Sparse MoE with load-balancing loss
 │   ├── diffusion.py                NoiseSchedule · make_noise_schedule
 │   ├── lora.py                     LoRAParam · merge_lora
-│   └── generation.py               generate · diffusion_generate · elf_generate · fast_dllm_generate
+│   ├── generation.py               generate · diffusion_generate · flow_generate · fast_dllm_generate
+│   ├── checkpoint.py               load_model · restore_model · find_weights_file (run-dir loading)
+│   ├── output.py                   ModelOutput · FlowMatchingOutput · EmbeddingOutput
+│   ├── pipeline.py                 pipeline() one-call inference helper
+│   ├── export.py                   export_to_stablehlo (dantinox export CLI)
+│   └── sharding.py                 make_mesh/replicate/shard_batch (DP) · make_tp_mesh/apply_tp_sharding (TP)
 │
 ├── dantinox/                    ← Installable package
-│   ├── cli.py                      12 CLI subcommands
+│   ├── cli.py                      14 CLI subcommands
 │   ├── generator.py                Generator class (AR, loads checkpoint)
 │   ├── paradigms/
 │   │   ├── paradigm.py             Paradigm (unified factory — public API)

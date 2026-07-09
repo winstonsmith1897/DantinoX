@@ -10,7 +10,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
 
 -   :material-play-circle: [Train AR model](#1-train-an-ar-model-on-a-local-file)
 -   :material-blur: [Train Diffusion model](#2-train-a-masked-diffusion-llada-model)
--   :material-wave: [Train ELF model](#3-train-an-elf-continuous-flow-model)
+-   :material-wave: [Train a continuous flow-matching model](#3-train-a-continuous-flow-matching-model)
 -   :material-restore: [Resume training](#4-resume-interrupted-training)
 -   :material-text-box-outline: [Generate (AR)](#5-generate-text-from-ar)
 -   :material-blur-radial: [Generate (Diffusion)](#6-generate-text-from-diffusion)
@@ -54,7 +54,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
 
 ---
 
-## 2. Train a Masked Diffusion (LLaDA) model
+## 2. Train a Discrete Diffusion model
 
 === "Python"
 
@@ -88,7 +88,7 @@ Short, copy-paste recipes for the most common DantinoX patterns.
 
 ---
 
-## 3. Train an ELF (continuous flow) model
+## 3. Train a Continuous Flow-Matching model
 
 === "Python"
 
@@ -175,23 +175,15 @@ Short, copy-paste recipes for the most common DantinoX patterns.
 ## 6. Generate text from Diffusion
 
 ```python
-import yaml, msgpack
 import jax.numpy as jnp
-from flax import nnx
-from flax.serialization import _msgpack_ext_unpack
-from dantinox.core.config import Config
-from dantinox.core.model import DiffusionTransformer
+from dantinox.core.checkpoint import load_model
 from dantinox.core.generation import diffusion_generate
 from dantinox.core.diffusion import make_noise_schedule
 
-# Load config and model
-with open("runs/diff_mha_512d/config.yaml") as f:
-    cfg = Config.from_dict(yaml.safe_load(f))
-
-model = DiffusionTransformer(cfg, rngs=nnx.Rngs(42))
-with open("runs/diff_mha_512d/best_model_weights.msgpack", "rb") as f:
-    state = msgpack.unpackb(f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
-nnx.update(model, state)
+# Load config, build the right model class, and restore weights in one call.
+# Handles both current (checkpoint_best.msgpack) and legacy
+# (best_model_weights.msgpack) filenames automatically.
+model, cfg, weights_path = load_model("runs/diff_mha_512d")
 
 # Generate (iterative unmasking)
 schedule = make_noise_schedule(cfg)
@@ -216,9 +208,8 @@ tokens   = diffusion_generate(
 import yaml
 from dantinox.core.config import Config
 from dantinox.core.model import Transformer
+from dantinox.core.checkpoint import find_weights_file, restore_model
 from flax import nnx
-import msgpack
-from flax.serialization import _msgpack_ext_unpack
 from dantinox.trainer import Trainer
 
 # Load the base checkpoint config and inject LoRA
@@ -235,11 +226,9 @@ lora_cfg = Config.from_dict({
     "epochs": 5,
 })
 
-# Build model and load pretrained weights
+# Build model and load pretrained (non-LoRA) weights into it
 model = Transformer(lora_cfg, rngs=nnx.Rngs(42))
-with open("runs/ar_base/best_model_weights.msgpack", "rb") as f:
-    state = msgpack.unpackb(f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
-nnx.update(model, state)
+restore_model(model, find_weights_file("runs/ar_base"))
 
 # Fine-tune — only LoRA adapters are updated
 ft_run = Trainer(lora_cfg).fit("data/new_domain.txt")
@@ -257,28 +246,23 @@ merged = merge_lora(model)    # pure base architecture, no LoRA overhead
 ## 8. Load a model for inference
 
 ```python
-import yaml, msgpack
-from flax import nnx
-from flax.serialization import _msgpack_ext_unpack
-from dantinox.core.config import Config
-from dantinox.core.model import Transformer
+from dantinox.core.checkpoint import load_model
 
-def load_model(run_dir: str):
-    with open(f"{run_dir}/config.yaml") as f:
-        cfg = Config.from_dict(yaml.safe_load(f))
-    model = Transformer(cfg, rngs=nnx.Rngs(42))
-    for fname in ("best_model_weights.msgpack", "model_weights.msgpack"):
-        try:
-            with open(f"{run_dir}/{fname}", "rb") as f:
-                state = msgpack.unpackb(f.read(), ext_hook=_msgpack_ext_unpack, strict_map_key=False)
-            nnx.update(model, state)
-            return model, cfg
-        except FileNotFoundError:
-            continue
-    raise FileNotFoundError(f"No weights found in {run_dir}")
-
-model, cfg = load_model("runs/ar_mha_512d_12b")
+# Detects the config format (Config / ModelConfig / FlowMatchingConfig),
+# builds the matching model class, and tries both current
+# (checkpoint_best.msgpack / checkpoint_latest.msgpack) and legacy
+# (best_model_weights.msgpack / model_weights.msgpack) filenames in order.
+model, cfg, weights_path = load_model("runs/ar_mha_512d_12b")
 ```
+
+!!! note "Rolling your own loader"
+    If you need to load weights into an already-built model object,
+    `dantinox.core.checkpoint.restore_model(model, weights_path)` does just
+    the weight-restoration step — see `find_weights_file()` /
+    `restore_model()` in the same module. Calling `nnx.update(model, raw_dict)`
+    directly on the msgpack-decoded dict (skipping
+    `nnx.state(model, nnx.Not(nnx.RngState)).replace_by_pure_dict(raw)`) does
+    **not** reliably restore an NNX module and should be avoided.
 
 ---
 

@@ -221,7 +221,7 @@ cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 
 ## Config (monolithic)
 
-The `Config` class is the **legacy flat config** used by the CLI and YAML files. It combines all `ModelConfig` and `TrainingConfig` fields, plus ELF-specific fields.
+The `Config` class is the **legacy flat config** used by the CLI and YAML files. It combines all `ModelConfig` and `TrainingConfig` fields, plus continuous flow-matching fields.
 
 !!! tip "Prefer the split API for new experiments"
     Use `ModelConfig` + `TrainingConfig` for new code — the split is cleaner and more composable. Use `Config` when working with the CLI, existing YAML files, or `Trainer` directly.
@@ -256,7 +256,7 @@ The field names below are what Config uses; where the name differs from ModelCon
 | `activation` | `str` | `"gelu"` | |
 | `gradient_checkpointing` | `bool` | `False` | |
 
-### Diffusion (LLaDA) fields
+### Diffusion fields
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
@@ -268,19 +268,19 @@ The field names below are what Config uses; where the name differs from ModelCon
 Discrete diffusion in DantinoX has **no time conditioning** — the backbone is
 a plain bidirectional transformer with no `AdaLayerNorm` and no time-embedding
 MLP (`core/diffusion.py` explicitly runs "bidirectional transformer, no
-AdaLayerNorm"). `time_emb_dim` (below) belongs to the ELF/flow-matching fields,
+AdaLayerNorm"). `time_emb_dim` (below) belongs to the flow-matching fields,
 not diffusion, even though it's stored on the same monolithic `Config` object.
 
-### ELF (continuous flow) fields
+### Continuous flow-matching fields
 
-??? note "ELF-specific fields — expand for details"
+??? note "Continuous flow-matching fields — expand for details"
     Only relevant when `model_type="elf"`. The shared fields (`dim`, `n_heads`, etc.) are reused from the architecture section above.
 
     | Field | Type | Default | Description |
     |:------|:-----|:-------:|:------------|
     | `embed_dim` | `int` | `512` | Token embedding / flow-space dimension. |
     | `bottleneck_dim` | `int` | `128` | Bottleneck between embed space and transformer. |
-    | `time_emb_dim` | `int` | `256` | Sinusoidal embedding dimension for `t` and the CFG scale `w`, projected into control tokens (not `AdaLayerNorm` — ELF uses control tokens, not adaptive norm conditioning). |
+    | `time_emb_dim` | `int` | `256` | Sinusoidal embedding dimension for `t` and the CFG scale `w`, projected into control tokens (not `AdaLayerNorm` — continuous flow-matching uses control tokens, not adaptive norm conditioning). |
     | `num_time_tokens` | `int` | `4` | Control tokens encoding timestep `t`. |
     | `num_cfg_tokens` | `int` | `4` | Control tokens encoding CFG scale `w`. |
     | `num_mode_tokens` | `int` | `4` | Control tokens encoding denoiser/decode mode. |
@@ -425,7 +425,7 @@ model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))
 | `sde_gamma` | `float` | `1.0` | SDE noise re-injection at inference (`0` = pure ODE). |
 | `t5_model_name` | `str` | `"t5-base"` | Frozen T5 embedding oracle. `vocab_size` must match. |
 
-??? note "Training-time ELF fields — expand for details"
+??? note "Training-time continuous flow-matching fields — expand for details"
     These control the denoiser/decoder dual-branch training procedure.
 
     | Field | Type | Default | Description |

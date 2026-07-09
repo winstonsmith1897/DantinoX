@@ -38,7 +38,7 @@ DantinoX is organized in three decoupled layers. Understanding this layering is 
 | `core/lora.py` | `LoRALinear`, `LoRAParam` — type-level weight freezing |
 | `core/flow.py` | `FlowMatchingTransformer`, `FlowEmbedder`, `flow_loss` — continuous flow-matching (ELF recipe). `core/elf.py` is a deprecated import shim kept for backward compatibility. |
 | `core/diffusion.py` | Noise schedules, `corrupt()`, `masked_cross_entropy()` |
-| `core/generation.py` | AR decode loop, diffusion reverse pass, ELF denoising |
+| `core/generation.py` | AR decode loop, diffusion reverse pass, flow-matching denoising |
 | `core/sharding.py` | `make_mesh`, `replicate`, `shard_batch` — multi-GPU SPMD |
 
 For the deep-dive on individual layers (MLA math, RoPE, Flash Attention, LoRA, multi-GPU), see [Core Layers](architecture/core.md).
@@ -73,7 +73,7 @@ class ParadigmBase(ABC):
         """Decode a token sequence from a prompt prefix."""
 ```
 
-The Trainer calls *only* `loss_fn` and nothing else about the model. This is the key design invariant: **all paradigm-specific logic (masking, noise schedules, ELF branches, CFG) lives in the Paradigm, never in the Trainer.**
+The Trainer calls *only* `loss_fn` and nothing else about the model. This is the key design invariant: **all paradigm-specific logic (masking, noise schedules, flow-matching branches, CFG) lives in the Paradigm, never in the Trainer.**
 
 !!! note "Why `model` is passed explicitly to `loss_fn`"
     `nnx.value_and_grad` differentiates with respect to the first argument. By accepting `model` explicitly, `loss_fn` is directly differentiable without the `Paradigm` needing to be an NNX module or store the model as state.
