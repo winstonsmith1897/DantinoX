@@ -4,12 +4,33 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dantinox"
-version = "0.4.0"
-description = "A decoder-only Transformer built from scratch in JAX and Flax NNX"
+version = "0.4.2"
+description = "One JAX/Flax backbone for AR, discrete-diffusion, and flow-matching LLMs — switch paradigm with a single config field."
 authors = [{name = "Marco Simoni"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
+keywords = [
+    "jax", "flax", "nnx", "transformer", "language-model", "llm",
+    "autoregressive", "diffusion", "masked-diffusion", "llada",
+    "flow-matching", "elf", "mixture-of-experts", "moe", "lora",
+    "gqa", "mla", "attention", "benchmarking", "generative-ai",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "jax>=0.4.30,<0.10",
     "jaxlib>=0.4.30",
@@ -45,6 +66,14 @@ dev       = [
     "mike",
 ]
 all = ["dantinox[data,hub,elf,benchmark,dev]"]
+
+[project.urls]
+Homepage      = "https://github.com/winstonsmith1897/DantinoX"
+Documentation = "https://dantinox.readthedocs.io"
+Repository    = "https://github.com/winstonsmith1897/DantinoX"
+Issues        = "https://github.com/winstonsmith1897/DantinoX/issues"
+Notebooks     = "https://dantinox.readthedocs.io/en/latest/notebooks/"
+"Demo Video"  = "https://youtu.be/1u5-AieDzIc"
 
 [project.scripts]
 dantinox = "dantinox.cli:main"

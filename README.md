@@ -19,10 +19,67 @@ paradigm-specific boilerplate.
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue?style=flat-square)](http://mypy-lang.org/)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen?style=flat-square)](https://github.com/winstonsmith1897/DantinoX/actions)
 [![Documentation](https://readthedocs.org/projects/dantinox/badge/?version=latest&style=flat-square)](https://dantinox.readthedocs.io/en/latest/)
+[![Demo Video](https://img.shields.io/badge/▶_demo-YouTube-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/1u5-AieDzIc)
 
-**[Documentation](https://dantinox.readthedocs.io) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/) · [API Reference](https://dantinox.readthedocs.io/en/latest/api/)**
+**[Documentation](https://dantinox.readthedocs.io) · [Demo Video](https://youtu.be/1u5-AieDzIc) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/) · [API Reference](https://dantinox.readthedocs.io/en/latest/api/)**
 
 </div>
+
+---
+
+## The idea in one snippet
+
+The whole point of DantinoX: **the generation paradigm is a single field.**
+Everything else — backbone, weights layout, tokenizer, trainer, generator —
+stays byte-for-byte identical.
+
+```python
+import dantinox as dx
+
+base = dict(attention="gqa", kv_heads=2, ffn="mlp", use_swiglu=True,
+            dim=512, n_heads=8, num_blocks=12, vocab_size=32_128)
+
+cfg_ar   = dx.ModelConfig(paradigm="ar",         **base)   # causal + KV-cache decode
+cfg_diff = dx.ModelConfig(paradigm="discrete",   **base)   # LLaDA masked diffusion
+cfg_flow = dx.ModelConfig(paradigm="continuous", **base)   # ELF flow-matching
+
+# one Trainer, one Generator — for every paradigm:
+run = dx.Trainer(dx.Paradigm(cfg_diff), tcfg).fit("data/wiki.txt")
+for chunk in dx.Generator(run).stream("Language models will", n_steps=50):
+    print(chunk, end="", flush=True)
+```
+
+Attention (MHA/GQA/MLA), FFN (dense/MoE/LatentMoE), positional encoding, norm,
+tokenizer, optimizer, LoRA, and DP×TP sharding are **all configuration flags on
+the same two dataclasses** — thousands of valid combinations, zero code changes.
+
+---
+
+## Watch the 2-minute demo
+
+A single screencast walks the whole cycle — the paradigm switch, a live training
+run, the three inference signatures streaming side by side, zero-execution
+profiling, and the benchmark results — all from one API on one GPU.
+
+<div align="center">
+
+[![DantinoX demo video](https://img.youtube.com/vi/1u5-AieDzIc/maxresdefault.jpg)](https://youtu.be/1u5-AieDzIc)
+
+</div>
+
+> Reproduce it locally: `python examples/demo_video.py`
+
+---
+
+## Contents
+
+- [The idea in one snippet](#the-idea-in-one-snippet) · [Demo video](#watch-the-2-minute-demo)
+- [Overview](#overview) · [Features](#features) · [Installation](#installation)
+- [Quick Start](#quick-start): [one-liner](#one-liner-api) · [paradigm API](#explicit-paradigm-api) · [CLI](#cli)
+- [Project Structure](#project-structure) · [Configuration](#configuration)
+- [Generation Paradigms](#generation-paradigms): [AR](#autoregressive) · [Diffusion](#masked-diffusion-llada) · [Flow-Matching](#continuous-flow-matching-elf-recipe)
+- [LoRA Fine-Tuning](#lora-fine-tuning) · [Benchmarking](#benchmarking) · [Development](#development)
+- [Documentation](#documentation) · [Paper](#paper) · [License](#license)
 
 ---
 
@@ -47,7 +104,7 @@ need architectural variants (GQA, MLA, MoE, LoRA) without rewriting the
 trainer. It is the only framework we're aware of that unifies all three
 generation paradigms on a single JAX/Flax backbone alongside MHA/GQA/MLA
 attention, LoRA, multi-GPU scaling, and an integrated benchmarking suite —
-see the [framework comparison](https://dantinox.readthedocs.io/en/latest/vs-transformers/#framework-landscape)
+see the [framework comparison](https://dantinox.readthedocs.io/en/latest/vs-transformers.html#framework-landscape)
 for how this compares to HuggingFace, MaxText, Levanter, OpenLM, torchtune,
 Fairseq, xLM, and dLLM.
 
@@ -129,7 +186,7 @@ run_dir = dx.fit("continuous", "data/wiki.txt",
 
 > Unrecognized keyword arguments to `dx.fit()` are silently ignored rather
 > than raising an error — double check field names against the
-> [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration/)
+> [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration.html)
 > if a value doesn't seem to take effect (e.g. the field is `dim`/`flow_cfg_scale`
 > on `ModelConfig`, not `model_dim`/`elf_cfg_scale`, which only exist on the
 > standalone `FlowMatchingConfig`).
@@ -200,7 +257,7 @@ dantinox plot --in_csv results/benchmark.csv --out_dir plots/
 
 All 14 subcommands (`train`, `generate`, `sweep`, `benchmark`, `find-lr`,
 `push`, `pull`, `infbench`, `merge-lora`, `profile`, `run`, `export`, `eval`,
-`plot`) are documented in the [CLI Reference](https://dantinox.readthedocs.io/en/latest/cli/).
+`plot`) are documented in the [CLI Reference](https://dantinox.readthedocs.io/en/latest/cli.html).
 
 ---
 
@@ -298,7 +355,7 @@ cfg = Config(
 > The modern `ModelConfig` uses the shorter field name `attention` instead
 > (e.g. `dx.ModelConfig(attention="gqa", ...)`) — passing `attention_type=`
 > to `ModelConfig` raises `TypeError`. See the
-> [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration/)
+> [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration.html)
 > for the full field mapping between the two config schemas.
 
 Key constraint: `dim` must equal `n_heads × head_size`.
@@ -308,7 +365,7 @@ Config(dim=512, n_heads=8, head_size=64)   # ✓
 Config(dim=512, n_heads=8, head_size=32)   # ✗  ValueError
 ```
 
-Full field reference: [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration/).
+Full field reference: [Configuration Reference](https://dantinox.readthedocs.io/en/latest/configuration.html).
 
 ---
 
@@ -465,7 +522,7 @@ pip install "dantinox[docs]"
 mkdocs serve          # local preview at http://127.0.0.1:8000
 ```
 
-Key sections: [Quickstart](https://dantinox.readthedocs.io/en/latest/quickstart/) · [Paradigms](https://dantinox.readthedocs.io/en/latest/paradigms/) · [Configuration](https://dantinox.readthedocs.io/en/latest/configuration/) · [CLI](https://dantinox.readthedocs.io/en/latest/cli/) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/)
+Key sections: [Quickstart](https://dantinox.readthedocs.io/en/latest/quickstart.html) · [Paradigms](https://dantinox.readthedocs.io/en/latest/paradigms/) · [Configuration](https://dantinox.readthedocs.io/en/latest/configuration.html) · [CLI](https://dantinox.readthedocs.io/en/latest/cli.html) · [Notebooks](https://dantinox.readthedocs.io/en/latest/notebooks/)
 
 ---
 
@@ -479,8 +536,12 @@ diversity, conditional BLEU) across all nine paradigm × attention
 combinations at Small scale (512-d, 12-layer), and **inference efficiency**
 (latency, throughput, energy, hardware roofline) across all three paradigms
 on a Large backbone (1024-d, 16-layer) on a single A100-40GB GPU. See
-[Experiments & Results](https://dantinox.readthedocs.io/en/latest/paper/)
+[Experiments & Results](https://dantinox.readthedocs.io/en/latest/paper.html)
 for the full breakdown.
+
+A short screencast walking through the full train → generate → profile → benchmark
+cycle is available as a **[demonstration video ▶](https://youtu.be/1u5-AieDzIc)**
+(reproduce it locally with `python examples/demo_video.py`).
 
 ```bibtex
 @software{dantinox2026,
