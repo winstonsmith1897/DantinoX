@@ -74,6 +74,7 @@ bump-major:
 	$(PYTHON) -c "import re,pathlib; p=pathlib.Path('pyproject.toml'); t=p.read_text(); v=re.search(r'version = \"(\d+)\.(\d+)\.(\d+)\"',t); a,b,c=int(v.group(1)),int(v.group(2)),int(v.group(3)); nv=f'{a+1}.0.0'; p.write_text(t.replace(v.group(0),f'version = \"{nv}\"')); print('Bumped to',nv)"
 
 build:
+	rm -rf dist/                       # avoid re-uploading stale wheels (PyPI 400)
 	$(PYTHON) -m build
 
 publish: build
