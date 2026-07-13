@@ -482,15 +482,24 @@ class Trainer:
             eval_key    = jax.random.PRNGKey(cfg.seed + 99_991)
             running     = jnp.zeros(())
             for i in range(cfg.eval_iters):
-                batch = jnp.asarray(
-                    _sample_batch(source, cfg.batch_size, sample_len, eval_rng_np))
-                if n_dev > 1:
-                    batch = shard_batch(batch, mesh)
                 key = jax.random.fold_in(eval_key, i)
-                loss = (
-                    _eval_step_extras(model, batch, paradigm.prepare_batch(batch), key)
-                    if has_extras else _eval_step(model, batch, key)
-                )
+                if flow_val_cache is not None:
+                    b_np, e_np = flow_val_cache.sample(eval_rng_np, cfg.batch_size)
+                    batch  = jnp.asarray(b_np)
+                    extras = jnp.asarray(e_np, dtype=jnp.float32)
+                    if n_dev > 1:
+                        batch  = shard_batch(batch, mesh)
+                        extras = shard_batch(extras, mesh)
+                    loss = _eval_step_extras(model, batch, extras, key)
+                else:
+                    batch = jnp.asarray(
+                        _sample_batch(source, cfg.batch_size, sample_len, eval_rng_np))
+                    if n_dev > 1:
+                        batch = shard_batch(batch, mesh)
+                    loss = (
+                        _eval_step_extras(model, batch, paradigm.prepare_batch(batch), key)
+                        if has_extras else _eval_step(model, batch, key)
+                    )
                 running = running + loss
             return float(running) / cfg.eval_iters
 
@@ -502,6 +511,27 @@ class Trainer:
         log_rows: list[dict] = []
         log_every = 10  # host syncs for the progress bar, once per N steps
 
+        # ── Flow-matching: pre-encode fixed windows once (frozen T5 is cheap to
+        # reuse but expensive to recompute every step). Falls back to per-step
+        # encoding on any failure so nothing regresses. ─────────────────────────
+        flow_train_cache: _FlowWindowCache | None = None
+        flow_val_cache:   _FlowWindowCache | None = None
+        if has_extras:
+            try:
+                _t_enc = _time.monotonic()
+                flow_train_cache = _precompute_flow_windows(
+                    paradigm, train_tokens, sample_len)
+                if val_tokens is not None:
+                    flow_val_cache = _precompute_flow_windows(
+                        paradigm, val_tokens, sample_len)
+                _n = flow_train_cache.n + (flow_val_cache.n if flow_val_cache else 0)
+                log.info("Pre-encoded %d flow windows in %.1fs (frozen-T5 cache).",
+                         _n, _time.monotonic() - _t_enc)
+            except Exception as exc:   # noqa: BLE001 — never let caching kill a run
+                log.warning(
+                    "Flow embedding pre-cache disabled (%s); using per-step T5.", exc)
+                flow_train_cache = flow_val_cache = None
+
         for epoch in range(start_epoch, n_epochs + 1):
             # Per-epoch derived RNGs make resume deterministic without
             # serialising key state.
@@ -510,7 +540,11 @@ class Trainer:
             epoch_t0   = _time.monotonic()
 
             # Prefetcher overlaps CPU batch sampling with GPU compute.
-            prefetcher = _Prefetcher(train_tokens, cfg.batch_size, sample_len, np_rng)
+            # (skipped for flow-matching: batches come from the pre-encoded cache)
+            prefetcher = (
+                None if flow_train_cache is not None
+                else _Prefetcher(train_tokens, cfg.batch_size, sample_len, np_rng)
+            )
 
             # Running sum avoids accumulating a list of futures and the
             # jnp.stack+mean at epoch end (single host sync instead of N+1).
@@ -518,16 +552,27 @@ class Trainer:
             _ui.print_compile_hint(epoch)
             pbar = _ui.make_epoch_bar(epoch, n_epochs, steps_this_epoch)
             for step in pbar:
-                batch = jnp.asarray(prefetcher.get())
-                if n_dev > 1:
-                    batch = shard_batch(batch, mesh)
                 step_key = jax.random.fold_in(epoch_key, step)
 
-                if has_extras:
-                    extras = paradigm.prepare_batch(batch)
+                if flow_train_cache is not None:
+                    # Flow-matching: cheap gather from the pre-encoded T5 cache
+                    b_np, e_np = flow_train_cache.sample(np_rng, cfg.batch_size)
+                    batch  = jnp.asarray(b_np)
+                    extras = jnp.asarray(e_np, dtype=jnp.float32)
+                    if n_dev > 1:
+                        batch  = shard_batch(batch, mesh)
+                        extras = shard_batch(extras, mesh)
                     loss = _step_extras(model, optimizer, batch, extras, step_key)
                 else:
-                    loss = _step(model, optimizer, batch, step_key)
+                    assert prefetcher is not None  # created whenever no flow cache
+                    batch = jnp.asarray(prefetcher.get())
+                    if n_dev > 1:
+                        batch = shard_batch(batch, mesh)
+                    if has_extras:
+                        extras = paradigm.prepare_batch(batch)
+                        loss = _step_extras(model, optimizer, batch, extras, step_key)
+                    else:
+                        loss = _step(model, optimizer, batch, step_key)
 
                 running_loss = running_loss + loss
                 if step % log_every == 0 or self.callbacks:
@@ -537,7 +582,8 @@ class Trainer:
                     for cb in self.callbacks:  # ② callback hook
                         cb.on_step_end(step, {"train_loss": loss_host}, epoch)
             pbar.close()
-            prefetcher.close()
+            if prefetcher is not None:
+                prefetcher.close()
 
             train_loss = float(running_loss) / max(steps_this_epoch, 1)
             elapsed    = _time.monotonic() - epoch_t0
@@ -846,6 +892,61 @@ def _sample_batch(
     starts = np_rng.integers(0, max_start, size=batch_size)
     idx = starts[:, np.newaxis] + np.arange(sample_len, dtype=starts.dtype)
     return np.asarray(tokens[idx], dtype=np.int32)
+
+
+# ── Flow-matching embedding cache ─────────────────────────────────────────────
+# The frozen T5 encoder used by the continuous paradigm is deterministic, so
+# re-running it every training step (and every epoch) is pure waste. We encode a
+# fixed windowing of the corpus once up-front and then sample cheaply from the
+# cached (tokens, embeddings) pairs — both are kept because the flow loss needs
+# the token IDs (CE decoder branch) alongside the embeddings.
+
+_FLOW_CACHE_BUDGET_BYTES = 4 * 1024 ** 3   # cap on the pre-encoded embedding cache
+
+
+class _FlowWindowCache:
+    """Index-aligned (tokens, T5-embeddings) windows for flow-matching."""
+
+    def __init__(self, win: np.ndarray, emb: np.ndarray) -> None:
+        self.win = win          # [N, L]     int32
+        self.emb = emb          # [N, L, E]  float16 (re-normalised in-model)
+        self.n   = int(win.shape[0])
+
+    def sample(
+        self, np_rng: np.random.Generator, batch_size: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        idx = np_rng.integers(0, self.n, size=batch_size)
+        return self.win[idx], self.emb[idx]
+
+
+def _build_windows(tokens: np.ndarray, L: int) -> np.ndarray:
+    """Tile a 1-D token stream into non-overlapping ``[N, L]`` windows."""
+    n = len(tokens) // L
+    if n == 0:
+        w = np.zeros((1, L), dtype=np.int32)
+        w[0, : len(tokens)] = np.asarray(tokens[:L], dtype=np.int32)
+        return w
+    return np.asarray(tokens[: n * L], dtype=np.int32).reshape(n, L)
+
+
+def _precompute_flow_windows(
+    paradigm: Any, tokens: np.ndarray, sample_len: int, enc_batch: int = 16
+) -> _FlowWindowCache:
+    """Encode every fixed window of *tokens* once with the frozen T5 encoder."""
+    win = _build_windows(tokens, sample_len)
+    embed_dim = int(getattr(_paradigm_config(paradigm), "embed_dim", 768) or 768)
+    max_win = max(1, _FLOW_CACHE_BUDGET_BYTES // (sample_len * embed_dim * 2))
+    if len(win) > max_win:
+        log.warning(
+            "Flow embedding cache capped at %d/%d windows (%.0f GB budget).",
+            max_win, len(win), _FLOW_CACHE_BUDGET_BYTES / 1024 ** 3,
+        )
+        win = win[:max_win]
+    embs: list[np.ndarray] = []
+    for i in range(0, len(win), enc_batch):
+        e = np.asarray(paradigm.prepare_batch(win[i : i + enc_batch]))
+        embs.append(e.astype(np.float16))   # halve memory; upcast at sample time
+    return _FlowWindowCache(win, np.concatenate(embs, axis=0))
 
 
 # ── Checkpointing ─────────────────────────────────────────────────────────────
