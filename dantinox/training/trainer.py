@@ -4,6 +4,7 @@ import csv
 import datetime
 import json
 import logging
+import math
 import os
 import warnings
 from pathlib import Path
@@ -409,6 +410,7 @@ class Trainer:
             tp_size          = tp,
         )
         _ui.print_sharding_summary(model_cfg, n_dev=n_dev, tp_size=tp)
+        _ui.print_undertrained_warning(total_updates)
 
         # ── Run metadata (config.yaml + tokenizer.json for Generator) ────────
         _save_run_metadata(run_dir, paradigm, cfg, tokenizer, data_source)
@@ -551,6 +553,10 @@ class Trainer:
             running_loss = jnp.zeros(())
             _ui.print_compile_hint(epoch)
             pbar = _ui.make_epoch_bar(epoch, n_epochs, steps_this_epoch)
+            # First step of the first epoch is dominated by JIT compilation;
+            # time it separately so the epoch summary can report
+            # "Xs (+Ys compile)" instead of a misleadingly slow first epoch.
+            epoch_compile_s: float | None = None
             for step in pbar:
                 step_key = jax.random.fold_in(epoch_key, step)
 
@@ -575,6 +581,10 @@ class Trainer:
                         loss = _step(model, optimizer, batch, step_key)
 
                 running_loss = running_loss + loss
+                if step == 0 and epoch == start_epoch:
+                    jax.block_until_ready(loss)
+                    epoch_compile_s = _time.monotonic() - epoch_t0
+                    _report_vram()
                 if step % log_every == 0 or self.callbacks:
                     loss_host = float(loss)  # single host sync, shared by both uses
                     if step % log_every == 0:
@@ -616,7 +626,22 @@ class Trainer:
             elif val_loss is not None:
                 no_improve += 1
 
-            _ui.print_epoch_result(epoch, n_epochs, train_loss, val_loss, is_best, elapsed)
+            # ── Epoch summary extras: ppl (CE losses only), tok/s, ETA ────────
+            train_s   = max(elapsed - (epoch_compile_s or 0.0), 1e-6)
+            tok_per_s = steps_this_epoch * cfg.batch_size * seq_len / train_s
+            eta_s     = (n_epochs - epoch) * train_s if epoch < n_epochs else None
+            # exp(loss) is a perplexity only for cross-entropy objectives;
+            # flow-matching / embedder losses are not NLLs, so skip there.
+            show_ppl  = getattr(paradigm, "type", None) in ("ar", "discrete")
+            val_ppl   = (
+                math.exp(min(val_loss, 20.0))
+                if (val_loss is not None and show_ppl) else None
+            )
+            _ui.print_epoch_result(
+                epoch, n_epochs, train_loss, val_loss, is_best, elapsed,
+                compile_s=epoch_compile_s, val_ppl=val_ppl,
+                tok_per_s=tok_per_s, eta_s=eta_s,
+            )
 
             _save_checkpoint(model, run_dir, tag="latest")
             _save_train_state(state_path, model, optimizer)
@@ -711,6 +736,8 @@ def _save_run_metadata(
         tokenizer.save(os.path.join(run_dir, "tokenizer.json"))
     except Exception as exc:
         log.warning("Could not write tokenizer.json: %s", exc)
+    from dantinox.core.checkpoint import save_environment
+    save_environment(run_dir)
 
 
 # ── Data loading (tokenise once, then memmap) ─────────────────────────────────
@@ -919,6 +946,24 @@ class _FlowWindowCache:
         return self.win[idx], self.emb[idx]
 
 
+def _report_vram() -> None:
+    """Print device-memory usage after the first training step (best effort).
+
+    ``memory_stats()`` is only populated on GPU/TPU backends; on CPU (or on
+    plugins that don't expose it) this silently does nothing.
+    """
+    try:
+        stats = jax.local_devices()[0].memory_stats()
+        if stats and stats.get("peak_bytes_in_use"):
+            _ui.print_vram(
+                int(stats.get("bytes_in_use", 0)),
+                int(stats["peak_bytes_in_use"]),
+                int(stats["bytes_limit"]) if stats.get("bytes_limit") else None,
+            )
+    except Exception:   # noqa: BLE001 — a metrics readout must never kill a run
+        pass
+
+
 def _build_windows(tokens: np.ndarray, L: int) -> np.ndarray:
     """Tile a 1-D token stream into non-overlapping ``[N, L]`` windows."""
     n = len(tokens) // L
@@ -942,11 +987,16 @@ def _precompute_flow_windows(
             max_win, len(win), _FLOW_CACHE_BUDGET_BYTES / 1024 ** 3,
         )
         win = win[:max_win]
+    from tqdm.auto import tqdm as _tqdm  # type: ignore[import]
     embs: list[np.ndarray] = []
-    for i in range(0, len(win), enc_batch):
+    bar = _tqdm(range(0, len(win), enc_batch), desc="Pre-encoding T5 windows", leave=False)
+    for i in bar:
         e = np.asarray(paradigm.prepare_batch(win[i : i + enc_batch]))
         embs.append(e.astype(np.float16))   # halve memory; upcast at sample time
-    return _FlowWindowCache(win, np.concatenate(embs, axis=0))
+    emb = np.concatenate(embs, axis=0)
+    print(f"  \033[2mT5 embedding cache: {len(win)} windows · "
+          f"{emb.nbytes / 1024**3:.2f} GB (fp16)\033[0m", flush=True)
+    return _FlowWindowCache(win, emb)
 
 
 # ── Checkpointing ─────────────────────────────────────────────────────────────

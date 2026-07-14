@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections.abc import Iterator
 from typing import Any
 
@@ -326,6 +327,36 @@ class Generator:
         local_dir = resolve_checkpoint(run_dir, token=token, revision=revision)
         self.run_dir = local_dir
         self.config, self.model, self.tokenizer = _load_checkpoint(local_dir, seed)
+        #: Metrics of the most recent ``generate()``/``stream()`` call:
+        #: prompt_tokens, new_tokens, seconds, tok_per_s, mode, seed
+        #: (plus ttft_s for streaming).  Empty until the first call.
+        self.last_stats: dict[str, Any] = {}
+
+    def _finish_gen(
+        self,
+        text: str,
+        t0: float,
+        prompt: str,
+        new_tokens: int,
+        mode: str,
+        verbose: bool,
+    ) -> str:
+        """Record ``last_stats`` for a finished ``generate()`` call and return *text*."""
+        elapsed = max(time.perf_counter() - t0, 1e-9)
+        self.last_stats = {
+            "prompt_tokens": len(self.tokenizer.encode(prompt)) if prompt else 0,
+            "new_tokens":    new_tokens,
+            "seconds":       round(elapsed, 3),
+            "tok_per_s":     round(new_tokens / elapsed, 1),
+            "mode":          mode,
+            "seed":          self.seed,
+        }
+        if verbose:
+            s = self.last_stats
+            print(f"  [generate] {s['new_tokens']} tok in {s['seconds']:.2f}s "
+                  f"· {s['tok_per_s']:.0f} tok/s · {mode} · seed={self.seed}",
+                  flush=True)
+        return text
 
     def __repr__(self) -> str:
         attn = "MLA" if self.config.mla else (
@@ -361,6 +392,7 @@ class Generator:
         block_size: int = 32,
         steps_per_block: int = 50,
         use_dual_cache: bool = True,
+        verbose: bool = False,
     ) -> str:
         """
         Generate text continuing from ``prompt``.
@@ -381,12 +413,17 @@ class Generator:
             Softmax temperature (default 1.0).
         use_cache : bool
             Enable KV-cache for faster generation (default True).
+        verbose : bool
+            Print a one-line summary (tokens, time, tok/s, mode) after
+            generating.  The same numbers are always available in
+            ``self.last_stats`` regardless of this flag.
 
         Returns
         -------
         str
             The full generated string (prompt + continuation).
         """
+        t0 = time.perf_counter()
         if not self.config.causal:
             if self.config.model_type == "elf":
                 flow_tokens = _flow_generate(
@@ -396,20 +433,26 @@ class Generator:
                     gamma=getattr(self.config, "sde_gamma", 0.0),
                     seed=self.seed,
                 )
-                return self._bpe_fix(self.tokenizer.decode(flow_tokens[0].tolist()))
+                text = self._bpe_fix(self.tokenizer.decode(flow_tokens[0].tolist()))
+                return self._finish_gen(text, t0, prompt, max_new_tokens,
+                                        f"flow-ode/{n_steps} steps", verbose)
             if use_blocks:
-                return self._fast_dllm_generate(
+                text = self._fast_dllm_generate(
                     prompt, max_new_tokens=max_new_tokens,
                     block_size=block_size, steps_per_block=steps_per_block,
                     decoding_strategy=decoding_strategy,
                     confidence_threshold=confidence_threshold, factor=factor,
                     use_dual_cache=use_dual_cache,
                 )
-            return self._diffusion_generate(
+                return self._finish_gen(text, t0, prompt, max_new_tokens,
+                                        f"fast-dllm/{decoding_strategy}", verbose)
+            text = self._diffusion_generate(
                 prompt, max_new_tokens=max_new_tokens, temperature=temperature,
                 n_steps=n_steps, decoding_strategy=decoding_strategy,
                 confidence_threshold=confidence_threshold, factor=factor,
             )
+            return self._finish_gen(text, t0, prompt, max_new_tokens,
+                                    f"diffusion/{decoding_strategy}", verbose)
 
         tokens = self.tokenizer.encode(prompt)
         x = jnp.array([tokens], dtype=jnp.int32)
@@ -432,7 +475,12 @@ class Generator:
         )
         output.block_until_ready()
 
-        return self._bpe_fix(self.tokenizer.decode(output[0].tolist()))
+        ar_mode = ("greedy" if greedy
+                   else f"top-k={top_k}" if top_k
+                   else f"nucleus p={top_p}" if top_p
+                   else "sample")
+        text = self._bpe_fix(self.tokenizer.decode(output[0].tolist()))
+        return self._finish_gen(text, t0, prompt, max_new_tokens, ar_mode, verbose)
 
     # ── Batched generation ────────────────────────────────────────────────────
 
@@ -513,6 +561,47 @@ class Generator:
     # ── Streaming generation ──────────────────────────────────────────────────
 
     def stream(
+        self,
+        prompt: str = "",
+        *,
+        verbose: bool = False,
+        **kwargs: Any,
+    ) -> Iterator[str]:
+        """Stream generated tokens, recording latency stats as they flow.
+
+        Thin wrapper around the real streaming implementation (see
+        ``_stream_impl`` for the full parameter list — every keyword of
+        ``generate()`` is accepted).  On top of it, this measures
+        **time-to-first-token** and overall throughput, storing them in
+        ``self.last_stats`` (keys: ``ttft_s``, ``new_tokens``, ``seconds``,
+        ``tok_per_s``, ``mode``, ``seed``).  ``verbose=True`` prints the
+        summary once the stream is exhausted.
+        """
+        t0 = time.perf_counter()
+        ttft: float | None = None
+        n = 0
+        for chunk in self._stream_impl(prompt, **kwargs):
+            if ttft is None:
+                ttft = time.perf_counter() - t0
+            n += 1
+            yield chunk
+        elapsed = max(time.perf_counter() - t0, 1e-9)
+        self.last_stats = {
+            "prompt_tokens": len(self.tokenizer.encode(prompt)) if prompt else 0,
+            "new_tokens":    n,
+            "seconds":       round(elapsed, 3),
+            "tok_per_s":     round(n / elapsed, 1),
+            "ttft_s":        round(ttft, 3) if ttft is not None else None,
+            "mode":          "stream",
+            "seed":          self.seed,
+        }
+        if verbose:
+            s = self.last_stats
+            print(f"\n  [stream] {s['new_tokens']} tok in {s['seconds']:.2f}s "
+                  f"· {s['tok_per_s']:.0f} tok/s · ttft {s['ttft_s']}s "
+                  f"· seed={self.seed}", flush=True)
+
+    def _stream_impl(
         self,
         prompt: str = "",
         *,

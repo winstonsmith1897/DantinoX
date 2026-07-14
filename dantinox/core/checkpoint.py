@@ -173,3 +173,59 @@ def load_model(run_dir: str, *, seed: int = 42, best: bool = True) -> tuple[Any,
     model = build_model(cfg, nnx.Rngs(seed))
     restore_model(model, weights_path)
     return model, cfg, weights_path
+
+
+# ── Environment provenance ─────────────────────────────────────────────────────
+
+#: Packages recorded at training time; version skew in any of these has caused
+#: real load/inference failures (flax nnx internals, jax↔CUDA-plugin mismatch).
+_ENV_PACKAGES: tuple[str, ...] = ("dantinox", "jax", "jaxlib", "flax", "optax")
+
+
+def _env_versions() -> dict[str, str]:
+    """Return the currently installed versions of the packages we track."""
+    import importlib.metadata as _md
+    out: dict[str, str] = {}
+    for pkg in _ENV_PACKAGES:
+        try:
+            out[pkg] = _md.version(pkg)
+        except _md.PackageNotFoundError:
+            out[pkg] = "not-installed"
+    return out
+
+
+def save_environment(run_dir: str) -> None:
+    """Write ``environment.json`` (package versions) into *run_dir*.
+
+    Best-effort: provenance must never kill a training run.
+    """
+    import json as _json
+    try:
+        path = os.path.join(run_dir, "environment.json")
+        with open(path, "w", encoding="utf-8") as f:
+            _json.dump(_env_versions(), f, indent=2)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Could not write environment.json: %s", exc)
+
+
+def check_environment(run_dir: str) -> list[str]:
+    """Compare the current environment against ``environment.json`` in *run_dir*.
+
+    Returns a list of human-readable mismatch strings (empty when everything
+    matches or when the file is absent — old runs simply skip the check).
+    """
+    import json as _json
+    path = os.path.join(run_dir, "environment.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as f:
+            saved = _json.load(f)
+    except Exception:  # noqa: BLE001 — unreadable provenance is not an error
+        return []
+    current = _env_versions()
+    return [
+        f"{pkg}: trained with {saved[pkg]}, running {current.get(pkg, '?')}"
+        for pkg in saved
+        if pkg in current and saved[pkg] != current[pkg]
+    ]

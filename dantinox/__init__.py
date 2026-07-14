@@ -77,6 +77,7 @@ from dantinox.core.config import Config, ModelConfig, TrainingConfig
 from dantinox.core.model import Transformer
 
 # ── Embedding / RAG ──────────────────────────────────────────────────────────
+from dantinox.doctor import doctor
 from dantinox.embedder import Embedder
 from dantinox.embedder_trainer import EmbedderTrainer
 from dantinox.exceptions import (
@@ -398,6 +399,14 @@ def load(
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"No checkpoint found at {ckpt_path}")
 
+    # Version-skew heads-up: flax/jax mismatches between training and loading
+    # environments have caused real failures (nnx internals, CUDA plugin).
+    import logging as _logging
+
+    from dantinox.core.checkpoint import check_environment
+    for line in check_environment(run_dir):
+        _logging.getLogger(__name__).warning("environment skew — %s", line)
+
     if paradigm is None:
         cfg_path = os.path.join(run_dir, "config.yaml")
         if os.path.exists(cfg_path):
@@ -577,6 +586,7 @@ __all__ = [
     "EmbedderTrainer",
     # banner
     "banner",
+    "doctor",
     # low-code functional API
     "build",
     "train",

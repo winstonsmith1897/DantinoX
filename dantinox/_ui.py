@@ -365,6 +365,25 @@ def make_epoch_bar(epoch: int, n_epochs: int, total: int) -> Any:
     return _tqdm(range(total), desc=f"Epoch {epoch}/{n_epochs}", leave=False)
 
 
+def _fmt_count(n: float) -> str:
+    """Format a rate/count compactly: 950 → '950', 12_400 → '12.4k', 3.1e6 → '3.1M'."""
+    if n >= 1e6:
+        return f"{n / 1e6:.1f}M"
+    if n >= 1e3:
+        return f"{n / 1e3:.1f}k"
+    return f"{n:.0f}"
+
+
+def _fmt_eta(seconds: float) -> str:
+    """Format an ETA compactly: 42 → '42s', 250 → '4m10s', 7300 → '2h02m'."""
+    s = int(seconds)
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        return f"{s // 60}m{s % 60:02d}s"
+    return f"{s // 3600}h{(s % 3600) // 60:02d}m"
+
+
 def print_epoch_result(
     epoch:       int,
     n_epochs:    int,
@@ -372,8 +391,23 @@ def print_epoch_result(
     val_loss:    float | None,
     is_best:     bool,
     elapsed:     float,
+    compile_s:   float | None = None,
+    val_ppl:     float | None = None,
+    tok_per_s:   float | None = None,
+    eta_s:       float | None = None,
 ) -> None:
-    """Print a one-line summary after each epoch's progress bar closes."""
+    """Print a one-line summary after each epoch's progress bar closes.
+
+    Optional extras (each omitted when ``None``):
+
+    * ``compile_s``  — JIT compilation time to report separately from the
+      training time (first epoch only), so slow first epochs aren't
+      misread as slow training.
+    * ``val_ppl``    — perplexity ``exp(val_loss)``; only meaningful for
+      cross-entropy-style losses (AR / discrete diffusion).
+    * ``tok_per_s``  — training throughput in tokens/second.
+    * ``eta_s``      — estimated seconds until the last epoch finishes.
+    """
     ep_tag  = _prp(f"Epoch {epoch}/{n_epochs}")
     tr_tag  = f"train={_cyn(f'{train_loss:.4f}')}"
     if val_loss is None:
@@ -381,10 +415,50 @@ def print_epoch_result(
     else:
         va_val = _grn(f"{val_loss:.4f}") if is_best else _azr(f"{val_loss:.4f}")
         va_tag = f"val={va_val}"
+        if val_ppl is not None:
+            va_tag += f" {_dim(f'(ppl {val_ppl:.1f})')}"
     best    = f"  {_yel('★ best')}" if is_best else ""
-    t_tag   = _dim(f"{elapsed:.1f}s")
-    print(f"  {ep_tag}  {tr_tag}  {va_tag}{best}  {t_tag}",
+    if compile_s is not None and compile_s > 1.0:
+        t_tag = _dim(f"{max(elapsed - compile_s, 0.0):.1f}s (+{compile_s:.1f}s compile)")
+    else:
+        t_tag = _dim(f"{elapsed:.1f}s")
+    extras = ""
+    if tok_per_s is not None and tok_per_s > 0:
+        extras += f"  {_dim(f'{_fmt_count(tok_per_s)} tok/s')}"
+    if eta_s is not None and eta_s > 1:
+        extras += f"  {_dim(f'eta {_fmt_eta(eta_s)}')}"
+    print(f"  {ep_tag}  {tr_tag}  {va_tag}{best}  {t_tag}{extras}",
           file=_out(), flush=True)
+
+
+def print_undertrained_warning(total_updates: int, threshold: int = 500) -> None:
+    """Warn when the schedule yields too few optimizer updates to converge.
+
+    A tiny update count (large batch on a small corpus, or too few epochs)
+    is the most common cause of degenerate generations that collapse onto
+    the single most frequent token.
+    """
+    if total_updates >= threshold:
+        return
+    print(
+        f"  {_yel('⚠')}  {_yel(f'only {total_updates} optimizer updates')} — "
+        f"{_dim('the model will likely be undertrained; lower batch_size or raise epochs')}",
+        file=_out(), flush=True,
+    )
+
+
+def print_vram(used_bytes: int, peak_bytes: int, limit_bytes: int | None) -> None:
+    """Print a one-line GPU memory report (used / peak / total)."""
+    gb = 1024 ** 3
+    if limit_bytes:
+        pct  = 100.0 * peak_bytes / limit_bytes
+        line = (f"vram {used_bytes / gb:.1f} GB used  ·  "
+                f"peak {peak_bytes / gb:.1f}/{limit_bytes / gb:.0f} GB ({pct:.0f}%)")
+        if pct > 90:
+            line += "  — near OOM: consider gradient_checkpointing=True or use_bf16=True"
+    else:
+        line = f"vram {used_bytes / gb:.1f} GB used  ·  peak {peak_bytes / gb:.1f} GB"
+    print(f"  {_dim(line)}", file=_out(), flush=True)
 
 
 def print_training_done(best_loss: float, run_dir: str) -> None:

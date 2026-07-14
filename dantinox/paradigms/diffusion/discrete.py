@@ -105,6 +105,24 @@ class DiscreteParadigm(ParadigmBase):
             return self._diffusion_config.mask_token_id
         return self.model_config.mask_token_id
 
+    def _require_mask_id(self) -> int:
+        """Return the mask token id, rejecting the unset ``-1`` sentinel.
+
+        ``mask_token_id`` defaults to ``-1`` and is auto-synced from the
+        tokenizer inside ``Trainer.fit()``.  Generating with the sentinel
+        would silently corrupt every sequence, so fail loudly instead.
+        """
+        mask_id = self._mask_token_id
+        if mask_id < 0:
+            raise ValueError(
+                "mask_token_id is not set (still the -1 sentinel). It is "
+                "auto-detected from the tokenizer by Trainer.fit(); when "
+                "building a paradigm manually for inference, pass "
+                "mask_token_id explicitly in ModelConfig (e.g. "
+                "tokenizer.mask_token_id)."
+            )
+        return mask_id
+
     @property
     def diffusion_config(self) -> Any:
         """Return a lightweight namespace with noise_schedule and mask_token_id."""
@@ -153,6 +171,7 @@ class DiscreteParadigm(ParadigmBase):
         steps_per_block: int = 50,
         use_dual_cache: bool = True,
         refresh_interval: int | None = None,
+        verbose: bool = False,
     ) -> jnp.ndarray:
         """Run reverse diffusion and return the generated token IDs.
 
@@ -168,6 +187,8 @@ class DiscreteParadigm(ParadigmBase):
             steps_per_block:      Inner denoising steps per block (block mode only).
             use_dual_cache:       Enable prefix+suffix DualCache (block mode only).
             refresh_interval:     Recompute suffix cache every N steps (block mode only).
+            verbose:              Print a per-step unmasking trace — tokens revealed,
+                                  masks left, average confidence (global mode only).
         """
         from dantinox.paradigms.ar import _seed_from
         seed = _seed_from(rng)
@@ -176,7 +197,7 @@ class DiscreteParadigm(ParadigmBase):
                 model, prompt,
                 gen_len=max_new_tokens,
                 schedule=self._schedule,
-                mask_token_id=self._mask_token_id,
+                mask_token_id=self._require_mask_id(),
                 block_size=block_size,
                 steps_per_block=steps_per_block,
                 decoding_strategy=decoding_strategy,
@@ -190,13 +211,14 @@ class DiscreteParadigm(ParadigmBase):
             model, prompt,
             gen_len=max_new_tokens,
             schedule=self._schedule,
-            mask_token_id=self._mask_token_id,
+            mask_token_id=self._require_mask_id(),
             seed=seed,
             num_sampling_steps=n_steps,
             temperature=temperature,
             decoding_strategy=decoding_strategy,
             confidence_threshold=confidence_threshold,
             factor=factor,
+            verbose=verbose,
         )
 
     def stream(
@@ -214,6 +236,7 @@ class DiscreteParadigm(ParadigmBase):
         steps_per_block: int = 50,
         use_dual_cache: bool = True,
         refresh_interval: int | None = None,
+        verbose: bool = False,
     ) -> Iterator[tuple[int, int, jnp.ndarray]]:
         """Yields ``(step, total, x_gen)`` after each denoising step.
 
@@ -229,6 +252,8 @@ class DiscreteParadigm(ParadigmBase):
             steps_per_block:      Inner denoising steps per block (block mode only).
             use_dual_cache:       Enable prefix+suffix DualCache (block mode only).
             refresh_interval:     Recompute suffix cache every N steps (block mode only).
+            verbose:              Print a per-step unmasking trace — tokens revealed,
+                                  masks left, average confidence (global mode only).
         """
         from dantinox.paradigms.ar import _seed_from
         seed = _seed_from(rng)
@@ -237,7 +262,7 @@ class DiscreteParadigm(ParadigmBase):
                 model, prompt,
                 gen_len=max_new_tokens,
                 schedule=self._schedule,
-                mask_token_id=self._mask_token_id,
+                mask_token_id=self._require_mask_id(),
                 block_size=block_size,
                 steps_per_block=steps_per_block,
                 decoding_strategy=decoding_strategy,
@@ -252,13 +277,14 @@ class DiscreteParadigm(ParadigmBase):
                 model, prompt,
                 gen_len=max_new_tokens,
                 schedule=self._schedule,
-                mask_token_id=self._mask_token_id,
+                mask_token_id=self._require_mask_id(),
                 seed=seed,
                 num_sampling_steps=n_steps,
                 temperature=temperature,
                 decoding_strategy=decoding_strategy,
                 confidence_threshold=confidence_threshold,
                 factor=factor,
+                verbose=verbose,
             )
 
     def __repr__(self) -> str:

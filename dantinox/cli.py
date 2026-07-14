@@ -113,6 +113,16 @@ def _legacy_trainer(config: Config) -> Any:
         return Trainer(config)
 
 
+def _cmd_doctor(args: argparse.Namespace) -> None:
+    """Run the environment health check and exit non-zero on blocking problems."""
+    import sys
+
+    from dantinox.doctor import doctor
+    report = doctor(verbose=True)
+    if not report["ok"]:
+        sys.exit(1)
+
+
 def _cmd_train(args: argparse.Namespace) -> None:
     _init_jax_cache()   # persist XLA-compiled kernels across runs
     config = Config.from_yaml(args.config)
@@ -840,6 +850,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # ── doctor ─────────────────────────────────────────────────────────────
+    sub.add_parser(
+        "doctor",
+        help="Check the environment for version skew and GPU problems",
+    )
+
     # ── train ──────────────────────────────────────────────────────────────
     p_train = sub.add_parser("train", help="Train a model")
     p_train.add_argument("--config", default="configs/default_config.yaml",
@@ -1080,6 +1096,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     dispatch = {
+        "doctor":     _cmd_doctor,
         "train":      _cmd_train,
         "generate":   _cmd_generate,
         "sweep":      _cmd_sweep,

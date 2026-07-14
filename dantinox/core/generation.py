@@ -279,6 +279,7 @@ def stream_diffusion_generate(
     decoding_strategy: str = "sample",
     confidence_threshold: float = 0.9,
     factor: float = 1.5,
+    verbose: bool = False,
 ):
     """Generator version of ``diffusion_generate``.
 
@@ -294,6 +295,11 @@ def stream_diffusion_generate(
             ``"factor"``      — factor-based parallel unmasking (Fast-dLLM Thm. 1).
         confidence_threshold: τ for the ``"confidence"`` strategy.
         factor:               f for the ``"factor"`` strategy.
+        verbose: Print a per-step trace (tokens revealed this step, masks left,
+            average model confidence over still-masked positions).  Costs one
+            host sync per step; meant for debugging / teaching, not benchmarks.
+            An early collapse shows up as a huge first-step reveal with high
+            confidence on a single repeated token.
     """
     B   = prefix.shape[0] if prefix is not None else batch_size
     rng = jax.random.key(seed)
@@ -314,6 +320,7 @@ def stream_diffusion_generate(
 
     for step, t_val in enumerate(t_ladder):
         logits = _forward_logits(model, x_t, dual_cache)
+        mask_before = (x_t == mask_token_id) if verbose else None
 
         if decoding_strategy == "confidence":
             x_t = confidence_unmask_threshold(logits, x_t, mask_token_id,
@@ -339,11 +346,26 @@ def stream_diffusion_generate(
             do_unmask    = jax.random.bernoulli(subkey2, unmask_prob, x_t.shape)
             x_t          = jnp.where((x_t == mask_token_id) & do_unmask, x0_pred, x_t)
 
+        if verbose and mask_before is not None:
+            conf_map = jax.nn.softmax(logits, axis=-1).max(axis=-1)
+            n_masked = int(mask_before.sum())
+            revealed = int((mask_before & (x_t != mask_token_id)).sum())
+            left     = int((x_t == mask_token_id).sum())
+            avg_conf = (
+                float(jnp.where(mask_before, conf_map, 0.0).sum()) / n_masked
+                if n_masked else 0.0
+            )
+            print(f"  step {step + 1:>3}/{total}: revealed +{revealed:<4} "
+                  f"({left} masked left) · avg conf {avg_conf:.3f}", flush=True)
+
         yield step, total, x_t
 
     # Final greedy cleanup: fill any positions still masked
     logits = _forward_logits(model, x_t, dual_cache)
+    n_left = int((x_t == mask_token_id).sum()) if verbose else 0
     x_t    = jnp.where(x_t == mask_token_id, jnp.argmax(logits, axis=-1), x_t)
+    if verbose and n_left:
+        print(f"  cleanup: greedy-filled the last {n_left} masked positions", flush=True)
     yield total - 1, total, x_t
 
 
@@ -360,6 +382,7 @@ def diffusion_generate(
     decoding_strategy: str = "sample",
     confidence_threshold: float = 0.9,
     factor: float = 1.5,
+    verbose: bool = False,
 ) -> jnp.ndarray:
     """Simple MDLM reverse-diffusion generation (no block-wise cache).
 
@@ -367,6 +390,8 @@ def diffusion_generate(
     For faster inference use ``fast_dllm_generate``.
     ``prefix`` may be ``None`` for unconditional generation; in that case
     ``batch_size`` controls the output batch dimension.
+    ``verbose=True`` prints a per-step unmasking trace (see
+    ``stream_diffusion_generate``).
     """
     x_t = None
     for _, _, x_t in stream_diffusion_generate(  # noqa: B007
@@ -375,7 +400,7 @@ def diffusion_generate(
         temperature=temperature, batch_size=batch_size,
         decoding_strategy=decoding_strategy,
         confidence_threshold=confidence_threshold,
-        factor=factor,
+        factor=factor, verbose=verbose,
     ):
         pass
     return x_t  # type: ignore[return-value]
