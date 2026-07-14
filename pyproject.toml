@@ -35,7 +35,7 @@ dependencies = [
     "jax>=0.4.30,<0.10",
     "jaxlib>=0.4.30",
     "flax>=0.10,<0.13",
-    "optax>=0.2.8,<0.3",   # muon lives in optax.contrib (unstable API); <0.2.8 crashes with muon
+    "optax>=0.2",
     "numpy",
     "pyyaml",
     "tokenizers",
