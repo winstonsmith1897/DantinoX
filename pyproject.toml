@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dantinox"
-version = "0.4.4"
+version = "0.4.6"
 description = "One JAX/Flax backbone for AR, discrete-diffusion, and flow-matching LLMs — switch paradigm with a single config field."
 authors = [{name = "Marco Simoni"}]
 license = {text = "MIT"}
@@ -34,7 +34,7 @@ classifiers = [
 dependencies = [
     "jax>=0.4.30,<0.10",
     "jaxlib>=0.4.30",
-    "flax>=0.10,<0.13",
+    "flax>=0.12,<0.13",   # nnx.remat + Param[...] crashes on flax<0.12 (esp. with muon)
     "optax>=0.2.8,<0.3",   # muon lives in optax.contrib (unstable API); <0.2.8 crashes with muon
     "numpy",
     "pyyaml",
