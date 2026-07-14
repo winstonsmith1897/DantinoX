@@ -34,7 +34,7 @@ classifiers = [
 dependencies = [
     "jax>=0.4.30,<0.10",
     "jaxlib>=0.4.30",
-    "flax>=0.12,<0.13",   # nnx.remat + Param[...] crashes on flax<0.12 (esp. with muon)
+    "flax>=0.10,<0.13",   # nnx.remat + Param[...] crashes on flax<0.12 (esp. with muon)
     "optax>=0.2.8,<0.3",   # muon lives in optax.contrib (unstable API); <0.2.8 crashes with muon
     "numpy",
     "pyyaml",
