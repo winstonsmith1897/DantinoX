@@ -1,0 +1,49 @@
+name: Notebook smoke
+
+# Catches notebook rot (stale API calls, renamed kwargs, broken caches) before
+# a user hits it on Colab.  Runs the docs notebooks on CPU with a shrunk
+# compute budget via scripts/ci_notebook_smoke.py.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # every Monday 06:00 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "docs/notebooks/**"
+      - "scripts/ci_notebook_smoke.py"
+      - ".github/workflows/notebooks.yml"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        notebook:
+          - docs/notebooks/01_quickstart.ipynb
+          - docs/notebooks/02_discrete_diffusion.ipynb
+          - docs/notebooks/09_environment_troubleshooting.ipynb
+          - docs/notebooks/12_custom_paradigm.ipynb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package (CPU jax) and notebook runner
+        run: |
+          pip install --upgrade pip
+          pip install "jax[cpu]" jaxlib
+          pip install -e ".[data,hub,benchmark]"
+          pip install nbformat nbclient ipykernel
+
+      - name: Run notebook in smoke mode
+        env:
+          JAX_PLATFORM_NAME: cpu
+        run: python scripts/ci_notebook_smoke.py "${{ matrix.notebook }}" 1800

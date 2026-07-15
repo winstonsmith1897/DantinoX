@@ -246,8 +246,17 @@ def _tokenize_pad(
 
 
 def _make_run_dir() -> str:
+    """Return a unique run directory (``_N`` suffix on same-second collisions)."""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return os.path.join("runs", f"embedder_{ts}")
+    base = os.path.join("runs", f"embedder_{ts}")
+    candidate = base
+    for i in range(1, 1000):
+        try:
+            os.makedirs(candidate, exist_ok=False)
+            return candidate
+        except FileExistsError:
+            candidate = f"{base}_{i}"
+    raise RuntimeError(f"Could not create a unique run dir under {base!r}")
 
 
 def _save_checkpoint(model: Any, run_dir: str, tag: str) -> None:

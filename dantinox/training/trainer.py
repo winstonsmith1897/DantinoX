@@ -705,11 +705,26 @@ def _paradigm_seq_len(paradigm: _ParadigmBase) -> int:
 
 
 def _make_run_dir(run_dir: str | None) -> str:
-    if run_dir is None:
-        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_dir = os.path.join("runs", ts)
-    Path(run_dir).mkdir(parents=True, exist_ok=True)
-    return run_dir
+    """Create and return the run directory.
+
+    Auto-generated names are timestamped to the second, so two trainings
+    starting concurrently (parallel notebooks, array jobs) used to collide and
+    silently overwrite each other's config/checkpoints.  Creation is therefore
+    atomic (``exist_ok=False``) with a ``_N`` suffix on collision.
+    """
+    if run_dir is not None:
+        Path(run_dir).mkdir(parents=True, exist_ok=True)
+        return run_dir
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = os.path.join("runs", ts)
+    candidate = base
+    for i in range(1, 1000):
+        try:
+            Path(candidate).mkdir(parents=True, exist_ok=False)
+            return candidate
+        except FileExistsError:
+            candidate = f"{base}_{i}"
+    raise RuntimeError(f"Could not create a unique run dir under {base!r}")
 
 
 def _save_run_metadata(
