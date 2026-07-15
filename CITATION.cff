@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use DantinoX in your research, please cite it as below."
+title: "DantinoX: One JAX/Flax Backbone for Autoregressive, Discrete-Diffusion, and Flow-Matching Language Models"
+type: software
+authors:
+  - family-names: Simoni
+    given-names: Marco
+repository-code: "https://github.com/winstonsmith1897/DantinoX"
+url: "https://dantinox.readthedocs.io"
+license: MIT
+keywords:
+  - jax
+  - flax
+  - language-model
+  - autoregressive
+  - discrete-diffusion
+  - flow-matching
+  - transformer
+abstract: >-
+  DantinoX is a JAX/Flax library that trains and serves autoregressive,
+  discrete-diffusion (LLaDA-style), and continuous flow-matching (ELF recipe)
+  language models on a single shared transformer backbone — switching paradigm
+  is a single config field. It includes multi-paradigm profiling, Fast-dLLM
+  block-wise decoding with DualCache, LoRA fine-tuning, and text-embedder
+  training.

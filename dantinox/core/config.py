@@ -62,6 +62,55 @@ def _remap_legacy_keys(d: dict[str, Any]) -> dict[str, Any]:
     return {_LEGACY_KEY_RENAMES.get(k, k): v for k, v in d.items()}
 
 
+def _install_legacy_ctor_aliases(cls: type) -> None:
+    """Let *cls* accept legacy constructor kwargs, warning on each use.
+
+    The read side of renames has always stayed compatible via properties
+    (``cfg.elf_n_steps`` still answers), but constructor calls with old
+    names crashed — an asymmetry that broke several user notebooks.  This
+    wraps ``cls.__init__`` to remap:
+
+    * every entry of ``_LEGACY_KEY_RENAMES`` (e.g. ``elf_n_steps`` →
+      ``flow_n_steps``), and
+    * ``use_moe=<bool>`` → ``ffn='moe'|'mlp'`` (a value transform, not a
+      rename, so it can't live in the table).
+
+    Each remap emits a :class:`DeprecationWarning`; passing both the old
+    and the new name raises ``TypeError``.
+    """
+    import functools
+    import warnings
+    from dataclasses import fields as _flds
+
+    orig_init = cls.__init__  # type: ignore[misc]
+    cls_fields = {f.name for f in _flds(cls)}  # type: ignore[arg-type]
+
+    @functools.wraps(orig_init)
+    def _init(self: Any, *args: Any, **kwargs: Any) -> None:
+        for old, new in _LEGACY_KEY_RENAMES.items():
+            if old in kwargs and new in cls_fields:
+                if new in kwargs:
+                    raise TypeError(
+                        f"{cls.__name__} got both legacy {old!r} and {new!r}"
+                    )
+                warnings.warn(
+                    f"{cls.__name__}({old}=…) is deprecated — use {new}=…",
+                    DeprecationWarning, stacklevel=2,
+                )
+                kwargs[new] = kwargs.pop(old)
+        if "use_moe" in kwargs and "use_moe" not in cls_fields and "ffn" in cls_fields:
+            if "ffn" in kwargs:
+                raise TypeError(f"{cls.__name__} got both legacy 'use_moe' and 'ffn'")
+            warnings.warn(
+                f"{cls.__name__}(use_moe=…) is deprecated — use ffn='moe' | 'mlp'",
+                DeprecationWarning, stacklevel=2,
+            )
+            kwargs["ffn"] = "moe" if kwargs.pop("use_moe") else "mlp"
+        orig_init(self, *args, **kwargs)
+
+    cls.__init__ = _init  # type: ignore[method-assign, misc]
+
+
 # ── ModelConfig ────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -460,6 +509,9 @@ class ModelConfig:
 
         L.append(")")
         return "\n".join(L)
+
+
+_install_legacy_ctor_aliases(ModelConfig)
 
 
 # ── TrainingConfig ─────────────────────────────────────────────────────────────
@@ -1174,6 +1226,9 @@ class FlowMatchingConfig:
             f"dim={self.model_dim}, heads={self.n_heads}, blocks={self.num_blocks}, "
             f"vocab={self.vocab_size}, seq={self.max_seq_len})"
         )
+
+
+_install_legacy_ctor_aliases(FlowMatchingConfig)
 
 
 # ── Deprecated alias ──────────────────────────────────────────────────────────

@@ -250,3 +250,43 @@ def test_checkpoint_loader_detects_legacy_config(tmp_path):
     assert isinstance(cfg, Config)
     assert cfg.model_type == "diffusion"
     assert restored.causal is False  # bidirectional — not silently causal
+
+
+# ── Strict kwargs & legacy constructor aliases ────────────────────────────────
+
+
+def test_split_kwargs_rejects_unknown_with_suggestion():
+    """Unknown dx.fit kwargs raise instead of being silently dropped."""
+    from dantinox import _split_kwargs
+    with pytest.raises(TypeError, match="Unknown keyword"):
+        _split_kwargs({"fnn": "moe"})
+
+
+def test_split_kwargs_remaps_legacy_names_with_warning():
+    """elf_* and use_moe keep working for one release cycle, loudly."""
+    from dantinox import _split_kwargs
+    with pytest.warns(DeprecationWarning):
+        model_kw, train_kw = _split_kwargs(
+            {"elf_n_steps": 7, "use_moe": True, "lr": 1e-3})
+    assert model_kw["flow_n_steps"] == 7
+    assert model_kw["ffn"] == "moe"
+    assert train_kw["lr"] == 1e-3
+
+
+def test_modelconfig_accepts_legacy_ctor_kwargs():
+    """Constructor-side compat mirrors the read-side @property compat."""
+    with pytest.warns(DeprecationWarning):
+        cfg = ModelConfig(elf_n_steps=7)
+    assert cfg.flow_n_steps == 7
+    with pytest.warns(DeprecationWarning):
+        cfg2 = ModelConfig(use_moe=True)
+    assert cfg2.ffn == "moe"
+    with pytest.raises(TypeError):
+        ModelConfig(use_moe=True, ffn="mlp")   # old + new together is ambiguous
+
+
+def test_flowmatchingconfig_accepts_legacy_ctor_kwargs():
+    """FlowMatchingConfig gets the same constructor aliases."""
+    with pytest.warns(DeprecationWarning):
+        cfg = FlowMatchingConfig(elf_cfg_scale=2.5, vocab_size=128)
+    assert cfg.flow_cfg_scale == 2.5

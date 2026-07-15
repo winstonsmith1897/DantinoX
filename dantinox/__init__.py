@@ -182,10 +182,45 @@ _PARADIGM_MAP = {
 
 
 def _split_kwargs(kwargs: dict) -> tuple[dict, dict]:
-    """Split **kwargs into (model_kwargs, training_kwargs) by field membership."""
+    """Split **kwargs into (model_kwargs, training_kwargs) by field membership.
+
+    Legacy names are remapped with a :class:`DeprecationWarning` (kept working
+    for one release cycle); anything still unrecognised raises ``TypeError``
+    with a did-you-mean suggestion.  Historically unknown keys were silently
+    dropped, which let typos (and stale names like ``use_moe=True``) train a
+    different model than the user asked for.
+    """
+    import difflib
+    import warnings
     from dataclasses import fields as _fields
+
+    from dantinox.core.config import _LEGACY_KEY_RENAMES
+
+    kwargs = dict(kwargs)
+    for old, new in _LEGACY_KEY_RENAMES.items():
+        if old in kwargs:
+            warnings.warn(f"{old!r} is deprecated — use {new!r}",
+                          DeprecationWarning, stacklevel=3)
+            kwargs[new] = kwargs.pop(old)
+    if "use_moe" in kwargs:
+        warnings.warn("'use_moe' is deprecated — use ffn='moe' | 'mlp'",
+                      DeprecationWarning, stacklevel=3)
+        kwargs["ffn"] = "moe" if kwargs.pop("use_moe") else "mlp"
+
     model_fields = {f.name for f in _fields(ModelConfig)}
     train_fields = {f.name for f in _fields(TrainingConfig)}
+    unknown = [k for k in kwargs if k not in model_fields and k not in train_fields]
+    if unknown:
+        valid = sorted(model_fields | train_fields)
+        parts = []
+        for k in unknown:
+            close = difflib.get_close_matches(k, valid, n=1)
+            parts.append(f"{k!r}" + (f" (did you mean {close[0]!r}?)" if close else ""))
+        raise TypeError(
+            "Unknown keyword argument(s): " + ", ".join(parts) + ". "
+            "Valid names are the fields of ModelConfig and TrainingConfig."
+        )
+
     model_kw = {k: v for k, v in kwargs.items() if k in model_fields}
     train_kw = {k: v for k, v in kwargs.items() if k in train_fields}
     return model_kw, train_kw
