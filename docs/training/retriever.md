@@ -225,5 +225,5 @@ See [Multi-GPU Training](multi-gpu.md) for details.
 
 - [Retriever Paradigm](../paradigms/retriever.md) — architecture and InfoNCE math
 - [RAG Tutorial](../tutorials/retriever-rag.md) — FAISS, LangChain, ChromaDB
-- [API — EmbedderParadigm](../api/paradigms.md#embedderparagm)
+- [API — EmbedderParadigm](../api/paradigms.md#sentence-embedder)
 - [API — EmbedderTrainer](../api/training.md#embeddertrainer)

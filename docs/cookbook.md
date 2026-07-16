@@ -9,14 +9,14 @@ Short, copy-paste recipes for the most common DantinoX patterns.
 <div class="grid cards" markdown>
 
 -   :material-play-circle: [Train AR model](#1-train-an-ar-model-on-a-local-file)
--   :material-blur: [Train Diffusion model](#2-train-a-masked-diffusion-llada-model)
+-   :material-blur: [Train Diffusion model](#2-train-a-discrete-diffusion-model)
 -   :material-wave: [Train a continuous flow-matching model](#3-train-a-continuous-flow-matching-model)
 -   :material-restore: [Resume training](#4-resume-interrupted-training)
 -   :material-text-box-outline: [Generate (AR)](#5-generate-text-from-ar)
 -   :material-blur-radial: [Generate (Diffusion)](#6-generate-text-from-diffusion)
 -   :material-tune: [LoRA fine-tuning](#7-lora-fine-tuning)
 -   :material-code-braces: [Load for inference](#8-load-a-model-for-inference)
--   :material-cloud-upload: [Hub push/pull](#9-push--pull-to-huggingface-hub)
+-   :material-cloud-upload: [Hub push/pull](#9-push-pull-to-huggingface-hub)
 -   :material-magnify: [LR range test](#10-find-the-optimal-learning-rate)
 -   :material-chart-bar: [Benchmark](#11-benchmark-trained-checkpoints)
 -   :material-counter: [Parameter count & FLOPs](#12-parameter-count-and-flops)

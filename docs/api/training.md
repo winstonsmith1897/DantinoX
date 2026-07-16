@@ -853,12 +853,12 @@ inspect the curve and validate the suggestion.
 
 ### `_build_schedule(config, total_steps)`
 
-Described in [Step 4](#step-4--optimizer-and-schedule-construction) above.
+Described in [Step 4](#step-4-optimizer-and-schedule-construction) above.
 Returns an `optax.Schedule` callable `lr_fn(step) -> float`.
 
 ### `_build_optimizer(config, total_steps)`
 
-Described in [Step 4](#step-4--optimizer-and-schedule-construction) above.
+Described in [Step 4](#step-4-optimizer-and-schedule-construction) above.
 Returns an `optax.GradientTransformation`.
 
 ### `_model_summary(model, config, optimizer)`

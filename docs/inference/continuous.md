@@ -141,6 +141,6 @@ print(text)
 
 ## See also
 
-- [Paradigm System](../architecture/paradigm-system.md#continuous--elf-flow-matching) — `ContinuousParadigm`, `build_embedder`, training-time loss
+- [Paradigm System](../architecture/paradigm-system.md#continuous-continuous-flow-matching) — `ContinuousParadigm`, `build_embedder`, training-time loss
 - [Configuration Reference](../configuration.md#flowmatchingconfig) — `flow_n_steps`, `flow_cfg_scale`, `sde_gamma`, and all other flow-matching fields
 - [AR Generation](autoregressive.md) · [Diffusion Generation](diffusion.md) — the other two paradigms

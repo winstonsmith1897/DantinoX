@@ -228,7 +228,7 @@ matched inference budget of 64 steps per paradigm:
 | GQA (77M) | 0.69±.09 | 188.0±0.4 | 0.562±.001 | 0.027±.000 | — |
 | MLA (79M) | 0.78±.07 | **156.3**±0.3 | 0.538±.001 | 0.107±.000 | — |
 
-BLEU-4<sub>cond</sub> is "—" for Flow-Matching: the ELF formulation (continuous flow-matching) supports
+BLEU-4<sub>cond</sub> is "—" for Flow-Matching: the ELF formulation supports
 prefix conditioning in principle, but DantinoX's current implementation does
 not yet expose it (planned future work). At this scale, Flow-Matching is the
 most fluent (lowest PPL, highest MAUVE), Diffusion the most lexically

@@ -690,4 +690,4 @@ a fixed compute cost.
 - [Training API Reference](../api/training.md) — `Trainer.fit`, optimizers, schedules
 - [Architecture Overview](../architecture.md) — system-level design
 - [Configuration Reference](../configuration.md) — all `Config` and `ModelConfig` fields
-- [Generation](generation.md) — autoregressive sampling, diffusion sampling
+- [Generation](../generation.md) — autoregressive sampling, diffusion sampling

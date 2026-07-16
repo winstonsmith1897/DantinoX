@@ -66,7 +66,7 @@ The library is designed for three types of users:
 
 -   :material-blur: **Discrete Diffusion**
 
-    Generates all tokens in parallel, starting from a fully masked sequence and iteratively removing `[MASK]` tokens. Attention is bidirectional — it sees the entire sequence at once. Follows the LLaDA formulation (Nie et al., 2024).
+    Generates all tokens in parallel, starting from a fully masked sequence and iteratively removing `[MASK]` tokens. Attention is bidirectional — it sees the entire sequence at once.
 
     **Pros:** More diverse and coherent outputs on certain tasks.
 
@@ -76,7 +76,7 @@ The library is designed for three types of users:
 
 -   :material-wave: **Continuous Flow-Matching**
 
-    Operates in the continuous embedding space rather than on discrete tokens. Transforms Gaussian noise into clean embeddings via an Euler ODE solver. Follows the ELF recipe (Hu et al., 2026).
+    Operates in the continuous embedding space rather than on discrete tokens. Transforms Gaussian noise into clean embeddings via an Euler ODE solver.
 
     **Pros:** Experimental paradigm, excellent for flow-matching research.
 
@@ -225,8 +225,8 @@ DantinoX/
 │   │   ├── ar.py                   ARParadigm
 │   │   ├── embedder.py             EmbedderParadigm
 │   │   └── diffusion/
-│   │       ├── discrete.py         DiscreteParadigm (LLaDA)
-│   │       └── continuous.py       ContinuousParadigm (ELF)
+│   │       ├── discrete.py         DiscreteParadigm (discrete diffusion)
+│   │       └── continuous.py       ContinuousParadigm (continuous flow-matching)
 │   ├── training/
 │   │   ├── trainer.py              Trainer — JIT loop, checkpointing, multi-GPU
 │   │   └── optimizer.py            build_optimizer · build_schedule

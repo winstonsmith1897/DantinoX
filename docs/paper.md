@@ -10,7 +10,7 @@ title: Experiments & Results
 [![License MIT](https://img.shields.io/badge/License-MIT-16a34a?style=flat-square)](https://opensource.org/licenses/MIT)
 </div>
 
-DantinoX is a unified, configurable framework for systematically comparing autoregressive (AR), masked discrete diffusion, and continuous flow-matching (ELF) language models under strictly identical training conditions. This page documents the experimental design, training matrix, and evaluation pipeline.
+DantinoX is a unified, configurable framework for systematically comparing autoregressive (AR), masked discrete diffusion, and continuous flow-matching language models under strictly identical training conditions. This page documents the experimental design, training matrix, and evaluation pipeline.
 
 !!! info "Scope of this page vs. the published paper"
     This page documents the **Part A/B ablation suite** (`scripts/run_full_emnlp.sh`

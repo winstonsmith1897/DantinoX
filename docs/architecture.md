@@ -39,7 +39,7 @@ DantinoX is organized in three decoupled layers. Understanding this layering is 
 | `core/flow.py` | `FlowMatchingTransformer`, `FlowEmbedder`, `flow_loss` — continuous flow-matching (ELF recipe). `core/elf.py` is a deprecated import shim kept for backward compatibility. |
 | `core/diffusion.py` | Noise schedules, `corrupt()`, `masked_cross_entropy()` |
 | `core/generation.py` | AR decode loop, diffusion reverse pass, flow-matching denoising |
-| `core/sharding.py` | `make_mesh`, `replicate`, `shard_batch` — data-parallel SPMD; `make_tp_mesh`, `apply_tp_sharding` — tensor parallelism (see [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp--tp)) |
+| `core/sharding.py` | `make_mesh`, `replicate`, `shard_batch` — data-parallel SPMD; `make_tp_mesh`, `apply_tp_sharding` — tensor parallelism (see [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp-tp)) |
 
 For the deep-dive on individual layers (MLA math, RoPE, Flash Attention, LoRA, multi-GPU), see [Core Layers](architecture/core.md).
 
@@ -92,7 +92,7 @@ The Trainer calls *only* `loss_fn` and nothing else about the model. This is the
 | :--- | :--- | :--- | :--- |
 | `"ar"` | `ARParadigm` | Cross-entropy on shifted targets (teacher-forcing) | None |
 | `"discrete"` | `DiscreteParadigm` | `(1/t)`-weighted masked cross-entropy (LLaDA) | Random token masking at rate `p(t)` |
-| `"continuous"` | `ContinuousParadigm` | Flow-matching MSE + CE (ELF) | `z_t = t·x + (1−t)·ε`, ε ~ N(0,I) |
+| `"continuous"` | `ContinuousParadigm` | Flow-matching MSE + CE | `z_t = t·x + (1−t)·ε`, ε ~ N(0,I) |
 | `"embedder"` | `EmbedderParadigm` | InfoNCE contrastive loss | None |
 
 See [Paradigm System](architecture/paradigm-system.md) for the full design rationale, and [Generation Paradigms](paradigms/index.md) for usage documentation.

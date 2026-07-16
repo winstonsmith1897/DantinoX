@@ -127,7 +127,7 @@ these `ModelConfig` fields into a [`FlowMatchingConfig`](#flowmatchingconfig)
 | `dropout` | `float` | `0.0` | Dropout probability after attention and FFN. |
 | `weight_tying` | `bool` | `True` | Tie input embedding and output projection (reduces parameters). |
 | `gradient_checkpointing` | `bool` | `False` | Recompute activations in backward pass — saves memory, costs extra FLOPs. |
-| `tp_size` | `int` | `1` | Tensor-parallel factor baked into the architecture config (mirrors `TrainingConfig.tp_size`; see [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp--tp)). |
+| `tp_size` | `int` | `1` | Tensor-parallel factor baked into the architecture config (mirrors `TrainingConfig.tp_size`; see [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp-tp)). |
 
 ### Attention settings
 
@@ -138,7 +138,7 @@ these `ModelConfig` fields into a [`FlowMatchingConfig`](#flowmatchingconfig)
 | `rope_scale` | `float` | `1.0` | RoPE frequency scaling. Values > 1 extend the effective context window. |
 | `sliding_window` | `bool` | `False` | Limit attention to a local sliding window. |
 | `context_window` | `int` | `4` | Number of blocks in the sliding window (used when `sliding_window=True`). |
-| `no_sink` | `bool` | `False` | Enable gated attention / attention-sink suppression (Qiu et al. 2026): output gated by `σ(W(x))` before the residual. See [Core Layers](architecture/core.md#no-sink-gating-gated-attention--attention-sink-suppression). |
+| `no_sink` | `bool` | `False` | Enable gated attention / attention-sink suppression (Qiu et al. 2026): output gated by `σ(W(x))` before the residual. See [Core Layers](architecture/core.md#no-sink-gating-gated-attention-attention-sink-suppression). |
 
 ??? note "MLA-specific fields"
     Only relevant when `attention="mla"`. Skip if using MHA or GQA.
@@ -218,7 +218,7 @@ cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
 | `n_devices` | `int` | `0` | Total GPU count. `0` = use all available devices. |
-| `tp_size` | `int` | `1` | Tensor-parallel factor. `> 1` builds a 2-D (data × model) mesh; data-parallel width = `n_devices / tp_size`. See [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp--tp). |
+| `tp_size` | `int` | `1` | Tensor-parallel factor. `> 1` builds a 2-D (data × model) mesh; data-parallel width = `n_devices / tp_size`. See [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp-tp). |
 
 ### Dataset
 

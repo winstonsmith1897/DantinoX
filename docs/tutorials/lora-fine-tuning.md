@@ -180,6 +180,6 @@ A higher rank increases adapter expressiveness but also the risk of overfitting 
 
 | Goal | Reference |
 | :--- | :--- |
-| Understand the LoRA math and type system | [Architecture — LoRA Fine-Tuning](../architecture.md#lora-fine-tuning) |
+| Understand the LoRA math and type system | [Architecture — LoRA Fine-Tuning](../architecture/core.md#lora-low-rank-adaptation) |
 | Push the fine-tuned model to HuggingFace Hub | [Pushing to HuggingFace Hub](hub.md) |
 | Fine-tune a diffusion model | [Masked Diffusion LM](diffusion-lm.md) |

@@ -193,4 +193,4 @@ vecs = embedder.embed(["hello world", "foo bar"])  # np.ndarray [2, D]
 
 - [Embedder Training Guide](../training/retriever.md) — unsupervised, supervised, fine-tuning
 - [RAG Tutorial](../tutorials/retriever-rag.md) — end-to-end with FAISS and LangChain
-- [API Reference — Embedder](../api/paradigms.md#embedderparagm)
+- [API Reference — Embedder](../api/paradigms.md#sentence-embedder)
