@@ -75,16 +75,19 @@ class ParadigmBase(ABC):
 
 The Trainer calls *only* `loss_fn` and nothing else about the model. This is the key design invariant: **all paradigm-specific logic (masking, noise schedules, flow-matching branches, CFG) lives in the Paradigm, never in the Trainer.**
 
-!!! note "Why `model` is passed explicitly to `loss_fn`"
-    `nnx.value_and_grad` differentiates with respect to the first argument. By accepting `model` explicitly, `loss_fn` is directly differentiable without the `Paradigm` needing to be an NNX module or store the model as state.
+:::{admonition} Why `model` is passed explicitly to `loss_fn`
+:class: note
 
-    ```python
-    # Inside Trainer._step:
-    def _loss(m):
-        return paradigm.loss_fn(m, batch, rng)
+`nnx.value_and_grad` differentiates with respect to the first argument. By accepting `model` explicitly, `loss_fn` is directly differentiable without the `Paradigm` needing to be an NNX module or store the model as state.
 
-    (loss, metrics), grads = nnx.value_and_grad(_loss, has_aux=True)(model)
-    ```
+```python
+# Inside Trainer._step:
+def _loss(m):
+    return paradigm.loss_fn(m, batch, rng)
+
+(loss, metrics), grads = nnx.value_and_grad(_loss, has_aux=True)(model)
+```
+:::
 
 ### Built-in paradigms
 

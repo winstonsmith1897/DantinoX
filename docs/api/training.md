@@ -188,11 +188,14 @@ seconds regardless of corpus size.
 
 After loading, `config.vocab_size` is updated in place from `tokenizer.vocab_size`.
 
-!!! tip "Why the cache exists"
-    Re-tokenising WikiText-103 (~100M chars) takes ~60 s with a BPE tokenizer.
-    With the cache it takes ~2 s. The cache persists across runs and across
-    different `run_dir` values as long as the dataset and tokenizer type are
-    the same.
+:::{admonition} Why the cache exists
+:class: tip
+
+Re-tokenising WikiText-103 (~100M chars) takes ~60 s with a BPE tokenizer.
+With the cache it takes ~2 s. The cache persists across runs and across
+different `run_dir` values as long as the dataset and tokenizer type are
+the same.
+:::
 
 ---
 
@@ -405,12 +408,15 @@ class LoRAParam(nnx.Variable):
 The type distinction is the entire freezing mechanism. No masking, no
 `stop_gradient`, no manual gradient zeroing.
 
-!!! note "LoRA targets"
-    `config.lora_targets` controls which layers use `LoRALinear` instead of
-    `nnx.Linear`:
-    - `"attention"` (default): only the QKV and output projections.
-    - `"mlp"`: only the FFN up/down projections.
-    - `"all"`: both attention and FFN layers.
+:::{admonition} LoRA targets
+:class: note
+
+`config.lora_targets` controls which layers use `LoRALinear` instead of
+`nnx.Linear`:
+- `"attention"` (default): only the QKV and output projections.
+- `"mlp"`: only the FFN up/down projections.
+- `"all"`: both attention and FFN layers.
+:::
 
 ---
 
@@ -841,11 +847,14 @@ safety margin.
 Plot `loss_history` against `lr_history` (log scale on the x-axis) to visually
 inspect the curve and validate the suggestion.
 
-!!! warning "find_lr uses only Transformer"
-    The current implementation always instantiates a `Transformer` (AR model)
-    regardless of `config.model_type`. Use `find_lr` to tune the LR for AR runs
-    and use the result as a starting point for diffusion/flow-matching runs with appropriate
-    scaling.
+:::{admonition} find_lr uses only Transformer
+:class: warning
+
+The current implementation always instantiates a `Transformer` (AR model)
+regardless of `config.model_type`. Use `find_lr` to tune the LR for AR runs
+and use the result as a starting point for diffusion/flow-matching runs with appropriate
+scaling.
+:::
 
 ---
 
@@ -920,11 +929,14 @@ compiled program. When `gradient_checkpointing=True`, block internals are
 recomputed on the backward pass, reducing the effective activation footprint
 significantly.
 
-!!! note "Estimates, not exact figures"
-    `est_activations_MB` is a rough upper bound. Actual VRAM usage will
-    differ because of XLA buffer reuse, operator fusion, and the effect of
-    `gradient_checkpointing`. Use profiling tools (e.g. `jax.profiler`) for
-    precise measurements.
+:::{admonition} Estimates, not exact figures
+:class: note
+
+`est_activations_MB` is a rough upper bound. Actual VRAM usage will
+differ because of XLA buffer reuse, operator fusion, and the effect of
+`gradient_checkpointing`. Use profiling tools (e.g. `jax.profiler`) for
+precise measurements.
+:::
 
 ---
 

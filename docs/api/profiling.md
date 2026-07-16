@@ -6,15 +6,14 @@ The profiling module has no dependencies on training or paradigms. Both utilitie
 
 ## FLOPs estimation
 
-::: dantinox.profiling.counter.count_flops
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.profiling.counter.count_flops
+```
 
-::: dantinox.profiling.counter.FLOPsBreakdown
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.profiling.counter.FLOPsBreakdown
+   :members:
+```
 
 ### FLOPs formulas
 
@@ -34,25 +33,19 @@ where $B$ = batch, $T$ = seq len, $D$ = dim, $E$ = expansion, $L$ = layers, $V$ 
 
 ## Latency tracking
 
-::: dantinox.profiling.tracker.LatencyTracker
-    options:
-      show_source: true
-      members:
-        - __init__
-        - measure
-        - record
-        - result
-        - reset
+```{eval-rst}
+.. autoclass:: dantinox.profiling.tracker.LatencyTracker
+   :members:
+```
 
-::: dantinox.profiling.tracker.ProfilingResult
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.profiling.tracker.ProfilingResult
+   :members:
+```
 
-::: dantinox.profiling.tracker.profile_fn
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.profiling.tracker.profile_fn
+```
 
 ---
 
@@ -88,5 +81,8 @@ instrumented_generate = profile_fn(model.generate, tracker, n_tokens=256)
 output = instrumented_generate(prompt, rng)
 ```
 
-!!! warning "JAX synchronization"
-    `LatencyTracker.measure()` calls `jax.effects_barrier()` before and after the measured call. This ensures all XLA-compiled operations have completed before the timer stops. Without this, JAX's asynchronous dispatch would cause the measured time to reflect only dispatch latency, not actual computation.
+:::{admonition} JAX synchronization
+:class: warning
+
+`LatencyTracker.measure()` calls `jax.effects_barrier()` before and after the measured call. This ensures all XLA-compiled operations have completed before the timer stops. Without this, JAX's asynchronous dispatch would cause the measured time to reflect only dispatch latency, not actual computation.
+:::

@@ -108,9 +108,12 @@ out_p = model.encode_hidden(batch, deterministic=False)   # view 2 (different ma
 loss  = info_nce_loss(out_a.embeddings, out_p.embeddings, temperature)
 ```
 
-!!! warning "Dropout must be > 0"
-    SimCSE requires `dropout > 0` in `ModelConfig`. With `dropout=0.0` both forward passes produce identical representations, the InfoNCE diagonal is always 1, and the loss provides no gradient.  
-    `EmbedderParadigm` will warn you at construction time if `dropout=0.0`.
+:::{admonition} Dropout must be > 0
+:class: warning
+
+SimCSE requires `dropout > 0` in `ModelConfig`. With `dropout=0.0` both forward passes produce identical representations, the InfoNCE diagonal is always 1, and the loss provides no gradient.  
+`EmbedderParadigm` will warn you at construction time if `dropout=0.0`.
+:::
 
 This mode integrates with the standard `Trainer` and any flat text corpus — no pair preparation needed.
 

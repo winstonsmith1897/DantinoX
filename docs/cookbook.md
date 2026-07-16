@@ -196,8 +196,11 @@ tokens   = diffusion_generate(
 )
 ```
 
-!!! tip "Fast-dLLM DualCache"
-    For 1.4–2.1× faster generation, use `fast_dllm_generate` with `block_size=32`. See [Fast-dLLM DualCache](paradigms/fast-dllm.md).
+:::{admonition} Fast-dLLM DualCache
+:class: tip
+
+For 1.4–2.1× faster generation, use `fast_dllm_generate` with `block_size=32`. See [Fast-dLLM DualCache](paradigms/fast-dllm.md).
+:::
 
 ---
 
@@ -254,14 +257,17 @@ from dantinox.core.checkpoint import load_model
 model, cfg, weights_path = load_model("runs/ar_mha_512d_12b")
 ```
 
-!!! note "Rolling your own loader"
-    If you need to load weights into an already-built model object,
-    `dantinox.core.checkpoint.restore_model(model, weights_path)` does just
-    the weight-restoration step — see `find_weights_file()` /
-    `restore_model()` in the same module. Calling `nnx.update(model, raw_dict)`
-    directly on the msgpack-decoded dict (skipping
-    `nnx.state(model, nnx.Not(nnx.RngState)).replace_by_pure_dict(raw)`) does
-    **not** reliably restore an NNX module and should be avoided.
+:::{admonition} Rolling your own loader
+:class: note
+
+If you need to load weights into an already-built model object,
+`dantinox.core.checkpoint.restore_model(model, weights_path)` does just
+the weight-restoration step — see `find_weights_file()` /
+`restore_model()` in the same module. Calling `nnx.update(model, raw_dict)`
+directly on the msgpack-decoded dict (skipping
+`nnx.state(model, nnx.Not(nnx.RngState)).replace_by_pure_dict(raw)`) does
+**not** reliably restore an NNX module and should be avoided.
+:::
 
 ---
 
@@ -376,8 +382,11 @@ dantinox train \
     --use_bf16 true
 ```
 
-!!! info "Effective batch size"
-    With the flags above: `32 × 8 × 4 = 1024` tokens per step. JAX SPMD replicates the model on all 4 devices and reduces gradients automatically — no code changes needed.
+:::{admonition} Effective batch size
+:class: info
+
+With the flags above: `32 × 8 × 4 = 1024` tokens per step. JAX SPMD replicates the model on all 4 devices and reduces gradients automatically — no code changes needed.
+:::
 
 ---
 
@@ -399,5 +408,8 @@ paradigm = dx.Paradigm(model_cfg)
 
 ---
 
-!!! tip "More examples"
-    See the [Notebooks](notebooks/index.md) for interactive, runnable versions of these recipes on Google Colab.
+:::{admonition} More examples
+:class: tip
+
+See the [Notebooks](notebooks/index.md) for interactive, runnable versions of these recipes on Google Colab.
+:::

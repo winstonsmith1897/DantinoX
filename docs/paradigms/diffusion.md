@@ -35,8 +35,11 @@ At $t = 1$: the sequence is completely masked.
 
 This is much simpler than continuous diffusion (no score function, no SDE/ODE). The "noise level" $t$ directly equals the expected fraction of masked tokens.
 
-!!! note "Continuous t in DantinoX"
-    DantinoX uses **continuous** $t \in [0, 1]$, not discrete timesteps. During training, a different $t$ is sampled per sequence in the batch, allowing the model to learn denoising at all noise levels simultaneously.
+:::{admonition} Continuous t in DantinoX
+:class: note
+
+DantinoX uses **continuous** $t \in [0, 1]$, not discrete timesteps. During training, a different $t$ is sampled per sequence in the batch, allowing the model to learn denoising at all noise levels simultaneously.
+:::
 
 ### Noise schedules
 
@@ -88,16 +91,19 @@ $$
 
 where $L$ is `max_context`. For typical context lengths (≥128), this resolves to `t_min = 0.05`, meaning at least ~26 tokens are masked per sequence. This keeps gradients stable while still covering the full denoising range.
 
-!!! warning "This floor only applies to the legacy `Trainer`"
-    The `t_min = max(1/L, 0.05)` floor above is implemented in the **legacy**
-    `dantinox/trainer.py` pipeline (`Trainer(config).fit(...)`, driving the
-    `dantinox train` CLI). The modern `DiscreteParadigm.loss_fn` — used via
-    `dx.Trainer(dx.Paradigm(dx.ModelConfig(paradigm="discrete", ...)), tcfg)`,
-    the API shown in the paper — samples `t ~ U[0, 1]` with **no floor**, and
-    `masked_cross_entropy` only clamps the `1/t` weight with a tiny epsilon
-    (`t_safe = max(t, 1e-6)`), not 0.05. The two pipelines are not numerically
-    equivalent near `t → 0`; which one applies depends on whether you train
-    through the legacy `Config`/`Trainer` path or the `ModelConfig`/`Paradigm` path.
+:::{admonition} This floor only applies to the legacy `Trainer`
+:class: warning
+
+The `t_min = max(1/L, 0.05)` floor above is implemented in the **legacy**
+`dantinox/trainer.py` pipeline (`Trainer(config).fit(...)`, driving the
+`dantinox train` CLI). The modern `DiscreteParadigm.loss_fn` — used via
+`dx.Trainer(dx.Paradigm(dx.ModelConfig(paradigm="discrete", ...)), tcfg)`,
+the API shown in the paper — samples `t ~ U[0, 1]` with **no floor**, and
+`masked_cross_entropy` only clamps the `1/t` weight with a tiny epsilon
+(`t_safe = max(t, 1e-6)`), not 0.05. The two pipelines are not numerically
+equivalent near `t → 0`; which one applies depends on whether you train
+through the legacy `Config`/`Trainer` path or the `ModelConfig`/`Paradigm` path.
+:::
 
 ### Per-sequence noise levels
 
@@ -142,14 +148,20 @@ warmup_steps: 400
 use_bf16: true
 ```
 
-!!! warning "`causal: false` is mandatory"
-    The `DiffusionTransformer` must use bidirectional (non-causal) attention.
-    Setting `causal: true` will apply a lower-triangular mask, preventing the model
-    from seeing future unmasked tokens — this destroys the denoising signal.
+:::{admonition} `causal: false` is mandatory
+:class: warning
 
-!!! warning "`mask_token_id` must be reserved"
-    `mask_token_id` must be an ID that does not appear as a regular token in your vocabulary.
-    If using BPE, add it as a special token. For character tokenizers, use an index ≥ vocab_size - 1.
+The `DiffusionTransformer` must use bidirectional (non-causal) attention.
+Setting `causal: true` will apply a lower-triangular mask, preventing the model
+from seeing future unmasked tokens — this destroys the denoising signal.
+:::
+
+:::{admonition} `mask_token_id` must be reserved
+:class: warning
+
+`mask_token_id` must be an ID that does not appear as a regular token in your vocabulary.
+If using BPE, add it as a special token. For character tokenizers, use an index ≥ vocab_size - 1.
+:::
 
 ---
 

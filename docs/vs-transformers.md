@@ -289,15 +289,21 @@ tokens = fast_dllm_generate(
 
 ## When to choose each
 
-!!! success "Use DantinoX when:"
-    - You are researching non-autoregressive generation (masked diffusion, flow matching).
-    - You need to compare AR vs. Diffusion vs. Continuous Flow-Matching with identical architecture and training.
-    - You need fine-grained control over attention variant (MHA/GQA/MLA), KV-cache type, or noise schedule.
-    - Your training loop is JAX-native and you want zero-overhead SPMD parallelism.
-    - You need the systematic benchmark suite for reproducible throughput and quality numbers.
+:::{admonition} Use DantinoX when:
+:class: success
 
-!!! info "Use HuggingFace when:"
-    - You want to fine-tune one of thousands of pretrained models in the Hub ecosystem.
-    - Your task requires an existing tokenizer, feature extractor, or architecture (BERT, T5, Llama, …).
-    - Your team is PyTorch-native and wants minimal friction.
-    - You need production integrations: ONNX export, TorchScript, Inference API.
+- You are researching non-autoregressive generation (masked diffusion, flow matching).
+- You need to compare AR vs. Diffusion vs. Continuous Flow-Matching with identical architecture and training.
+- You need fine-grained control over attention variant (MHA/GQA/MLA), KV-cache type, or noise schedule.
+- Your training loop is JAX-native and you want zero-overhead SPMD parallelism.
+- You need the systematic benchmark suite for reproducible throughput and quality numbers.
+:::
+
+:::{admonition} Use HuggingFace when:
+:class: info
+
+- You want to fine-tune one of thousands of pretrained models in the Hub ecosystem.
+- Your task requires an existing tokenizer, feature extractor, or architecture (BERT, T5, Llama, …).
+- Your team is PyTorch-native and wants minimal friction.
+- You need production integrations: ONNX export, TorchScript, Inference API.
+:::

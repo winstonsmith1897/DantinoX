@@ -73,8 +73,10 @@ $$
 | GQA (×4) | ~30 MB | 0.094 MB | ~400 |
 | MLA | ~32 MB | ~0.027 MB | ~1500 |
 
-!!! note
-    These are rough estimates. Actual VRAM usage depends on activations, intermediate buffers, and JAX XLA padding. Use `jax.devices()[0].memory_stats()` for real measurements.
+:::{note}
+
+These are rough estimates. Actual VRAM usage depends on activations, intermediate buffers, and JAX XLA padding. Use `jax.devices()[0].memory_stats()` for real measurements.
+:::
 
 ---
 

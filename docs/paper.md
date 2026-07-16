@@ -12,33 +12,36 @@ title: Experiments & Results
 
 DantinoX is a unified, configurable framework for systematically comparing autoregressive (AR), masked discrete diffusion, and continuous flow-matching language models under strictly identical training conditions. This page documents the experimental design, training matrix, and evaluation pipeline.
 
-!!! info "Scope of this page vs. the published paper"
-    This page documents the **Part A/B ablation suite** (`scripts/run_full_emnlp.sh`
-    and the `benchmarks/*.py` scripts it drives) — a broader internal research
-    pipeline that trains **AR and Discrete Diffusion only** (no continuous
-    flow-matching stage) across ~180 checkpoints, using **Lion/AdamW**
-    optimizers on **2× A100 40GB** for training. It is a real, working
-    pipeline, but it is **not** the exact methodology behind the headline
-    numbers in the EMNLP System Demo paper.
+:::{admonition} Scope of this page vs. the published paper
+:class: info
 
-    The paper's own reported results are narrower and cover all **three**
-    paradigms:
+This page documents the **Part A/B ablation suite** (`scripts/run_full_emnlp.sh`
+and the `benchmarks/*.py` scripts it drives) — a broader internal research
+pipeline that trains **AR and Discrete Diffusion only** (no continuous
+flow-matching stage) across ~180 checkpoints, using **Lion/AdamW**
+optimizers on **2× A100 40GB** for training. It is a real, working
+pipeline, but it is **not** the exact methodology behind the headline
+numbers in the EMNLP System Demo paper.
 
-    - **Generation quality (Table 2):** all 9 paradigm × attention
-      combinations (AR / Discrete Diffusion / Continuous Flow-Matching ×
-      MHA / GQA / MLA) trained with the **Muon** optimizer on WikiText-103 at
-      Small scale (512-d, 12-layer, ~65–82M params) — see
-      [Comparison — Paper's reported results](paradigms/comparison.md#papers-reported-results-authoritative)
-      for the full table.
-    - **Inference efficiency:** a `BenchmarkSuite.default()` sweep
-      of latency/throughput/energy for all three paradigms on a Large backbone
-      (1024-d, 16-layer, ~130M params), measured on a **single A100-40GB**
-      in bf16 — all published efficiency numbers come from one GPU, not two.
+The paper's own reported results are narrower and cover all **three**
+paradigms:
 
-    If you're looking to reproduce the paper's exact published tables/figures,
-    use the `dx.count_flops` / `dx.profile` / `BenchmarkSuite.default()` API
-    (see [Architecture Overview](architecture.md#the-core-layer)) rather than
-    `run_full_emnlp.sh`, which serves the wider ablation study below.
+- **Generation quality (Table 2):** all 9 paradigm × attention
+  combinations (AR / Discrete Diffusion / Continuous Flow-Matching ×
+  MHA / GQA / MLA) trained with the **Muon** optimizer on WikiText-103 at
+  Small scale (512-d, 12-layer, ~65–82M params) — see
+  [Comparison — Paper's reported results](paradigms/comparison.md#papers-reported-results-authoritative)
+  for the full table.
+- **Inference efficiency:** a `BenchmarkSuite.default()` sweep
+  of latency/throughput/energy for all three paradigms on a Large backbone
+  (1024-d, 16-layer, ~130M params), measured on a **single A100-40GB**
+  in bf16 — all published efficiency numbers come from one GPU, not two.
+
+If you're looking to reproduce the paper's exact published tables/figures,
+use the `dx.count_flops` / `dx.profile` / `BenchmarkSuite.default()` API
+(see [Architecture Overview](architecture.md#the-core-layer)) rather than
+`run_full_emnlp.sh`, which serves the wider ablation study below.
+:::
 
 ---
 

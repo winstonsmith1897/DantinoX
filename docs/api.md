@@ -10,48 +10,37 @@ The `dantinox` package exposes five classes and two functions that cover the ful
 
 ### Trainer
 
-::: dantinox.trainer.Trainer
-    options:
-      show_source: true
-      members:
-        - __init__
-        - fit
-        - find_lr
+```{eval-rst}
+.. autoclass:: dantinox.trainer.Trainer
+   :members:
+```
 
 ---
 
 ### Generator
 
-::: dantinox.generator.Generator
-    options:
-      show_source: true
-      members:
-        - __init__
-        - generate
-        - generate_batch
-        - stream
+```{eval-rst}
+.. autoclass:: dantinox.generator.Generator
+   :members:
+```
 
 ---
 
 ### BenchmarkRunner
 
-::: dantinox.bench.BenchmarkRunner
-    options:
-      show_source: true
-      members:
-        - __init__
-        - run
+```{eval-rst}
+.. autoclass:: dantinox.bench.BenchmarkRunner
+   :members:
+```
 
 ---
 
 ### Plotter
 
-::: dantinox.plotting.Plotter
-    options:
-      show_source: true
-      members:
-        - __init__
-        - run
+```{eval-rst}
+.. autoclass:: dantinox.plotting.Plotter
+   :members:
+```
 
 ---
 
@@ -59,27 +48,39 @@ The `dantinox` package exposes five classes and two functions that cover the ful
 
 Push, pull, and directly load checkpoints from HuggingFace Hub.
 
-!!! tip "Optional dependency"
-    Install with `pip install "dantinox[hub]"` or `pip install huggingface-hub`.
+:::{admonition} Optional dependency
+:class: tip
 
-!!! example "Direct loading — no pull step needed"
-    ```python
-    from dantinox import Generator
-    from dantinox.core.model import Transformer
+Install with `pip install "dantinox[hub]"` or `pip install huggingface-hub`.
+:::
 
-    gen   = Generator("my-org/dantinox-dante")                    # downloads + loads
-    model = Transformer.from_pretrained("my-org/dantinox-dante")  # same, no tokenizer
-    ```
+:::{admonition} Direct loading — no pull step needed
+:class: example
 
-::: dantinox.hub.resolve_checkpoint
+```python
+from dantinox import Generator
+from dantinox.core.model import Transformer
+
+gen   = Generator("my-org/dantinox-dante")                    # downloads + loads
+model = Transformer.from_pretrained("my-org/dantinox-dante")  # same, no tokenizer
+```
+:::
+
+```{eval-rst}
+.. autofunction:: dantinox.hub.resolve_checkpoint
+```
 
 ---
 
-::: dantinox.hub.push
+```{eval-rst}
+.. autofunction:: dantinox.hub.push
+```
 
 ---
 
-::: dantinox.hub.pull
+```{eval-rst}
+.. autofunction:: dantinox.hub.pull
+```
 
 ---
 
@@ -91,10 +92,10 @@ Internal implementation. Import directly when you need low-level access.
 
 Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA), `MoE`, and `MLP`.
 
-::: dantinox.core.model
-    options:
-      members_order: alphabetical
-      show_source: true
+```{eval-rst}
+.. automodule:: dantinox.core.model
+   :members:
+```
 
 ---
 
@@ -102,9 +103,10 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 `RMSNorm` is the alternative to `nnx.LayerNorm` selected when `norm_type = "rmsnorm"`.
 
-::: dantinox.core.block.RMSNorm
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.core.block.RMSNorm
+   :members:
+```
 
 ---
 
@@ -112,17 +114,20 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 Each model family returns its own NamedTuple: `ModelOutput` (`Transformer`, AR and diffusion — supports both attribute access and positional unpacking), `FlowMatchingOutput` (`FlowMatchingTransformer` — `x_pred` + `logits`), and `EmbeddingOutput` (`Transformer.encode_hidden` — pooled sentence embeddings + per-token hidden states).
 
-::: dantinox.core.output.ModelOutput
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.core.output.ModelOutput
+   :members:
+```
 
-::: dantinox.core.output.FlowMatchingOutput
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.core.output.FlowMatchingOutput
+   :members:
+```
 
-::: dantinox.core.output.EmbeddingOutput
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.core.output.EmbeddingOutput
+   :members:
+```
 
 ---
 
@@ -130,17 +135,15 @@ Each model family returns its own NamedTuple: `ModelOutput` (`Transformer`, AR a
 
 `LoRAParam` is a distinct NNX variable type that freezes base weights at the type level. `LoRALinear` is a drop-in replacement for `nnx.Linear` with a trainable low-rank delta.
 
-::: dantinox.core.lora.LoRAParam
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.core.lora.LoRAParam
+   :members:
+```
 
-::: dantinox.core.lora.LoRALinear
-    options:
-      show_source: true
-      members:
-        - __init__
-        - __call__
-        - merge_weights
+```{eval-rst}
+.. autoclass:: dantinox.core.lora.LoRALinear
+   :members:
+```
 
 ---
 
@@ -148,17 +151,10 @@ Each model family returns its own NamedTuple: `ModelOutput` (`Transformer`, AR a
 
 SPMD helpers built on `jax.sharding` — 1-D data-parallel meshes plus 2-D data × model meshes with Megatron-style tensor parallelism. Pass `n_devices` / `tp_size` in the config to activate automatically, or call these directly for custom sharding strategies (see [Multi-GPU Training](training/multi-gpu.md)).
 
-::: dantinox.core.sharding
-    options:
-      show_source: true
-      members:
-        - make_mesh
-        - make_tp_mesh
-        - replicate
-        - shard_batch
-        - num_devices
-        - apply_tp_sharding
-        - in_mesh_context
+```{eval-rst}
+.. automodule:: dantinox.core.sharding
+   :members:
+```
 
 ---
 
@@ -166,17 +162,10 @@ SPMD helpers built on `jax.sharding` — 1-D data-parallel meshes plus 2-D data 
 
 Single checkpoint-loading path for run directories: config-format detection (`Config` / `ModelConfig` / `FlowMatchingConfig`), weight-file resolution across current and legacy filenames, msgpack decoding, and in-place weight restoration. Shared by `Transformer.from_pretrained`, the `pipeline()` helper, and StableHLO export.
 
-::: dantinox.core.checkpoint
-    options:
-      show_source: true
-      members:
-        - load_model
-        - load_config
-        - find_weights_file
-        - restore_model
-        - load_raw_state
-        - build_model
-        - model_kind
+```{eval-rst}
+.. automodule:: dantinox.core.checkpoint
+   :members:
+```
 
 ---
 
@@ -184,9 +173,10 @@ Single checkpoint-loading path for run directories: config-format detection (`Co
 
 One-call inference helper: builds the right model from a run directory and dispatches to AR decoding, reverse diffusion, or flow-matching ODE integration. For richer control (streaming, decoding strategies) prefer the `Generator` class.
 
-::: dantinox.core.pipeline
-    options:
-      show_source: true
+```{eval-rst}
+.. automodule:: dantinox.core.pipeline
+   :members:
+```
 
 ---
 
@@ -194,9 +184,10 @@ One-call inference helper: builds the right model from a run directory and dispa
 
 Ahead-of-time export of a checkpoint to a portable StableHLO binary for Python-free inference — the implementation behind the `dantinox export` CLI subcommand.
 
-::: dantinox.core.export
-    options:
-      show_source: true
+```{eval-rst}
+.. automodule:: dantinox.core.export
+   :members:
+```
 
 ---
 
@@ -204,9 +195,10 @@ Ahead-of-time export of a checkpoint to a portable StableHLO binary for Python-f
 
 The `Config` dataclass is the single source of truth for all architectural and training hyperparameters.
 
-::: dantinox.core.config
-    options:
-      show_root_heading: true
+```{eval-rst}
+.. automodule:: dantinox.core.config
+   :members:
+```
 
 ---
 
@@ -214,9 +206,10 @@ The `Config` dataclass is the single source of truth for all architectural and t
 
 Autoregressive inference with static KV-cache management, `jax.lax.fori_loop` token loop, and sampling strategies (greedy, Top-K, Top-P).
 
-::: dantinox.core.generation
-    options:
-      show_source: true
+```{eval-rst}
+.. automodule:: dantinox.core.generation
+   :members:
+```
 
 ---
 
@@ -224,15 +217,10 @@ Autoregressive inference with static KV-cache management, `jax.lax.fori_loop` to
 
 Character-level and Byte-Level BPE tokenizers with save/load support.
 
-::: dantinox.utils.tokenizer
-    options:
-      show_source: true
-      members:
-        - Tokenizer
-        - CharTokenizer
-        - BPETokenizer
-        - get_tokenizer
-        - load_tokenizer_from_file
+```{eval-rst}
+.. automodule:: dantinox.utils.tokenizer
+   :members:
+```
 
 ---
 

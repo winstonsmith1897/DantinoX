@@ -37,13 +37,16 @@ title: Configuration Reference
 
 </div>
 
-!!! abstract "Key constraint"
-    `dim` must always equal `n_heads × head_size`. This is validated in `__post_init__` and will raise `ValueError` if violated.
+:::{admonition} Key constraint
+:class: abstract
 
-    ```python
-    ModelConfig(dim=512, n_heads=8, head_size=64)  # ✓  512 = 8 × 64
-    ModelConfig(dim=512, n_heads=8, head_size=32)  # ✗  raises ValueError
-    ```
+`dim` must always equal `n_heads × head_size`. This is validated in `__post_init__` and will raise `ValueError` if violated.
+
+```python
+ModelConfig(dim=512, n_heads=8, head_size=64)  # ✓  512 = 8 × 64
+ModelConfig(dim=512, n_heads=8, head_size=32)  # ✗  raises ValueError
+```
+:::
 
 ---
 
@@ -140,15 +143,18 @@ these `ModelConfig` fields into a [`FlowMatchingConfig`](#flowmatchingconfig)
 | `context_window` | `int` | `4` | Number of blocks in the sliding window (used when `sliding_window=True`). |
 | `no_sink` | `bool` | `False` | Enable gated attention / attention-sink suppression (Qiu et al. 2026): output gated by `σ(W(x))` before the residual. See [Core Layers](architecture/core.md#no-sink-gating-gated-attention-attention-sink-suppression). |
 
-??? note "MLA-specific fields"
-    Only relevant when `attention="mla"`. Skip if using MHA or GQA.
+:::{admonition} MLA-specific fields
+:class: note
 
-    | Field | Type | Default | Description |
-    |:------|:-----|:-------:|:------------|
-    | `down_dim_q` | `int` | `256` | Query latent compression dimension. |
-    | `down_dim_kv` | `int` | `256` | Key/value latent compression dimension. |
-    | `rope_dim` | `int` | `32` | RoPE subspace dimension. Must be ≤ `head_size`. |
-    | `inference_mode` | `bool` | `False` | Absorb KV projection at inference for reduced compute. |
+Only relevant when `attention="mla"`. Skip if using MHA or GQA.
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `down_dim_q` | `int` | `256` | Query latent compression dimension. |
+| `down_dim_kv` | `int` | `256` | Key/value latent compression dimension. |
+| `rope_dim` | `int` | `32` | RoPE subspace dimension. Must be ≤ `head_size`. |
+| `inference_mode` | `bool` | `False` | Absorb KV projection at inference for reduced compute. |
+:::
 
 ### Feed-forward
 
@@ -158,19 +164,25 @@ these `ModelConfig` fields into a [`FlowMatchingConfig`](#flowmatchingconfig)
 | `use_swiglu` | `bool` | `True` | SwiGLU gate activation (gated linear unit). |
 | `activation` | `str` | `"gelu"` | Activation when `use_swiglu=False`. |
 
-??? note "MoE fields (ffn=&quot;moe&quot; only)"
-    Only relevant when `ffn="moe"`. Skip for dense models.
+:::{admonition} MoE fields (ffn=&quot;moe&quot; only)
+:class: note
 
-    | Field | Type | Default | Description |
-    |:------|:-----|:-------:|:------------|
-    | `n_experts` | `int` | `4` | Number of expert FFN heads. |
-    | `top_k` | `int` | `2` | Active experts per token. |
-    | `moe_balance_coeff` | `float` | `0.1` | Load-balancing auxiliary loss coefficient. |
+Only relevant when `ffn="moe"`. Skip for dense models.
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `n_experts` | `int` | `4` | Number of expert FFN heads. |
+| `top_k` | `int` | `2` | Active experts per token. |
+| `moe_balance_coeff` | `float` | `0.1` | Load-balancing auxiliary loss coefficient. |
+:::
 
 ### LoRA
 
-!!! tip "LoRA fine-tuning"
-    Set `use_lora=True` to inject adapter matrices. The `Trainer` automatically freezes base `nnx.Param` weights — only `LoRAParam` weights are updated. See [Cookbook → LoRA fine-tuning](cookbook.md#7-lora-fine-tuning).
+:::{admonition} LoRA fine-tuning
+:class: tip
+
+Set `use_lora=True` to inject adapter matrices. The `Trainer` automatically freezes base `nnx.Param` weights — only `LoRAParam` weights are updated. See [Cookbook → LoRA fine-tuning](cookbook.md#7-lora-fine-tuning).
+:::
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
@@ -239,11 +251,14 @@ cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 | `tokenizer_type` | `str` | `"char"` | `"char"` (character-level) · `"bpe"` (Byte-Pair Encoding) · `"t5"` (pre-trained T5 SentencePiece). |
 | `tokenizer_path` | `str\|None` | `None` | HF tokenizer identifier (e.g. `"t5-base"`) or local path. |
 
-!!! note "Where did `noise_schedule` go?"
-    `noise_schedule` (and `mask_token_id`) are **`ModelConfig`** fields, not
-    `TrainingConfig` fields — the masking schedule is part of the paradigm's
-    forward process definition, not a training hyper-parameter. See the
-    [ModelConfig diffusion fields](#diffusion-fields-paradigmdiscrete) above.
+:::{admonition} Where did `noise_schedule` go?
+:class: note
+
+`noise_schedule` (and `mask_token_id`) are **`ModelConfig`** fields, not
+`TrainingConfig` fields — the masking schedule is part of the paradigm's
+forward process definition, not a training hyper-parameter. See the
+[ModelConfig diffusion fields](#diffusion-fields-paradigmdiscrete) above.
+:::
 
 ---
 
@@ -251,8 +266,11 @@ cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 
 The `Config` class is the **legacy flat config** used by the CLI and YAML files. It combines all `ModelConfig` and `TrainingConfig` fields, plus continuous flow-matching fields.
 
-!!! tip "Prefer the split API for new experiments"
-    Use `ModelConfig` + `TrainingConfig` for new code — the split is cleaner and more composable. Use `Config` when working with the CLI, existing YAML files, or `Trainer` directly.
+:::{admonition} Prefer the split API for new experiments
+:class: tip
+
+Use `ModelConfig` + `TrainingConfig` for new code — the split is cleaner and more composable. Use `Config` when working with the CLI, existing YAML files, or `Trainer` directly.
+:::
 
 ```python
 cfg = Config.from_yaml("configs/medium_gqa.yaml")
@@ -301,43 +319,49 @@ not diffusion, even though it's stored on the same monolithic `Config` object.
 
 ### Continuous flow-matching fields
 
-??? note "Continuous flow-matching fields — expand for details"
-    Only relevant when `model_type="elf"`. The shared fields (`dim`, `n_heads`, etc.) are reused from the architecture section above.
+:::{admonition} Continuous flow-matching fields — expand for details
+:class: note
 
-    | Field | Type | Default | Description |
-    |:------|:-----|:-------:|:------------|
-    | `embed_dim` | `int` | `512` | Token embedding / flow-space dimension. |
-    | `bottleneck_dim` | `int` | `128` | Bottleneck between embed space and transformer. |
-    | `time_emb_dim` | `int` | `256` | Sinusoidal embedding dimension for `t` and the CFG scale `w`, projected into control tokens (not `AdaLayerNorm` — continuous flow-matching uses control tokens, not adaptive norm conditioning). |
-    | `num_time_tokens` | `int` | `4` | Control tokens encoding timestep `t`. |
-    | `num_cfg_tokens` | `int` | `4` | Control tokens encoding CFG scale `w`. |
-    | `num_mode_tokens` | `int` | `4` | Control tokens encoding denoiser/decode mode. |
-    | `denoiser_pmean` | `float` | `-1.5` | Logit-normal time sampling mean (training). |
-    | `denoiser_pstd` | `float` | `0.8` | Logit-normal time sampling std. |
-    | `denoiser_noise_scale` | `float` | `2.0` | ε corruption scale — denoiser branch. |
-    | `decoder_pmean` | `float` | `0.8` | Logit-normal p mean — decoder branch. |
-    | `decoder_pstd` | `float` | `0.8` | Logit-normal p std — decoder branch. |
-    | `decoder_noise_scale` | `float` | `5.0` | ε corruption scale — decoder branch. |
-    | `denoiser_prob` | `float` | `0.8` | Fraction of training steps using the denoiser branch. |
-    | `self_cond_prob` | `float` | `0.5` | Probability of using self-conditioning. |
-    | `cfg_scale_min` | `float` | `0.5` | Min CFG scale during training. |
-    | `cfg_scale_max` | `float` | `5.0` | Max CFG scale during training. |
-    | `elf_cfg_scale` | `float` | `1.0` | CFG scale at inference time. |
-    | `elf_n_steps` | `int` | `64` | Euler ODE steps at inference time. |
-    | `t5_model_name` | `str` | `"t5-base"` | Frozen T5 variant used as embedding oracle. |
+Only relevant when `model_type="elf"`. The shared fields (`dim`, `n_heads`, etc.) are reused from the architecture section above.
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `embed_dim` | `int` | `512` | Token embedding / flow-space dimension. |
+| `bottleneck_dim` | `int` | `128` | Bottleneck between embed space and transformer. |
+| `time_emb_dim` | `int` | `256` | Sinusoidal embedding dimension for `t` and the CFG scale `w`, projected into control tokens (not `AdaLayerNorm` — continuous flow-matching uses control tokens, not adaptive norm conditioning). |
+| `num_time_tokens` | `int` | `4` | Control tokens encoding timestep `t`. |
+| `num_cfg_tokens` | `int` | `4` | Control tokens encoding CFG scale `w`. |
+| `num_mode_tokens` | `int` | `4` | Control tokens encoding denoiser/decode mode. |
+| `denoiser_pmean` | `float` | `-1.5` | Logit-normal time sampling mean (training). |
+| `denoiser_pstd` | `float` | `0.8` | Logit-normal time sampling std. |
+| `denoiser_noise_scale` | `float` | `2.0` | ε corruption scale — denoiser branch. |
+| `decoder_pmean` | `float` | `0.8` | Logit-normal p mean — decoder branch. |
+| `decoder_pstd` | `float` | `0.8` | Logit-normal p std — decoder branch. |
+| `decoder_noise_scale` | `float` | `5.0` | ε corruption scale — decoder branch. |
+| `denoiser_prob` | `float` | `0.8` | Fraction of training steps using the denoiser branch. |
+| `self_cond_prob` | `float` | `0.5` | Probability of using self-conditioning. |
+| `cfg_scale_min` | `float` | `0.5` | Min CFG scale during training. |
+| `cfg_scale_max` | `float` | `5.0` | Max CFG scale during training. |
+| `elf_cfg_scale` | `float` | `1.0` | CFG scale at inference time. |
+| `elf_n_steps` | `int` | `64` | Euler ODE steps at inference time. |
+| `t5_model_name` | `str` | `"t5-base"` | Frozen T5 variant used as embedding oracle. |
+:::
 
 ### MoE fields (Config)
 
-??? note "MoE fields — expand for details"
-    Only relevant when `use_moe=True`.
+:::{admonition} MoE fields — expand for details
+:class: note
 
-    | Field | Type | Default | Description |
-    |:------|:-----|:-------:|:------------|
-    | `use_moe` | `bool` | `False` | Enable Mixture-of-Experts FFN. |
-    | `n_experts` | `int` | `4` | Number of experts. |
-    | `top_k_mlp` | `int` | `2` | Active experts per token. |
-    | `expansion` | `int` | `4` | FFN expansion factor. |
-    | `alpha_balance` | `float` | `0.1` | Load-balancing loss coefficient. |
+Only relevant when `use_moe=True`.
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `use_moe` | `bool` | `False` | Enable Mixture-of-Experts FFN. |
+| `n_experts` | `int` | `4` | Number of experts. |
+| `top_k_mlp` | `int` | `2` | Active experts per token. |
+| `expansion` | `int` | `4` | FFN expansion factor. |
+| `alpha_balance` | `float` | `0.1` | Load-balancing loss coefficient. |
+:::
 
 ### Attention & position (Config)
 
@@ -352,16 +376,19 @@ not diffusion, even though it's stored on the same monolithic `Config` object.
 | `context_window` | `int` | `4` | Window blocks for sliding-window attention. |
 | `no_sink` | `bool` | `False` | Enable gated attention / attention-sink suppression (Qiu et al. 2026). |
 
-??? note "MLA fields (Config) — expand for details"
-    Only relevant when `attention_type="mla"`.
+:::{admonition} MLA fields (Config) — expand for details
+:class: note
 
-    | Field | Type | Default | Description |
-    |:------|:-----|:-------:|:------------|
-    | `mla` | `bool` | `False` | Use Multi-Latent Attention. Overridden by `attention_type="mla"`. |
-    | `inference` | `bool` | `False` | MLA inference mode (absorbed KV projection). |
-    | `down_dim_q` | `int` | `256` | Query latent dim. |
-    | `down_dim_kv` | `int` | `256` | KV latent dim. |
-    | `rope_dim` | `int` | `32` | RoPE subspace dim. Must be ≤ `head_size`. |
+Only relevant when `attention_type="mla"`.
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `mla` | `bool` | `False` | Use Multi-Latent Attention. Overridden by `attention_type="mla"`. |
+| `inference` | `bool` | `False` | MLA inference mode (absorbed KV projection). |
+| `down_dim_q` | `int` | `256` | Query latent dim. |
+| `down_dim_kv` | `int` | `256` | KV latent dim. |
+| `rope_dim` | `int` | `32` | RoPE subspace dim. Must be ≤ `head_size`. |
+:::
 
 ### Training (Config)
 
@@ -425,8 +452,11 @@ cfg   = FlowMatchingConfig(
 model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))
 ```
 
-!!! abstract "Key constraint"
-    `model_dim` must equal `n_heads × head_size`, just like in `ModelConfig`.
+:::{admonition} Key constraint
+:class: abstract
+
+`model_dim` must equal `n_heads × head_size`, just like in `ModelConfig`.
+:::
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
@@ -453,21 +483,24 @@ model = FlowMatchingTransformer(cfg, rngs=nnx.Rngs(42))
 | `sde_gamma` | `float` | `1.0` | SDE noise re-injection at inference (`0` = pure ODE). |
 | `t5_model_name` | `str` | `"t5-base"` | Frozen T5 embedding oracle. `vocab_size` must match. |
 
-??? note "Training-time continuous flow-matching fields — expand for details"
-    These control the denoiser/decoder dual-branch training procedure.
+:::{admonition} Training-time continuous flow-matching fields — expand for details
+:class: note
 
-    | Field | Type | Default | Description |
-    |:------|:-----|:-------:|:------------|
-    | `denoiser_pmean` | `float` | `-1.5` | Logit-normal time sampling mean. |
-    | `denoiser_pstd` | `float` | `0.8` | Logit-normal time sampling std. |
-    | `denoiser_noise_scale` | `float` | `2.0` | Noise corruption scale (denoiser branch). |
-    | `decoder_pmean` | `float` | `0.8` | Logit-normal p mean (decoder branch). |
-    | `decoder_pstd` | `float` | `0.8` | Logit-normal p std (decoder branch). |
-    | `decoder_noise_scale` | `float` | `5.0` | Noise corruption scale (decoder branch). |
-    | `denoiser_prob` | `float` | `0.8` | Denoiser branch fraction. |
-    | `self_cond_prob` | `float` | `0.5` | Self-conditioning probability. |
-    | `cfg_scale_min` | `float` | `0.5` | Min CFG training scale. |
-    | `cfg_scale_max` | `float` | `5.0` | Max CFG training scale. |
+These control the denoiser/decoder dual-branch training procedure.
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `denoiser_pmean` | `float` | `-1.5` | Logit-normal time sampling mean. |
+| `denoiser_pstd` | `float` | `0.8` | Logit-normal time sampling std. |
+| `denoiser_noise_scale` | `float` | `2.0` | Noise corruption scale (denoiser branch). |
+| `decoder_pmean` | `float` | `0.8` | Logit-normal p mean (decoder branch). |
+| `decoder_pstd` | `float` | `0.8` | Logit-normal p std (decoder branch). |
+| `decoder_noise_scale` | `float` | `5.0` | Noise corruption scale (decoder branch). |
+| `denoiser_prob` | `float` | `0.8` | Denoiser branch fraction. |
+| `self_cond_prob` | `float` | `0.5` | Self-conditioning probability. |
+| `cfg_scale_min` | `float` | `0.5` | Min CFG training scale. |
+| `cfg_scale_max` | `float` | `5.0` | Max CFG training scale. |
+:::
 
 ---
 

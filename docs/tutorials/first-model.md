@@ -84,8 +84,11 @@ data:
   dataset_source: local
 ```
 
-!!! note "dim = n_heads × head_size"
-    DantinoX enforces `dim == n_heads × head_size`. For the config above: 256 = 8 × 32. The library raises a `ValueError` at startup if this constraint is violated.
+:::{admonition} dim = n_heads × head_size
+:class: note
+
+DantinoX enforces `dim == n_heads × head_size`. For the config above: 256 = 8 × 32. The library raises a `ValueError` at startup if this constraint is violated.
+:::
 
 ---
 
@@ -112,8 +115,11 @@ print(f"Checkpoint saved to: {run_dir}")
 
 Training logs `train_loss` and `val_loss` to the console and writes them to `{run_dir}/training_log.csv`. A model summary is saved to `{run_dir}/model_summary.json`.
 
-!!! tip "W&B integration"
-    Pass `wandb_project="my-project"` to `Trainer.fit()` to log all metrics to Weights & Biases automatically. No other changes are required.
+:::{admonition} W&B integration
+:class: tip
+
+Pass `wandb_project="my-project"` to `Trainer.fit()` to log all metrics to Weights & Biases automatically. No other changes are required.
+:::
 
 ---
 

@@ -306,9 +306,12 @@ batch_size: 256    # total batch split across 4 GPUs → 64 per device
 grad_accum: 1
 ```
 
-!!! warning "Batch size divisibility"
-    `batch_size` must be divisible by `n_devices`.
-    With 4 GPUs and `batch_size=256`, each device gets 64 samples.
+:::{admonition} Batch size divisibility
+:class: warning
+
+`batch_size` must be divisible by `n_devices`.
+With 4 GPUs and `batch_size=256`, each device gets 64 samples.
+:::
 
 DantinoX uses JAX's **SPMD data parallelism**: the model is replicated on every device, and each device processes a different shard of the batch. Gradients are averaged across devices automatically via `jax.lax.pmean`.
 

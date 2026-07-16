@@ -8,35 +8,29 @@ The top-level `dantinox` package exposes a three-level API. Import `dantinox as 
 
 These functions are the Level-1 entry points — no class instantiation required.
 
-::: dantinox.fit
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.fit
+```
 
-::: dantinox.train
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.train
+```
 
-::: dantinox.build
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.build
+```
 
-::: dantinox.profile
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.profile
+```
 
-::: dantinox.load
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.load
+```
 
-::: dantinox.quick_generate
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autofunction:: dantinox.quick_generate
+```
 
 ---
 

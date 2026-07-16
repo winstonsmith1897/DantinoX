@@ -178,8 +178,11 @@ runs/
         --resume
     ```
 
-!!! tip "Effective batch size"
-    Effective batch size = `batch_size × grad_accum × n_devices`. Tune `grad_accum` to reach your target without exceeding VRAM.
+:::{admonition} Effective batch size
+:class: tip
+
+Effective batch size = `batch_size × grad_accum × n_devices`. Tune `grad_accum` to reach your target without exceeding VRAM.
+:::
 
 ---
 
@@ -266,22 +269,25 @@ dantinox sweep \
 | `--wandb_project` | `"DantinoX"` | W&B project name. |
 | `--count` | `None` | Maximum number of sweep runs (default: unlimited). |
 
-??? example "Sweep YAML example"
-    ```yaml title="configs/sweep.yaml"
-    method: bayes
-    metric:
-      name: val_loss
-      goal: minimize
-    parameters:
-      lr:
-        distribution: log_uniform_values
-        min: 1e-5
-        max: 1e-2
-      batch_size:
-        values: [32, 64, 128]
-      num_blocks:
-        values: [6, 12, 18]
-    ```
+:::{admonition} Sweep YAML example
+:class: example
+
+```yaml title="configs/sweep.yaml"
+method: bayes
+metric:
+  name: val_loss
+  goal: minimize
+parameters:
+  lr:
+    distribution: log_uniform_values
+    min: 1e-5
+    max: 1e-2
+  batch_size:
+    values: [32, 64, 128]
+  num_blocks:
+    values: [6, 12, 18]
+```
+:::
 
 ---
 
@@ -391,8 +397,10 @@ dantinox find-lr \
 | `--plot_out` | `lr_finder.png` | Output PNG path. |
 | `--<config_field>` | — | Override any `Config` field. |
 
-!!! tip
-    Run `find-lr` before any new architecture — the optimal LR can vary 10–100× across model sizes and optimizers.
+:::{tip}
+
+Run `find-lr` before any new architecture — the optimal LR can vary 10–100× across model sizes and optimizers.
+:::
 
 ---
 
@@ -503,8 +511,10 @@ dantinox merge-lora \
         --overwrite
     ```
 
-!!! tip
-    After merging, `config.yaml` in `--out_dir` has `use_lora: false`. The merged weights are identical in size to the base model and can be pushed to the Hub directly.
+:::{tip}
+
+After merging, `config.yaml` in `--out_dir` has `use_lora: false`. The merged weights are identical in size to the base model and can be pushed to the Hub directly.
+:::
 
 ---
 

@@ -58,16 +58,10 @@ When `paradigm=None` (omitted), the implementation is auto-detected from `causal
 
 ## `Paradigm` reference
 
-::: dantinox.paradigms.paradigm.Paradigm
-    options:
-      show_source: true
-      members:
-        - __init__
-        - build_model
-        - loss_fn
-        - generate
-        - stream
-        - type
+```{eval-rst}
+.. autoclass:: dantinox.paradigms.paradigm.Paradigm
+   :members:
+```
 
 ---
 
@@ -94,14 +88,10 @@ class MyParadigm(ParadigmBase):
         return sum(x.size for x in jax.tree_util.tree_leaves(nnx.state(model, nnx.Param)))
 ```
 
-::: dantinox.paradigms.base.ParadigmBase
-    options:
-      show_source: true
-      members:
-        - build_model
-        - loss_fn
-        - generate
-        - num_parameters
+```{eval-rst}
+.. autoclass:: dantinox.paradigms.base.ParadigmBase
+   :members:
+```
 
 ---
 
@@ -111,55 +101,37 @@ The implementations below are directly importable for advanced use cases or when
 
 ### Autoregressive
 
-::: dantinox.paradigms.ar.ARParadigm
-    options:
-      show_source: true
-      members:
-        - __init__
-        - build_model
-        - loss_fn
-        - generate
+```{eval-rst}
+.. autoclass:: dantinox.paradigms.ar.ARParadigm
+   :members:
+```
 
 ---
 
 ### Discrete Diffusion
 
-::: dantinox.paradigms.diffusion.discrete.DiscreteParadigm
-    options:
-      show_source: true
-      members:
-        - __init__
-        - build_model
-        - loss_fn
-        - generate
+```{eval-rst}
+.. autoclass:: dantinox.paradigms.diffusion.discrete.DiscreteParadigm
+   :members:
+```
 
 ---
 
 ### Continuous Flow-Matching
 
-::: dantinox.paradigms.diffusion.continuous.ContinuousParadigm
-    options:
-      show_source: true
-      members:
-        - __init__
-        - build_model
-        - build_embedder
-        - loss_fn
-        - generate
-        - num_parameters
+```{eval-rst}
+.. autoclass:: dantinox.paradigms.diffusion.continuous.ContinuousParadigm
+   :members:
+```
 
 ---
 
 ### Sentence Embedder
 
-::: dantinox.paradigms.embedder.EmbedderParadigm
-    options:
-      show_source: true
-      members:
-        - __init__
-        - build_model
-        - loss_fn
-        - generate
+```{eval-rst}
+.. autoclass:: dantinox.paradigms.embedder.EmbedderParadigm
+   :members:
+```
 
 ---
 

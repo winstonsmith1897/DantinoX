@@ -96,9 +96,12 @@ trainer = Trainer(paradigm, TrainingConfig(lr=1e-4, epochs=10, optimizer="adamw"
 run_dir = trainer.fit("data/wiki.txt")
 ```
 
-!!! warning "Embeddings must be pre-computed"
-    `ContinuousParadigm.loss_fn` raises `ValueError` if `embeddings=None`.
-    Use `FlowEmbedder` or a custom data pipeline that produces `[B, T, embed_dim]` arrays.
+:::{admonition} Embeddings must be pre-computed
+:class: warning
+
+`ContinuousParadigm.loss_fn` raises `ValueError` if `embeddings=None`.
+Use `FlowEmbedder` or a custom data pipeline that produces `[B, T, embed_dim]` arrays.
+:::
 
 ---
 

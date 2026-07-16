@@ -173,9 +173,12 @@ embeddings = embedder(batch)   # [B, T, embed_dim]
 loss, metrics = p.loss_fn(model, batch, rng, embeddings=embeddings)
 ```
 
-!!! warning "Embeddings are mandatory"
-    Unlike AR and Discrete, `ContinuousParadigm.loss_fn` raises `ValueError` if `embeddings=None`.
-    Pre-compute them via `FlowEmbedder` before the training loop.
+:::{admonition} Embeddings are mandatory
+:class: warning
+
+Unlike AR and Discrete, `ContinuousParadigm.loss_fn` raises `ValueError` if `embeddings=None`.
+Pre-compute them via `FlowEmbedder` before the training loop.
+:::
 
 ---
 

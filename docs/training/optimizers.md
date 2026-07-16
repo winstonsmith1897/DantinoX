@@ -66,8 +66,11 @@ lr
    warmup    stable      decay
 ```
 
-!!! tip "WSD for long runs"
-    WSD tends to outperform cosine on long pre-training runs (>100 K steps) because the stable phase allows the optimizer to settle before the final decay.
+:::{admonition} WSD for long runs
+:class: tip
+
+WSD tends to outperform cosine on long pre-training runs (>100 K steps) because the stable phase allows the optimizer to settle before the final decay.
+:::
 
 ---
 

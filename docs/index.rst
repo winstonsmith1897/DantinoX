@@ -2,8 +2,9 @@ DantinoX
 ========
 
 A research-grade JAX/Flax NNX library for language model research.
-Three generation paradigms — Autoregressive, Masked Diffusion, and ELF —
-on the same Transformer architecture, with a single trainer and zero boilerplate.
+Three generation paradigms — Autoregressive, Masked Diffusion, and
+Continuous Flow-Matching — on the same Transformer architecture, with a
+single trainer and zero boilerplate.
 
 .. image:: https://img.shields.io/badge/JAX-000000?style=flat-square&logo=google&logoColor=white
    :target: https://github.com/google/jax
@@ -48,7 +49,7 @@ on the same Transformer architecture, with a single trainer and zero boilerplate
    paradigms/index
    paradigms/autoregressive
    paradigms/diffusion
-   paradigms/elf
+   paradigms/continuous
    paradigms/fast-dllm
    paradigms/confidence
    paradigms/comparison
@@ -148,7 +149,8 @@ compare when trained on the same architecture with the same training code?**
 
 The library targets three audiences:
 
-* **Researchers** who want a reproducible comparison of AR vs. Diffusion vs. ELF.
+* **Researchers** who want a reproducible comparison of AR vs. Discrete
+  Diffusion vs. Continuous Flow-Matching.
 * **Students** who want to read the internals of a modern Transformer.
 * **Engineers** who need architectural variants (GQA, MLA, MoE, LoRA) without
   rewriting the trainer.
@@ -162,16 +164,16 @@ Three Generation Paradigms
     a causal (masked) attention pattern and a static pre-allocated KV-cache.
     See :doc:`paradigms/autoregressive`.
 
-**Masked Diffusion (LLaDA)**
+**Discrete Diffusion**
     Generates all tokens in parallel from a fully masked sequence and
     iteratively unmasks them over multiple diffusion steps. Attention is
     bidirectional. Optionally accelerated by Fast-dLLM DualCache.
-    See :doc:`paradigms/diffusion`.
+    Follows the LLaDA formulation. See :doc:`paradigms/diffusion`.
 
-**ELF — Continuous Flow Matching**
+**Continuous Flow-Matching**
     Operates in the continuous embedding space. Transforms Gaussian noise into
     clean token embeddings via an Euler ODE solver.
-    See :doc:`paradigms/elf`.
+    See :doc:`paradigms/continuous`.
 
 
 Quick Install
@@ -207,9 +209,10 @@ Citation
 .. code-block:: bibtex
 
    @software{dantinox2026,
-     author  = {Simoni, Marco},
-     title   = {DantinoX: A Unified {JAX}/Flax Framework for {AR},
-                Masked Diffusion, and Flow-Matching Language Models},
+     author  = {Simoni, Marco and Fontana, Aleksandar and Rossolini, Giulio
+                and Saracino, Andrea},
+     title   = {{D}antino{X}: A Unified Framework for Multi-Paradigm
+                Language Modeling},
      year    = {2026},
      url     = {https://github.com/winstonsmith1897/DantinoX},
    }

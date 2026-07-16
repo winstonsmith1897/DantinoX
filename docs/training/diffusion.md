@@ -24,15 +24,18 @@ At each training step:
 3. Feed $x_t$ **alone** — not $t$ — to the bidirectional `DiffusionTransformer`.
 4. Compute the $(1/t)$-weighted masked CE on the predicted $p_\theta(x_0 \mid x_t)$.
 
-!!! warning "The model does not see t"
-    DantinoX's discrete diffusion has **no time conditioning at all** — no
-    `AdaLayerNorm`, no time-embedding MLP. The model learns to denoise purely
-    from the pattern of `[MASK]` tokens in the input, which implicitly
-    encodes the noise level. `t` is only used to weight the loss and to
-    determine the masking probability during corruption — it is never passed
-    into the model's forward pass. See
-    [Discrete Diffusion](../paradigms/diffusion.md#the-denoising-model) for
-    details.
+:::{admonition} The model does not see t
+:class: warning
+
+DantinoX's discrete diffusion has **no time conditioning at all** — no
+`AdaLayerNorm`, no time-embedding MLP. The model learns to denoise purely
+from the pattern of `[MASK]` tokens in the input, which implicitly
+encodes the noise level. `t` is only used to weight the loss and to
+determine the masking probability during corruption — it is never passed
+into the model's forward pass. See
+[Discrete Diffusion](../paradigms/diffusion.md#the-denoising-model) for
+details.
+:::
 
 ---
 
@@ -146,11 +149,14 @@ The same `training_log.csv` is written as for AR:
 A decreasing `val_loss` means the model is learning to predict masked tokens
 more accurately — equivalent to decreasing perplexity.
 
-!!! note "Comparing AR and Diffusion val_loss"
-    AR val_loss and Diffusion val_loss are not directly comparable because they
-    measure different objectives (next-token CE vs masked CE at random $t$).
-    Use bits-per-byte (bpb) from `benchmarks/perplexity_eval.py` for fair
-    cross-paradigm quality comparison.
+:::{admonition} Comparing AR and Diffusion val_loss
+:class: note
+
+AR val_loss and Diffusion val_loss are not directly comparable because they
+measure different objectives (next-token CE vs masked CE at random $t$).
+Use bits-per-byte (bpb) from `benchmarks/perplexity_eval.py` for fair
+cross-paradigm quality comparison.
+:::
 
 ---
 

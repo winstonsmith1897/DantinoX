@@ -150,12 +150,15 @@ prediction is improving; a decreasing `dec_loss` means token reconstruction
 from noised embeddings is improving — a well-behaved run should see both
 decrease together.
 
-!!! note "Not directly comparable to AR/Diffusion loss"
-    Flow-matching MSE + CE is not on the same scale as AR next-token
-    cross-entropy or diffusion masked ELBO. Use the paper's generation-quality
-    metrics (MAUVE, PPL, Distinct-2) — see
-    [Comparison — Paper's reported results](../paradigms/comparison.md#papers-reported-results-authoritative)
-    — for a fair cross-paradigm comparison, not raw training loss.
+:::{admonition} Not directly comparable to AR/Diffusion loss
+:class: note
+
+Flow-matching MSE + CE is not on the same scale as AR next-token
+cross-entropy or diffusion masked ELBO. Use the paper's generation-quality
+metrics (MAUVE, PPL, Distinct-2) — see
+[Comparison — Paper's reported results](../paradigms/comparison.md#papers-reported-results-authoritative)
+— for a fair cross-paradigm comparison, not raw training loss.
+:::
 
 ---
 

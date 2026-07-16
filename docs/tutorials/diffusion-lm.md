@@ -76,8 +76,11 @@ data:
   dataset_source: local
 ```
 
-!!! warning "Flash Attention and diffusion"
-    Flash Attention (`use_flash_attention: true`) uses a causal mask and is only valid for autoregressive models. Diffusion transformers use **full bidirectional attention** — leave `use_flash_attention: false`.
+:::{admonition} Flash Attention and diffusion
+:class: warning
+
+Flash Attention (`use_flash_attention: true`) uses a causal mask and is only valid for autoregressive models. Diffusion transformers use **full bidirectional attention** — leave `use_flash_attention: false`.
+:::
 
 ---
 

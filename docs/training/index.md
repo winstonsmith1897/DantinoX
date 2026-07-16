@@ -80,12 +80,15 @@ Every field below can be set in a YAML config or overridden on the CLI with `--f
 | `batch_size` | `64` | Total number of sequences per optimiser update. This is the **effective** batch size: `batch_size = micro_batch_size × grad_accum`. |
 | `grad_accum` | `4` | Number of gradient accumulation micro-steps. Allows simulating a large batch when GPU memory is limited. |
 
-!!! note "Effective batch size"
-    **Effective batch size** = `batch_size × n_devices`.
+:::{admonition} Effective batch size
+:class: note
 
-    `batch_size` is the total size summed across all accumulation steps. The micro-batch fed to each step is `batch_size / grad_accum`.
+**Effective batch size** = `batch_size × n_devices`.
 
-    Example: `batch_size=256, grad_accum=4, n_devices=2` → micro-batch per step = 256/4 = 64, total effective batch = 256 × 2 = 512.
+`batch_size` is the total size summed across all accumulation steps. The micro-batch fed to each step is `batch_size / grad_accum`.
+
+Example: `batch_size=256, grad_accum=4, n_devices=2` → micro-batch per step = 256/4 = 64, total effective batch = 256 × 2 = 512.
+:::
 
 ### Optimisers
 
@@ -279,14 +282,17 @@ runs/
     └── training_log.csv           ← step, train_loss, val_loss, ms/step
 ```
 
-!!! note "Legacy CLI filenames"
-    The names above are what the modern `Trainer` (`from dantinox import Trainer`,
-    `dx.fit`, `dx.Trainer`) writes. The legacy `dantinox train` CLI instead
-    writes `best_model_weights.msgpack` (best), `model_weights.msgpack`
-    (latest resume checkpoint), and `training_cursor.json` (resume pointer) —
-    the latter two exist only during training and are removed on normal
-    completion, so a leftover cursor marks an interrupted run. Loaders accept
-    both naming schemes.
+:::{admonition} Legacy CLI filenames
+:class: note
+
+The names above are what the modern `Trainer` (`from dantinox import Trainer`,
+`dx.fit`, `dx.Trainer`) writes. The legacy `dantinox train` CLI instead
+writes `best_model_weights.msgpack` (best), `model_weights.msgpack`
+(latest resume checkpoint), and `training_cursor.json` (resume pointer) —
+the latter two exist only during training and are removed on normal
+completion, so a leftover cursor marks an interrupted run. Loaders accept
+both naming schemes.
+:::
 
 ### `model_summary.json` — memory breakdown
 
@@ -368,13 +374,16 @@ The **legacy** `dantinox train` CLI will:
 2. Load `model_weights.msgpack` into the model
 3. Continue training from `start_step + 1`
 
-!!! warning "Legacy CLI does not restore optimizer state"
-    When resuming through the legacy `dantinox train` CLI, the optimiser state
-    (momentum, variance) is re-initialised from zero — a brief loss spike for
-    the first few hundred steps until it re-warms. The modern `Trainer`
-    (`dx.Trainer(...).fit(..., resume=True)`) instead restores the **full**
-    train state (`train_state.msgpack`: model + optimizer + epoch), so
-    resumed runs continue seamlessly.
+:::{admonition} Legacy CLI does not restore optimizer state
+:class: warning
+
+When resuming through the legacy `dantinox train` CLI, the optimiser state
+(momentum, variance) is re-initialised from zero — a brief loss spike for
+the first few hundred steps until it re-warms. The modern `Trainer`
+(`dx.Trainer(...).fit(..., resume=True)`) instead restores the **full**
+train state (`train_state.msgpack`: model + optimizer + epoch), so
+resumed runs continue seamlessly.
+:::
 
 ---
 

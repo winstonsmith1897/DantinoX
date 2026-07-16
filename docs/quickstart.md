@@ -34,16 +34,22 @@ pip install -U "jax[cuda12]" jaxlib
 pip install -e ".[all]"
 ```
 
-!!! note "CPU-only"
-    If you have no GPU or want to run on CPU, replace `jax[cuda12]` with `jax[cpu]`.
-    All code works identically, just slower.
+:::{admonition} CPU-only
+:class: note
 
-!!! tip "Verify the installation"
-    After installing, confirm JAX can see your GPU:
-    ```python
-    import jax
-    print(jax.devices())   # should print [CudaDevice(id=0), ...]
-    ```
+If you have no GPU or want to run on CPU, replace `jax[cuda12]` with `jax[cpu]`.
+All code works identically, just slower.
+:::
+
+:::{admonition} Verify the installation
+:class: tip
+
+After installing, confirm JAX can see your GPU:
+```python
+import jax
+print(jax.devices())   # should print [CudaDevice(id=0), ...]
+```
+:::
 
 ### From PyPI
 
@@ -88,20 +94,26 @@ print(dx.quick_generate(run_dir, "Once upon a time"))
 5. Trains for `epochs` epochs, saving the best checkpoint to `runs/<timestamp>/checkpoint_best.msgpack`
 6. Returns the path to the run folder
 
-!!! note "`vocab_size` is optional when using `Trainer.fit()` / `dx.fit()`"
-    When training through the `Trainer`, `vocab_size` is read from the tokenizer after it is
-    loaded or trained and written back to the config automatically.
-    You only need to set it explicitly when **building a model directly**:
-    ```python
-    # Direct construction — vocab_size required
-    cfg   = dx.ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
-    model = paradigm.build_model(nnx.Rngs(42))
-    ```
+:::{admonition} `vocab_size` is optional when using `Trainer.fit()` / `dx.fit()`
+:class: note
 
-!!! warning "Key constraint"
-    `dim` must equal exactly `n_heads × head_size`.
-    With `n_heads=8` and `head_size=64`, you must use `dim=512`.
-    If the values do not match, the constructor raises a `ValueError`.
+When training through the `Trainer`, `vocab_size` is read from the tokenizer after it is
+loaded or trained and written back to the config automatically.
+You only need to set it explicitly when **building a model directly**:
+```python
+# Direct construction — vocab_size required
+cfg   = dx.ModelConfig(dim=512, n_heads=8, head_size=64, num_blocks=12, vocab_size=32_000)
+model = paradigm.build_model(nnx.Rngs(42))
+```
+:::
+
+:::{admonition} Key constraint
+:class: warning
+
+`dim` must equal exactly `n_heads × head_size`.
+With `n_heads=8` and `head_size=64`, you must use `dim=512`.
+If the values do not match, the constructor raises a `ValueError`.
+:::
 
 ---
 
@@ -166,14 +178,17 @@ run_dir = dx.fit(
 )
 ```
 
-!!! warning "Unknown kwargs are silently dropped"
-    `dx.fit()`/`dx.sweep()` split `**kwargs` by matching them against
-    `ModelConfig`/`TrainingConfig` field names; a misspelled or non-existent
-    field name (e.g. `model_dim` or `elf_cfg_scale` above) is silently
-    discarded rather than raising an error — the run will use the default
-    value for that field instead. Double-check field names against
-    [Configuration Reference](configuration.md) if a value doesn't seem to
-    take effect.
+:::{admonition} Unknown kwargs are silently dropped
+:class: warning
+
+`dx.fit()`/`dx.sweep()` split `**kwargs` by matching them against
+`ModelConfig`/`TrainingConfig` field names; a misspelled or non-existent
+field name (e.g. `model_dim` or `elf_cfg_scale` above) is silently
+discarded rather than raising an error — the run will use the default
+value for that field instead. Double-check field names against
+[Configuration Reference](configuration.md) if a value doesn't seem to
+take effect.
+:::
 
 **When to use it:** Experimental paradigm for research on discrete flow-matching.
 Requires more data and more training epochs than AR or diffusion.
@@ -355,12 +370,15 @@ runs/
     └── model_summary.json             ← architecture summary (parameter count, FLOPs, …)
 ```
 
-!!! note "Legacy filenames"
-    Runs produced by the legacy `dantinox train` CLI (monolithic `Config`
-    trainer) use the older names `best_model_weights.msgpack` /
-    `model_weights.msgpack` + `training_cursor.json` instead. All loading
-    utilities (`Generator`, `dx.load`, `dantinox.core.checkpoint.load_model`)
-    try both naming schemes automatically.
+:::{admonition} Legacy filenames
+:class: note
+
+Runs produced by the legacy `dantinox train` CLI (monolithic `Config`
+trainer) use the older names `best_model_weights.msgpack` /
+`model_weights.msgpack` + `training_cursor.json` instead. All loading
+utilities (`Generator`, `dx.load`, `dantinox.core.checkpoint.load_model`)
+try both naming schemes automatically.
+:::
 
 The `config.yaml` file lets you reproduce the exact same training run in the future,
 or resume from where it stopped with `--resume`.

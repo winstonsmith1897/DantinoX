@@ -45,14 +45,17 @@ Every training run writes its artifacts to an isolated directory (`runs/run_YYYY
 | `model_summary.json` | Parameter count and memory estimates |
 | `training_log.csv` | Per-eval step, train/val loss, bal loss, ms/step |
 
-!!! note "Filenames differ by entry point"
-    The names above are written by the modern `Trainer`
-    (`from dantinox import Trainer` — `dantinox.training.trainer.Trainer`, and
-    therefore also `dx.fit` / `dx.Trainer`). The **legacy** `dantinox train`
-    CLI (backed by `dantinox.trainer.Trainer`) instead writes
-    `best_model_weights.msgpack` / `model_weights.msgpack` +
-    `training_cursor.json`. All loaders
-    (`Generator`, `dx.load`, `dantinox.core.checkpoint.load_model`) accept both.
+:::{admonition} Filenames differ by entry point
+:class: note
+
+The names above are written by the modern `Trainer`
+(`from dantinox import Trainer` — `dantinox.training.trainer.Trainer`, and
+therefore also `dx.fit` / `dx.Trainer`). The **legacy** `dantinox train`
+CLI (backed by `dantinox.trainer.Trainer`) instead writes
+`best_model_weights.msgpack` / `model_weights.msgpack` +
+`training_cursor.json`. All loaders
+(`Generator`, `dx.load`, `dantinox.core.checkpoint.load_model`) accept both.
+:::
 
 ---
 
@@ -70,8 +73,10 @@ config = Config(grad_clip=1.0)   # default
 config = Config(grad_clip=0.0)   # disabled
 ```
 
-!!! tip
-    For very small models (dim < 128) or low LRs, clipping is rarely needed. For anything larger, keep it at `1.0`.
+:::{tip}
+
+For very small models (dim < 128) or low LRs, clipping is rarely needed. For anything larger, keep it at `1.0`.
+:::
 
 ---
 
@@ -90,8 +95,11 @@ run_dir = Trainer(config).fit("data/corpus.txt")
 
 The `model_summary.json` will report `"dtype": "bfloat16"` and halved `weights_mem_MB` and `optimizer_mem_MB` estimates.
 
-!!! note "Checkpoints are dtype-preserving"
-    Weights are saved in whatever dtype the model is running in. A `bfloat16` checkpoint loads as `bfloat16` in `Generator` automatically — no extra flags needed.
+:::{admonition} Checkpoints are dtype-preserving
+:class: note
+
+Weights are saved in whatever dtype the model is running in. A `bfloat16` checkpoint loads as `bfloat16` in `Generator` automatically — no extra flags needed.
+:::
 
 ---
 
@@ -133,8 +141,11 @@ run_dir = Trainer(config).fit(
 )
 ```
 
-!!! warning "Optimizer state"
-    The model weights and step cursor are restored exactly. Optimizer moments (Adam's first and second moments) are **not** preserved — they restart from zero. The learning rate schedule resumes from the saved step, so the LR is correct; only the warm-up of the moments is lost (typically negligible after a few steps).
+:::{admonition} Optimizer state
+:class: warning
+
+The model weights and step cursor are restored exactly. Optimizer moments (Adam's first and second moments) are **not** preserved — they restart from zero. The learning rate schedule resumes from the saved step, so the LR is correct; only the warm-up of the moments is lost (typically negligible after a few steps).
+:::
 
 ---
 
@@ -165,8 +176,11 @@ print(f"Suggested LR: {suggested_lr:.2e}")
 
 The `--plot` flag saves `lr_finder.png` with the smoothed loss curve and a vertical marker at the suggested LR.
 
-!!! tip "How to read the chart"
-    Pick the LR just **before** the loss bottoms out — not the minimum itself. The minimum is typically already past the regime where training is stable.
+:::{admonition} How to read the chart
+:class: tip
+
+Pick the LR just **before** the loss bottoms out — not the minimum itself. The minimum is typically already past the regime where training is stable.
+:::
 
 ---
 
@@ -192,8 +206,11 @@ config = Config(lr_schedule="wsd", warmup_steps=500)
 run_dir = Trainer(config).fit("data/corpus.txt")
 ```
 
-!!! tip "Which schedule to pick"
-    **Cosine** is the safe default for most runs. **WSD** (Warmup-Stable-Decay) is a good choice for longer runs where you want a sustained high-LR phase before decay. **Constant** is useful when you want full manual control over the LR after warmup.
+:::{admonition} Which schedule to pick
+:class: tip
+
+**Cosine** is the safe default for most runs. **WSD** (Warmup-Stable-Decay) is a good choice for longer runs where you want a sustained high-LR phase before decay. **Constant** is useful when you want full manual control over the LR after warmup.
+:::
 
 ---
 
@@ -255,8 +272,11 @@ parameters:
     values: [true, false]
 ```
 
-!!! warning "GQA shape consistency"
-    Ensure `dim == n_heads × head_size` holds for every trial. Pin `n_heads` and `head_size` in the sweep config and let `dim` derive from them, or add a validation step in your sweep agent.
+:::{admonition} GQA shape consistency
+:class: warning
+
+Ensure `dim == n_heads × head_size` holds for every trial. Pin `n_heads` and `head_size` in the sweep config and let `dim` derive from them, or add a validation step in your sweep agent.
+:::
 
 ---
 
@@ -271,8 +291,10 @@ MLA introduces a training/inference split controlled by the `inference` flag:
 
 Train with `inference: false`. At generation time, `Generator` automatically sets `inference = True` when it detects `mla = True` in the saved config — no manual intervention needed.
 
-!!! note
-    The `inference` flag only affects the computation graph, not the saved weights. Switching modes does not require re-saving the checkpoint.
+:::{note}
+
+The `inference` flag only affects the computation graph, not the saved weights. Switching modes does not require re-saving the checkpoint.
+:::
 
 ---
 
@@ -297,8 +319,11 @@ model = Transformer.from_pretrained("runs/run_20260101_120000", best=False)
 2. Constructs the `Transformer` with those settings.
 3. Deserialises the best weights file — `checkpoint_best.msgpack` (or the legacy `best_model_weights.msgpack`), falling back to the latest checkpoint when `best=False`.
 
-!!! note "For text generation use `Generator`"
-    `Transformer.from_pretrained` gives you the raw model for custom inference loops, fine-tuning, or probing. For simple text generation, `Generator(run_dir)` is easier — it handles tokenisation and decoding automatically.
+:::{admonition} For text generation use `Generator`
+:class: note
+
+`Transformer.from_pretrained` gives you the raw model for custom inference loops, fine-tuning, or probing. For simple text generation, `Generator(run_dir)` is easier — it handles tokenisation and decoding automatically.
+:::
 
 ---
 

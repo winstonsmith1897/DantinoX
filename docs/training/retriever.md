@@ -70,8 +70,11 @@ trainer = dx.Trainer(paradigm, train_cfg)
 run_dir = trainer.fit("data/corpus.txt")
 ```
 
-!!! tip "Batch size and in-batch negatives"
-    Larger batch sizes mean more in-batch negatives and a stronger InfoNCE signal. On a single 40 GB GPU, `batch_size=256` is usually achievable with `dim≤512`.
+:::{admonition} Batch size and in-batch negatives
+:class: tip
+
+Larger batch sizes mean more in-batch negatives and a stronger InfoNCE signal. On a single 40 GB GPU, `batch_size=256` is usually achievable with `dim≤512`.
+:::
 
 ---
 
@@ -169,10 +172,13 @@ trainer = dx.EmbedderTrainer(
 run_dir = trainer.fit_pairs(pairs, model=model, run_dir="runs/embedder_finetuned")
 ```
 
-!!! tip "How many pairs do you need?"
-    - Fine-tuning from a pretrained checkpoint: **1 000 – 10 000** pairs typically suffice.
-    - Training from scratch (supervised only): aim for **50 000+** pairs.
-    - Unsupervised SimCSE on a large corpus is a good substitute for labelled pairs when they are unavailable.
+:::{admonition} How many pairs do you need?
+:class: tip
+
+- Fine-tuning from a pretrained checkpoint: **1 000 – 10 000** pairs typically suffice.
+- Training from scratch (supervised only): aim for **50 000+** pairs.
+- Unsupervised SimCSE on a large corpus is a good substitute for labelled pairs when they are unavailable.
+:::
 
 ---
 

@@ -34,8 +34,11 @@ dantinox pull --repo my-org/dantinox-dante --local_dir runs/pulled
 dantinox generate --run_dir runs/pulled --prompt "Nel mezzo del cammin "
 ```
 
-!!! note "MLA checkpoints"
-    For MLA models, `inference = True` is set automatically on load, activating weight absorption for the decode path. No flags needed.
+:::{admonition} MLA checkpoints
+:class: note
+
+For MLA models, `inference = True` is set automatically on load, activating weight absorption for the decode path. No flags needed.
+:::
 
 ---
 
@@ -98,8 +101,11 @@ for t in texts:
     print("---")
 ```
 
-!!! tip "Left-padding and quality"
-    Shorter prompts are padded at the **left** with token id `0`. The causal attention mask prevents the model from "seeing" future tokens, but it will attend backward over the padding. For best quality, use prompts of similar length or prefer single-prompt generation when prompts vary greatly in length.
+:::{admonition} Left-padding and quality
+:class: tip
+
+Shorter prompts are padded at the **left** with token id `0`. The causal attention mask prevents the model from "seeing" future tokens, but it will attend backward over the padding. For best quality, use prompts of similar length or prefer single-prompt generation when prompts vary greatly in length.
+:::
 
 ---
 
@@ -140,8 +146,11 @@ for pos in range(T, T + max_new_tokens - 1):
     yield tokenizer.decode([tok_id])
 ```
 
-!!! note "BPE streaming"
-    With BPE tokenizers, each yielded chunk is a subword, not a character. The usual BPE byte replacements (`Ġ` → space, etc.) are applied per token, so output is readable as it streams, though subword boundaries may look unusual mid-word.
+:::{admonition} BPE streaming
+:class: note
+
+With BPE tokenizers, each yielded chunk is a subword, not a character. The usual BPE byte replacements (`Ġ` → space, etc.) are applied per token, so output is readable as it streams, though subword boundaries may look unusual mid-word.
+:::
 
 ---
 
@@ -274,5 +283,8 @@ filtered = jnp.where(mask, probs[sorted_idx], 0.0)
 tok = sorted_idx[jax.random.categorical(key, jnp.log(filtered / filtered.sum()))]
 ```
 
-!!! note "First-call latency"
-    The first call to any generation method triggers XLA compilation. Subsequent calls with the same shapes reuse the compiled kernel. The `dantinox generate` CLI runs a single warmup pass (`max_new_tokens=1`) before timing, so the reported tok/s reflects steady-state throughput.
+:::{admonition} First-call latency
+:class: note
+
+The first call to any generation method triggers XLA compilation. Subsequent calls with the same shapes reuse the compiled kernel. The `dantinox generate` CLI runs a single warmup pass (`max_new_tokens=1`) before timing, so the reported tok/s reflects steady-state throughput.
+:::

@@ -6,69 +6,57 @@ The benchmarking module is a plugin framework: tasks are independent classes, th
 
 ## Suite orchestrator
 
-::: dantinox.benchmarking.suite.BenchmarkSuite
-    options:
-      show_source: true
-      members:
-        - __init__
-        - run
-        - default
-        - throughput_only
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.suite.BenchmarkSuite
+   :members:
+```
 
 ---
 
 ## Plugin base class
 
-::: dantinox.benchmarking.base.BenchmarkTask
-    options:
-      show_source: true
-      members:
-        - run
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.base.BenchmarkTask
+   :members:
+```
 
 ---
 
 ## Result types
 
-::: dantinox.benchmarking.base.BenchmarkResult
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.base.BenchmarkResult
+   :members:
+```
 
-::: dantinox.benchmarking.base.SuiteReport
-    options:
-      show_source: true
-      members:
-        - to_dataframe
-        - save
-        - summary
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.base.SuiteReport
+   :members:
+```
 
-::: dantinox.benchmarking.base.BenchmarkConfig
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.base.BenchmarkConfig
+   :members:
+```
 
 ---
 
 ## Built-in tasks
 
-::: dantinox.benchmarking.tasks.throughput.ThroughputTask
-    options:
-      show_source: true
-      members:
-        - name
-        - run
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.tasks.throughput.ThroughputTask
+   :members:
+```
 
-::: dantinox.benchmarking.tasks.latency.LatencyTask
-    options:
-      show_source: true
-      members:
-        - name
-        - run
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.tasks.latency.LatencyTask
+   :members:
+```
 
-::: dantinox.benchmarking.tasks.perplexity.PerplexityTask
-    options:
-      show_source: true
-      members:
-        - name
-        - run
+```{eval-rst}
+.. autoclass:: dantinox.benchmarking.tasks.perplexity.PerplexityTask
+   :members:
+```
 
 ---
 

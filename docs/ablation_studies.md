@@ -73,33 +73,35 @@ The final section evaluates how to control overfitting and maximize the utilizat
 
 For full transparency and reproducibility, the following expandable section contains the isolated distributions of every hyperparameter swept during the Bayesian optimization process, plotted against the target validation loss. 
 
-??? abstract "Click to expand all Base Distributions (Boxplots & Scatter Plots)"
+:::{admonition} Click to expand all Base Distributions (Boxplots & Scatter Plots)
+:class: abstract
 
-    ### Categorical Architectural Choices (Boxplots)
-    These plots demonstrate the variance and median validation loss across boolean toggles and categorical selections.
+### Categorical Architectural Choices (Boxplots)
+These plots demonstrate the variance and median validation loss across boolean toggles and categorical selections.
 
-    | Core & Routing | Attention & Positional |
-    | :---: | :---: |
-    | ![Optimizer](assets/wandb_insights/base_box_optimizer.png){ width="100%" } | ![Attention Sink](assets/wandb_insights/base_box_no_sink.png){ width="100%" } |
-    | ![MoE Toggle](assets/wandb_insights/base_box_use_moe.png){ width="100%" } | ![Sliding Window](assets/wandb_insights/base_box_sliding_window.png){ width="100%" } |
-    | ![SwiGLU Toggle](assets/wandb_insights/base_box_use_swiglu.png){ width="100%" } | ![Positional Encoding](assets/wandb_insights/base_box_pos_encoding.png){ width="100%" } |
-    | ![Weight Tying](assets/wandb_insights/base_box_weight_tying.png){ width="100%" } | ![Tokenizer Type](assets/wandb_insights/base_box_tokenizer_type.png){ width="100%" } |
+| Core & Routing | Attention & Positional |
+| :---: | :---: |
+| ![Optimizer](assets/wandb_insights/base_box_optimizer.png){ width="100%" } | ![Attention Sink](assets/wandb_insights/base_box_no_sink.png){ width="100%" } |
+| ![MoE Toggle](assets/wandb_insights/base_box_use_moe.png){ width="100%" } | ![Sliding Window](assets/wandb_insights/base_box_sliding_window.png){ width="100%" } |
+| ![SwiGLU Toggle](assets/wandb_insights/base_box_use_swiglu.png){ width="100%" } | ![Positional Encoding](assets/wandb_insights/base_box_pos_encoding.png){ width="100%" } |
+| ![Weight Tying](assets/wandb_insights/base_box_weight_tying.png){ width="100%" } | ![Tokenizer Type](assets/wandb_insights/base_box_tokenizer_type.png){ width="100%" } |
 
-    ---
+---
 
-    ### Numeric Hyperparameters (Scatter Plots)
-    These plots isolate continuous and discrete numerical values, complete with Spearman correlation trends.
+### Numeric Hyperparameters (Scatter Plots)
+These plots isolate continuous and discrete numerical values, complete with Spearman correlation trends.
 
-    | Training Dynamics | Memory & Context |
-    | :---: | :---: |
-    | ![Learning Rate](assets/wandb_insights/base_scatter_lr.png){ width="100%" } | ![Max Context](assets/wandb_insights/base_scatter_max_context.png){ width="100%" } |
-    | ![Batch Size](assets/wandb_insights/base_scatter_batch_size.png){ width="100%" } | ![Context Window (SW)](assets/wandb_insights/base_scatter_context_window.png){ width="100%" } |
-    | ![Effective Batch Size](assets/wandb_insights/base_scatter_effective_batch_size.png){ width="100%" } | ![Gradient Accumulation](assets/wandb_insights/base_scatter_grad_accum.png){ width="100%" } |
-    | ![Warmup Steps](assets/wandb_insights/base_scatter_warmup_steps.png){ width="100%" } | ![Dropout Rate](assets/wandb_insights/base_scatter_dropout_rate.png){ width="100%" } |
+| Training Dynamics | Memory & Context |
+| :---: | :---: |
+| ![Learning Rate](assets/wandb_insights/base_scatter_lr.png){ width="100%" } | ![Max Context](assets/wandb_insights/base_scatter_max_context.png){ width="100%" } |
+| ![Batch Size](assets/wandb_insights/base_scatter_batch_size.png){ width="100%" } | ![Context Window (SW)](assets/wandb_insights/base_scatter_context_window.png){ width="100%" } |
+| ![Effective Batch Size](assets/wandb_insights/base_scatter_effective_batch_size.png){ width="100%" } | ![Gradient Accumulation](assets/wandb_insights/base_scatter_grad_accum.png){ width="100%" } |
+| ![Warmup Steps](assets/wandb_insights/base_scatter_warmup_steps.png){ width="100%" } | ![Dropout Rate](assets/wandb_insights/base_scatter_dropout_rate.png){ width="100%" } |
 
-    | Architecture Dimensions | Mixture of Experts (MoE) |
-    | :---: | :---: |
-    | ![Hidden Dimension](assets/wandb_insights/base_scatter_dim.png){ width="100%" } | ![Number of Experts](assets/wandb_insights/base_scatter_n_experts.png){ width="100%" } |
-    | ![Number of Blocks](assets/wandb_insights/base_scatter_num_blocks.png){ width="100%" } | ![Top-K MLP](assets/wandb_insights/base_scatter_top_k_mlp.png){ width="100%" } |
-    | ![KV Heads (GQA)](assets/wandb_insights/base_scatter_kv_heads.png){ width="100%" } | ![Alpha Balance](assets/wandb_insights/base_scatter_alpha_balance.png){ width="100%" } |
-    | ![Expansion Factor](assets/wandb_insights/base_scatter_expansion.png){ width="100%" } | |
+| Architecture Dimensions | Mixture of Experts (MoE) |
+| :---: | :---: |
+| ![Hidden Dimension](assets/wandb_insights/base_scatter_dim.png){ width="100%" } | ![Number of Experts](assets/wandb_insights/base_scatter_n_experts.png){ width="100%" } |
+| ![Number of Blocks](assets/wandb_insights/base_scatter_num_blocks.png){ width="100%" } | ![Top-K MLP](assets/wandb_insights/base_scatter_top_k_mlp.png){ width="100%" } |
+| ![KV Heads (GQA)](assets/wandb_insights/base_scatter_kv_heads.png){ width="100%" } | ![Alpha Balance](assets/wandb_insights/base_scatter_alpha_balance.png){ width="100%" } |
+| ![Expansion Factor](assets/wandb_insights/base_scatter_expansion.png){ width="100%" } | |
+:::

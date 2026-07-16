@@ -76,10 +76,13 @@ for step, total, tokens in stream_flow_generate(
 `total = n_steps + 1`: the last yield is a dedicated `t=1` decode step, not
 an ODE integration step.
 
-!!! note "Deprecated ELF-branded aliases"
-    `elf_generate` and `stream_elf_generate` are deprecated aliases of
-    `flow_generate` and `stream_flow_generate` — they still work but will be
-    removed in v1.0.
+:::{admonition} Deprecated ELF-branded aliases
+:class: note
+
+`elf_generate` and `stream_elf_generate` are deprecated aliases of
+`flow_generate` and `stream_flow_generate` — they still work but will be
+removed in v1.0.
+:::
 
 ---
 

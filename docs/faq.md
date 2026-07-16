@@ -97,8 +97,11 @@ Try these in order:
 4. Reduce `max_context` — KV-cache size scales linearly with sequence length.
 5. Switch to GQA (`kv_heads < n_heads`) or MLA (`attention_type: mla`) — both reduce KV-cache memory significantly.
 
-!!! warning "Training suite OOM root cause"
-    The `train_ar_suite.sh` and `train_diffusion_suite.sh` scripts pass `--gradient_checkpointing true` (default). If you see a 28+ GiB allocation failure at step 1 on A100 40 GB for a 512d/16-block model, it means gradient checkpointing was accidentally disabled. The VRAM estimator shown at startup reflects the *peak XLA allocation* from the fully-unrolled `grad_accum` loop — not just static parameter memory — and is inaccurate when `gradient_checkpointing=false`.
+:::{admonition} Training suite OOM root cause
+:class: warning
+
+The `train_ar_suite.sh` and `train_diffusion_suite.sh` scripts pass `--gradient_checkpointing true` (default). If you see a 28+ GiB allocation failure at step 1 on A100 40 GB for a 512d/16-block model, it means gradient checkpointing was accidentally disabled. The VRAM estimator shown at startup reflects the *peak XLA allocation* from the fully-unrolled `grad_accum` loop — not just static parameter memory — and is inaccurate when `gradient_checkpointing=false`.
+:::
 
 ---
 

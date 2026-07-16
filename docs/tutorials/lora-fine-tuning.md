@@ -158,8 +158,10 @@ config.to_yaml(f"{out_dir}/config.yaml")
 flax.serialization.to_bytes(model)   # or use dantinox push directly
 ```
 
-!!! note
-    Merged checkpoints are identical in size to the original base model and have zero inference overhead. Use them when you want to deploy without any LoRA machinery.
+:::{note}
+
+Merged checkpoints are identical in size to the original base model and have zero inference overhead. Use them when you want to deploy without any LoRA machinery.
+:::
 
 ---
 

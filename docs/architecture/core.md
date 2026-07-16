@@ -503,10 +503,13 @@ def merge_weights(self) -> jnp.ndarray:
 as a single array. After merging, the model can be loaded into a standard
 `nnx.Linear` with no runtime overhead from the adapter computation.
 
-!!! tip "Merging for deployment"
-    After fine-tuning, call `merge_weights()` on each `LoRALinear`, replace it
-    with a standard `nnx.Linear` initialised from the merged kernel, and save.
-    The deployed model runs exactly as fast as a fully fine-tuned model.
+:::{admonition} Merging for deployment
+:class: tip
+
+After fine-tuning, call `merge_weights()` on each `LoRALinear`, replace it
+with a standard `nnx.Linear` initialised from the merged kernel, and save.
+The deployed model runs exactly as fast as a fully fine-tuned model.
+:::
 
 ### LoRA targets
 
@@ -615,11 +618,14 @@ tokens. Using remat during generation would force recomputation of the entire
 prefix at every decode step, which is far worse than just keeping the
 activations. The `Block` is always called without `nnx.remat` during generation.
 
-!!! tip "Practical recommendation"
-    Enable `gradient_checkpointing=True` whenever `batch_size × grad_accum`
-    is large or `max_context > 512`. For short sequences and small batches
-    it may not be necessary and the 33 % extra compute has a measurable impact
-    on step throughput.
+:::{admonition} Practical recommendation
+:class: tip
+
+Enable `gradient_checkpointing=True` whenever `batch_size × grad_accum`
+is large or `max_context > 512`. For short sequences and small batches
+it may not be necessary and the 33 % extra compute has a measurable impact
+on step throughput.
+:::
 
 ---
 

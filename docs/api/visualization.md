@@ -6,62 +6,58 @@ The visualization module uses a class-level registry. Charts are registered with
 
 ## Visualizer
 
-::: dantinox.visualization.visualizer.Visualizer
-    options:
-      show_source: true
-      members:
-        - register
-        - render
+```{eval-rst}
+.. autoclass:: dantinox.visualization.visualizer.Visualizer
+   :members:
+```
 
 ---
 
 ## Base types
 
-::: dantinox.visualization.base.RenderConfig
-    options:
-      show_source: true
+```{eval-rst}
+.. autoclass:: dantinox.visualization.base.RenderConfig
+   :members:
+```
 
-::: dantinox.visualization.base.Chart
-    options:
-      show_source: true
-      members:
-        - render
-        - _render_mpl
-        - _render_plotly
+```{eval-rst}
+.. autoclass:: dantinox.visualization.base.Chart
+   :members:
+```
 
 ---
 
 ## Built-in charts
 
-::: dantinox.visualization.charts.training.TrainingCurveChart
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.visualization.charts.training.TrainingCurveChart
+   :members:
+```
 
-::: dantinox.visualization.charts.throughput.ThroughputChart
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.visualization.charts.throughput.ThroughputChart
+   :members:
+```
 
-::: dantinox.visualization.charts.throughput.ThroughputBatchChart
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.visualization.charts.throughput.ThroughputBatchChart
+   :members:
+```
 
-::: dantinox.visualization.charts.latency.LatencyChart
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.visualization.charts.latency.LatencyChart
+   :members:
+```
 
-::: dantinox.visualization.charts.pareto.ParetoChart
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.visualization.charts.pareto.ParetoChart
+   :members:
+```
 
-::: dantinox.visualization.charts.radar.RadarChart
-    options:
-      show_source: true
-      heading_level: 3
+```{eval-rst}
+.. autoclass:: dantinox.visualization.charts.radar.RadarChart
+   :members:
+```
 
 ---
 
