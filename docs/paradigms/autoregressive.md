@@ -237,7 +237,7 @@ The `Generator` class handles:
 
 1. Loading `config.yaml` from the run directory
 2. Instantiating the correct model class based on `model_type`
-3. Loading `best_model_weights.msgpack` into the model
+3. Loading the best weights file into the model (tries `best_model_weights.msgpack` / `model_weights.msgpack` and `checkpoint_best.msgpack` / `checkpoint_latest.msgpack`)
 4. Running the tokenizer for encoding prompts and decoding outputs
 
 ---

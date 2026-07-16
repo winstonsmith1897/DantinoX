@@ -39,11 +39,20 @@ Every training run writes its artifacts to an isolated directory (`runs/run_YYYY
 | :--- | :--- |
 | `config.yaml` | Full config snapshot |
 | `tokenizer.json` | Serialised vocabulary (no corpus needed at inference) |
-| `model_weights.msgpack` | Latest checkpoint (updated every 50 steps) |
-| `best_model_weights.msgpack` | Best checkpoint by validation loss |
-| `training_cursor.json` | Last saved step (used by `--resume`) |
+| `checkpoint_best.msgpack` | Best checkpoint by validation loss |
+| `checkpoint_latest.msgpack` | Most recent checkpoint |
+| `train_state.msgpack` | Full train state (model + optimizer + epoch) for `resume=True` |
 | `model_summary.json` | Parameter count and memory estimates |
 | `training_log.csv` | Per-eval step, train/val loss, bal loss, ms/step |
+
+!!! note "Filenames differ by entry point"
+    The names above are written by the modern `Trainer`
+    (`from dantinox import Trainer` — `dantinox.training.trainer.Trainer`, and
+    therefore also `dx.fit` / `dx.Trainer`). The **legacy** `dantinox train`
+    CLI (backed by `dantinox.trainer.Trainer`) instead writes
+    `best_model_weights.msgpack` / `model_weights.msgpack` +
+    `training_cursor.json`. All loaders
+    (`Generator`, `dx.load`, `dantinox.core.checkpoint.load_model`) accept both.
 
 ---
 
@@ -98,7 +107,7 @@ patience: 5   # stop after 5 evals with no improvement (0 = disabled)
 config = Config(patience=5)
 ```
 
-The best-ever checkpoint is always written to `best_model_weights.msgpack`, independently of whether early stopping fires.
+The best-ever checkpoint is always written to `checkpoint_best.msgpack` (modern Trainer) or `best_model_weights.msgpack` (legacy CLI), independently of whether early stopping fires.
 
 ---
 
@@ -272,9 +281,10 @@ Train with `inference: false`. At generation time, `Generator` automatically set
 Use `Transformer.from_pretrained` to load a trained checkpoint in one line — no need to reconstruct the config or tokenizer manually:
 
 ```python
-from core import Transformer
+from dantinox.core.model import Transformer
 
-# Loads config.yaml + best_model_weights.msgpack from the run directory
+# Loads config.yaml + the best checkpoint from the run directory
+# (tries checkpoint_best.msgpack, then legacy best_model_weights.msgpack)
 model = Transformer.from_pretrained("runs/run_20260101_120000")
 
 # Or load the latest checkpoint instead of the best one
@@ -285,7 +295,7 @@ model = Transformer.from_pretrained("runs/run_20260101_120000", best=False)
 
 1. Reads `config.yaml` from the run directory.
 2. Constructs the `Transformer` with those settings.
-3. Deserialises `best_model_weights.msgpack` (or `model_weights.msgpack` when `best=False`).
+3. Deserialises the best weights file — `checkpoint_best.msgpack` (or the legacy `best_model_weights.msgpack`), falling back to the latest checkpoint when `best=False`.
 
 !!! note "For text generation use `Generator`"
     `Transformer.from_pretrained` gives you the raw model for custom inference loops, fine-tuning, or probing. For simple text generation, `Generator(run_dir)` is easier — it handles tokenisation and decoding automatically.
@@ -346,7 +356,7 @@ where \(W_{\text{base}} \in \mathbb{R}^{d \times k}\) is frozen, \(A \in \mathbb
 
 ```python
 from dantinox import Config, Trainer
-from core import Transformer
+from dantinox.core.model import Transformer
 
 # 1. Load a pre-trained model
 model = Transformer.from_pretrained("runs/run_20260101_120000")

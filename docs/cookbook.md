@@ -96,13 +96,12 @@ Short, copy-paste recipes for the most common DantinoX patterns.
     import dantinox as dx
 
     run_dir = dx.fit(
-        "elf",
+        "continuous",              # paradigm ("elf" is a deprecated alias)
         "data/corpus.txt",
-        model_type="elf",
         dim=256, n_heads=8, head_size=32, num_blocks=6,
         max_context=256,
         embed_dim=256, bottleneck_dim=64,
-        elf_n_steps=64, elf_cfg_scale=1.5,
+        flow_n_steps=64, flow_cfg_scale=1.5,   # NOT elf_n_steps=/elf_cfg_scale=
         tokenizer_type="bpe", tokenizer_path="t5-base",
         lr=1e-4, epochs=30,
     )

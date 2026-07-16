@@ -272,14 +272,21 @@ runs/
 └── run_20260611_142301/
     ├── config.yaml                ← complete config snapshot (use to reproduce!)
     ├── tokenizer.json             ← tokenizer vocabulary
-    ├── best_model_weights.msgpack ← checkpoint with lowest validation loss
-    ├── model_weights.msgpack      ← latest resume checkpoint (deleted on completion)
-    ├── training_cursor.json       ← resume pointer (step number, deleted on completion)
+    ├── checkpoint_best.msgpack    ← checkpoint with lowest validation loss
+    ├── checkpoint_latest.msgpack  ← most recent checkpoint
+    ├── train_state.msgpack        ← full train state (model + optimizer + epoch) for resume=True
     ├── model_summary.json         ← parameter count and memory breakdown
     └── training_log.csv           ← step, train_loss, val_loss, ms/step
 ```
 
-The `model_weights.msgpack` and `training_cursor.json` files exist only during training. When training completes normally, the cursor is deleted. This lets you distinguish a completed run from an interrupted one.
+!!! note "Legacy CLI filenames"
+    The names above are what the modern `Trainer` (`from dantinox import Trainer`,
+    `dx.fit`, `dx.Trainer`) writes. The legacy `dantinox train` CLI instead
+    writes `best_model_weights.msgpack` (best), `model_weights.msgpack`
+    (latest resume checkpoint), and `training_cursor.json` (resume pointer) —
+    the latter two exist only during training and are removed on normal
+    completion, so a leftover cursor marks an interrupted run. Loaders accept
+    both naming schemes.
 
 ### `model_summary.json` — memory breakdown
 
@@ -356,13 +363,18 @@ dantinox train \
     --resume
 ```
 
-The trainer will:
+The **legacy** `dantinox train` CLI will:
 1. Read `training_cursor.json` to find the last completed step
 2. Load `model_weights.msgpack` into the model
 3. Continue training from `start_step + 1`
 
-!!! warning "Optimizer state is not restored"
-    When resuming, the optimiser state (momentum, variance) is re-initialised from zero. This causes a brief spike in loss for the first few hundred steps until the optimiser re-warms.
+!!! warning "Legacy CLI does not restore optimizer state"
+    When resuming through the legacy `dantinox train` CLI, the optimiser state
+    (momentum, variance) is re-initialised from zero — a brief loss spike for
+    the first few hundred steps until it re-warms. The modern `Trainer`
+    (`dx.Trainer(...).fit(..., resume=True)`) instead restores the **full**
+    train state (`train_state.msgpack`: model + optimizer + epoch), so
+    resumed runs continue seamlessly.
 
 ---
 

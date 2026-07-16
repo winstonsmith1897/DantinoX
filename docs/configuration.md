@@ -91,6 +91,28 @@ paradigm = dx.Paradigm(cfg)   # causal=True set automatically for "ar"
 | `pos_encoding` | `str` | `"rotary"` | `"rotary"` · `"absolute"` · `"learned"` · `"none"` | Positional encoding. |
 | `causal` | `bool` | `True` | — | `True` = AR (causal mask); `False` = bidirectional (diffusion). Auto-set when `paradigm` is provided. |
 
+### Diffusion fields (`paradigm="discrete"`)
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `mask_token_id` | `int` | `-1` | Vocabulary ID used as the `[MASK]` symbol during corruption. `-1` is a sentinel: **auto-synced from the tokenizer by `Trainer.fit()`**. Set it explicitly only for direct model/paradigm construction outside the Trainer. (The legacy `Config` defaults to `4` instead.) |
+| `noise_schedule` | `str` | `"linear"` | Masking schedule mapping `t` → masking probability: `"linear"` · `"cosine"` · `"sqrt"`. |
+
+### Continuous flow-matching fields (`paradigm="continuous"`)
+
+| Field | Type | Default | Description |
+|:------|:-----|:-------:|:------------|
+| `embed_dim` | `int` | `0` | Frozen T5 encoder embedding dimension (`768` for `t5-base`). **Must be set `> 0`** for this paradigm. |
+| `bottleneck_dim` | `int` | `128` | Bottleneck between embedding space and transformer hidden dim. |
+| `flow_n_steps` | `int` | `32` | Default Euler ODE integration steps at inference. |
+| `flow_cfg_scale` | `float` | `1.5` | Default Classifier-Free Guidance scale. |
+| `sde_gamma` | `float` | `1.0` | SDE noise re-injection scale during generation (`0.0` = deterministic ODE). |
+| `t5_model_name` | `str` | `"t5-base"` | Frozen HuggingFace T5 encoder used to produce embeddings. |
+
+When `paradigm="continuous"`, the `Paradigm` wrapper internally converts
+these `ModelConfig` fields into a [`FlowMatchingConfig`](#flowmatchingconfig)
+(which also carries the training-time denoiser/decoder schedule fields).
+
 ### Embedder fields (`paradigm="embedder"`)
 
 | Field | Type | Default | Description |
@@ -105,6 +127,7 @@ paradigm = dx.Paradigm(cfg)   # causal=True set automatically for "ar"
 | `dropout` | `float` | `0.0` | Dropout probability after attention and FFN. |
 | `weight_tying` | `bool` | `True` | Tie input embedding and output projection (reduces parameters). |
 | `gradient_checkpointing` | `bool` | `False` | Recompute activations in backward pass — saves memory, costs extra FLOPs. |
+| `tp_size` | `int` | `1` | Tensor-parallel factor baked into the architecture config (mirrors `TrainingConfig.tp_size`; see [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp--tp)). |
 
 ### Attention settings
 
@@ -115,7 +138,7 @@ paradigm = dx.Paradigm(cfg)   # causal=True set automatically for "ar"
 | `rope_scale` | `float` | `1.0` | RoPE frequency scaling. Values > 1 extend the effective context window. |
 | `sliding_window` | `bool` | `False` | Limit attention to a local sliding window. |
 | `context_window` | `int` | `4` | Number of blocks in the sliding window (used when `sliding_window=True`). |
-| `no_sink` | `bool` | `False` | Disable attention sink token. |
+| `no_sink` | `bool` | `False` | Enable gated attention / attention-sink suppression (Qiu et al. 2026): output gated by `σ(W(x))` before the residual. See [Core Layers](architecture/core.md#no-sink-gating-gated-attention--attention-sink-suppression). |
 
 ??? note "MLA-specific fields"
     Only relevant when `attention="mla"`. Skip if using MHA or GQA.
@@ -176,21 +199,26 @@ cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 | `lr` | `float` | `3e-4` | Peak learning rate (after warmup). |
 | `batch_size` | `int` | `32` | Micro-batch size per device per step. |
 | `grad_accum` | `int` | `1` | Gradient accumulation steps. Effective batch = `batch_size × grad_accum × n_devices`. |
-| `epochs` | `int` | `100` | Maximum training epochs. |
+| `epochs` | `float` | `100` | Maximum training epochs. Values `< 1` train on that fraction of an epoch (e.g. `0.25` = a quarter pass over the data). |
 | `warmup_steps` | `int` | `400` | Linear warmup steps before LR schedule begins. |
 | `lr_schedule` | `str` | `"cosine"` | LR schedule after warmup: `"cosine"` · `"linear"` · `"constant"` · `"wsd"`. |
 | `optimizer` | `str` | `"adamw"` | Optimizer: `"adamw"` · `"adafactor"` · `"lion"` · `"adam"` · `"muon"`. |
 | `grad_clip` | `float` | `1.0` | Global gradient-norm clipping threshold. |
+| `gradient_checkpointing` | `bool` | `False` | Recompute activations in the backward pass (trainer-side switch; `ModelConfig` has its own field of the same name for direct model construction). |
 | `patience` | `int` | `0` | Early stopping patience in epochs. `0` = disabled. |
 | `eval_iters` | `int` | `20` | Validation batches per evaluation. |
+| `val_frac` | `float` | `0.1` | Fraction of the corpus held out as validation split. |
+| `val_every` | `int` | `1` | Run validation every N epochs. |
 | `seed` | `int` | `42` | Random seed for weight initialisation and data shuffling. |
 | `use_bf16` | `bool` | `False` | bfloat16 mixed precision. Requires NVIDIA Ampere+. |
+| `init_from` | `str` | `""` | Run directory whose best checkpoint initialises the model (warm start / fine-tuning). |
 
 ### Hardware
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
-| `n_devices` | `int` | `0` | GPU count. `0` = use all available devices. |
+| `n_devices` | `int` | `0` | Total GPU count. `0` = use all available devices. |
+| `tp_size` | `int` | `1` | Tensor-parallel factor. `> 1` builds a 2-D (data × model) mesh; data-parallel width = `n_devices / tp_size`. See [Multi-GPU Training](training/multi-gpu.md#tensor-parallelism-dp--tp). |
 
 ### Dataset
 
@@ -208,14 +236,14 @@ cfg = TrainingConfig(lr=3e-4, batch_size=32, epochs=100, optimizer="adamw")
 
 | Field | Type | Default | Description |
 |:------|:-----|:-------:|:------------|
-| `tokenizer_type` | `str` | `"char"` | `"char"` (character-level) or `"bpe"` (HuggingFace BPE). |
+| `tokenizer_type` | `str` | `"char"` | `"char"` (character-level) · `"bpe"` (Byte-Pair Encoding) · `"t5"` (pre-trained T5 SentencePiece). |
 | `tokenizer_path` | `str\|None` | `None` | HF tokenizer identifier (e.g. `"t5-base"`) or local path. |
 
-### Diffusion training
-
-| Field | Type | Default | Description |
-|:------|:-----|:-------:|:------------|
-| `noise_schedule` | `str` | `"linear"` | Masking schedule: `"linear"` · `"cosine"` · `"sqrt"`. |
+!!! note "Where did `noise_schedule` go?"
+    `noise_schedule` (and `mask_token_id`) are **`ModelConfig`** fields, not
+    `TrainingConfig` fields — the masking schedule is part of the paradigm's
+    forward process definition, not a training hyper-parameter. See the
+    [ModelConfig diffusion fields](#diffusion-fields-paradigmdiscrete) above.
 
 ---
 

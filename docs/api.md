@@ -65,7 +65,7 @@ Push, pull, and directly load checkpoints from HuggingFace Hub.
 !!! example "Direct loading — no pull step needed"
     ```python
     from dantinox import Generator
-    from core import Transformer
+    from dantinox.core.model import Transformer
 
     gen   = Generator("my-org/dantinox-dante")                    # downloads + loads
     model = Transformer.from_pretrained("my-org/dantinox-dante")  # same, no tokenizer
@@ -110,9 +110,17 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 ### Model Output
 
-`Transformer.__call__` returns a `ModelOutput` NamedTuple — supports both attribute access and positional unpacking.
+Each model family returns its own NamedTuple: `ModelOutput` (`Transformer`, AR and diffusion — supports both attribute access and positional unpacking), `FlowMatchingOutput` (`FlowMatchingTransformer` — `x_pred` + `logits`), and `EmbeddingOutput` (`Transformer.encode_hidden` — pooled sentence embeddings + per-token hidden states).
 
 ::: dantinox.core.output.ModelOutput
+    options:
+      show_source: true
+
+::: dantinox.core.output.FlowMatchingOutput
+    options:
+      show_source: true
+
+::: dantinox.core.output.EmbeddingOutput
     options:
       show_source: true
 
@@ -138,16 +146,57 @@ Core Transformer components — `Transformer`, `Block`, `Attention` (MHA/GQA/MLA
 
 ### Sharding Utilities
 
-SPMD data-parallel helpers built on `jax.sharding`. Pass `n_devices` in `Config` to activate automatically, or call these directly for custom sharding strategies.
+SPMD helpers built on `jax.sharding` — 1-D data-parallel meshes plus 2-D data × model meshes with Megatron-style tensor parallelism. Pass `n_devices` / `tp_size` in the config to activate automatically, or call these directly for custom sharding strategies (see [Multi-GPU Training](training/multi-gpu.md)).
 
 ::: dantinox.core.sharding
     options:
       show_source: true
       members:
         - make_mesh
+        - make_tp_mesh
         - replicate
         - shard_batch
         - num_devices
+        - apply_tp_sharding
+        - in_mesh_context
+
+---
+
+### Checkpoint Loading
+
+Single checkpoint-loading path for run directories: config-format detection (`Config` / `ModelConfig` / `FlowMatchingConfig`), weight-file resolution across current and legacy filenames, msgpack decoding, and in-place weight restoration. Shared by `Transformer.from_pretrained`, the `pipeline()` helper, and StableHLO export.
+
+::: dantinox.core.checkpoint
+    options:
+      show_source: true
+      members:
+        - load_model
+        - load_config
+        - find_weights_file
+        - restore_model
+        - load_raw_state
+        - build_model
+        - model_kind
+
+---
+
+### Inference Pipeline
+
+One-call inference helper: builds the right model from a run directory and dispatches to AR decoding, reverse diffusion, or flow-matching ODE integration. For richer control (streaming, decoding strategies) prefer the `Generator` class.
+
+::: dantinox.core.pipeline
+    options:
+      show_source: true
+
+---
+
+### StableHLO Export
+
+Ahead-of-time export of a checkpoint to a portable StableHLO binary for Python-free inference — the implementation behind the `dantinox export` CLI subcommand.
+
+::: dantinox.core.export
+    options:
+      show_source: true
 
 ---
 
@@ -189,17 +238,23 @@ Character-level and Byte-Level BPE tokenizers with save/load support.
 
 ## CLI Reference
 
-The `dantinox` command provides eight subcommands:
+The `dantinox` command provides 14 subcommands (full argument tables in the [CLI Reference](cli.md)):
 
 | Subcommand | Description |
 | :--- | :--- |
 | `train` | Train a model from a config and corpus |
 | `generate` | Generate text from a checkpoint |
+| `sweep` | Run a W&B Bayesian hyperparameter sweep |
+| `benchmark` | Benchmark throughput and FLOPs for run directories |
 | `find-lr` | Run the LR range test and suggest a learning rate |
 | `push` | Upload a checkpoint to HuggingFace Hub |
 | `pull` | Download a checkpoint from HuggingFace Hub |
-| `sweep` | Run a W&B Bayesian hyperparameter sweep |
-| `benchmark` | Benchmark throughput and FLOPs for run directories |
+| `infbench` | Full inference benchmark suite (random-model sweep + trained pipeline) |
+| `merge-lora` | Merge LoRA adapters into base weights and save |
+| `profile` | Print parameter count and FLOPs for a checkpoint |
+| `run` | Declarative training from a workflow YAML |
+| `export` | Export a checkpoint to a StableHLO binary |
+| `eval` | Evaluate generation quality for a checkpoint |
 | `plot` | Generate figures from benchmark results |
 
 ```bash

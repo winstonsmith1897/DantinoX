@@ -85,7 +85,7 @@ print(dx.quick_generate(run_dir, "Once upon a time"))
 2. Infers `vocab_size` automatically from the tokenizer — **no need to pass it manually**
 3. Constructs a `Transformer` with the resulting config
 4. Creates a `Trainer` with `AdamW` and a cosine learning-rate schedule
-5. Trains for `epochs` epochs, saving the best checkpoint to `runs/<timestamp>/best_model_weights.msgpack`
+5. Trains for `epochs` epochs, saving the best checkpoint to `runs/<timestamp>/checkpoint_best.msgpack`
 6. Returns the path to the run folder
 
 !!! note "`vocab_size` is optional when using `Trainer.fit()` / `dx.fit()`"
@@ -348,10 +348,19 @@ When you run a training job, DantinoX saves everything in a structured folder:
 runs/
 └── 20260611_142301/                    ← auto-generated name (date + time)
     ├── config.yaml                     ← exact copy of the config used (fully reproducible)
-    ├── best_model_weights.msgpack      ← checkpoint with the best validation loss
+    ├── checkpoint_best.msgpack         ← checkpoint with the best validation loss
+    ├── checkpoint_latest.msgpack       ← most recent checkpoint (for resuming)
+    ├── train_state.msgpack             ← full train state (model + optimizer) for --resume
     ├── training_log.csv                ← step-by-step log: loss, lr, grad_norm, …
     └── model_summary.json             ← architecture summary (parameter count, FLOPs, …)
 ```
+
+!!! note "Legacy filenames"
+    Runs produced by the legacy `dantinox train` CLI (monolithic `Config`
+    trainer) use the older names `best_model_weights.msgpack` /
+    `model_weights.msgpack` + `training_cursor.json` instead. All loading
+    utilities (`Generator`, `dx.load`, `dantinox.core.checkpoint.load_model`)
+    try both naming schemes automatically.
 
 The `config.yaml` file lets you reproduce the exact same training run in the future,
 or resume from where it stopped with `--resume`.

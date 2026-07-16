@@ -26,7 +26,7 @@ gen = Generator("my-org/dantinox-dante")             # Hub — downloads automat
 gen = Generator("my-org/private-model", token="hf_…")  # private Hub repo
 ```
 
-`Generator` loads `config.yaml`, `tokenizer.json`, and `model_weights.msgpack`. The tokenizer vocabulary is read from the saved JSON — the original corpus is **not required**.
+`Generator` loads `config.yaml`, `tokenizer.json`, and the model weights — it resolves the weights file automatically, trying both the legacy names (`best_model_weights.msgpack` / `model_weights.msgpack`) and the modern ones (`checkpoint_best.msgpack` / `checkpoint_latest.msgpack`). The tokenizer vocabulary is read from the saved JSON — the original corpus is **not required**.
 
 ```bash
 # CLI (local only — pull from Hub first if needed)
@@ -153,7 +153,7 @@ Pass a Hub repo ID anywhere you would pass a run directory — `Generator` and `
 
 ```python
 from dantinox import Generator
-from core import Transformer
+from dantinox.core.model import Transformer
 
 # Generator — download + load in one call
 gen = Generator("my-org/dantinox-dante")
