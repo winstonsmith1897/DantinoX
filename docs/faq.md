@@ -185,4 +185,4 @@ By default `push` creates a **public** repository. If you passed `--private true
 
 - **GitHub Issues**: [github.com/winstonsmith1897/DantinoX/issues](https://github.com/winstonsmith1897/DantinoX/issues)
 - **Changelog**: [What changed in the latest release](changelog.md)
-- **API Reference**: [Full API documentation](api.md)
+- **API Reference**: [Full API documentation](api/index.md)

@@ -170,4 +170,4 @@ Create the file at `runs/run_20260101_120000/README.md` before calling `push` �
 | :--- | :--- |
 | Adapt the pushed model to a new domain | [LoRA Fine-Tuning](lora-fine-tuning.md) |
 | Benchmark the pushed model | [Benchmarks](../benchmarks.md) |
-| Full Hub API reference | [API Reference — Hub](../api.md) |
+| Full Hub API reference | [API Reference — Hub](../api/index.md) |
